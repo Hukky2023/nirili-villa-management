@@ -19,3 +19,5 @@ Keep passwords, encryption keys, .dev.vars, environment files, database backups 
 ## Included snapshot
 
 Self-hosting export based on source commit 7178c6c3232bfd529e3df8d5f6a93fa8a14bf430, plus the Admin password-change fix supplied on 13 September 2026. The fix verifies the current Admin password and revokes sessions. This repository does not confirm that the fix has been deployed to the live site. Demo dashboard values and default records remain in this source and must be reviewed before relying on operational totals.
+
+Automatic deployment through Cloudflare Workers Builds.
