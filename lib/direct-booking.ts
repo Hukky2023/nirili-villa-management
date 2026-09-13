@@ -1,3 +1,4 @@
+import {nextBookingReference} from './booking-reference';
 import {plans,validDate} from './guest-catalog';
 
 export function createDirectBooking(state:any,b:any,by:string){
@@ -9,11 +10,11 @@ export function createDirectBooking(state:any,b:any,by:string){
  const nights=(Date.parse(b.checkOut)-Date.parse(b.checkIn))/86400000;
  if(nights>365)throw Error('Bookings can be up to 365 nights.');
  if(!Number.isInteger(b.pax)||b.pax<1||b.pax>3||!plans.includes(b.meal))throw Error('Choose a valid guest count and meal plan.');
- if(!['Direct','Walk-in','Booking.com','Agoda','Travel agent'].includes(b.source))throw Error('Choose a valid booking source.');
+ if(!['Direct','Walk-in','Booking.com','Agoda','Travel agent','Guest portal'].includes(b.source))throw Error('Choose a valid booking source.');
  if(!Number.isInteger(b.rateCents)||b.rateCents<0||b.rateCents>1000000)throw Error('Enter a nightly rate between $0 and $10,000.');
  const room=state.rooms.find((r:any)=>r.number===b.room);
  if(!room||room.status==='Maintenance'||b.pax>room.capacity||state.stays.some((s:any)=>s.room===b.room&&s.status!=='Checked Out'&&s.checkIn<b.checkOut&&s.checkOut>b.checkIn))throw Error('That room is unavailable for these dates or guest count. Choose another room.');
- const id='NV-'+crypto.randomUUID().toUpperCase();
+ const id=nextBookingReference(state);
  const stay={id,creationRequest:b.requestId,createdBy:by,guest:b.guest.trim(),room:b.room,billRoom:id,checkIn:b.checkIn,checkOut:b.checkOut,pax:b.pax,meal:b.meal,source:b.source,rateCents:b.rateCents,status:'Confirmed',legacyFolio:false,base:nights*b.rateCents,initialPaid:0,payments:[],extensions:[],history:[{date:new Date().toISOString(),by,detail:'Booking confirmed · Room '+b.room+' assigned · '+nights+' nights'}]};
  state.stays.push(stay);
  return stay;
