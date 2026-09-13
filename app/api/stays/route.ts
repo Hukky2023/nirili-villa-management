@@ -1,10 +1,21 @@
+import {createDirectBooking} from '../../../lib/direct-booking';
 import {prepareStayLogin,saveStayAccess} from '../../../lib/stay-login';
 import {restaurantOnly} from '../../../lib/pos-access';
 import {billPaymentKey} from '../../../lib/bill-payment';
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {loadStays,stayView,stayKey,folioFor} from '../../../lib/stays';
 export async function GET(){const u=await currentUser();if(!u||restaurantOnly(u)||u.role==='guest')return Response.json({error:'Staff login required'},{status:403});try{return Response.json(await stayView(),{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
-export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();if(!hasPermission(u,'edit_bills'))return Response.json({error:'Admin or bill editing permission is required.'},{status:403});const {state,revision}=await loadStays();const roomAction=['roomstatus','note'].includes(b.action);const s=roomAction?{room:b.room,history:[]}:state.stays.find((s:any)=>s.id===b.id);if(!s)return Response.json({error:'Booking not found'},{status:404});if(b.action==='payment'&&s.payments.some((p:any)=>p.id===b.requestId))return Response.json(await stayView());if(b.revision!==revision)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});let detail='';let loginPlan:any=null;let revoke:string[]=[];const room=state.rooms.find((x:any)=>x.number===s.room);if(!room)throw Error('Room not found.');const f=roomAction?null:await folioFor(s);
+export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();if(!hasPermission(u,'edit_bills'))return Response.json({error:'Admin or bill editing permission is required.'},{status:403});const {state,revision}=await loadStays();
+if(b.action==='create'){
+ if(restaurantOnly(u))return Response.json({error:'Hotel booking access required.'},{status:403});
+ const previous=state.stays.find((s:any)=>s.creationRequest===b.requestId&&s.createdBy===u.username);
+ if(previous)return Response.json({booking:previous});
+ if(b.revision!==revision)return Response.json({error:'Room availability changed. Review the available rooms and confirm again.'},{status:409});
+ const booking=createDirectBooking(state,b,u.username);
+ if(!await saveStayAccess(state,revision,u.userId))return Response.json({error:'Another booking changed room availability. Review the rooms and try again.'},{status:409});
+ return Response.json({booking},{status:201});
+}
+const roomAction=['roomstatus','note'].includes(b.action);const s=roomAction?{room:b.room,history:[]}:state.stays.find((s:any)=>s.id===b.id);if(!s)return Response.json({error:'Booking not found'},{status:404});if(b.action==='payment'&&s.payments.some((p:any)=>p.id===b.requestId))return Response.json(await stayView());if(b.revision!==revision)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});let detail='';let loginPlan:any=null;let revoke:string[]=[];const room=state.rooms.find((x:any)=>x.number===s.room);if(!room)throw Error('Room not found.');const f=roomAction?null:await folioFor(s);
 if(b.action==='markpaid'){s.markedUnpaid=false;if(f.balanceCents<0)throw Error('This booking has a credit balance. Review it before marking paid.');if(f.balanceCents>0)s.payments.push({id:crypto.randomUUID(),cents:f.balanceCents,method:'Marked paid',reference:'Full balance marked paid',date:new Date().toISOString(),by:u.username});s.paidBills={...(s.paidBills||{}),...Object.fromEntries(f.bills.filter((x:any)=>x.status!=='Cancelled').map((x:any)=>[billPaymentKey(x),x.totalCents]))};detail='All current bills marked paid · Payment received $'+(Math.max(0,f.balanceCents)/100).toFixed(2);}
 else if(b.action==='markunpaid'){
 const date=new Date().toISOString();let reversed=0;

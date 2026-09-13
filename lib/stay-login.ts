@@ -9,7 +9,7 @@ export async function prepareStayLogin(state:any,s:any){
  if(s.accountId&&!state.stays.some((x:any)=>x.id!==s.id&&x.accountId===s.accountId&&x.status==='In House'))retire.add(s.accountId);
  let password='';do{let n;do{n=crypto.getRandomValues(new Uint32Array(1))[0];}while(n>=4294890000);password=String(10000+n%90000);}while(existing&&await verifyPassword(password,existing.salt,existing.password_hash));
  const id='room-'+crypto.randomUUID(),hash=await hashPassword(password);
- if(!s.accountId)s.legacyFolio=true;s.accountId=id;s.roomLogin=true;s.loginIssuedAt=new Date().toISOString();
+ if(!s.accountId&&s.legacyFolio!==false)s.legacyFolio=true;s.accountId=id;s.roomLogin=true;s.loginIssuedAt=new Date().toISOString();
  return {id,username,password,hash,name:s.guest,retire:[...retire]};
 }
 export async function saveStayAccess(state:any,revision:number,by:string,plan:any=null,revoke:string[]=[]){
