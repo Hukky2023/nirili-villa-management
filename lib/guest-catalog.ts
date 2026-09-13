@@ -8,13 +8,21 @@ export const catalog=[
 {id:'coffee',kind:'food',name:'Coffee',cents:400,detail:'Freshly prepared coffee. Add your milk or sugar preference in the notes.'},
 {id:'juice',kind:'food',name:'Fresh juice',cents:600,detail:'Fresh juice. Fruit selection depends on availability.'},
 {id:'seafood',kind:'food',name:'Seafood dinner',cents:5000,detail:'Seafood dinner, subject to the day’s availability. Tell us about any allergies.'},
-{id:'turtle',kind:'excursion',name:'Turtle Snorkeling',cents:2500,detail:'Guided snorkeling to look for turtles. Equipment and underwater videos included. Wildlife sightings depend on conditions.'},
-{id:'shark',kind:'excursion',name:'Shark Snorkeling',cents:10000,detail:'Guided shark snorkeling experience. Equipment and underwater videos included. Timing depends on sea conditions.'},
-{id:'sandbank',kind:'excursion',name:'Sandbank Trip',cents:2500,detail:'Visit a sandbank for swimming and photos. Departure depends on tides and weather.'},
-{id:'dolphin',kind:'excursion',name:'Dolphin Cruise',cents:2500,detail:'Boat trip to look for dolphins. Sightings cannot be guaranteed. The team confirms departure time.'},
-{id:'fishing',kind:'excursion',name:'Night Fishing',cents:4000,detail:'Evening fishing trip with local guidance. The team confirms the meeting point and departure time.'},
-{id:'coral',kind:'excursion',name:'Coral Garden',cents:4500,detail:'Guided reef snorkeling with equipment and underwater videos included.'},
-{id:'fishtank',kind:'excursion',name:'Fish Tank',cents:6500,detail:'Guided snorkeling at Fish Tank with equipment and underwater videos included.'}
+{"id": "snorkeling", "kind": "excursion", "name": "Snorkeling", "cents": 2000, "group": "Excursions", "minGuests": 2, "detail": "Explore the underwater world around Dhiffushi."},
+{"id": "turtle", "kind": "excursion", "name": "Turtle Snorkeling", "cents": 2500, "group": "Excursions", "minGuests": 2, "detail": "Snorkel and look for turtles."},
+{"id": "shark", "kind": "excursion", "name": "Shark Snorkeling (Nurse Shark)", "cents": 10000, "group": "Excursions", "minGuests": 2, "detail": "Discover nurse sharks on a snorkeling excursion."},
+{"id": "coral", "kind": "excursion", "name": "Coral Garden Snorkeling", "cents": 4500, "group": "Excursions", "minGuests": 2, "detail": "Explore the coral garden."},
+{"id": "fishtank", "kind": "excursion", "name": "Fish Tank Snorkeling", "cents": 6500, "group": "Excursions", "minGuests": 2, "detail": "Discover the marine life at Fish Tank."},
+{"id": "dolphin", "kind": "excursion", "name": "Dolphin Watching", "cents": 2500, "group": "Excursions", "minGuests": 2, "detail": "Head out on the water to look for dolphins."},
+{"id": "fishing", "kind": "excursion", "name": "Fishing", "cents": 4000, "group": "Excursions", "minGuests": 2, "detail": "Enjoy a fishing trip with Nirili Tours."},
+{"id": "sandbank", "kind": "excursion", "name": "Sandbank Trip", "cents": 2500, "group": "Excursions", "minGuests": 2, "detail": "Visit a sandbank for swimming and island views."},
+{"id": "sandbank-dinner", "kind": "excursion", "name": "Sandbank Dinner", "cents": 15000, "group": "Excursions", "minGuests": 2, "detail": "Enjoy dinner on a sandbank."},
+{"id": "beach-seafood-dinner", "kind": "excursion", "name": "Beach Dinner with Seafood", "cents": 10000, "group": "Excursions", "minGuests": 2, "detail": "A seafood dinner by the beach."},
+{"id": "shark-turtle", "kind": "excursion", "name": "Shark + Turtle Snorkeling", "cents": 11000, "group": "Combined packages", "minGuests": 2, "detail": "Shark snorkeling and turtle snorkeling in one package."},
+{"id": "coral-sandbank", "kind": "excursion", "name": "Coral Garden + Sandbank", "cents": 6000, "group": "Combined packages", "minGuests": 2, "detail": "Coral Garden snorkeling and a sandbank visit."},
+{"id": "dolphin-fishing-dinner", "kind": "excursion", "name": "Dolphin Watching + Fishing + Dinner", "cents": 5000, "group": "Combined packages", "minGuests": 2, "detail": "Dolphin watching, fishing and dinner."},
+{"id": "fishtank-turtle", "kind": "excursion", "name": "Fish Tank + Turtle Snorkeling", "cents": 8000, "group": "Combined packages", "minGuests": 2, "detail": "Fish Tank snorkeling and turtle snorkeling."},
+{"id": "special-package", "kind": "excursion", "name": "Special Package", "cents": 22000, "group": "Special package", "minGuests": 2, "detail": "Turtle Snorkeling + Shark Snorkeling + Sandbank + Coral Garden + Dolphin Watching + Fishing with Dinner."}
 ];
 export const plans=['Bed & Breakfast','Half Board','Full Board'];
 export function nightly(plan:string,pax:number){return ({'Bed & Breakfast':[5000,6000,7000],'Half Board':[7000,8000,9000],'Full Board':[8000,10000,12000]} as any)[plan]?.[pax-1]||0;}
