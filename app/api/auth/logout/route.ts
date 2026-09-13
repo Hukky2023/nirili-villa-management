@@ -1,0 +1,4 @@
+import {sessionCookieName,currentTab,withTab} from '../../../../lib/tab-session';
+import {cookies} from "next/headers";
+import {authDb,cookieName,digest,sameOrigin} from "../../../../lib/auth";
+export async function POST(r:Request){if(!sameOrigin(r))return new Response("Invalid request",{status:403});const name=await sessionCookieName();const token=(await cookies()).get(name)?.value;if(token)await authDb().prepare("DELETE FROM account_sessions WHERE token_hash=?").bind(await digest(token)).run();return new Response(null,{status:303,headers:{Location:withTab(new URL(r.url).searchParams.get("restaurant")==="1"?"/restaurant/login":"/",await currentTab()), "Set-Cookie":name+"=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0"}});}

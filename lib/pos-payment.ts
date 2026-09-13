@@ -1,0 +1,24 @@
+export function changePOSPayment(state:any,o:any,b:any,username:string){
+ if(!['Cash','Card','Room'].includes(b.method))throw Error('Choose cash, card or room charge.');
+ if(o.method===b.method)return;
+ const date=new Date().toISOString(),previous=o.method||'Unpaid';
+ let s=state.stays.find((s:any)=>s.id===o.stayId);
+ if(s&&s.status!=='In House')throw Error('This stay is closed. Review the room folio with Admin before changing payment.');
+ if(s?.paidBills?.['Restaurant:'+o.id]===o.cents&&o.cents>0)throw Error('This bill was settled through the room folio. Reverse that settlement in booking details before changing its payment method.');
+ if(b.method==='Room'&&!s){s=state.stays.find((s:any)=>s.id===b.stayId&&s.status==='In House');if(!s)throw Error('Select a checked-in room.');}
+ if(s){s.posBills??=[];s.payments??=[];s.history??=[];
+  if(['Cash','Card'].includes(previous)&&o.stayId){
+   const paid=s.payments.filter((p:any)=>p.reference===o.id&&['Cash','Card'].includes(p.method)&&!p.reversedAt&&p.cents>=0);
+   if(o.cents>0&&paid.reduce((n:number,p:any)=>n+p.cents,0)!==o.cents)throw Error('Payment records do not match this bill. Ask Admin to review them.');
+   for(const p of paid){p.reversedAt=date;p.reversedBy=username;s.payments.push({id:crypto.randomUUID(),cents:-p.cents,method:'Payment reversal',reference:o.id,reverses:p.id,date,by:username});}
+  }
+  let bill=s.posBills.find((x:any)=>x.id===o.id);
+  if(!bill){if(o.stayId)throw Error('Linked room bill is missing. Refresh and try again.');bill={department:'Restaurant',id:o.id,items:o.items.map((i:any)=>[i.name,i.quantity,i.unitCents*i.quantity/100,i.discount||0]),totalCents:o.cents};s.posBills.push(bill);}
+  o.stayId=s.id;o.room=s.room;o.customer=s.guest;
+  delete s.paidBills?.['Restaurant:'+o.id];
+  bill.status=b.method==='Room'?'Posted':'Paid';bill.settledAtPOS=b.method!=='Room';
+  if(b.method!=='Room')s.payments.push({id:crypto.randomUUID(),cents:o.cents,method:b.method,reference:o.id,date,by:username});
+  s.history.unshift({date,by:username,detail:'Restaurant bill '+o.id+' payment changed: '+previous+' → '+b.method});
+ }
+ o.method=b.method;o.paidAt=b.method==='Room'?null:date;o.history??=[];o.history.push({date,by:username,detail:'Payment changed: '+previous+' → '+b.method,cents:o.cents});
+}

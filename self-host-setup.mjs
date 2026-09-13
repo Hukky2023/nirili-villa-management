@@ -1,0 +1,10 @@
+import {existsSync,writeFileSync} from 'node:fs';
+import {randomBytes,pbkdf2Sync,randomUUID} from 'node:crypto';
+if(existsSync('self-host-secrets.json')||existsSync('ADMIN-LOGIN.txt'))throw Error('Setup already exists; use self-host-config.mjs to update configuration.');
+await import('./self-host-config.mjs');
+const password=randomBytes(18).toString('base64url'),salt=randomBytes(16).toString('hex');
+const hash=pbkdf2Sync(password,salt,100000,32,'sha256').toString('hex');
+const seeds=[{id:randomUUID(),username:'admin',email:null,name:'Nirili Villa Admin',hash,salt,role:'admin'}];
+writeFileSync('self-host-secrets.json',JSON.stringify({NIRILI_BOOTSTRAP:JSON.stringify(seeds),NIRILI_CREDENTIAL_KEY:randomBytes(32).toString('hex')},null,2),{mode:0o600,flag:'wx'});
+writeFileSync('ADMIN-LOGIN.txt','Username: admin\nPassword: '+password+'\nKeep this file private.\n',{mode:0o600,flag:'wx'});
+console.log('Private setup files created. Follow SELF-HOSTING.md.');

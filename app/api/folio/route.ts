@@ -1,0 +1,15 @@
+import {restaurantOnly} from '../../../lib/pos-access';
+import {discountsUnchanged} from "../../../lib/discounts";
+import {authDb,currentUser,hasPermission,sameOrigin} from "../../../lib/auth";
+function prefix(room:string){return "folio:"+room+":";}
+export async function GET(r:Request){const user=await currentUser();if(!user||restaurantOnly(user)||user.role==="guest")return Response.json({error:"Staff login required"},{status:403});const room=new URL(r.url).searchParams.get("room")||"";if(!/^([12]0[1-7])$/.test(room))return Response.json({error:"Invalid room"},{status:400});
+try{const rows=await authDb().prepare("SELECT payload,revision FROM operation_records WHERE key LIKE ?").bind(prefix(room)+"%").all<any>();return Response.json({bills:rows.results.map(x=>({...JSON.parse(x.payload),revision:x.revision}))},{headers:{"Cache-Control":"no-store"}});}catch{return Response.json({error:"Could not load bills"},{status:503});}}
+export async function PUT(r:Request){const user=await currentUser();if(!hasPermission(user,"edit_bills")||!sameOrigin(r))return Response.json({error:"Bill editing permission required"},{status:403});
+try{const b=await r.json(),x=b.bill;
+if(!/^([12]0[1-7])$/.test(String(b.room))||!x||!["Accommodation","Transfer","Excursions"].includes(x.department)||typeof x.id!=="string"||!/^[-A-Z0-9]{1,40}$/.test(x.id)||!Number.isInteger(x.revision)||x.revision<0||typeof x.date!=="string"||!x.date.trim()||x.date.length>100||!["Posted","Pending","Paid","Unpaid","Cancelled"].includes(x.status)||!Array.isArray(x.items)||x.items.length>100||x.items.some((i:any)=>!Array.isArray(i)||i.length!==4||typeof i[0]!=="string"||!i[0].trim()||i[0].length>200||!Number.isInteger(i[1])||i[1]<1||i[1]>10000||!Number.isFinite(i[2])||i[2]<0||i[2]>1000000||!Number.isFinite(i[3])||i[3]<0||i[3]>100))return Response.json({error:"Check bill items, amounts and discounts."},{status:400});
+const bill={id:x.id,department:x.department,date:x.date,status:x.status,items:x.items,total:Math.round(x.items.reduce((s:number,i:any)=>s+Math.round(i[2]*100)*(1-i[3]/100),0))/100};
+const key=prefix(String(b.room))+x.department+":"+x.id,payload=JSON.stringify(bill);
+if(user!.role!=="admin"){const old=await authDb().prepare("SELECT payload FROM operation_records WHERE key=?").bind(key).first<any>();if(!discountsUnchanged(old?JSON.parse(old.payload).items:[],x.items))return Response.json({error:"Only admin can change discounts or discounted items."},{status:403});}
+const result=x.revision===0?await authDb().prepare("INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)").bind(key,payload,user!.userId).run():await authDb().prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?").bind(payload,user!.userId,key,x.revision).run();
+return Response.json(result.meta.changes?{bill:{...bill,revision:x.revision+1}}:{error:"Bill changed elsewhere. Reopen it before saving."},{status:result.meta.changes?200:409});
+}catch{return Response.json({error:"Could not save bill. Retry."},{status:503});}}

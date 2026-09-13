@@ -1,0 +1,3 @@
+export const operationSeeds:Record<string,any[]>={
+Excursions:[{id:"EX-1",time:"09:00",service:"Turtle Snorkeling",guests:6,boat:"Nirili 1",guide:"Dain",status:"Ongoing"},{id:"EX-2",time:"13:00",service:"Sandbank Trip",guests:4,boat:"Nirili 2",guide:"Ameer",status:"Confirmed"},{id:"EX-3",time:"15:30",service:"Dolphin Cruise",guests:8,boat:"Nirili 1",guide:"Rai",status:"Pending"}],
+Transfers:[{id:"TR-1",time:"11:40",service:"MLE → Dhiffushi",guest:"Qiao Mingzhi",guests:2,boat:"Sea Shine",status:"Confirmed"},{id:"TR-2",time:"16:30",service:"Dhiffushi → MLE",guest:"Liu Yutong",guests:2,boat:"Koimala",status:"Pending"},{id:"TR-3",time:"22:15",service:"MLE → Dhiffushi",guest:"Ahmed Khalid",guests:3,boat:"Sea Shine",status:"Boarded"}]};

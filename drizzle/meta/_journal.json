@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1789204473482,
+      "tag": "0000_tired_sister_grimm",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789222937319,
+      "tag": "0001_exotic_shiver_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789223896330,
+      "tag": "0002_sudden_justin_hammer",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789250479609,
+      "tag": "0003_cashier_login",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789251164563,
+      "tag": "0004_waiter_login",
+      "breakpoints": true
+    }
+  ]
+}

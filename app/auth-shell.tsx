@@ -1,0 +1,4 @@
+import {Sun, Waves, MapPin} from "lucide-react";
+import type {ReactNode} from "react";
+import "./auth.css";
+export default function AuthShell({children}:{children:ReactNode}){return <main className="nv-auth"><section className="nv-auth-shell"><aside className="nv-auth-brand"><a className="nv-wordmark" href="/home" aria-label="Nirili Villa home"><span className="nv-mark"><Sun/><Waves/></span><span>Nirili Villa<small>MALDIVES</small></span></a><div className="nv-brand-message"><span className="nv-eyebrow">YOUR ISLAND CONNECTION</span><h1>A warm welcome.<br/><em>Every time.</em></h1><p>Arrive as a guest,<br/>leave as a friend.</p></div><div className="nv-location"><MapPin size={17}/> Dhiffushi Island, Maldives</div></aside><section className="nv-auth-content">{children}<footer className="nv-auth-footer">Nirili Villa <span>•</span> Dhiffushi, Maldives</footer></section></section></main>}

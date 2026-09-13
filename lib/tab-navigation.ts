@@ -1,0 +1,1 @@
+export function tabNavigate(path:string,replace=false){const u=new URL(path,window.location.href),tab=new URLSearchParams(window.location.search).get('tab');if(u.origin===window.location.origin&&tab&&!u.searchParams.has('tab'))u.searchParams.set('tab',tab);if(replace)window.location.replace(u.href);else window.location.assign(u.href);}

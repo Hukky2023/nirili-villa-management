@@ -1,0 +1,5 @@
+const bytes=(s:string)=>Uint8Array.from(s.match(/../g)||[],x=>parseInt(x,16));
+const hex=(b:ArrayBuffer|Uint8Array)=>Array.from(new Uint8Array(b as ArrayBuffer),x=>x.toString(16).padStart(2,'0')).join('');
+async function key(secret:string){if(!/^[a-f0-9]{64}$/.test(secret))throw Error('Credential sharing is not configured.');return crypto.subtle.importKey('raw',bytes(secret),'AES-GCM',false,['encrypt','decrypt']);}
+export async function sealCredential(secret:string,id:string,hash:string,password:string){const iv=crypto.getRandomValues(new Uint8Array(12));const data=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode(id+':'+hash)},await key(secret),new TextEncoder().encode(password));return JSON.stringify({iv:hex(iv),data:hex(data),hash});}
+export async function openCredential(secret:string,id:string,hash:string,payload:string){const v=JSON.parse(payload);if(v.hash!==hash)throw Error('Password has changed.');return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(v.iv),additionalData:new TextEncoder().encode(id+':'+hash)},await key(secret),bytes(v.data)));}

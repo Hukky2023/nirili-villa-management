@@ -1,0 +1,6 @@
+import {tabRedirect} from '../../lib/tab-session';
+import {currentUser} from '../../lib/auth';
+import {canPOS} from '../../lib/pos-access';
+import RestaurantPOS from '../restaurant-pos';
+export const dynamic='force-dynamic';
+export default async function Restaurant(){const u=await currentUser();if(!u)await tabRedirect('/restaurant/login');if(u.role==='guest')await tabRedirect('/restaurant/guest?mode=inhouse');if(!canPOS(u))return <main className="page"><h1>Restaurant access required</h1><p>Ask Admin to enable Restaurant POS in your staff permissions.</p><a href="/" target="_blank" rel="noopener noreferrer" data-new-login>New login tab ↗</a><form action="/api/auth/logout?restaurant=1" method="post"><button>Sign out</button></form></main>;return <main><header style={{background:'#07334a',color:'white',padding:'12px 20px',display:'flex',justifyContent:'space-between'}}><a href="/home" className="brand-home" aria-label="Nirili Villa home"><b>Nirili Villa · Restaurant · {u.displayName}</b></a><a href="/" target="_blank" rel="noopener noreferrer" data-new-login>New login tab ↗</a><form action="/api/auth/logout?restaurant=1" method="post"><button>Sign out</button></form></header><RestaurantPOS/></main>;}

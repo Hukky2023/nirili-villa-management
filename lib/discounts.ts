@@ -1,0 +1,1 @@
+export function discountsUnchanged(before:any[],after:any[]){const rows=(a:any[])=>a.filter(x=>Number(x[3])>0).map(x=>JSON.stringify(x)).sort();return JSON.stringify(rows(before))===JSON.stringify(rows(after));}

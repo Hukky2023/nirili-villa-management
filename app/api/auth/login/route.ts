@@ -1,0 +1,21 @@
+import {withTab} from '../../../../lib/tab-session';
+import {restaurantOnly,canPOS,canTakePayment} from '../../../../lib/pos-access';
+import {roomLoginActive,authDb,bootstrap,verifyPassword,issueSession,sameOrigin,limit,publicUser} from "../../../../lib/auth";
+export async function POST(request:Request){
+if(!sameOrigin(request))return Response.json({error:"Invalid request"},{status:403});
+try{
+const b=await request.json();const username=typeof b.username==="string"?b.username.trim().toLowerCase():"";
+if(!username||username.length>254||typeof b.password!=="string"||b.password.length>128)return Response.json({error:"Enter your username and password."},{status:400});
+const ip=request.headers.get("cf-connecting-ip")||"unknown";
+if(!await limit("login-ip:"+ip,100,900000)||!await limit("login:"+username,15,900000))return Response.json({error:"Too many attempts. Try again in 15 minutes."},{status:429});
+await bootstrap();
+const row=await authDb().prepare("SELECT * FROM accounts WHERE (username=? OR email=?) AND active=1").bind(username,username).first<any>();
+const match=await verifyPassword(b.password,row?.salt||"00000000000000000000000000000000",row?.password_hash||"0".repeat(64));
+if(!row||!match||!await roomLoginActive(row.id))return Response.json({error:"Incorrect username or password."},{status:401});
+const user=publicUser(row);
+if(b.portal==="admin"&&user.role!=="admin"||b.portal==="staff"&&!["admin","staff"].includes(user.role))return Response.json({error:"This account cannot access that portal."},{status:403});
+if(b.portal==='restaurant_cashier'&&!canTakePayment(user)||b.portal==='restaurant_waiter'&&!canPOS(user)||b.portal==='restaurant_guest'&&user.role!=='guest')return Response.json({error:'This account cannot access the selected restaurant portal.'},{status:403});
+const portal=["admin","staff","guest"].includes(b.portal)?b.portal:user.role;
+const back=b.portal==="restaurant_guest"?"/restaurant/guest?mode=inhouse":["restaurant_cashier","restaurant_waiter"].includes(b.portal)?"/restaurant":restaurantOnly(user)?"/restaurant":b.returnTo==="/restaurant"?"/restaurant":typeof b.returnTo==="string"&&/^\/restaurant\/bills\/[a-zA-Z0-9%_-]+\/[a-zA-Z0-9%_-]+$/.test(b.returnTo)?b.returnTo:"/?portal="+portal;
+const tab=crypto.randomUUID().replace(/-/g,'');return Response.json({redirect:withTab(back,tab)},{headers:{"Set-Cookie":await issueSession(user.userId,tab),"Cache-Control":"no-store"}});
+}catch{return Response.json({error:"Login unavailable. Please retry."},{status:503});}}
