@@ -1,0 +1,3 @@
+QZ Tray JavaScript connector 2.2.5, unmodified.
+Source: https://github.com/qzind/tray/blob/v2.2.5/js/qz-tray.js
+License: LGPL-2.1-only; see qz-tray-LICENSE.txt.
