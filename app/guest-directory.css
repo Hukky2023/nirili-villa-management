@@ -1,0 +1,32 @@
+.admin,.shell,.shell>main{min-width:0;max-width:100%}
+.guest-directory-page{width:100%;min-width:0;max-width:100%}
+.guest-directory-page>.title{flex-wrap:wrap;gap:12px}
+.guest-directory-page>.title>div{min-width:0;flex:1}
+.guest-directory-tools{display:flex;flex-wrap:wrap;gap:14px;margin:22px 0}
+.guest-directory-tools label{display:grid;gap:7px;font-size:14px;min-width:0;flex:1 1 220px}
+.guest-directory-tools input,.guest-directory-tools select{width:100%;min-width:0;min-height:46px;padding:11px 13px;border:1px solid #bfd5df;border-radius:10px;background:white;color:#163b50;font-size:16px}
+.guest-directory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:18px}
+.guest-profile-card{min-width:0;background:white;border:1px solid #d5e4ea;border-radius:16px;padding:22px;box-shadow:0 5px 20px #113c4f06;overflow-wrap:anywhere}
+.guest-profile-card>header{display:flex;align-items:flex-start;flex-wrap:wrap;gap:12px;justify-content:space-between}
+.guest-profile-card>header>div{min-width:0;flex:1 1 150px}
+.guest-profile-card small{font-size:12px;color:#5d7888}
+.guest-profile-card h2{font-size:22px;font-weight:700;line-height:1.3;margin:7px 0}
+.guest-profile-status{display:inline-block;border-radius:20px;background:#e5f4f1;color:#176b60;padding:7px 11px;font-size:12px;font-weight:700}
+.guest-profile-card dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:22px 0}
+.guest-profile-card dt{font-size:12px;color:#5d7888;margin-bottom:4px}
+.guest-profile-card dd{font-size:14px;font-weight:600;margin:0}
+.guest-profile-card footer{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-top:1px solid #e3edf1;padding-top:16px}
+.guest-profile-card footer strong{display:block;font-size:22px;color:#08768c;margin-top:4px}
+.guest-profile-card button,.guest-directory-page>.title button{min-height:44px;padding:11px 14px;border-radius:10px;font-weight:600}
+.guest-directory-empty{padding:24px;background:white;border-radius:12px}
+.guest-profile-overlay .room-detail{width:min(760px,100%);max-width:100vw;overscroll-behavior:contain;overflow-x:hidden}
+.guest-profile-overlay .room-detail-head{grid-template-columns:44px minmax(0,1fr);padding-right:38px}
+.guest-profile-overlay .room-detail-head>.status{grid-column:2;justify-self:start}
+.guest-profile-overlay .current-stay,.guest-profile-overlay .room-history{min-width:0;overflow-wrap:anywhere}
+.guest-profile-overlay dl>div{min-width:0}
+.guest-profile-overlay dd{overflow-wrap:anywhere}
+.guest-profile-overlay .room-actions{display:flex;flex-wrap:wrap;gap:10px}
+.guest-profile-overlay .room-actions button{flex:1 1 140px;min-height:44px;white-space:normal}
+.guest-directory-page :focus-visible{outline:3px solid #21a8c0;outline-offset:3px}
+@media(max-width:760px){.admin .shell{margin-left:0;width:100%}.admin .top{max-width:100%;padding:10px 12px;gap:10px;height:auto;min-height:68px}.admin .top .brand-home{min-width:0;flex:1;overflow-wrap:anywhere;font-size:14px}.account-strip{gap:10px 16px;overflow-wrap:anywhere}.guest-directory-page{padding:16px 12px}.guest-directory-grid{grid-template-columns:1fr}.guest-profile-card{padding:18px}.guest-profile-overlay .room-detail{width:100%;padding:18px 14px}.guest-profile-overlay .current-stay dl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:380px){.guest-profile-card footer button{width:100%}.guest-profile-card dl{gap:12px}.guest-profile-overlay .current-stay dl{grid-template-columns:1fr}}
