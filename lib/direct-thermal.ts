@@ -1,3 +1,4 @@
+import {printUSB} from './usb-thermal';
 import {PrinterSettings,readPrinterSettings,normalizeSettings} from './printer-settings';
 let loading:Promise<any>|null=null;
 export async function connectThermal(){
@@ -7,7 +8,7 @@ export async function connectThermal(){
  return w.qz;
 }
 export async function thermalPrinters(){const qz=await connectThermal();return await qz.printers.find() as string[];}
-export function receiptRaster(options:PrinterSettings=readPrinterSettings(),test=false){
+export function receiptCanvas(options:PrinterSettings=readPrinterSettings(),test=false){
  const settings=normalizeSettings(options),font=Math.round(20*settings.scale/100),lineHeight=Math.ceil(font*1.3),left=Math.round(settings.left*8),right=Math.round(settings.right*8),top=Math.round(settings.top*8),bottom=Math.round(settings.bottom*8),width=384-left-right;
  const receipt=document.querySelector('.restaurant-receipt');if(!receipt&&!test)throw Error('Receipt not ready.');
  const canvas=document.createElement('canvas');canvas.width=384;const ctx=canvas.getContext('2d');if(!ctx)throw Error('This browser cannot prepare the receipt.');
@@ -27,11 +28,12 @@ export function receiptRaster(options:PrinterSettings=readPrinterSettings(),test
  }
  if(settings.footer)add(settings.footer,false,true);
  canvas.height=Math.max(1,top+bottom+lines.length*lineHeight);ctx.fillStyle='white';ctx.fillRect(0,0,384,canvas.height);ctx.fillStyle='black';ctx.textBaseline='top';lines.forEach((line,i)=>{ctx.font=(line.bold?'bold ':'')+font+'px Arial';ctx.textAlign=line.center?'center':'left';ctx.fillText(line.text,line.center?left+width/2:left,top+i*lineHeight);});
- return canvas.toDataURL('image/png').split(',')[1];
+ return canvas;
 }
+export function receiptRaster(options:PrinterSettings=readPrinterSettings(),test=false){return receiptCanvas(options,test).toDataURL('image/png').split(',')[1];}
 export async function directThermalPrint(printer:string,options:PrinterSettings=readPrinterSettings(),test=false){
  const settings=normalizeSettings(options);
- if(!printer)throw Error('Select a printer first.');const image=receiptRaster(settings,test),qz=await connectThermal();
+ if(!printer)throw Error('Select a printer first.');if(settings.transport==='usb'){await printUSB(settings.usbDevice,receiptCanvas(settings,test),settings.copies,settings.feed);return;}const image=receiptRaster(settings,test),qz=await connectThermal();
  const printers=await qz.printers.find();if(!printers.includes(printer))throw Error('The selected printer is unavailable. Reconnect and select it again.');
  await qz.print(qz.configs.create(printer,{forceRaw:true,copies:settings.copies,jobName:'Nirili Villa receipt'}),['\x1b\x40',{type:'raw',format:'image',flavor:'base64',data:image,options:{language:'ESCPOS',dotDensity:'double'}},'\n'.repeat(settings.feed)]);
 }
