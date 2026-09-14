@@ -1,3 +1,4 @@
+import GuestChat from './guest-chat';
 import {tabBootstrap} from './tab-bootstrap';
 import type { Metadata } from "next";
 import "./globals.css";
@@ -18,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased"><script dangerouslySetInnerHTML={{__html:tabBootstrap}}/>{children}</body>
+      <body className="antialiased"><script dangerouslySetInnerHTML={{__html:tabBootstrap}}/>{children}<GuestChat/></body>
     </html>
   );
 }
