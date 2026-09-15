@@ -5,15 +5,16 @@ import {Sailing,transferMoney as money,transportToday} from '../lib/transport';
 import './transport-panel.css';
 import TransportAgents from './transport-agents';
 const emptySailing=():Sailing=>({id:'',boat:'',from:'Dhiffushi',to:'Velana Airport',depart:'07:30',arrive:'08:25',capacity:36,fare:20000,active:false});
-export default function TransportPanel(){
+export default function TransportPanel({walkIn=false}:{walkIn?:boolean}){
+ const endpoint=walkIn?'/api/walkin-transfers':'/api/transport';
  const [payment,setPayment]=useState('later');
  const [data,setData]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[tab,setTab]=useState('book'),[step,setStep]=useState(0),[trip,setTrip]=useState('oneway');
  const [from,setFrom]=useState('Dhiffushi'),[to,setTo]=useState('Velana Airport'),[date,setDate]=useState(transportToday()),[returnDate,setReturnDate]=useState(transportToday()),[traveller,setTraveller]=useState('Tourist');
  const [adults,setAdults]=useState(1),[children,setChildren]=useState(0),[infants,setInfants]=useState(0),[out,setOut]=useState(''),[back,setBack]=useState(''),[seats,setSeats]=useState<number[]>([]),[returnSeats,setReturnSeats]=useState<number[]>([]);
  const [name,setName]=useState(''),[phone,setPhone]=useState(''),[notes,setNotes]=useState(''),[filter,setFilter]=useState('all'),[token,setToken]=useState(''),[success,setSuccess]=useState(''),[edit,setEdit]=useState<Sailing|null>(null),[manifestDate,setManifestDate]=useState(transportToday()),[manifestSailing,setManifestSailing]=useState('');
- async function refresh(){try{const r=await fetch('/api/transport',{cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);setError('');}catch(e){setError((e as Error).message);}}
+ async function refresh(){try{const r=await fetch(endpoint,{cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);setError('');}catch(e){setError((e as Error).message);}}
  useEffect(()=>{refresh();const i=setInterval(()=>{if(!document.hidden)refresh()},30000);return()=>clearInterval(i)},[]);
- async function save(body:any){setBusy(true);setError('');try{const r=await fetch('/api/transport',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,revision:data.revision})});const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);return true;}catch(e){setError((e as Error).message);return false;}finally{setBusy(false);}}
+ async function save(body:any){setBusy(true);setError('');try{const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,revision:data.revision})});const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);return true;}catch(e){setError((e as Error).message);return false;}finally{setBusy(false);}}
  const sailings:Sailing[]=data?.sailings||[],locations=Array.from(new Set(['Dhiffushi','Velana Airport',"Male'",'Thulusdhoo',...sailings.flatMap(s=>[s.from,s.to])]));
  const chosen=sailings.find(s=>s.id===out),chosenBack=sailings.find(s=>s.id===back),pax=adults+children+infants,needed=adults+children;
  const taken=(id:string,d:string)=>(data?.availability||[]).filter((a:any)=>a.scheduleId===id&&a.date===d).flatMap((a:any)=>a.seats);
