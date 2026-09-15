@@ -1,4 +1,4 @@
-export type MenuItem={id:string;category:string;name:string;cents:number;detail:string;fullBoard?:boolean};
+export type MenuItem={id:string;category:string;name:string;cents:number;detail:string;fullBoard?:boolean;image?:string};
 export const menuSeed:MenuItem[]=[
   {
     "id": "menu-1",

@@ -2676,9 +2676,9 @@
     "সংরক্ষিত পাসপোর্ট দেখুন"
   ],
   "Remove photo": [
-    "删除照片",
+    "移除照片",
     "Rimuovi foto",
-    "Quitar foto",
+    "Eliminar foto",
     "ছবি সরান"
   ],
   "No photo selected": [
@@ -4486,5 +4486,17 @@
     "Incluso nel menu pensione completa / mezza pensione",
     "Incluido en pensión completa / media pensión",
     "ফুল বোর্ড / হাফ বোর্ড মেনুতে অন্তর্ভুক্ত"
+  ],
+  "Menu photo": [
+    "菜单照片",
+    "Foto del piatto",
+    "Foto del plato",
+    "খাবারের ছবি"
+  ],
+  "Uploading photo…": [
+    "正在上传照片…",
+    "Caricamento foto…",
+    "Subiendo foto…",
+    "ছবি আপলোড হচ্ছে…"
   ]
 }
