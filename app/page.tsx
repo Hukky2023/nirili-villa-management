@@ -1,3 +1,5 @@
+
+import {UiText,UiField,UiOption} from './ui-language';
 import LoginForm from './login/form';
 import {restaurantOnly} from '../lib/pos-access';
 import {tabRedirect} from '../lib/tab-session';
@@ -10,7 +12,7 @@ const portals=[["admin","Admin","Manage the property, staff and permissions."],[
 async function Portal({portal,room}:{portal:string;room?:string}){
 const user=await requireChatGPTUser("/?portal="+portal+(room?"&room="+encodeURIComponent(room):""));
 if(restaurantOnly(user))await tabRedirect('/restaurant');
-if(portal==="admin"&&user.role!=="admin"||portal==="staff"&&!["admin","staff"].includes(user.role))return <main className="login-page"><section className="login-card"><h1>Access not approved</h1><p>Your account cannot open this portal.</p><a href="/?portal=guest">Guest portal</a><form action="/api/auth/logout" method="post"><button>Sign out</button></form></section></main>;
+if(portal==="admin"&&user.role!=="admin"||portal==="staff"&&!["admin","staff"].includes(user.role))return <main className="login-page"><section className="login-card"><h1><UiText>Access not approved</UiText></h1><p><UiText>Your account cannot open this portal.</UiText></p><a href="/?portal=guest"><UiText>Guest portal</UiText></a><form action="/api/auth/logout" method="post"><button><UiText>Sign out</UiText></button></form></section></main>;
 return <Management role={portal==="guest"?"guest":user.role} email={user.displayName+" ("+user.username+")"} permissions={user.permissions}/>;
 }
 export default async function Page({searchParams}:{searchParams:Promise<{portal?:string;room?:string}>}){

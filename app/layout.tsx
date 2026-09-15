@@ -1,3 +1,4 @@
+import LanguageSelector from './ui-language';
 import GuestChat from './guest-chat';
 import {tabBootstrap} from './tab-bootstrap';
 import type { Metadata } from "next";
@@ -19,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased"><script dangerouslySetInnerHTML={{__html:tabBootstrap}}/>{children}<GuestChat/></body>
+      <body className="antialiased"><script dangerouslySetInnerHTML={{__html:tabBootstrap}}/>{children}<GuestChat/><LanguageSelector/></body>
     </html>
   );
 }
