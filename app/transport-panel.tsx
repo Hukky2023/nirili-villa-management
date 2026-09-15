@@ -1,4 +1,5 @@
 'use client';
+import {startLiveRefresh} from '../lib/live-refresh';
 import {UiText,UiField,UiOption} from './ui-language';
 import {localizedConfirm,localizedAlert} from '../lib/i18n/runtime';
 
@@ -16,7 +17,7 @@ export default function TransportPanel({walkIn=false}:{walkIn?:boolean}){
  const [adults,setAdults]=useState(1),[children,setChildren]=useState(0),[infants,setInfants]=useState(0),[out,setOut]=useState(''),[back,setBack]=useState(''),[seats,setSeats]=useState<number[]>([]),[returnSeats,setReturnSeats]=useState<number[]>([]);
  const [name,setName]=useState(''),[phone,setPhone]=useState(''),[notes,setNotes]=useState(''),[filter,setFilter]=useState('all'),[token,setToken]=useState(''),[success,setSuccess]=useState(''),[edit,setEdit]=useState<Sailing|null>(null),[manifestDate,setManifestDate]=useState(transportToday()),[manifestSailing,setManifestSailing]=useState('');
  async function refresh(){try{const r=await fetch(endpoint,{cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);setError('');}catch(e){setError((e as Error).message);}}
- useEffect(()=>{refresh();const i=setInterval(()=>{if(!document.hidden)refresh()},30000);return()=>clearInterval(i)},[]);
+ useEffect(()=>{refresh();const stopLive=startLiveRefresh(refresh);return()=>stopLive()},[]);
  async function save(body:any){setBusy(true);setError('');try{const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,revision:data.revision})});const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);return true;}catch(e){setError((e as Error).message);return false;}finally{setBusy(false);}}
  const sailings:Sailing[]=data?.sailings||[],locations=Array.from(new Set(['Dhiffushi','Velana Airport',"Male'",'Thulusdhoo',...sailings.flatMap(s=>[s.from,s.to])]));
  const chosen=sailings.find(s=>s.id===out),chosenBack=sailings.find(s=>s.id===back),pax=adults+children+infants,needed=adults+children;

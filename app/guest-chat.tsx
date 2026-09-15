@@ -1,4 +1,5 @@
 'use client';
+import {startLiveRefresh} from '../lib/live-refresh';
 import {UiText,UiField,UiOption} from './ui-language';
 import {localizedConfirm,localizedAlert} from '../lib/i18n/runtime';
 
@@ -9,7 +10,7 @@ export default function GuestChat(){
  const [open,setOpen]=useState(false),[data,setData]=useState<any>(null),[target,setTarget]=useState(''),[text,setText]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[tick,setTick]=useState(0),[older,setOlder]=useState<any[]>([]),[olderCursor,setOlderCursor]=useState<string|null|undefined>(undefined),[loadingOlder,setLoadingOlder]=useState(false);
  const [seen,setSeen]=useState<Record<string,string>>({});
  const token=useRef(''),generation=useRef(0),end=useRef<HTMLDivElement>(null);
- useEffect(()=>{let alive=true;const current=++generation.current;async function refresh(){try{const r=await fetch('/api/chat?recipient='+encodeURIComponent(target),{cache:'no-store'});if(!alive||current!==generation.current)return;if(r.status===401||r.status===403){setData(null);return;}const d=await r.json();if(!r.ok)throw Error(d.error||'Could not load messages.');if(alive&&current===generation.current){setData(d);setError('');}}catch(e){if(alive)setError((e as Error).message);}}refresh();const timer=setInterval(refresh,open?5000:60000);return()=>{alive=false;clearInterval(timer)}},[target,open,tick]);
+ useEffect(()=>{let alive=true;const current=++generation.current;async function refresh(){try{const r=await fetch('/api/chat?recipient='+encodeURIComponent(target),{cache:'no-store'});if(!alive||current!==generation.current)return;if(r.status===401||r.status===403){setData(null);return;}const d=await r.json();if(!r.ok)throw Error(d.error||'Could not load messages.');if(alive&&current===generation.current){setData(d);setError('');}}catch(e){if(alive)setError((e as Error).message);}}refresh();const stopLive=startLiveRefresh(refresh);return()=>{alive=false;stopLive()}},[target,open,tick]);
  useEffect(()=>{if(open&&!older.length)end.current?.scrollIntoView({block:'nearest'});},[open,data?.messages?.at(-1)?.id,older.length]);
  useEffect(()=>{if(!data?.actor?.id)return;try{setSeen(JSON.parse(localStorage.getItem('nv-chat-seen:'+data.actor.id)||'{}'));}catch{setSeen({})}},[data?.actor?.id]);
  useEffect(()=>{if(!open||!data)return;const admin=data.actor.role==='admin';const latest=data.messages.filter((m:any)=>m.fromAdmin!==admin).at(-1)?.createdAt;if(!latest)return;const key=admin?target:'reception';setSeen(old=>{if((old[key]||'')>=latest)return old;const next={...old,[key]:latest};try{localStorage.setItem('nv-chat-seen:'+data.actor.id,JSON.stringify(next));}catch{}return next;});},[open,target,data?.messages?.at(-1)?.id]);

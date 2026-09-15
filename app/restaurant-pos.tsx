@@ -1,4 +1,5 @@
 'use client';
+import {startLiveRefresh} from '../lib/live-refresh';
 import {UiText,UiField,UiOption} from './ui-language';
 import {localizedConfirm,localizedAlert} from '../lib/i18n/runtime';
 
@@ -13,7 +14,7 @@ export default function RestaurantPOS({waiterOnly=false}:{waiterOnly?:boolean}){
  const [photoBusy,setPhotoBusy]=useState(false);const searchRef=useRef<HTMLInputElement>(null);const [page,setPage]=useState(0),[selected,setSelected]=useState('');
  const [data,setData]=useState<any>(null),[query,setQuery]=useState(''),[category,setCategory]=useState('All'),[editing,setEditing]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[manage,setManage]=useState(false),[cart,setCart]=useState<any[]>([]);
  async function refresh(){try{const r=await fetch('/api/menu',{cache:'no-store'}),d=await r.json();if(r.status===401){tabNavigate('/restaurant/login',true);return;}if(!r.ok)throw Error(d.error);setError('');setData(d);}catch(e){setError((e as Error).message);}}
- useEffect(()=>{refresh()},[]);
+ useEffect(()=>{refresh();return startLiveRefresh(refresh)},[]);
  async function save(action:string,id?:string){if(busy||photoBusy)return;if(action==='delete'&&!localizedConfirm('Delete this menu item? Existing orders and bills will be kept.'))return;setBusy(true);setError('');try{const r=await fetch('/api/menu',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,id,revision:data.revision,item:editing?{...editing,cents:Math.round(Number(editing.price)*100)}:undefined})}),d=await r.json();if(r.status===401){tabNavigate('/restaurant/login',true);return;}if(!r.ok)throw Error(d.error);setError('');setData(d);setEditing(null);window.dispatchEvent(new Event('services-updated'));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  useEffect(()=>setPage(0),[query,category]);
  const categories=Array.from(new Set<string>((data?.items||[]).map((i:any)=>i.category)));

@@ -1,4 +1,5 @@
 "use client";
+import {startLiveRefresh} from '../lib/live-refresh';
 import {UiText,UiField,UiOption} from './ui-language';
 import {localizedConfirm,localizedAlert} from '../lib/i18n/runtime';
 
@@ -11,7 +12,7 @@ export default function StaffAccounts(){
 const [users,setUsers]=useState<any[]>([]),[query,setQuery]=useState(""),[roleFilter,setRoleFilter]=useState("All");
 const [staff,setStaff]=useState<any[]>([]),[form,setForm]=useState({name:"",username:"",email:"",password:"",permissions:[] as string[]}),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
 async function load(){const r=await fetch("/api/staff-access");const d=await r.json();if(!r.ok)throw new Error(d.error);setUsers(d.users.map((u:any)=>({...u,permissions:JSON.parse(u.permissions)})));setStaff(d.staff.map((s:any)=>({...s,permissions:JSON.parse(s.permissions)})));}
-useEffect(()=>{const reload=()=>{load().catch(e=>setMessage(e.message))};reload();window.addEventListener("services-updated",reload);return()=>window.removeEventListener("services-updated",reload)},[]);
+useEffect(()=>{const reload=()=>load().catch(e=>setMessage(e.message));reload();const stopLive=startLiveRefresh(reload);window.addEventListener("services-updated",reload);return()=>{stopLive();window.removeEventListener("services-updated",reload)}},[]);
 async function save(body:any){setBusy(true);setMessage("");try{const r=await fetch("/api/staff-access",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.error);await load();if(!body.id)setForm({name:"",username:"",email:"",password:"",permissions:[]});setMessage("Staff access saved.");}catch(e){setMessage(e instanceof Error?e.message:"Update failed");}finally{setBusy(false)}}
 async function manageUser(u:any,remove:boolean){if(!localizedConfirm(remove?'Permanently delete '+u.name+' ('+u.username+')? This removes their login and saved password. Booking and bill history will remain.':'Disable '+u.name+' and sign them out?'))return;setBusy(true);setMessage('');try{const r=await fetch('/api/user-account',{method:remove?'DELETE':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:u.id})});const d=await r.json();if(!r.ok)throw Error(d.error);await load();setMessage(remove?'User deleted. Booking and bill history retained.':'Account disabled. You can now delete this user.');}catch(e){setMessage((e as Error).message);}finally{setBusy(false);}}
 function toggle(values:string[],v:string){return values.includes(v)?values.filter(x=>x!==v):[...values,v];}

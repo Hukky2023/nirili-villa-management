@@ -1,4 +1,5 @@
 'use client';
+import {startLiveRefresh} from '../lib/live-refresh';
 import {UiText,UiField,UiOption} from './ui-language';
 
 import {useEffect,useState} from 'react';
@@ -9,7 +10,7 @@ const usd=(n:number)=>'$'+(n/100).toFixed(2);
 export default function WaiterMenu(){
  const [data,setData]=useState<any>(null),[items,setItems]=useState<any[]>([]),[table,setTable]=useState(''),[room,setRoom]=useState(''),[customer,setCustomer]=useState(''),[cart,setCart]=useState<any[]>([]),[category,setCategory]=useState('All'),[query,setQuery]=useState(''),[notes,setNotes]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[token,setToken]=useState(''),[page,setPage]=useState(1);
  async function refresh(){try{const [p,m]=await Promise.all([fetch('/api/pos',{cache:'no-store'}),fetch('/api/menu',{cache:'no-store'})]);const [pd,md]=await Promise.all([p.json(),m.json()]);if(!p.ok||!m.ok)throw Error(pd.error||md.error||'Please sign in again.');setData(pd);setItems(md.items);return pd;}catch(e){setError((e as Error).message);}}
- useEffect(()=>{refresh();},[]);useEffect(()=>setToken(crypto.randomUUID()),[cart,table,room,customer,notes]);useEffect(()=>setPage(1),[category,query]);
+ useEffect(()=>{refresh();return startLiveRefresh(refresh)},[]);useEffect(()=>setToken(crypto.randomUUID()),[cart,table,room,customer,notes]);useEffect(()=>setPage(1),[category,query]);
  const selectedRoom=data?.rooms.find((s:any)=>s.id===room);const meal=selectedRoom?.meal;const included=(i:any)=>mealItemIncluded(meal,items.find(x=>x.id===i.id)||i);const cost=(i:any)=>included(i)?0:i.cents;
  const products=items.filter(i=>(category==='All'||i.category===category)&&(i.name+' '+i.category).toLowerCase().includes(query.toLowerCase()));const total=cart.reduce((n,i)=>n+cost(i)*i.quantity,0),count=cart.reduce((n,i)=>n+i.quantity,0);
  async function send(){if(busy||!table||!cart.length||!data)return;setBusy(true);setError('');setMessage('');try{const r=await fetch('/api/pos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create',revision:data.revision,token,table,stayId:room,customer,notes,items:cart.map(i=>({id:i.id,quantity:i.quantity,cents:i.cents,included:included(i)}))})}),d=await r.json();if(!r.ok){await refresh();throw Error(d.error);}setData(d);const order=d.orders.find((o:any)=>o.token===token);setCart([]);setNotes('');setTable('');setRoom('');setCustomer('');setMessage('Order '+(order?.id||'')+' sent to the cashier for kitchen review.'+(room?' Extra charges added to Room '+selectedRoom?.room+'.':''));window.dispatchEvent(new Event('pos-updated'));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}

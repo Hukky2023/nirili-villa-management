@@ -1,4 +1,5 @@
 'use client';
+import {startLiveRefresh} from '../lib/live-refresh';
 import {UiText,UiField,UiOption} from './ui-language';
 import {localizedConfirm,localizedAlert} from '../lib/i18n/runtime';
 
@@ -12,7 +13,7 @@ import ExcursionCatalog from './excursion-catalog';
 import TransportPanel from './transport-panel';
 import {mealItemIncluded} from '../lib/meal-access';
 const usd=(n:number)=>'$'+(n/100).toFixed(2);
-export function useServices(){const [data,setData]=useState<any>(null),[error,setError]=useState('');async function refresh(){try{const r=await fetch('/api/guest-services');const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);setError('');}catch(e){setError((e as Error).message)}}useEffect(()=>{refresh();const id=setInterval(()=>{if(!document.hidden)refresh()},15000);window.addEventListener('services-updated',refresh);window.addEventListener('focus',refresh);return()=>{clearInterval(id);window.removeEventListener('services-updated',refresh);window.removeEventListener('focus',refresh)}},[]);async function mutate(body:any){const r=await fetch('/api/guest-services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,revision:data?.revision})});const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);window.dispatchEvent(new Event('services-updated'));return d;}return {data,error,refresh,mutate};}
+export function useServices(){const [data,setData]=useState<any>(null),[error,setError]=useState('');async function refresh(){try{const r=await fetch('/api/guest-services');const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);setError('');}catch(e){setError((e as Error).message)}}useEffect(()=>{refresh();const stopLive=startLiveRefresh(refresh);window.addEventListener('services-updated',refresh);window.addEventListener('focus',refresh);return()=>{stopLive();window.removeEventListener('services-updated',refresh);window.removeEventListener('focus',refresh)}},[]);async function mutate(body:any){const r=await fetch('/api/guest-services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,revision:data?.revision})});const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);window.dispatchEvent(new Event('services-updated'));return d;}return {data,error,refresh,mutate};}
 export function BookingAlerts({onOpen}:{onOpen:()=>void}){const {data}=useServices();const n=data?.requests?.filter((r:any)=>r.status==='Pending').length||0;return <div className="booking-alert"><UiField as="button" onClick={onOpen} aria-label={n+' pending guest bookings'}><Bell size={20}/><span><UiText>Bookings</UiText></span><b aria-live="polite"><UiText>{n}</UiText></b></UiField></div>}
 export function CheckInButton({id}:{id:string}){
  const {data,mutate,refresh}=useServices();const [busy,setBusy]=useState(false),[message,setMessage]=useState('');

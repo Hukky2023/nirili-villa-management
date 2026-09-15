@@ -1,4 +1,5 @@
 'use client';
+import {startLiveRefresh} from '../lib/live-refresh';
 import {UiText,UiField,UiOption} from './ui-language';
 
 import {useEffect,useState} from 'react';
@@ -16,7 +17,7 @@ const [guestQuery,setGuestQuery]=useState(''),[guestStatus,setGuestStatus]=useSt
 const [data,setData]=useState<any>(null),[selected,setSelected]=useState(''),[roomNumber,setRoomNumber]=useState(''),[action,setAction]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[amount,setAmount]=useState(''),[method,setMethod]=useState('Cash'),[reference,setReference]=useState(''),[target,setTarget]=useState(''),[date,setDate]=useState(''),[rate,setRate]=useState(''),[requestId,setRequestId]=useState(''),[note,setNote]=useState(''),[whatsapp,setWhatsapp]=useState(''),[pdfFile,setPdfFile]=useState<File|null>(null),[fileShareSupported,setFileShareSupported]=useState(false);
 async function refresh(){try{const r=await fetch('/api/stays');const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);setError('');return d;}catch(e){setError(e instanceof Error?e.message:'Could not load stays.');return null;}}
 useEffect(()=>{refresh().then(d=>{if(!d)return;const q=new URLSearchParams(window.location.search);const s=d.stays.find((x:any)=>x.room===q.get('room')&&x.status!=='Checked Out');if(s){setSelected(s.id);setRoomNumber(s.room);setNote(d.rooms.find((r:any)=>r.number===s.room)?.note||'')}})},[]);
-useEffect(()=>{const sync=()=>refresh();window.addEventListener('services-updated',sync);return()=>window.removeEventListener('services-updated',sync)},[]);
+useEffect(()=>{const sync=()=>refresh();const stopLive=startLiveRefresh(sync);window.addEventListener('services-updated',sync);return()=>{stopLive();window.removeEventListener('services-updated',sync)}},[]);
 const stay=data?.stays.find((s:any)=>s.id===selected),room=data?.rooms.find((r:any)=>r.number===(stay?.room||roomNumber));
 function open(s:any,r:any){setSelected(s?.id||'');setRoomNumber(r.number);setAction('');setError('');setNotice('');setNote(r.note||'');}
 function begin(a:string){setError('');setNotice('');setAction(a);setWhatsapp(stay?.whatsapp||'');setAmount(stay?(Math.max(0,stay.folio.balanceCents)/100).toFixed(2):'');setReference('');setTarget('');setDate(stay?.checkOut||'');setRate(stay?(stay.base/100/((Date.parse(stay.checkOut)-Date.parse(stay.checkIn))/86400000)).toFixed(2):'60');setRequestId(crypto.randomUUID());}
