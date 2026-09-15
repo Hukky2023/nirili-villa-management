@@ -1,3 +1,4 @@
+import {bookingGuests} from '../../../lib/booking-guests';
 import {editBooking,deleteBooking} from '../../../lib/booking-admin';
 import {createDirectBooking} from '../../../lib/direct-booking';
 import {prepareStayLogin,saveStayAccess} from '../../../lib/stay-login';
@@ -12,24 +13,28 @@ if(b.action==='create'){
  const previous=state.stays.find((s:any)=>s.creationRequest===b.requestId&&s.createdBy===u.username);
  if(previous)return Response.json({booking:previous});
  if(b.revision!==revision)return Response.json({error:'Room availability changed. Review the available rooms and confirm again.'},{status:409});
- const booking=createDirectBooking(state,b,u.username);
- if(!await saveStayAccess(state,revision,u.userId))return Response.json({error:'Another booking changed room availability. Review the rooms and try again.'},{status:409});
+ const details=b.guests===undefined?null:await bookingGuests(b.guests,b.pax);
+ const booking=createDirectBooking(state,{...b,guest:details?.guests[0].name??b.guest},u.username);
+ if(details)Object.assign(booking,{guests:details.guests,whatsapp:details.guests[0].phone});
+ if(!await saveStayAccess(state,revision,u.userId,null,[],details?.documents||[]))return Response.json({error:'Another booking changed room availability. Review the rooms and try again.'},{status:409});
  return Response.json({booking},{status:201});
 }
 if(b.action==='editbooking'||b.action==='deletebooking'){
  if(u.role!=='admin')return Response.json({error:'Only Admin can edit or delete bookings.'},{status:403});
  if(b.revision!==revision)return Response.json({error:'Booking changed. Reopen the booking and try again.'},{status:409});
  const booking=state.stays.find((x:any)=>x.id===b.id);if(!booking)return Response.json({error:'Booking not found.'},{status:404});
- let plan:any=null;let revoke:string[]=[];
+ let plan:any=null;let revoke:string[]=[];let details:any=null;
  if(b.action==='deletebooking'){
   if(b.confirmId!==booking.id)throw Error('Confirm the booking reference to delete it.');
   deleteBooking(state,booking,u.username);
   if(booking.accountId&&!state.stays.some((x:any)=>x.accountId===booking.accountId&&['Confirmed','In House'].includes(x.status)))revoke.push(booking.accountId);
  }else{
-  const previous=editBooking(state,booking,b,u.username);
+  details=b.guests===undefined?null:await bookingGuests(b.guests,b.pax,booking.guests||[]);
+  const previous=editBooking(state,booking,{...b,guest:details?.guests[0].name??b.guest},u.username);
+  if(details)Object.assign(booking,{guests:details.guests,whatsapp:details.guests[0].phone});
   if(booking.status==='In House'&&previous.room!==booking.room)plan=await prepareStayLogin(state,booking);
  }
- if(!await saveStayAccess(state,revision,u.userId,plan,revoke))return Response.json({error:'Booking changed. Reopen it and try again.'},{status:409});
+ if(!await saveStayAccess(state,revision,u.userId,plan,revoke,details?.documents||[],details?.removed||[]))return Response.json({error:'Booking changed. Reopen it and try again.'},{status:409});
  return Response.json({booking:b.action==='editbooking'?booking:null,deleted:b.action==='deletebooking'});
 }
 const roomAction=['roomstatus','note'].includes(b.action);const s=roomAction?{room:b.room,history:[]}:state.stays.find((s:any)=>s.id===b.id);if(!s)return Response.json({error:'Booking not found'},{status:404});if(b.action==='payment'&&s.payments.some((p:any)=>p.id===b.requestId))return Response.json(await stayView());if(b.revision!==revision)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});let detail='';let loginPlan:any=null;let revoke:string[]=[];const room=state.rooms.find((x:any)=>x.number===s.room);if(!room)throw Error('Room not found.');const f=roomAction?null:await folioFor(s);

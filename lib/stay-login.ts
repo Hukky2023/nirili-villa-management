@@ -12,7 +12,7 @@ export async function prepareStayLogin(state:any,s:any){
  if(!s.accountId&&s.legacyFolio!==false)s.legacyFolio=true;s.accountId=id;s.roomLogin=true;s.loginIssuedAt=new Date().toISOString();
  return {id,username,password,hash,name:s.guest,retire:[...retire]};
 }
-export async function saveStayAccess(state:any,revision:number,by:string,plan:any=null,revoke:string[]=[]){
+export async function saveStayAccess(state:any,revision:number,by:string,plan:any=null,revoke:string[]=[],documents:{id:string;payload:string}[]=[],removedDocuments:string[]=[]){
  const db=authDb(),payload=JSON.stringify(state),next=revision+1;
  const guard='EXISTS(SELECT 1 FROM operation_records WHERE key=? AND revision=? AND payload=?)';
  const args=[stayKey,next,payload];
@@ -22,5 +22,7 @@ export async function saveStayAccess(state:any,revision:number,by:string,plan:an
   writes.push(db.prepare('DELETE FROM account_sessions WHERE account_id=? AND '+guard).bind(id,...args));
  }
  if(plan){writes.push(db.prepare("INSERT INTO accounts(id,username,name,password_hash,salt,role,permissions,active) SELECT ?,?,?,?,?,'guest','[]',1 WHERE "+guard).bind(plan.id,plan.username,plan.name,plan.hash.hash,plan.hash.salt,...args));writes.push(await credentialStatement(plan.id,plan.hash.hash,plan.password,by));}
+ for(const doc of documents)writes.push(db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) SELECT ?,?,1,? WHERE '+guard).bind('passport:'+doc.id,doc.payload,by,...args));
+ for(const id of removedDocuments)writes.push(db.prepare('DELETE FROM operation_records WHERE key=? AND '+guard).bind('passport:'+id,...args));
  const result=await db.batch(writes);return !!result[0].meta.changes;
 }
