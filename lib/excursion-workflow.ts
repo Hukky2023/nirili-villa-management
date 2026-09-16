@@ -1,0 +1,48 @@
+import {catalog,validDate} from './guest-catalog';
+import {scheduleExcursion} from './excursion-schedule';
+const norm=(s:string)=>s.trim().replace(/\s+/g,' ').toLowerCase();
+export function excursionResources(state:any){
+ const saved=state.excursionResources||{vessels:[],crew:[]};const vessels=[...saved.vessels],crew=[...saved.crew];
+ const add=(list:any[],name:string,prefix:string)=>{if(name&&!list.some(x=>norm(x.name)===norm(name)))list.push({id:prefix+norm(name),name:name.trim()});};
+ for(const o of state.orders||[]){if(o.kind!=='excursion'||!o.schedule)continue;add(vessels,o.schedule.vessel,'v:');for(const name of o.schedule.crew||[])add(crew,name,'c:');}
+ return {vessels,crew};
+}
+export function excursionStage(o:any){if(['Completed','Cancelled','Departed','Scheduled and informed'].includes(o.status))return o.status;return o.schedule?'Scheduled':'Awaiting scheduling';}
+export function excursionPaid(o:any,state:any){const stay=state.stays.find((s:any)=>s.id===o.stayId);if(stay)return !stay.markedUnpaid&&stay.paidBills?.['Excursions:'+o.id]===o.cents;return (o.excursionPayments||[]).reduce((sum:number,p:any)=>sum+p.cents,0)>=o.cents&&!!o.excursionPayments?.length;}
+export function changeExcursionStatus(o:any,status:string,state:any,by:string){
+ const stage=excursionStage(o);if(['Completed','Cancelled'].includes(stage))throw Error('This booking is closed.');
+ const allowed:Record<string,string[]>={'Awaiting scheduling':['Cancelled'],'Scheduled':['Scheduled and informed','Cancelled'],'Scheduled and informed':['Departed','Cancelled'],'Departed':['Completed']};
+ if(!allowed[stage]?.includes(status))throw Error('Follow the excursion status sequence.');
+ if(status==='Completed'&&!excursionPaid(o,state))throw Error('Receive full payment before completing this excursion.');
+ o.statusHistory=[...(o.statusHistory||[]),{from:stage,to:status,at:new Date().toISOString(),by}];o.status=status;o.updatedBy=by;
+}
+export function applyExcursionAction(state:any,b:any,today:string,by:string){
+ if(b.action==='excursion-resource'){
+ if(!['vessels','crew'].includes(b.resourceType)||typeof b.name!=='string'||!b.name.trim()||b.name.length>100)throw Error('Enter a vessel or crew member name.');
+ const resources=excursionResources(state),list=resources[b.resourceType as 'vessels'|'crew'];if(list.some(x=>norm(x.name)===norm(b.name)))throw Error('That name is already in the list.');list.push({id:crypto.randomUUID(),name:b.name.trim()});state.excursionResources=resources;return;
+ }
+ if(b.action==='excursion-create'){
+ if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token))throw Error('Reopen the booking form.');if(state.orders.some((o:any)=>o.manualToken===b.token))return;
+ const item=catalog.find(i=>i.kind==='excursion'&&i.id===b.itemId);if(!item||!Number.isInteger(b.quantity)||b.quantity<1||b.quantity>100)throw Error('Select an excursion and 1–100 guests.');
+ const stay=b.stayId?state.stays.find((s:any)=>s.id===b.stayId&&s.status==='In House'):null;if(b.stayId&&!stay)throw Error('Choose a checked-in room.');
+ const guest=stay?.guest||b.guest,phone=String(b.phone||stay?.whatsapp||'').replace(/[ ()-]/g,'');
+ if(typeof guest!=='string'||!guest.trim()||guest.length>100||!/^\+[1-9]\d{7,14}$/.test(phone)||typeof b.notes!=='string'||b.notes.length>1000||(!stay&&(typeof b.hotel!=='string'||!b.hotel.trim()||b.hotel.length>150)))throw Error('Enter guest name, contact number, hotel or meeting location, and valid notes.');
+ if(b.date&&(!validDate(b.date)||b.date<today))throw Error('Choose a valid requested date.');
+ state.orders.push({id:'EXC-'+crypto.randomUUID(),manualToken:b.token,kind:'excursion',itemId:item.id,name:item.name,quantity:b.quantity,cents:item.cents*b.quantity,guest:guest.trim(),phone,hotel:stay?'Nirili Villa':b.hotel.trim(),stayId:stay?.id,accountId:stay?.accountId,room:stay?.room,source:stay?'Manual':'Walk-in',createdBy:by,createdAt:new Date().toISOString(),date:b.date||'',notes:b.notes.trim(),status:'Awaiting scheduling'});return;
+ }
+ const o=state.orders.find((x:any)=>x.id===b.id&&x.kind==='excursion');if(!o)throw Error('Excursion booking not found.');
+ if(b.action==='schedule-excursion'){
+ if(excursionStage(o)==='Departed')throw Error('A departed trip cannot be rescheduled.');const resources=excursionResources(state);const vessel=resources.vessels.find(x=>x.id===b.vesselId);const crew=Array.isArray(b.crewIds)?b.crewIds.map((id:string)=>resources.crew.find(x=>x.id===id)):[];
+ if(!vessel||!crew.length||crew.some(x=>!x)||new Set(b.crewIds).size!==crew.length)throw Error('Select a vessel and different crew members from the lists.');
+ const clash=state.orders.find((x:any)=>x.id!==o.id&&x.kind==='excursion'&&x.status!=='Cancelled'&&x.schedule?.date===b.date&&x.schedule?.time===b.time&&(norm(x.schedule.vessel)===norm(vessel.name)||x.schedule.crew.some((n:string)=>crew.some(c=>norm(c.name)===norm(n)))));
+ if(clash)throw Error('Vessel or crew already assigned at this date and time (booking '+clash.id+'). Choose another time or team.');
+ scheduleExcursion(o,{...b,vessel:vessel.name,crew:crew.map(c=>c.name)},today,by);o.schedule.vesselId=vessel.id;o.schedule.crewIds=crew.map(c=>c.id);o.status='Scheduled';return;
+ }
+ if(b.action==='excursion-status'){changeExcursionStatus(o,b.status,state,by);return;}
+ if(b.action==='excursion-payment'){
+ if(o.stayId)throw Error('Receive and mark this payment in the room bill.');if(o.status==='Cancelled')throw Error('This booking is cancelled.');if(excursionPaid(o,state))return;
+ if(!['Cash','Card','Bank transfer'].includes(b.method)||typeof b.reference!=='string'||b.reference.length>150)throw Error('Choose a payment method and valid reference.');
+ const paid=(o.excursionPayments||[]).reduce((n:number,p:any)=>n+p.cents,0);o.excursionPayments=[...(o.excursionPayments||[]),{id:crypto.randomUUID(),cents:o.cents-paid,method:b.method,reference:b.reference.trim(),at:new Date().toISOString(),by}];return;
+ }
+ throw Error('Unknown excursion action.');
+}

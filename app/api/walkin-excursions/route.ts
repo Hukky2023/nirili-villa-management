@@ -1,3 +1,4 @@
+import {excursionStage} from '../../../lib/excursion-workflow';
 import {cookies} from 'next/headers';
 import {authDb,digest,randomToken,sameOrigin,limit} from '../../../lib/auth';
 import {sessionCookieName} from '../../../lib/tab-session';
@@ -5,7 +6,7 @@ import {catalog,islandToday,validDate} from '../../../lib/guest-catalog';
 import {loadStays,stayKey} from '../../../lib/stays';
 const items=catalog.filter(i=>i.kind==='excursion');
 async function identity(){const name=await sessionCookieName('nirili_excursion');const token=(await cookies()).get(name)?.value;return {name,token:token&&/^[a-f0-9]{64}$/.test(token)?token:null};}
-const publicOrder=(o:any)=>({id:o.id,name:o.name,quantity:o.quantity,cents:o.cents,date:o.date,status:o.status});
+const publicOrder=(o:any)=>({id:o.id,name:o.name,quantity:o.quantity,cents:o.cents,date:o.date,status:excursionStage(o)});
 export async function GET(){try{const id=await identity(),token=id.token||randomToken(),key='exc-walk:'+await digest(token);const {state}=await loadStays();return Response.json({items,today:islandToday(),orders:state.orders.filter((o:any)=>o.guestKey===key).map(publicOrder)},{headers:{'Cache-Control':'no-store',...(!id.token?{'Set-Cookie':`${id.name}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200`}:{})}});}catch{return Response.json({error:'Could not load excursions. Please refresh.'},{status:503});}}
 export async function POST(r:Request){if(!sameOrigin(r))return Response.json({error:'Invalid request.'},{status:403});try{
  const id=await identity();if(!id.token)throw Error('Refresh this page before booking.');const key='exc-walk:'+await digest(id.token),b=await r.json();
