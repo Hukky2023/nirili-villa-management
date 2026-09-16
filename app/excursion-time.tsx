@@ -1,0 +1,7 @@
+'use client';
+import {useState} from 'react';
+export function to24Hour(hour:string,minute:string,period:string){if(!/^(0?[1-9]|1[0-2])$/.test(hour)||!/^([0-5]\d)$/.test(minute)||!['AM','PM'].includes(period))return '';return String(Number(hour)%12+(period==='PM'?12:0)).padStart(2,'0')+':'+minute;}
+export default function ExcursionTime({initial,onChange}:{initial:string;onChange:(value:string)=>void}){
+ const valid=/^([01]\d|2[0-3]):[0-5]\d$/.test(initial||'');const [hour,setHour]=useState(valid?String(Number(initial.slice(0,2))%12||12):''),[minute,setMinute]=useState(valid?initial.slice(3,5):'00'),[period,setPeriod]=useState(valid&&Number(initial.slice(0,2))>=12?'PM':'AM');
+ return <fieldset className="excursion-time"><legend>Time (Maldives)</legend><div><label>Hour<select required value={hour} onChange={e=>{setHour(e.target.value);onChange(to24Hour(e.target.value,minute,period));}}><option value="">Hour</option>{Array.from({length:12},(_,i)=><option key={i+1} value={i+1}>{String(i+1).padStart(2,'0')}</option>)}</select></label><label>Minute<select required value={minute} onChange={e=>{setMinute(e.target.value);onChange(to24Hour(hour,e.target.value,period));}}>{Array.from({length:60},(_,i)=>String(i).padStart(2,'0')).map(m=><option key={m}>{m}</option>)}</select></label><label>AM / PM<select value={period} onChange={e=>{setPeriod(e.target.value);onChange(to24Hour(hour,minute,e.target.value));}}><option>AM</option><option>PM</option></select></label></div></fieldset>;
+}
