@@ -36,7 +36,12 @@ export function applyExcursionAction(state:any,b:any,today:string,by:string){
  if(!vessel||!crew.length||crew.some(x=>!x)||new Set(b.crewIds).size!==crew.length)throw Error('Select a vessel and different crew members from the lists.');
  const clash=state.orders.find((x:any)=>x.id!==o.id&&x.kind==='excursion'&&x.status!=='Cancelled'&&x.schedule?.date===b.date&&x.schedule?.time===b.time&&(norm(x.schedule.vessel)===norm(vessel.name)||x.schedule.crew.some((n:string)=>crew.some(c=>norm(c.name)===norm(n)))));
  if(clash)throw Error('Vessel or crew already assigned at this date and time (booking '+clash.id+'). Choose another time or team.');
- scheduleExcursion(o,{...b,vessel:vessel.name,crew:crew.map(c=>c.name)},today,by);o.schedule.vesselId=vessel.id;o.schedule.crewIds=crew.map(c=>c.id);o.status='Scheduled';return;
+ scheduleExcursion(o,{...b,vessel:vessel.name,crew:crew.map(c=>c.name)},today,by);o.schedule.vesselId=vessel.id;o.schedule.crewIds=crew.map(c=>c.id);o.status='Scheduled';o.guestNotified=false;delete o.guestNotifiedAt;delete o.guestNotifiedBy;return;
+ }
+ if(b.action==='excursion-notified'){
+ if(typeof b.notified!=='boolean')throw Error('Choose whether the guest has been notified.');
+ if(!o.schedule||['Completed','Cancelled'].includes(excursionStage(o)))throw Error('Only active scheduled trips can be updated.');
+ o.guestNotified=b.notified;o.guestNotifiedAt=b.notified?new Date().toISOString():null;o.guestNotifiedBy=b.notified?by:null;return;
  }
  if(b.action==='excursion-status'){changeExcursionStatus(o,b.status,state,by);return;}
  if(b.action==='excursion-payment'){
