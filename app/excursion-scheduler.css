@@ -1,0 +1,14 @@
+.excursion-scheduler>article{align-items:flex-start;gap:20px;flex-wrap:wrap}
+.excursion-scheduler>article>div:first-child{flex:1 1 260px;min-width:0;overflow-wrap:anywhere}
+.excursion-scheduler .excursion-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:10px;flex:0 1 510px;max-width:100%}
+.excursion-scheduler .excursion-actions button,.excursion-scheduler .excursion-whatsapp a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:11px 16px;border:1px solid #c8dce5;border-radius:10px;font-size:14px;font-weight:600;line-height:1.3;text-align:center;text-decoration:none;cursor:pointer}
+.excursion-scheduler .excursion-schedule-button{background:#087cad;color:#fff;border-color:#087cad!important}
+.excursion-scheduler .excursion-complete-button{background:#e8f6ef;color:#176742;border-color:#bedfce!important}
+.excursion-scheduler .excursion-cancel-button{background:#fff5f4;color:#a72e2e;border-color:#efceca!important}
+.excursion-scheduler .excursion-actions button:disabled{opacity:.45;cursor:not-allowed}
+.excursion-scheduler .excursion-actions button:not(:disabled):hover{filter:brightness(.94)}
+.excursion-scheduler .excursion-actions :is(button,a):focus-visible{outline:3px solid #178fc0;outline-offset:3px}
+.excursion-scheduler .excursion-whatsapp{flex-basis:100%;margin:4px 0 0;text-align:right}
+.excursion-scheduler .excursion-whatsapp a{background:#e8f6ef;color:#176742;border-color:#bedfce}
+.excursion-scheduler .excursion-whatsapp small{margin-top:7px;color:#607c8b;font-size:12px;line-height:1.5}
+@media(max-width:640px){.excursion-scheduler .excursion-actions{display:grid;grid-template-columns:1fr;width:100%;flex-basis:100%;gap:10px}.excursion-scheduler .excursion-actions button,.excursion-scheduler .excursion-whatsapp a{width:100%}.excursion-scheduler .excursion-whatsapp{text-align:left}}
