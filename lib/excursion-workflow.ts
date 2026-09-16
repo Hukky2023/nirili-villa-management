@@ -7,11 +7,11 @@ export function excursionResources(state:any){
  for(const o of state.orders||[]){if(o.kind!=='excursion'||!o.schedule)continue;add(vessels,o.schedule.vessel,'v:');for(const name of o.schedule.crew||[])add(crew,name,'c:');}
  return {vessels,crew};
 }
-export function excursionStage(o:any){if(['Completed','Cancelled','Departed','Scheduled and informed'].includes(o.status))return o.status;return o.schedule?'Scheduled':'Awaiting scheduling';}
+export function excursionStage(o:any){if(['Completed','Cancelled','Departed'].includes(o.status))return o.status;return o.schedule||o.status==='Scheduled and informed'?'Scheduled':'Awaiting scheduling';}
 export function excursionPaid(o:any,state:any){const stay=state.stays.find((s:any)=>s.id===o.stayId);if(stay)return !stay.markedUnpaid&&stay.paidBills?.['Excursions:'+o.id]===o.cents;return (o.excursionPayments||[]).reduce((sum:number,p:any)=>sum+p.cents,0)>=o.cents&&!!o.excursionPayments?.length;}
 export function changeExcursionStatus(o:any,status:string,state:any,by:string){
  const stage=excursionStage(o);if(['Completed','Cancelled'].includes(stage))throw Error('This booking is closed.');
- const allowed:Record<string,string[]>={'Awaiting scheduling':['Cancelled'],'Scheduled':['Scheduled and informed','Cancelled'],'Scheduled and informed':['Departed','Cancelled'],'Departed':['Completed']};
+ const allowed:Record<string,string[]>={'Awaiting scheduling':['Cancelled'],'Scheduled':['Departed','Cancelled'],'Departed':['Completed']};
  if(!allowed[stage]?.includes(status))throw Error('Follow the excursion status sequence.');
  if(status==='Completed'&&!excursionPaid(o,state))throw Error('Receive full payment before completing this excursion.');
  o.statusHistory=[...(o.statusHistory||[]),{from:stage,to:status,at:new Date().toISOString(),by}];o.status=status;o.updatedBy=by;
