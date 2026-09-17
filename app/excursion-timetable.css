@@ -1,117 +1,174 @@
-/* Compact timetable presentation for Admin > Excursions > Schedule. */
-.excursion-panel .excursion-day-list{
-  display:grid;
-  gap:0;
-  overflow:hidden;
-  border:1px solid #cddfe7;
+/* Admin > Excursions > Schedule — compact seven-column timetable. */
+.excursion-timetable{
+  width:100%;
+  border:1px solid #c9dce5;
   border-radius:14px;
+  overflow:hidden;
   background:#fff;
   box-shadow:0 4px 14px rgba(20,65,88,.04);
 }
-.excursion-panel .excursion-day-list::before{
-  content:'Time   |   Excursion / trip details   |   Actions';
-  display:block;
-  padding:11px 16px;
-  border-bottom:1px solid #cddfe7;
-  background:#edf6fa;
-  color:#466778;
-  font-size:11px;
+
+/* The timetable header is rendered by the component. Never add a second pseudo header. */
+.excursion-panel .excursion-day-list::before{content:none!important;display:none!important}
+
+.excursion-timetable-head,
+.excursion-panel .excursion-day-list>article{
+  display:grid;
+  grid-template-columns:
+    minmax(84px,.55fr)
+    minmax(260px,2.35fr)
+    minmax(145px,1.05fr)
+    minmax(88px,.65fr)
+    minmax(105px,.78fr)
+    minmax(155px,1.15fr)
+    minmax(120px,.9fr);
+  gap:0;
+}
+
+.excursion-timetable-head{
+  align-items:center;
+  min-height:52px;
+  padding:0;
+  border-bottom:1px solid #c9dce5;
+  background:#eaf4f9;
+  color:#466678;
+  font-size:12px;
   font-weight:900;
   letter-spacing:.08em;
   text-transform:uppercase;
-  white-space:pre;
+}
+.excursion-timetable-head>span{padding:14px 12px;min-width:0}
+.excursion-timetable-head>span:last-child{text-align:center}
+
+.excursion-panel .excursion-day-list{
+  display:grid!important;
+  gap:0!important;
+  overflow:visible!important;
+  border:0!important;
+  border-radius:0!important;
+  background:#fff!important;
+  box-shadow:none!important;
 }
 .excursion-panel .excursion-day-list>article{
-  display:grid;
-  grid-template-columns:92px minmax(0,1fr) 150px;
-  gap:0;
-  align-items:stretch;
-  padding:0;
-  border:0;
-  border-bottom:1px solid #e1ebf0;
-  border-radius:0;
-  background:#fff;
-  box-shadow:none;
+  align-items:stretch!important;
+  min-height:98px;
+  padding:0!important;
+  border:0!important;
+  border-bottom:1px solid #d8e5ec!important;
+  border-radius:0!important;
+  background:#fff!important;
+  box-shadow:none!important;
 }
-.excursion-panel .excursion-day-list>article:last-child{border-bottom:0}
-.excursion-panel .excursion-day-list>article:hover{background:#fbfdfe}
-.excursion-panel .excursion-day-list>article.is-closed{opacity:.68;background:#fafafa}
-.excursion-panel .excursion-day-list>article.is-full{background:#fffdf7}
-.excursion-panel .excursion-day-list>article.is-shared-boat{box-shadow:inset 4px 0 0 #2b9ec4}
+.excursion-panel .excursion-day-list>article:last-child{border-bottom:0!important}
+.excursion-panel .excursion-day-list>article:hover{background:#fbfdfe!important}
+.excursion-panel .excursion-day-list>article.is-closed{opacity:.7;background:#fafafa!important}
+.excursion-panel .excursion-day-list>article.is-full{background:#fffdf8!important}
+.excursion-panel .excursion-day-list>article.is-shared-boat{box-shadow:inset 4px 0 0 #2b9ec4!important}
+
+.excursion-panel .excursion-day-list>article>div{
+  min-width:0;
+  padding:14px 12px!important;
+  border-right:1px solid #e2ebef;
+}
+.excursion-panel .excursion-day-list>article>div:last-of-type{border-right:0}
 
 .excursion-panel .excursion-day-time{
-  display:flex;
-  align-items:flex-start;
-  justify-content:center;
-  padding:18px 10px;
-  border-right:1px solid #e1ebf0;
-  color:#087cad;
-  font-size:20px;
-  font-weight:900;
-  line-height:1.2;
-  background:#f8fcfe;
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  padding:18px 12px!important;
+  border-right:1px solid #e2ebef!important;
+  background:#f8fcfe!important;
+  color:#087cad!important;
+  font-size:22px!important;
+  font-weight:900!important;
+  line-height:1.15!important;
 }
-.excursion-panel .excursion-day-main{
-  min-width:0;
-  padding:14px 16px;
-}
+
+.excursion-trip-cell{min-width:0}
 .excursion-panel .excursion-day-title{
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:7px;
   flex-wrap:wrap;
-  margin-bottom:8px;
+  margin:0;
 }
 .excursion-panel .excursion-day-title strong{
   color:#14354a;
-  font-size:16px;
-  line-height:1.35;
+  font-size:16px!important;
+  line-height:1.3;
 }
 .excursion-panel .excursion-day-title span{
   padding:4px 8px;
   border-radius:999px;
-  font-size:11px;
+  font-size:11px!important;
   font-weight:800;
 }
-.excursion-panel .excursion-day-meta{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(130px,1fr));
-  gap:6px 14px;
-  color:#607c8b;
+.excursion-day-title .request-badge{background:#fff1cf!important;color:#805a0a!important}
+.excursion-day-title .extra-vessel-badge{background:#edf7ff!important;color:#176084!important}
+.excursion-trip-cell p{margin:7px 0 0!important;color:#5a7482;font-size:12px;line-height:1.4}
+.excursion-trip-cell>.shared-capacity-note{
+  display:block;
+  margin-top:8px;
+  color:#087cad;
   font-size:12px;
-  line-height:1.45;
-}
-.excursion-panel .excursion-day-meta span{
-  min-width:0;
-  overflow-wrap:anywhere;
-}
-.excursion-panel .excursion-day-meta .shared-capacity-note{
-  grid-column:1/-1;
-  color:#1b718f;
-  font-weight:700;
-}
-.excursion-panel .excursion-day-main>p{
-  margin:8px 0 0;
-  padding-top:8px;
-  border-top:1px dashed #dce8ed;
-  color:#587483;
-  font-size:12px;
+  font-weight:800;
 }
 
+.excursion-vessel-cell,
+.excursion-pax-cell,
+.excursion-price-cell,
+.excursion-crew-cell{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  gap:6px!important;
+  color:#5f7887;
+  line-height:1.35;
+}
+.excursion-vessel-cell strong,
+.excursion-pax-cell strong,
+.excursion-price-cell strong,
+.excursion-crew-cell strong{
+  color:#14354a;
+  font-size:14px;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+.excursion-pax-cell small,.excursion-price-cell small{color:#6b8491;font-size:12px}
+
+.excursion-assign-btn{
+  min-height:34px;
+  padding:6px 9px;
+  border:1px solid #9ec9dc;
+  border-radius:8px;
+  background:#f2f9fc;
+  color:#087cad;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.2;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.excursion-assign-btn:hover{background:#e8f5fa}
+
 .excursion-panel .excursion-day-actions{
-  display:grid;
-  align-content:center;
-  gap:7px;
-  padding:12px;
-  border-left:1px solid #e1ebf0;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+  gap:7px!important;
+  padding:12px!important;
+  border-left:0!important;
   background:#fbfdfe;
 }
 .excursion-panel .excursion-day-actions button{
-  width:100%;
-  min-height:38px;
-  padding:8px 10px;
-  border-radius:8px;
-  font-size:12px;
+  width:100%!important;
+  min-height:36px!important;
+  padding:7px 9px!important;
+  border-radius:8px!important;
+  font-size:12px!important;
 }
 .excursion-panel .excursion-day-actions .excursion-secondary-btn{
   border-color:#9fc8d8;
@@ -119,47 +176,80 @@
   color:#0b678a;
 }
 .excursion-panel .excursion-day-actions .excursion-delete-btn{
-  min-height:38px;
-  padding:8px 10px;
   border:1px solid #edc5c0;
-  border-radius:8px;
   background:#fff7f6;
   color:#a4342b;
-  font-size:12px;
   font-weight:800;
-  cursor:pointer;
 }
-.excursion-panel .excursion-day-actions .excursion-delete-btn:hover{background:#fff0ee}
 
-/* Keep request/extra-vessel rows readable inside the timetable cell. */
-.excursion-panel .excursion-day-main select{max-width:230px}
-
-@media(max-width:1050px){
-  .excursion-panel .excursion-day-meta{grid-template-columns:repeat(2,minmax(150px,1fr))}
+/* Requests and overflow-vessel bookings use the full usable row width. */
+.excursion-row-detail{
+  grid-column:2/-1!important;
+  padding:10px 12px!important;
+  border-top:1px solid #e6eef2!important;
+  border-right:0!important;
+  background:#fbfdff!important;
 }
-@media(max-width:760px){
-  .excursion-panel .excursion-day-list::before{content:'Daily excursion timetable'}
+.extra-vessel-list,.excursion-request-list{display:grid;gap:8px}
+.extra-vessel-list>div{padding:9px 11px;border:1px solid #cfe3ef;border-radius:9px;background:#f6fbff;color:#315d72;font-size:13px}
+.excursion-request-card{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid #e1c88d;border-radius:10px;background:#fff7ed}
+.excursion-request-card>div:first-child div{margin-top:3px;color:#607c8b;font-size:13px}
+.excursion-request-card>div:first-child small{display:block;margin-top:5px;color:#8a6009;font-size:12px;font-weight:700}
+.excursion-request-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.excursion-request-actions select{min-height:40px;padding:8px 10px;border:1px solid #c8dce5;border-radius:9px;background:#fff;color:#174158}
+
+@media(max-width:1220px){
+  .excursion-timetable{overflow-x:auto}
+  .excursion-timetable-head,.excursion-panel .excursion-day-list>article{min-width:1040px}
+}
+
+@media(max-width:700px){
+  .excursion-timetable-head{display:none}
+  .excursion-timetable{overflow:visible;border:0;background:transparent;box-shadow:none}
+  .excursion-panel .excursion-day-list{gap:12px!important;background:transparent!important}
   .excursion-panel .excursion-day-list>article{
-    grid-template-columns:78px minmax(0,1fr);
+    min-width:0;
+    grid-template-columns:88px minmax(0,1fr)!important;
+    min-height:0;
+    border:1px solid #d8e5ec!important;
+    border-radius:14px!important;
+    overflow:hidden;
   }
-  .excursion-panel .excursion-day-time{padding:15px 8px;font-size:18px}
-  .excursion-panel .excursion-day-main{padding:13px}
-  .excursion-panel .excursion-day-meta{grid-template-columns:1fr}
+  .excursion-panel .excursion-day-list>article>div{border-right:0}
+  .excursion-panel .excursion-day-time{grid-column:1;padding:14px!important}
+  .excursion-trip-cell{grid-column:2;padding:14px!important}
+  .excursion-vessel-cell,.excursion-pax-cell,.excursion-price-cell,.excursion-crew-cell{
+    grid-column:1/-1;
+    display:grid!important;
+    grid-template-columns:95px minmax(0,1fr) auto;
+    align-items:center!important;
+    padding:9px 14px!important;
+    border-top:1px solid #edf3f6;
+  }
+  .excursion-vessel-cell:before{content:'Vessel';font-weight:800;color:#607c8b}
+  .excursion-pax-cell:before{content:'Pax';font-weight:800;color:#607c8b}
+  .excursion-price-cell:before{content:'Price';font-weight:800;color:#607c8b}
+  .excursion-crew-cell:before{content:'Crew';font-weight:800;color:#607c8b}
   .excursion-panel .excursion-day-actions{
     grid-column:1/-1;
-    grid-template-columns:1fr 1fr;
-    border-left:0;
-    border-top:1px solid #e1ebf0;
-    padding:10px 12px;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    padding:10px 14px!important;
+    border-top:1px solid #edf3f6!important;
   }
+  .excursion-row-detail{grid-column:1/-1!important}
 }
+
 @media(max-width:480px){
-  .excursion-panel .excursion-day-list>article{grid-template-columns:1fr}
+  .excursion-panel .excursion-day-list>article{grid-template-columns:1fr!important}
   .excursion-panel .excursion-day-time{
-    justify-content:flex-start;
-    padding:10px 13px;
-    border-right:0;
-    border-bottom:1px solid #e1ebf0;
+    justify-content:flex-start!important;
+    padding:10px 13px!important;
+    border-right:0!important;
+    border-bottom:1px solid #e1ebf0!important;
   }
-  .excursion-panel .excursion-day-actions{grid-template-columns:1fr}
+  .excursion-trip-cell{grid-column:1!important}
+  .excursion-vessel-cell,.excursion-pax-cell,.excursion-price-cell,.excursion-crew-cell{grid-template-columns:80px minmax(0,1fr)}
+  .excursion-vessel-cell .excursion-assign-btn,.excursion-crew-cell .excursion-assign-btn{grid-column:1/-1;width:100%}
+  .excursion-panel .excursion-day-actions{grid-template-columns:1fr!important}
 }
