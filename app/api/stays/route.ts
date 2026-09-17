@@ -13,9 +13,9 @@ if(b.action==='create'){
  const previous=state.stays.find((s:any)=>s.creationRequest===b.requestId&&s.createdBy===u.username);
  if(previous)return Response.json({booking:previous});
  if(b.revision!==revision)return Response.json({error:'Room availability changed. Review the available rooms and confirm again.'},{status:409});
- const details=b.guests===undefined?null:await bookingGuests(b.guests,b.pax);
+ const details=b.guests===undefined?null:await bookingGuests(b.guests,b.pax,[],b.adults??b.pax,b.children??0);
  const booking=createDirectBooking(state,{...b,guest:details?.guests[0].name??b.guest},u.username);
- if(details)Object.assign(booking,{guests:details.guests,whatsapp:details.guests[0].phone});
+ if(details)Object.assign(booking,{guests:details.guests,adults:details.adults,children:details.children,whatsapp:details.guests[0].phone});
  if(!await saveStayAccess(state,revision,u.userId,null,[],details?.documents||[]))return Response.json({error:'Another booking changed room availability. Review the rooms and try again.'},{status:409});
  return Response.json({booking},{status:201});
 }
@@ -29,9 +29,9 @@ if(b.action==='editbooking'||b.action==='deletebooking'){
   deleteBooking(state,booking,u.username);
   if(booking.accountId&&!state.stays.some((x:any)=>x.accountId===booking.accountId&&['Confirmed','In House'].includes(x.status)))revoke.push(booking.accountId);
  }else{
-  details=b.guests===undefined?null:await bookingGuests(b.guests,b.pax,booking.guests||[]);
+  details=b.guests===undefined?null:await bookingGuests(b.guests,b.pax,booking.guests||[],b.adults??booking.adults??b.pax,b.children??booking.children??0);
   const previous=editBooking(state,booking,{...b,guest:details?.guests[0].name??b.guest},u.username);
-  if(details)Object.assign(booking,{guests:details.guests,whatsapp:details.guests[0].phone});
+  if(details)Object.assign(booking,{guests:details.guests,adults:details.adults,children:details.children,whatsapp:details.guests[0].phone});
   if(booking.status==='In House'&&previous.room!==booking.room)plan=await prepareStayLogin(state,booking);
  }
  if(!await saveStayAccess(state,revision,u.userId,plan,revoke,details?.documents||[],details?.removed||[]))return Response.json({error:'Booking changed. Reopen it and try again.'},{status:409});
