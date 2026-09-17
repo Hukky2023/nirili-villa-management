@@ -1,7 +1,7 @@
 import {authDb,currentUser,sameOrigin} from '../../../lib/auth';
 import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
-import {islandToday,validDate} from '../../../lib/guest-catalog';
+import {catalog,islandToday,validDate} from '../../../lib/guest-catalog';
 import {excursionResources} from '../../../lib/excursion-workflow';
 
 const prefix='excursion-schedule:';
@@ -15,6 +15,27 @@ function matches(o:any,s:any){
 }
 function confirmed(o:any){return o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.status!=='Cancelled';}
 function pending(o:any){return o.approvalStatus==='Pending'&&o.status!=='Cancelled';}
+
+const excursionCatalog=catalog.filter((x:any)=>x.kind==='excursion');
+const byId=(id:string)=>excursionCatalog.find((x:any)=>x.id===id)?.cents||0;
+function priceForSchedule(s:any){
+ const explicit=Number(s.priceCents);
+ if(Number.isInteger(explicit)&&explicit>0)return explicit;
+ const n=norm(s.name).replace(/\s+only$/,'');
+ const exact=excursionCatalog.find((x:any)=>norm(x.name)===n);
+ if(exact)return exact.cents;
+ if(n==='shark + turtle'||n==='shark + turtle snorkeling')return byId('shark-turtle');
+ const aliases:[RegExp,string][]=[[/fish\s*tank/,'fishtank'],[/sand\s*bank|sandbank/,'sandbank'],[/turtle/,'turtle'],[/coral\s*garden/,'coral'],[/shark/,'shark'],[/dolphin/,'dolphin'],[/fishing/,'fishing']];
+ const parts=n.split('+').map((p:string)=>p.trim()).filter(Boolean);
+ if(!parts.length)return 0;
+ let total=0;
+ for(const part of parts){
+  const hit=aliases.find(([re])=>re.test(part));
+  if(!hit)return 0;
+  const cents=byId(hit[1]);if(!cents)return 0;total+=cents;
+ }
+ return total;
+}
 
 async function schedulesForDate(date:string){
  const rows=await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?').bind(prefix+date+':%').all<any>();
@@ -39,10 +60,11 @@ export async function GET(r:Request){
    const pendingPax=orders.filter((o:any)=>matches(o,s)&&pending(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const sharedBoatKey=s.vesselId?`${s.date}|${s.time}|${s.vesselId}`:'';
    if(sharedBoatKey){const g=groups[sharedBoatKey]||(groups[sharedBoatKey]={capacity:s.capacity,confirmedPax:0,pendingPax:0,scheduleIds:[]});g.capacity=Math.min(g.capacity,s.capacity);g.confirmedPax+=confirmedPax;g.pendingPax+=pendingPax;g.scheduleIds.push(s.id);}
-   return {id:s.id,date:s.date,time:s.time,name:s.name,status:s.status,capacity:s.capacity,notes:s.notes||'',sharedBoatKey,confirmedPax,pendingPax,ownBooking:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus==='Approved'?'Confirmed':own.approvalStatus||own.status,createdAt:own.createdAt}:null};
+   return {id:s.id,date:s.date,time:s.time,name:s.name,status:s.status,capacity:s.capacity,notes:s.notes||'',priceCents:priceForSchedule(s),sharedBoatKey,confirmedPax,pendingPax,ownBooking:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus==='Approved'?'Confirmed':own.approvalStatus||own.status,createdAt:own.createdAt}:null};
   });
   const enriched=schedules.map((s:any)=>{const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null;const capacity=g?.capacity??s.capacity,confirmedPax=g?.confirmedPax??s.confirmedPax,pendingPax=g?.pendingPax??s.pendingPax;return {...s,capacity,confirmedPax,pendingPax,remainingSeats:Math.max(0,capacity-confirmedPax),isFull:confirmedPax>=capacity,sharedBoat:!!g&&g.scheduleIds.length>1};});
-  return Response.json({date,stays:eligibleStays,schedules:enriched},{headers:{'Cache-Control':'no-store'}});
+  const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Declined').map((o:any)=>({id:o.id,name:o.name,quantity:o.quantity,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room,createdAt:o.createdAt})).sort((a:any,b:any)=>(String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
+  return Response.json({date,stays:eligibleStays,schedules:enriched,myBookings},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load scheduled excursions.'},{status:503});}
 }
 
@@ -70,17 +92,18 @@ export async function POST(r:Request){
   const capacity=Math.min(...groupSchedules.map((s:any)=>Number(s.capacity)||1));
   const confirmedPax=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&(groupIds.has(o.scheduleId)||groupSchedules.some((s:any)=>matches(o,s)))).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
   const requiresApproval=confirmedPax+quantity>capacity;
+  const unitPriceCents=priceForSchedule(schedule),quotedCents=unitPriceCents*quantity;
   const id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
   const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
   state.orders??=[];
   state.orders.push({
-   id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',name:schedule.name,quantity,cents:0,notes,date,time:schedule.time,scheduleId:schedule.id,
+   id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',name:schedule.name,quantity,cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,scheduleId:schedule.id,
    seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,
    schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
    guestNotified:requiresApproval?undefined:false,createdAt:new Date().toISOString(),source:'Guest schedule'
   });
   const saved=await saveStayAccess(state,revision,user.userId);
   if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
-  return Response.json({booking:{id,status:requiresApproval?'Pending':'Confirmed',requiresApproval,overCapacity:requiresApproval,remainingBefore:Math.max(0,capacity-confirmedPax)}},{status:201});
+  return Response.json({booking:{id,status:requiresApproval?'Pending':'Confirmed',requiresApproval,overCapacity:requiresApproval,remainingBefore:Math.max(0,capacity-confirmedPax),chargedCents:requiresApproval?0:quotedCents}},{status:201});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not book excursion seats.'},{status:400});}
 }
