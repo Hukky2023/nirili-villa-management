@@ -2,6 +2,7 @@ import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
+import {excursionResources} from '../../../lib/excursion-workflow';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -21,14 +22,19 @@ const clean=(x:any)=>{
  return {date:x.date,time:x.time,name,capacity,priceCents,vesselId,crewIds,status,notes,sharedGroup};
 };
 function matches(o:any,s:any){
- if(o.kind!=='excursion'||o.status==='Cancelled'||o.approvalStatus==='Declined')return false;
+ if(o.kind!=='excursion'||o.status==='Cancelled'||o.approvalStatus==='Declined'||o.approvalStatus==='Cancelled')return false;
  if(o.scheduleId)return o.scheduleId===s.id;
  const os=o.schedule||{};
  return (os.date||o.date)===s.date&&os.time===s.time&&(!s.vesselId||os.vesselId===s.vesselId)&&norm(o.name)===norm(s.name);
 }
-const isConfirmed=(o:any)=>o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.status!=='Cancelled';
+const isConfirmed=(o:any)=>o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled'&&o.status!=='Cancelled';
 const isPending=(o:any)=>o.approvalStatus==='Pending'&&o.status!=='Cancelled';
 const sharedKey=(s:any)=>s.sharedGroup?s.date+'|'+s.time+'|group:'+s.sharedGroup:s.vesselId?s.date+'|'+s.time+'|vessel:'+s.vesselId:'';
+
+async function schedulesForDate(date:string){
+ const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(prefix+date+':%').all<any>();
+ return (rows.results||[]).map((row:any)=>({...JSON.parse(row.payload),revision:row.revision})).sort((a:any,b:any)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
+}
 
 export async function GET(r:Request){
  const user=await currentUser();
@@ -37,14 +43,14 @@ export async function GET(r:Request){
  if(!validDate(date))return Response.json({error:'Valid schedule date required.'},{status:400});
  try{
   await ensureStandardDailyExcursions(date);
-  const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(prefix+date+':%').all<any>();
-  const raw=(rows.results||[]).map((row:any)=>({...JSON.parse(row.payload),revision:row.revision})).sort((a:any,b:any)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
+  const raw=await schedulesForDate(date);
   const {state}=await loadStays(),orders=Array.isArray(state.orders)?state.orders:[];
   const schedules=raw.map((s:any)=>{
-   const bookedPax=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
+   const bookedPax=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)&&!o.separateVessel).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const pendingOrders=orders.filter((o:any)=>matches(o,s)&&isPending(o));
    const pendingPax=pendingOrders.reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
-   return {...s,priceCents:Number(s.priceCents)||0,bookedPax,pendingPax,sharedBoatKey:sharedKey(s),pendingOrders};
+   const extraVesselBookings=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)&&o.separateVessel).map((o:any)=>({id:o.id,guest:o.guest,room:o.room,quantity:o.quantity,vesselId:o.overflowVesselId||o.schedule?.vesselId||'',vessel:o.schedule?.vessel||'',createdAt:o.reviewedAt||o.createdAt}));
+   return {...s,priceCents:Number(s.priceCents)||0,bookedPax,pendingPax,sharedBoatKey:sharedKey(s),pendingOrders,extraVesselBookings};
   });
   const groups:Record<string,{scheduleIds:string[],bookedPax:number,pendingPax:number,capacity:number}>={};
   for(const s of schedules){
@@ -54,7 +60,7 @@ export async function GET(r:Request){
   }
   const enriched=schedules.map((s:any)=>{
    const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null,baseConfirmed=g?.bookedPax??s.bookedPax,capacity=g?.capacity??s.capacity;
-   const requests=s.pendingOrders.map((o:any)=>({id:o.id,guest:o.guest,room:o.room,quantity:o.quantity,notes:o.notes||'',createdAt:o.createdAt,overCapacity:baseConfirmed+Math.max(0,Number(o.quantity)||0)>capacity}));
+   const requests=s.pendingOrders.map((o:any)=>({id:o.id,guest:o.guest,room:o.room,quantity:o.quantity,notes:o.notes||'',createdAt:o.createdAt,overCapacity:true}));
    const {pendingOrders,...rest}=s;
    return {...rest,requests};
   });
@@ -100,7 +106,7 @@ export async function PATCH(r:Request){
  const user=await currentUser();
  if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{
-  const b=await r.json(),requestId=String(b.requestId||''),decision=String(b.decision||'');
+  const b=await r.json(),requestId=String(b.requestId||''),decision=String(b.decision||''),vesselId=String(b.vesselId||'').slice(0,100);
   if(!requestId||!['Approved','Declined'].includes(decision))throw Error('Choose Approve or Decline.');
   const {state,revision}=await loadStays();
   const order=(state.orders||[]).find((o:any)=>o.id===requestId&&o.kind==='excursion'&&o.seatRequest===true);
@@ -110,14 +116,21 @@ export async function PATCH(r:Request){
   const schedule=JSON.parse(row.payload);
   order.approvalStatus=decision;order.reviewedAt=new Date().toISOString();order.reviewedBy=user.username;
   if(decision==='Approved'){
-   const vessel=(state.excursionResources?.vessels||[]).find((v:any)=>v.id===schedule.vesselId);
-   const crew=(state.excursionResources?.crew||[]).filter((c:any)=>schedule.crewIds?.includes(c.id));
+   if(!vesselId)throw Error('Assign a new vessel before approving this over-capacity request.');
+   const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===vesselId);
+   if(!vessel)throw Error('Choose a valid vessel.');
+   if(vessel.condition!=='Available')throw Error('The selected vessel is not available.');
+   const sameDay=await schedulesForDate(order.date),key=sharedKey(schedule);
+   const originalVesselIds=new Set((key?sameDay.filter((s:any)=>sharedKey(s)===key):[schedule]).map((s:any)=>String(s.vesselId||'')).filter(Boolean));
+   if(originalVesselIds.has(vessel.id))throw Error('Choose a different vessel from the vessel already assigned to this departure.');
+   const crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
    order.cents=Math.max(0,Number(order.quotedCents)||0);
-   order.status='Scheduled';order.schedule={date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)};order.guestNotified=false;
+   order.status='Scheduled';order.separateVessel=true;order.overflowVesselId=vessel.id;order.originalScheduleId=schedule.id;
+   order.schedule={date:schedule.date,time:schedule.time,vesselId:vessel.id,vessel:vessel.name,crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name),extraVessel:true};order.guestNotified=false;
   }else{order.cents=0;order.status='Cancelled';}
   const saved=await saveStayAccess(state,revision,user.userId);
   if(!saved)return Response.json({error:'Another update was saved. Reload and try again.'},{status:409});
-  return Response.json({ok:true,decision});
+  return Response.json({ok:true,decision,vesselId:decision==='Approved'?vesselId:undefined});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not review seat request.'},{status:400});
  }
 }
