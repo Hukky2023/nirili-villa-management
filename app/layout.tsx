@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./excursion-cancel.css";
 import "./excursion-timetable.css";
+import "./guest-excursion-cleanup.css";
 
 export const metadata: Metadata = {
   title: "Nirili Villa Management",
