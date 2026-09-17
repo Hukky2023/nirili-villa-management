@@ -11,11 +11,12 @@ const clean=(x:any)=>{
  const name=String(x.name||'').trim().slice(0,180);
  if(!name)throw Error('Excursion name is required.');
  const capacity=Math.max(1,Math.min(100,Number(x.capacity)||1));
+ const priceCents=Math.max(0,Math.min(1000000,Math.round(Number(x.priceCents)||0)));
  const vesselId=String(x.vesselId||'').slice(0,100);
  const crewIds=Array.isArray(x.crewIds)?[...new Set(x.crewIds.map((id:any)=>String(id).slice(0,100)).filter(Boolean))].slice(0,20):[];
  const status=x.status==='Closed'?'Closed':'Open';
  const notes=String(x.notes||'').trim().slice(0,1000);
- return {date:x.date,time:x.time,name,capacity,vesselId,crewIds,status,notes};
+ return {date:x.date,time:x.time,name,capacity,priceCents,vesselId,crewIds,status,notes};
 };
 function matches(o:any,s:any){
  if(o.kind!=='excursion'||o.status==='Cancelled'||o.approvalStatus==='Declined')return false;
@@ -39,7 +40,7 @@ export async function GET(r:Request){
    const bookedPax=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const pendingOrders=orders.filter((o:any)=>matches(o,s)&&isPending(o));
    const pendingPax=pendingOrders.reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
-   return {...s,bookedPax,pendingPax,sharedBoatKey:s.vesselId?s.date+'|'+s.time+'|'+s.vesselId:'',pendingOrders};
+   return {...s,priceCents:Number(s.priceCents)||0,bookedPax,pendingPax,sharedBoatKey:s.vesselId?s.date+'|'+s.time+'|'+s.vesselId:'',pendingOrders};
   });
   const groups:Record<string,{scheduleIds:string[],bookedPax:number,pendingPax:number,capacity:number}>={};
   for(const s of schedules){
@@ -107,8 +108,9 @@ export async function PATCH(r:Request){
   if(decision==='Approved'){
    const vessel=(state.excursionResources?.vessels||[]).find((v:any)=>v.id===schedule.vesselId);
    const crew=(state.excursionResources?.crew||[]).filter((c:any)=>schedule.crewIds?.includes(c.id));
+   order.cents=Math.max(0,Number(order.quotedCents)||0);
    order.status='Scheduled';order.schedule={date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)};order.guestNotified=false;
-  }else{order.status='Cancelled';}
+  }else{order.cents=0;order.status='Cancelled';}
   const saved=await saveStayAccess(state,revision,user.userId);
   if(!saved)return Response.json({error:'Another update was saved. Reload and try again.'},{status:409});
   return Response.json({ok:true,decision});
