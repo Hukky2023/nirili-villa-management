@@ -4,9 +4,10 @@ import './excursion-timetable-v2.css';
 import ExcursionWeather from './excursion-weather';
 import DateFieldDMY from './date-field-dmy';
 import AdminExcursionBooking from './admin-excursion-booking';
+import ExcursionBookings from './excursion-bookings';
 import {useEffect,useMemo,useState} from 'react';
 
-type ExcursionTab='Schedule'|'Excursion menu'|'Crew members'|'Vessels';
+type ExcursionTab='Bookings'|'Schedule'|'Excursion menu'|'Crew members'|'Vessels';
 const standardSuggestions=['Fish Tank + Sandbank','Fish Tank only','Turtle Snorkeling + Coral Garden','Sandbank only','Sandbank + Turtle','Shark + Turtle','Shark only','Clown Fish Snorkeling only','Clown Fish Snorkeling + Manta','Dolphin only','Dolphin + Fishing'];
 function maldivesToday(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=(type:string)=>parts.find(p=>p.type===type)?.value||'';return `${get('year')}-${get('month')}-${get('day')}`;}
 const shiftDate=(date:string,days:number)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
@@ -17,7 +18,7 @@ export default function ExcursionScheduler({data}:{data?:any}){
  const [schedules,setSchedules]=useState<any[]>([]),[sharedBoatGroups,setSharedBoatGroups]=useState<Record<string,any>>({}),[loading,setLoading]=useState(false),[message,setMessage]=useState(''),[editor,setEditor]=useState<any>(null),[assignment,setAssignment]=useState<any>(null),[menuEditor,setMenuEditor]=useState<any>(null),[saving,setSaving]=useState(false),[requestBusy,setRequestBusy]=useState(''),[requestVessels,setRequestVessels]=useState<Record<string,string>>({});
  const [menu,setMenu]=useState<any[]>((data?.catalog||[]).filter((item:any)=>item.kind==='excursion'));
  const resources=data?.resources||{vessels:[],crew:[]};
- const tabs:ExcursionTab[]=['Schedule','Excursion menu','Crew members','Vessels'];
+ const tabs:ExcursionTab[]=['Bookings','Schedule','Excursion menu','Crew members','Vessels'];
  const money=(cents:number)=>'$'+((Number(cents)||0)/100).toFixed(2);
  const nameSuggestions=useMemo(()=>Array.from(new Set([...standardSuggestions,...menu.map((x:any)=>x.name)])),[menu]);
  const availableVessels=(resources.vessels||[]).filter((v:any)=>(v.condition||'Available')==='Available');
@@ -46,6 +47,8 @@ export default function ExcursionScheduler({data}:{data?:any}){
   <div className="excursion-admin-shell">
    <header className="excursion-admin-header"><small>EXCURSION OPERATIONS</small><h2>Excursion management</h2><p>Build the operating schedule first. Guests will book from trips that admin has made available.</p></header>
    <nav className="excursion-admin-tabs" aria-label="Excursion management sections">{tabs.map(name=><button key={name} type="button" className={tab===name?'active':''} aria-pressed={tab===name} onClick={()=>setTab(name)}>{name}</button>)}</nav>
+
+   {tab==='Bookings'&&<ExcursionBookings/>}
 
    {tab==='Schedule'&&<section className="excursion-panel">
     <div className="excursion-panel-head"><div><h3>Schedule</h3><p>Create excursion trips in advance and manage each day's operating plan.</p></div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><AdminExcursionBooking schedules={schedules} sharedBoatGroups={sharedBoatGroups} resources={resources} stays={data?.stays||[]} date={date} onSaved={()=>load(date)} onMessage={setMessage}/><button type="button" className="excursion-primary-btn" onClick={createSchedule}>+ Create schedule</button></div></div>
