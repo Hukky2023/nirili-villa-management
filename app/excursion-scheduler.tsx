@@ -1,6 +1,7 @@
 'use client';
 import './excursion-scheduler.css';
 import ExcursionTime from './excursion-time';
+import ExcursionWeather from './excursion-weather';
 import {useState} from 'react';
 import {excursionWhatsApp} from '../lib/excursion-schedule';
 import {excursionStage,vesselConditions} from '../lib/excursion-workflow';
@@ -16,6 +17,7 @@ export default function ExcursionScheduler({data,mutate}:{data:any;mutate:(b:any
  const used=(type:'vessels'|'crew',id:string)=>{const resource=resources[type].find((r:any)=>r.id===id);return resource&&orders.some((o:any)=>o.id!==edit?.id&&o.status!=='Cancelled'&&o.schedule?.date===edit?.date&&o.schedule?.time===edit?.time&&(type==='vessels'?o.schedule.vessel.toLowerCase()===resource.name.toLowerCase():o.schedule.crew.some((n:string)=>n.toLowerCase()===resource.name.toLowerCase())));};
  const chosen=(data?.catalog||[]).find((i:any)=>i.id===edit?.itemId);
  return <section className="booking-review excursion-scheduler"><h2>Excursion schedule &amp; bookings</h2><p>Schedule trips, assign your team and track payments. All times are Maldives local time.</p>
+ <ExcursionWeather/>
  {data?.canSchedule&&<div className="excursion-actions"><button className="excursion-schedule-button" onClick={()=>{setMessage('');setEdit({action:'excursion-create',token:crypto.randomUUID(),stayId:'',guest:'',phone:'',hotel:'',itemId:'',quantity:2,date:'',notes:''})}}>New excursion booking</button><button onClick={()=>{setMessage('');setEdit({action:'excursion-resource',resourceType:'vessels',name:''})}}>Vessels &amp; crew</button></div>}
  <nav className="excursion-view-tabs" aria-label="Excursion views">{views.map(v=><button type="button" key={v} aria-pressed={view===v} onClick={()=>setView(v)}>{v} ({orders.filter((o:any)=>v==='All'||excursionStage(o)===v).length})</button>)}</nav><p role="status">{message}</p>{!visible.length&&<p>No bookings in this view.</p>}
  {visible.map((o:any)=>{const stage=excursionStage(o),closed=['Completed','Cancelled'].includes(stage);return <article key={o.id}><div><b>{o.name} · {o.quantity} {o.quantity===1?'guest':'guests'} · {usd(o.cents)}</b><p>{o.guest} · {o.source==='Walk-in'?o.hotel:'Room '+(data.stays.find((s:any)=>s.id===o.stayId)?.room||o.room||'')} · {o.id}</p><p><strong>{stage}</strong> · {o.paymentStatus}</p>{o.date&&!o.schedule&&<p>Requested date: {o.date}</p>}{o.schedule&&<p>{o.schedule.date} at {o.schedule.time} (Maldives time)<br/>Vessel: {o.schedule.vessel}<br/>Crew: {o.schedule.crew.join(', ')}</p>}{o.notes&&<p>{o.notes}</p>}</div>
