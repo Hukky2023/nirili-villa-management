@@ -35,8 +35,8 @@ export default function ExcursionCatalog({items,canBook=true}:{items:any[];onBoo
 
   <nav className="guest-excursion-category-tabs" aria-label="Excursion types">
    <button type="button" className={category==='schedule'?'active':''} aria-pressed={category==='schedule'} onClick={()=>setCategory('schedule')}>Schedule</button>
-   <button type="button" className={category==='single'?'active':''} aria-pressed={category==='single'} onClick={()=>setCategory('single')}>Single Excursion</button>
-   <button type="button" className={category==='combined'?'active':''} aria-pressed={category==='combined'} onClick={()=>setCategory('combined')}>Combined Excursion</button>
+   <button type="button" className={category==='single'?'active':''} aria-pressed={category==='single'} onClick={()=>setCategory('single')}>Single Excursions</button>
+   <button type="button" className={category==='combined'?'active':''} aria-pressed={category==='combined'} onClick={()=>setCategory('combined')}>Combined Excursions</button>
    <button type="button" className={category==='special'?'active':''} aria-pressed={category==='special'} onClick={()=>setCategory('special')}>Special Packages</button>
   </nav>
 
