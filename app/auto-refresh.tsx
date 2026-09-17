@@ -1,12 +1,10 @@
 'use client';
 
 import {useEffect,useRef} from 'react';
-import {useRouter} from 'next/navigation';
 
 const AUTO_REFRESH_MS=5000;
 
 export default function AutoRefresh(){
- const router=useRouter();
  const running=useRef(false);
  const lastRun=useRef(0);
 
@@ -19,10 +17,8 @@ export default function AutoRefresh(){
    running.current=true;
    lastRun.current=now;
    try{
-    // Refresh server-rendered data without a hard page reload, so open forms,
-    // scroll position and client UI state are preserved.
-    router.refresh();
-    // Let client-side data stores refresh themselves too.
+    // Background data refresh only. Never call router.refresh(), reload(),
+    // replace(), push(), or change the current URL/page.
     window.dispatchEvent(new Event('nirili:auto-refresh'));
     window.dispatchEvent(new Event('services-updated'));
    }finally{
@@ -40,7 +36,7 @@ export default function AutoRefresh(){
    window.removeEventListener('focus',onFocus);
    document.removeEventListener('visibilitychange',onVisibility);
   };
- },[router]);
+ },[]);
 
  return null;
 }
