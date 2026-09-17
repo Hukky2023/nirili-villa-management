@@ -17,8 +17,9 @@ export default function ExcursionScheduler({data}:{data?:any}){
  const tabs:ExcursionTab[]=['Schedule','Excursion menu','Crew members','Vessels'];
  const money=(cents:number)=>'$'+((Number(cents)||0)/100).toFixed(2);
  const nameSuggestions=useMemo(()=>Array.from(new Set([...standardSuggestions,...menu.map((x:any)=>x.name)])),[menu]);
- async function load(selected=date){setLoading(true);setMessage('');try{const r=await fetch('/api/excursion-schedules?date='+encodeURIComponent(selected),{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not load schedule');setSchedules(d.schedules||[]);setSharedBoatGroups(d.sharedBoatGroups||{});}catch(e){setMessage((e as Error).message);}finally{setLoading(false);}}
+ async function load(selected=date,silent=false){if(!silent){setLoading(true);setMessage('');}try{const r=await fetch('/api/excursion-schedules?date='+encodeURIComponent(selected),{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not load schedule');setSchedules(d.schedules||[]);setSharedBoatGroups(d.sharedBoatGroups||{});}catch(e){if(!silent)setMessage((e as Error).message);}finally{if(!silent)setLoading(false);}}
  useEffect(()=>{if(tab==='Schedule')load(date)},[date,tab]);
+ useEffect(()=>{const onRefresh=()=>{if(tab==='Schedule')void load(date,true)};window.addEventListener('nirili:auto-refresh',onRefresh);return()=>window.removeEventListener('nirili:auto-refresh',onRefresh)},[date,tab]);
  function createSchedule(){setMessage('');setEditor({id:'',revision:0,date,time:'07:00',name:'',vesselId:'',crewIds:[],capacity:6,status:'Open',notes:''});}
  function editSchedule(item:any){setMessage('');setEditor({...item,crewIds:item.crewIds||[]});}
  function toggleCrew(id:string){setEditor((x:any)=>({...x,crewIds:x.crewIds.includes(id)?x.crewIds.filter((v:string)=>v!==id):[...x.crewIds,id]}));}
