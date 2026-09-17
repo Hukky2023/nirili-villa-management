@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en-GB">
       <body className="antialiased"><script dangerouslySetInnerHTML={{__html:tabBootstrap}}/><AutoRefresh/>{children}<GuestChat/><LanguageSelector/><SessionButton/></body>
     </html>
   );
