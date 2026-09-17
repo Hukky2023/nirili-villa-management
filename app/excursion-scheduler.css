@@ -46,3 +46,40 @@
 .excursion-schedule-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:18px;background:rgba(9,31,43,.55);backdrop-filter:blur(3px)}.excursion-schedule-dialog{width:min(760px,100%);max-height:92dvh;overflow:auto;border:1px solid #c8dce5;border-radius:18px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.22);padding:22px}.excursion-schedule-dialog>header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}.excursion-schedule-dialog>header small{display:block;color:#087cad;font-weight:800;letter-spacing:.08em}.excursion-schedule-dialog>header h3{margin:4px 0 6px;color:#14354a;font-size:22px}.excursion-schedule-dialog>header p{margin:0;color:#607c8b}.excursion-dialog-close{width:40px;height:40px;border:1px solid #d5e4eb;border-radius:10px;background:#f7fbfd;color:#14354a;font-size:24px;line-height:1;cursor:pointer}.excursion-schedule-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.excursion-schedule-form-grid label{display:grid;gap:6px;color:#365c6f;font-size:13px;font-weight:700}.excursion-schedule-form-grid label.full{grid-column:1/-1}.excursion-schedule-form-grid input,.excursion-schedule-form-grid select,.excursion-schedule-form-grid textarea{width:100%;min-width:0;padding:10px 11px;border:1px solid #bfd3dd;border-radius:10px;background:#fff;color:#14354a;font:inherit}.excursion-schedule-form-grid input,.excursion-schedule-form-grid select{min-height:44px}.excursion-schedule-form-grid textarea{resize:vertical}.excursion-schedule-form-grid input:disabled{background:#f3f7f9;color:#688493}.excursion-crew-picker{margin:18px 0 0;padding:14px;border:1px solid #d8e5ec;border-radius:12px}.excursion-crew-picker legend{padding:0 7px;color:#14354a;font-weight:800}.excursion-crew-picker>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.excursion-crew-picker label{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid #e0ebf0;border-radius:10px;background:#fbfdfe;cursor:pointer}.excursion-crew-picker input{width:18px;height:18px;accent-color:#087cad}.excursion-crew-picker p{margin:0;color:#607c8b}.excursion-dialog-message{min-height:20px;margin:12px 0 0;color:#a72e2e}.excursion-schedule-dialog>footer{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}.excursion-schedule-dialog button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:760px){.excursion-day-list>article{grid-template-columns:72px 1fr}.excursion-day-actions{grid-column:1/-1}.excursion-day-actions button{flex:1}.excursion-schedule-form-grid{grid-template-columns:1fr}.excursion-schedule-form-grid label.full{grid-column:auto}.excursion-crew-picker>div{grid-template-columns:1fr}}
 @media(max-width:520px){.excursion-schedule-overlay{padding:0}.excursion-schedule-dialog{width:100%;height:100dvh;max-height:none;border-radius:0;padding:16px}.excursion-schedule-dialog>footer{display:grid;grid-template-columns:1fr}.excursion-day-list>article{grid-template-columns:1fr}.excursion-day-time{font-size:21px}.excursion-day-actions{display:grid;grid-template-columns:1fr 1fr}}
+
+
+/* Compact weather layout: use available space without oversized gaps. */
+.excursion-weather-card{padding:14px 16px;margin:14px 0 18px}
+.excursion-weather-heading{align-items:center;margin-bottom:10px}
+.excursion-weather-heading h3{margin:2px 0 1px;font-size:18px}
+.excursion-weather-heading p{font-size:13px}
+.excursion-weather-heading button{min-height:36px;padding:7px 12px}
+.excursion-weather-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+.excursion-weather-toolbar>strong{color:#14354a;font-size:15px}
+.excursion-weather-day-buttons{display:flex;gap:7px}
+.excursion-weather-day-buttons button{min-height:36px;padding:7px 12px;border:1px solid #bdd6e2;border-radius:9px;background:#fff;color:#174158;font-weight:800;cursor:pointer}
+.excursion-weather-day-buttons button.active{background:#087cad;color:#fff;border-color:#087cad}
+.excursion-weather-day-buttons button:disabled{opacity:.5;cursor:not-allowed}
+.excursion-weather-now{grid-template-columns:auto minmax(150px,.8fr) minmax(420px,2.2fr);gap:14px;padding:12px 14px}
+.excursion-weather-icon{font-size:38px}
+.excursion-weather-now>div b{font-size:28px}
+.excursion-weather-now dl{gap:8px}
+.excursion-weather-now dl div{padding:8px 10px}
+.excursion-weather-now dd{font-size:15px}
+.excursion-tide-now.compact{grid-template-columns:minmax(180px,.7fr) minmax(320px,1.3fr);gap:8px;margin-top:8px}
+.excursion-tide-now.compact article{padding:10px 12px}
+.excursion-weather-note{margin-top:8px}
+@media(max-width:900px){
+ .excursion-weather-now{grid-template-columns:auto 1fr}
+ .excursion-weather-now dl{grid-column:1/-1;grid-template-columns:repeat(4,minmax(0,1fr))}
+ .excursion-tide-now.compact{grid-template-columns:1fr 1.4fr}
+}
+@media(max-width:680px){
+ .excursion-weather-heading{align-items:flex-start}
+ .excursion-weather-toolbar{align-items:stretch}
+ .excursion-weather-toolbar>strong{width:100%}
+ .excursion-weather-day-buttons{width:100%;display:grid;grid-template-columns:1fr 1fr}
+ .excursion-weather-day-buttons button{width:100%}
+ .excursion-weather-now dl{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .excursion-tide-now.compact{grid-template-columns:1fr}
+}
