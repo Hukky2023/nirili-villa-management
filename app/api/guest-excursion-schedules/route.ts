@@ -4,6 +4,7 @@ import {saveStayAccess} from '../../../lib/stay-login';
 import {catalog,islandToday,validDate} from '../../../lib/guest-catalog';
 import {excursionResources} from '../../../lib/excursion-workflow';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
+import {loadExcursionMenu} from '../../../lib/excursion-menu';
 
 const prefix='excursion-schedule:';
 const norm=(v:any)=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
@@ -76,15 +77,30 @@ export async function POST(r:Request){
  if(!user||user.role!=='guest'||!sameOrigin(r))return Response.json({error:'Guest login required.'},{status:403});
  try{
   const b=await r.json();
-  const scheduleId=String(b.scheduleId||'').slice(0,100),date=String(b.date||''),stayId=String(b.stayId||''),token=String(b.token||'');
+  const scheduleId=String(b.scheduleId||'').slice(0,100),menuItemId=String(b.menuItemId||'').slice(0,100),date=String(b.date||''),stayId=String(b.stayId||''),token=String(b.token||'');
   const quantity=Number(b.quantity),notes=String(b.notes||'').trim().slice(0,1000);
-  if(!scheduleId||!validDate(date)||!stayId||!/^[-a-zA-Z0-9]{12,80}$/.test(token)||!Number.isInteger(quantity)||quantity<1||quantity>20)throw Error('Check the date, room and number of seats.');
+  if((!scheduleId&&!menuItemId)||!validDate(date)||!stayId||!/^[-a-zA-Z0-9]{12,80}$/.test(token)||!Number.isInteger(quantity)||quantity<1||quantity>20)throw Error('Check the excursion, date, room and number of guests.');
   const {state,revision}=await loadStays();
   const old=(state.orders||[]).find((o:any)=>o.token===token&&o.accountId===user.userId);
-  if(old)return Response.json({booking:{id:old.id,status:old.approvalStatus==='Approved'?'Confirmed':old.approvalStatus||old.status,requiresApproval:old.approvalStatus==='Pending'}});
+  if(old)return Response.json({booking:{id:old.id,status:old.approvalStatus==='Approved'?'Confirmed':old.approvalStatus||old.status,requiresApproval:old.approvalStatus==='Pending',requiresScheduling:!old.scheduleId}});
   const stay=(state.stays||[]).find((s:any)=>s.id===stayId&&s.accountId===user.userId&&s.status==='In House');
   if(!stay)throw Error('This room is not available for excursion booking.');
-  if(date<islandToday()||date<stay.checkIn||date>=stay.checkOut)throw Error('Choose a scheduled excursion during your current stay.');
+  if(date<islandToday()||date<stay.checkIn||date>=stay.checkOut)throw Error('Choose an excursion date during your current stay.');
+
+  if(menuItemId&&!scheduleId){
+   const menu=await loadExcursionMenu();
+   const item=menu.find((x:any)=>x.id===menuItemId&&x.kind==='excursion');
+   if(!item)throw Error('This excursion is no longer available in the menu.');
+   const minGuests=Math.max(1,Number(item.minGuests)||1);
+   if(quantity<minGuests)throw Error('This excursion requires at least '+minGuests+' guest'+(minGuests===1?'':'s')+'.');
+   const unitPriceCents=Math.max(0,Number(item.cents)||0),quotedCents=unitPriceCents*quantity,id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
+   state.orders??=[];
+   state.orders.push({id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',menuItemId:item.id,name:item.name,quantity,cents:quotedCents,quotedCents,unitPriceCents,notes,date,time:'',status:'Awaiting scheduling',approvalStatus:'Booked',seatRequest:false,autoConfirmed:true,guestNotified:false,createdAt:new Date().toISOString(),source:'Guest menu'});
+   const saved=await saveStayAccess(state,revision,user.userId);
+   if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
+   return Response.json({booking:{id,status:'Booked',requiresApproval:false,requiresScheduling:true,chargedCents:quotedCents}},{status:201});
+  }
+
   const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(prefix+date+':'+scheduleId).first<any>();
   if(!row)throw Error('This excursion is no longer scheduled.');
   const schedule=JSON.parse(row.payload);
