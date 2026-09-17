@@ -1,16 +1,31 @@
 'use client';
 import './excursion-scheduler.css';
 import ExcursionWeather from './excursion-weather';
-import {useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 
 type ExcursionTab='Schedule'|'Excursion menu'|'Crew members'|'Vessels';
+const standardSuggestions=['Fish Tank + Sandbank','Fish Tank only','Turtle Snorkeling + Coral Garden','Sandbank only','Sandbank + Turtle','Shark + Turtle','Shark only','Clown Fish Snorkeling only','Clown Fish Snorkeling + Manta','Dolphin only','Dolphin + Fishing'];
+function maldivesToday(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=(type:string)=>parts.find(p=>p.type===type)?.value||'';return `${get('year')}-${get('month')}-${get('day')}`;}
+const shiftDate=(date:string,days:number)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 
 export default function ExcursionScheduler({data}:{data?:any}){
  const [tab,setTab]=useState<ExcursionTab>('Schedule');
+ const [date,setDate]=useState(maldivesToday());
+ const [schedules,setSchedules]=useState<any[]>([]),[loading,setLoading]=useState(false),[message,setMessage]=useState(''),[editor,setEditor]=useState<any>(null),[saving,setSaving]=useState(false);
  const resources=data?.resources||{vessels:[],crew:[]};
  const menu=(data?.catalog||[]).filter((item:any)=>item.kind==='excursion');
  const tabs:ExcursionTab[]=['Schedule','Excursion menu','Crew members','Vessels'];
  const money=(cents:number)=>'$'+((Number(cents)||0)/100).toFixed(2);
+ const nameSuggestions=useMemo(()=>Array.from(new Set([...standardSuggestions,...menu.map((x:any)=>x.name)])),[menu]);
+ async function load(selected=date){setLoading(true);setMessage('');try{const r=await fetch('/api/excursion-schedules?date='+encodeURIComponent(selected),{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not load schedule');setSchedules(d.schedules||[]);}catch(e){setMessage((e as Error).message);}finally{setLoading(false);}}
+ useEffect(()=>{if(tab==='Schedule')load(date)},[date,tab]);
+ function createSchedule(){setMessage('');setEditor({id:'',revision:0,date,time:'07:00',name:'',vesselId:'',crewIds:[],capacity:6,status:'Open',notes:''});}
+ function editSchedule(item:any){setMessage('');setEditor({...item,crewIds:item.crewIds||[]});}
+ function toggleCrew(id:string){setEditor((x:any)=>({...x,crewIds:x.crewIds.includes(id)?x.crewIds.filter((v:string)=>v!==id):[...x.crewIds,id]}));}
+ async function saveSchedule(e:React.FormEvent){e.preventDefault();if(!editor)return;setSaving(true);setMessage('');try{const method=editor.id?'PUT':'POST';const r=await fetch('/api/excursion-schedules',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(editor)}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not save schedule');setEditor(null);setMessage(editor.id?'Schedule updated.':'Schedule created.');if(editor.date!==date)setDate(editor.date);else await load(date);}catch(e){setMessage((e as Error).message);}finally{setSaving(false);}}
+ async function removeSchedule(item:any){if(!confirm('Delete this scheduled excursion?'))return;setSaving(true);setMessage('');try{const r=await fetch('/api/excursion-schedules',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:item.id,date:item.date})}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not delete schedule');setMessage('Schedule deleted.');await load(date);}catch(e){setMessage((e as Error).message);}finally{setSaving(false);}}
+ const crewName=(id:string)=>resources.crew?.find((x:any)=>x.id===id)?.name||id;
+ const vesselName=(id:string)=>resources.vessels?.find((x:any)=>x.id===id)?.name||'Not assigned';
  return <section className="booking-review excursion-scheduler excursion-operations">
   <ExcursionWeather/>
 
@@ -26,9 +41,12 @@ export default function ExcursionScheduler({data}:{data?:any}){
    </nav>
 
    {tab==='Schedule'&&<section className="excursion-panel">
-    <div className="excursion-panel-head"><div><h3>Schedule</h3><p>Create excursion trips in advance and manage each day's operating plan.</p></div><button type="button" className="excursion-primary-btn">+ Create schedule</button></div>
-    <div className="excursion-schedule-tools"><button type="button">← Previous day</button><label>Date<input type="date"/></label><button type="button">Next day →</button></div>
-    <div className="excursion-empty-state"><strong>No scheduled trips for this date</strong><p>Create a trip by choosing an excursion, departure time, vessel and available crew members.</p></div>
+    <div className="excursion-panel-head"><div><h3>Schedule</h3><p>Create excursion trips in advance and manage each day's operating plan.</p></div><button type="button" className="excursion-primary-btn" onClick={createSchedule}>+ Create schedule</button></div>
+    <div className="excursion-schedule-tools"><button type="button" onClick={()=>setDate(shiftDate(date,-1))}>← Previous day</button><label>Date<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label><button type="button" onClick={()=>setDate(shiftDate(date,1))}>Next day →</button></div>
+    {message&&<p className="excursion-schedule-message" role="status">{message}</p>}
+    {loading?<div className="excursion-empty-state"><strong>Loading schedule…</strong></div>:schedules.length?<div className="excursion-day-list">{schedules.map((item:any)=><article key={item.id} className={item.status==='Closed'?'is-closed':''}>
+     <div className="excursion-day-time">{item.time}</div><div className="excursion-day-main"><div className="excursion-day-title"><strong>{item.name}</strong><span>{item.status}</span></div><div className="excursion-day-meta"><span>Vessel: {vesselName(item.vesselId)}</span><span>Capacity: {item.capacity} guests</span>{item.crewIds?.length?<span>Crew: {item.crewIds.map(crewName).join(', ')}</span>:<span>Crew: Not assigned</span>}</div>{item.notes&&<p>{item.notes}</p>}</div><div className="excursion-day-actions"><button type="button" className="excursion-secondary-btn" onClick={()=>editSchedule(item)}>Edit</button><button type="button" className="excursion-delete-btn" disabled={saving} onClick={()=>removeSchedule(item)}>Delete</button></div>
+    </article>)}</div>:<div className="excursion-empty-state"><strong>No scheduled trips for this date</strong><p>Use Create schedule to choose the excursion, departure time, vessel and available crew members.</p></div>}
    </section>}
 
    {tab==='Excursion menu'&&<section className="excursion-panel">
@@ -49,5 +67,21 @@ export default function ExcursionScheduler({data}:{data?:any}){
     {resources.vessels?.length?<div className="excursion-menu-grid">{resources.vessels.map((vessel:any)=><article className="excursion-menu-card" key={vessel.id}><div className="excursion-menu-card-top"><div><h4>{vessel.name}</h4><p>Excursion vessel</p></div><span className="excursion-price-pill">{vessel.condition||'Available'}</span></div><div className="excursion-menu-card-actions"><button type="button" className="excursion-secondary-btn">Manage</button></div></article>)}</div>:<div className="excursion-empty-state"><strong>No vessels added yet</strong><p>Add excursion boats here, including capacity and availability status.</p></div>}
    </section>}
   </div>
+
+  {editor&&<div className="excursion-schedule-overlay" role="presentation"><form className="excursion-schedule-dialog" onSubmit={saveSchedule}>
+   <header><div><small>EXCURSION SCHEDULE</small><h3>{editor.id?'Edit scheduled excursion':'Create scheduled excursion'}</h3><p>Guests will later choose from the schedule made available by admin.</p></div><button type="button" className="excursion-dialog-close" onClick={()=>setEditor(null)} aria-label="Close">×</button></header>
+   <div className="excursion-schedule-form-grid">
+    <label>Date<input required type="date" value={editor.date} disabled={!!editor.id} onChange={e=>setEditor({...editor,date:e.target.value})}/></label>
+    <label>Departure time<input required type="time" value={editor.time} onChange={e=>setEditor({...editor,time:e.target.value})}/></label>
+    <label className="full">Excursion / schedule name<input required list="excursion-schedule-names" maxLength={180} placeholder="Example: Fish Tank + Sandbank" value={editor.name} onChange={e=>setEditor({...editor,name:e.target.value})}/><datalist id="excursion-schedule-names">{nameSuggestions.map(name=><option key={name} value={name}/>)}</datalist></label>
+    <label>Vessel<select value={editor.vesselId} onChange={e=>setEditor({...editor,vesselId:e.target.value})}><option value="">Not assigned yet</option>{(resources.vessels||[]).map((v:any)=><option key={v.id} value={v.id}>{v.name}{v.condition&&v.condition!=='Available'?' — '+v.condition:''}</option>)}</select></label>
+    <label>Maximum guests<input required type="number" min={1} max={100} value={editor.capacity} onChange={e=>setEditor({...editor,capacity:Number(e.target.value)})}/></label>
+    <label>Status<select value={editor.status} onChange={e=>setEditor({...editor,status:e.target.value})}><option>Open</option><option>Closed</option></select></label>
+    <label className="full">Notes<textarea maxLength={1000} rows={3} placeholder="Same boat, meeting instructions, special conditions…" value={editor.notes} onChange={e=>setEditor({...editor,notes:e.target.value})}/></label>
+   </div>
+   <fieldset className="excursion-crew-picker"><legend>Crew members</legend>{resources.crew?.length?<div>{resources.crew.map((crew:any)=><label key={crew.id}><input type="checkbox" checked={editor.crewIds.includes(crew.id)} onChange={()=>toggleCrew(crew.id)}/><span>{crew.name}</span></label>)}</div>:<p>No crew members have been added yet. You can create the schedule now and assign crew later.</p>}</fieldset>
+   <p className="excursion-dialog-message" role="status">{message}</p>
+   <footer><button type="button" className="excursion-secondary-btn" onClick={()=>setEditor(null)}>Cancel</button><button type="submit" className="excursion-primary-btn" disabled={saving}>{saving?'Saving…':editor.id?'Save changes':'Create schedule'}</button></footer>
+  </form></div>}
  </section>;
 }
