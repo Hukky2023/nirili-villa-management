@@ -87,3 +87,24 @@
     white-space:normal;
   }
 }
+
+.guest-departure-list{display:grid;gap:10px;margin-top:14px}
+.guest-departure-list button{
+ display:grid;
+ grid-template-columns:90px minmax(0,1fr);
+ gap:12px;
+ align-items:center;
+ width:100%;
+ min-height:58px;
+ padding:12px 14px;
+ border:1px solid #c9dce5;
+ border-radius:12px;
+ background:#f8fcfe;
+ color:#174158;
+ text-align:left;
+ cursor:pointer;
+}
+.guest-departure-list button:hover{background:#eef8fc;border-color:#91c5d9}
+.guest-departure-list strong{font-size:20px;color:#087cad}
+.guest-departure-list span{color:#607c8b;font-size:13px}
+.guest-option-top>span.closed{white-space:normal;text-align:center}
