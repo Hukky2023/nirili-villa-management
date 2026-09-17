@@ -1,6 +1,7 @@
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
+import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -16,7 +17,8 @@ const clean=(x:any)=>{
  const crewIds=Array.isArray(x.crewIds)?[...new Set(x.crewIds.map((id:any)=>String(id).slice(0,100)).filter(Boolean))].slice(0,20):[];
  const status=x.status==='Closed'?'Closed':'Open';
  const notes=String(x.notes||'').trim().slice(0,1000);
- return {date:x.date,time:x.time,name,capacity,priceCents,vesselId,crewIds,status,notes};
+ const sharedGroup=String(x.sharedGroup||'').trim().slice(0,80);
+ return {date:x.date,time:x.time,name,capacity,priceCents,vesselId,crewIds,status,notes,sharedGroup};
 };
 function matches(o:any,s:any){
  if(o.kind!=='excursion'||o.status==='Cancelled'||o.approvalStatus==='Declined')return false;
@@ -26,6 +28,7 @@ function matches(o:any,s:any){
 }
 const isConfirmed=(o:any)=>o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.status!=='Cancelled';
 const isPending=(o:any)=>o.approvalStatus==='Pending'&&o.status!=='Cancelled';
+const sharedKey=(s:any)=>s.sharedGroup?s.date+'|'+s.time+'|group:'+s.sharedGroup:s.vesselId?s.date+'|'+s.time+'|vessel:'+s.vesselId:'';
 
 export async function GET(r:Request){
  const user=await currentUser();
@@ -33,6 +36,7 @@ export async function GET(r:Request){
  const date=new URL(r.url).searchParams.get('date')||'';
  if(!validDate(date))return Response.json({error:'Valid schedule date required.'},{status:400});
  try{
+  await ensureStandardDailyExcursions(date);
   const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(prefix+date+':%').all<any>();
   const raw=(rows.results||[]).map((row:any)=>({...JSON.parse(row.payload),revision:row.revision})).sort((a:any,b:any)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
   const {state}=await loadStays(),orders=Array.isArray(state.orders)?state.orders:[];
@@ -40,7 +44,7 @@ export async function GET(r:Request){
    const bookedPax=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const pendingOrders=orders.filter((o:any)=>matches(o,s)&&isPending(o));
    const pendingPax=pendingOrders.reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
-   return {...s,priceCents:Number(s.priceCents)||0,bookedPax,pendingPax,sharedBoatKey:s.vesselId?s.date+'|'+s.time+'|'+s.vesselId:'',pendingOrders};
+   return {...s,priceCents:Number(s.priceCents)||0,bookedPax,pendingPax,sharedBoatKey:sharedKey(s),pendingOrders};
   });
   const groups:Record<string,{scheduleIds:string[],bookedPax:number,pendingPax:number,capacity:number}>={};
   for(const s of schedules){
