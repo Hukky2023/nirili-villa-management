@@ -5,6 +5,7 @@ import AutoRefresh from './auto-refresh';
 import {tabBootstrap} from './tab-bootstrap';
 import type { Metadata } from "next";
 import "./globals.css";
+import "./excursion-cancel.css";
 
 export const metadata: Metadata = {
   title: "Nirili Villa Management",
