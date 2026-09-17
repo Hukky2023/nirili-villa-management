@@ -12,7 +12,7 @@ export function excursionCategoryFromGroup(group:any,name=''):ExcursionCategory{
  return 'single';
 }
 export function categoryGroup(category:ExcursionCategory){
- return category==='single'?'Single Excursion':category==='combined'?'Combined Excursion':'Special Packages';
+ return category==='single'?'Single Excursions':category==='combined'?'Combined Excursions':'Special Packages';
 }
 export function baseExcursionMenu(){
  return catalog.filter((x:any)=>x.kind==='excursion').map((x:any)=>({
