@@ -2,6 +2,7 @@ import {authDb,currentUser,sameOrigin} from '../../../lib/auth';
 import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {islandToday,validDate} from '../../../lib/guest-catalog';
+import {excursionResources} from '../../../lib/excursion-workflow';
 
 const prefix='excursion-schedule:';
 const norm=(v:any)=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
@@ -38,7 +39,7 @@ export async function GET(r:Request){
    const pendingPax=orders.filter((o:any)=>matches(o,s)&&pending(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const sharedBoatKey=s.vesselId?`${s.date}|${s.time}|${s.vesselId}`:'';
    if(sharedBoatKey){const g=groups[sharedBoatKey]||(groups[sharedBoatKey]={capacity:s.capacity,confirmedPax:0,pendingPax:0,scheduleIds:[]});g.capacity=Math.min(g.capacity,s.capacity);g.confirmedPax+=confirmedPax;g.pendingPax+=pendingPax;g.scheduleIds.push(s.id);}
-   return {id:s.id,date:s.date,time:s.time,name:s.name,status:s.status,capacity:s.capacity,notes:s.notes||'',sharedBoatKey,confirmedPax,pendingPax,ownRequest:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus||own.status,createdAt:own.createdAt}:null};
+   return {id:s.id,date:s.date,time:s.time,name:s.name,status:s.status,capacity:s.capacity,notes:s.notes||'',sharedBoatKey,confirmedPax,pendingPax,ownBooking:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus==='Approved'?'Confirmed':own.approvalStatus||own.status,createdAt:own.createdAt}:null};
   });
   const enriched=schedules.map((s:any)=>{const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null;const capacity=g?.capacity??s.capacity,confirmedPax=g?.confirmedPax??s.confirmedPax,pendingPax=g?.pendingPax??s.pendingPax;return {...s,capacity,confirmedPax,pendingPax,remainingSeats:Math.max(0,capacity-confirmedPax),isFull:confirmedPax>=capacity,sharedBoat:!!g&&g.scheduleIds.length>1};});
   return Response.json({date,stays:eligibleStays,schedules:enriched},{headers:{'Cache-Control':'no-store'}});
@@ -55,24 +56,31 @@ export async function POST(r:Request){
   if(!scheduleId||!validDate(date)||!stayId||!/^[-a-zA-Z0-9]{12,80}$/.test(token)||!Number.isInteger(quantity)||quantity<1||quantity>20)throw Error('Check the date, room and number of seats.');
   const {state,revision}=await loadStays();
   const old=(state.orders||[]).find((o:any)=>o.token===token&&o.accountId===user.userId);
-  if(old)return Response.json({request:{id:old.id,status:old.approvalStatus||old.status}});
+  if(old)return Response.json({booking:{id:old.id,status:old.approvalStatus==='Approved'?'Confirmed':old.approvalStatus||old.status,requiresApproval:old.approvalStatus==='Pending'}});
   const stay=(state.stays||[]).find((s:any)=>s.id===stayId&&s.accountId===user.userId&&s.status==='In House');
   if(!stay)throw Error('This room is not available for excursion booking.');
   if(date<islandToday()||date<stay.checkIn||date>=stay.checkOut)throw Error('Choose a scheduled excursion during your current stay.');
   const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(prefix+date+':'+scheduleId).first<any>();
   if(!row)throw Error('This excursion is no longer scheduled.');
   const schedule=JSON.parse(row.payload);
-  if(schedule.status!=='Open')throw Error('This excursion is closed for requests.');
+  if(schedule.status!=='Open')throw Error('This excursion is closed for bookings.');
   const allSchedules=await schedulesForDate(date);
   const groupSchedules=schedule.vesselId?allSchedules.filter((s:any)=>s.time===schedule.time&&s.vesselId===schedule.vesselId):[schedule];
   const groupIds=new Set(groupSchedules.map((s:any)=>s.id));
   const capacity=Math.min(...groupSchedules.map((s:any)=>Number(s.capacity)||1));
   const confirmedPax=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&(groupIds.has(o.scheduleId)||groupSchedules.some((s:any)=>matches(o,s)))).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
+  const requiresApproval=confirmedPax+quantity>capacity;
   const id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
+  const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
   state.orders??=[];
-  state.orders.push({id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',name:schedule.name,quantity,cents:0,notes,date,time:schedule.time,scheduleId:schedule.id,seatRequest:true,approvalStatus:'Pending',status:'Awaiting scheduling',requestedOverCapacity:confirmedPax+quantity>capacity,createdAt:new Date().toISOString(),source:'Guest schedule'});
+  state.orders.push({
+   id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',name:schedule.name,quantity,cents:0,notes,date,time:schedule.time,scheduleId:schedule.id,
+   seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,
+   schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
+   guestNotified:requiresApproval?undefined:false,createdAt:new Date().toISOString(),source:'Guest schedule'
+  });
   const saved=await saveStayAccess(state,revision,user.userId);
-  if(!saved)return Response.json({error:'Another update was saved. Please try again.'},{status:409});
-  return Response.json({request:{id,status:'Pending',overCapacity:confirmedPax+quantity>capacity}},{status:201});
- }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not send seat request.'},{status:400});}
+  if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
+  return Response.json({booking:{id,status:requiresApproval?'Pending':'Confirmed',requiresApproval,overCapacity:requiresApproval,remainingBefore:Math.max(0,capacity-confirmedPax)}},{status:201});
+ }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not book excursion seats.'},{status:400});}
 }
