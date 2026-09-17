@@ -23,9 +23,10 @@ export default function ExcursionCatalog({items,canBook=true}:{items:any[];onBoo
  function scheduleCategory(s:any){
   const base=norm(s.name).replace(/\s+only$/,'');
   const item=(items||[]).find((x:any)=>norm(x.name)===norm(s.name)||norm(x.name)===base);
+  const category=norm(item?.category);
   const group=norm(item?.group);
-  if(group.includes('special')||base.includes('special package')||base.includes('package'))return 'special';
-  if(group.includes('combined')||String(s.name||'').includes('+'))return 'combined';
+  if(category==='special'||group.includes('special')||base.includes('special package')||base.includes('package'))return 'special';
+  if(category==='combined'||group.includes('combined')||String(s.name||'').includes('+'))return 'combined';
   return 'single';
  }
  const visibleSchedules=category==='schedule'?schedules:schedules.filter((s:any)=>scheduleCategory(s)===category);
