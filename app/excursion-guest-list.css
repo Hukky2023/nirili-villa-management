@@ -1,0 +1,82 @@
+/* The dialog is portalled outside the schedule's horizontal scroller. */
+dialog.excursion-guest-dialog {
+  box-sizing: border-box;
+  width: min(1240px, calc(100vw - 32px));
+  max-width: none;
+  max-height: 90vh;
+  max-height: 90dvh;
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #d6e6ee;
+  border-radius: 18px;
+  background: #fff;
+  color: #17384c;
+  box-shadow: 0 24px 90px #062e4b55;
+  font: 14px/1.5 Arial, sans-serif;
+}
+dialog.excursion-guest-dialog[open] {display: flex; flex-direction: column;}
+dialog.excursion-guest-dialog::backdrop {background: #04283c80;}
+.excursion-guest-dialog * {box-sizing: border-box;}
+.excursion-guest-header {display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 22px 24px 16px; border-bottom: 1px solid #e3edf2;}
+.excursion-guest-header h2 {margin: 0 0 4px; font-size: 25px; font-weight: 700;}
+.excursion-guest-header h3 {margin: 0; font-size: 17px; font-weight: 600; overflow-wrap: anywhere;}
+.excursion-guest-meta {display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 12px; color: #4c6c7e;}
+.excursion-guest-close, .excursion-guest-button {font: inherit; cursor: pointer; color: #126687; border: 1px solid #b7dbe9; background: #f1f9fd; border-radius: 9px;}
+.excursion-guest-close {flex: 0 0 44px; width: 44px; height: 44px; font-size: 28px; line-height: 1; background: #fff;}
+.excursion-guest-button {min-height: 44px; padding: 8px 16px; font-weight: 600; white-space: nowrap;}
+.excursion-guest-button:hover, .excursion-guest-close:hover {background: #e3f2f9;}
+.excursion-guest-button:disabled {opacity: .65; cursor: wait;}
+.excursion-guest-dialog :focus-visible {outline: 3px solid #1285b2; outline-offset: 3px;}
+.excursion-guest-body {min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 16px 24px 22px;}
+.excursion-guest-toolbar {display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px;}
+.excursion-guest-toolbar p {margin: 0; color: #597384; font-size: 13px;}
+.excursion-guest-assignment {display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin: 0 0 18px; padding: 13px 16px; background: #f6fafc; border: 1px solid #e2edf3; border-radius: 10px;}
+.excursion-guest-assignment dt, .excursion-guest-notes dt {font-size: 12px; color: #587080; font-weight: 600;}
+.excursion-guest-assignment dd, .excursion-guest-notes dd {margin: 2px 0 0; overflow-wrap: anywhere; white-space: pre-wrap;}
+.excursion-guest-assignment .trip-notes {grid-column: 1 / -1;}
+.excursion-guest-table-wrap {overflow-x: auto; border: 1px solid #dce9f0; border-radius: 12px;}
+.excursion-guest-table {width: 100%; min-width: 1020px; border-collapse: collapse; text-align: left; font-size: 13px;}
+.excursion-guest-table th {padding: 12px 10px; background: #eaf5fa; color: #36596f; font-size: 12px; font-weight: 700;}
+.excursion-guest-table td {padding: 14px 10px; vertical-align: top; border-top: 1px solid #e4edf2; border-right: 1px solid #edf3f6; max-width: 250px; overflow-wrap: anywhere;}
+.excursion-guest-table td:last-child {border-right: 0; width: 220px; min-width: 170px;}
+.excursion-guest-table small {display: block; margin-top: 5px; font-size: 11px; color: #597384;}
+.excursion-guest-reference {max-width: 155px; overflow-wrap: anywhere;}
+.excursion-guest-badge {display: inline-block; padding: 4px 9px; border-radius: 9px; font-size: 12px; font-weight: 600; white-space: nowrap;}
+.excursion-guest-badge.inhouse {background: #e2f3fe; color: #146a98;}
+.excursion-guest-badge.walkin {background: #fff3d7; color: #7d5d13;}
+.excursion-guest-badge.paid {background: #e1f4e9; color: #1b6943;}
+.excursion-guest-badge.unpaid {background: #fff0e1; color: #955117;}
+.excursion-guest-badge.trip-status {background: #edf3f7; color: #3f6175;}
+.excursion-guest-notes p {margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere;}
+.excursion-guest-notes summary {cursor: pointer; color: #086e99; font-weight: 600; padding: 6px 0;}
+.excursion-guest-notes dl {display: grid; gap: 10px; margin: 8px 0 0;}
+.excursion-guest-error {border: 1px solid #edc4bb; border-radius: 10px; background: #fff4ef; color: #973d29; padding: 12px 16px; margin-bottom: 16px;}
+.excursion-guest-error p {margin: 4px 0 0;}
+.excursion-guest-empty {padding: 32px 16px; text-align: center; color: #4b687a;}
+.excursion-guest-empty p {margin: 6px 0 0;}
+.excursion-guest-footer {display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 24px; border-top: 1px solid #e3edf2; background: #fbfdff;}
+.excursion-guest-totals {flex: 1; min-width: 0;}
+.excursion-guest-totals > div {display: flex; flex-wrap: wrap; gap: 6px 20px;}
+.excursion-guest-totals > small {display: block; color: #597384; margin-top: 5px; font-size: 12px;}
+.excursion-guest-sr-only {position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;}
+@media (max-width: 640px) {
+  dialog.excursion-guest-dialog {width: calc(100vw - 16px); max-height: 94vh; max-height: 94dvh; border-radius: 14px;}
+  .excursion-guest-header {padding: 16px; gap: 10px;}
+  .excursion-guest-header h2 {font-size: 23px;}
+  .excursion-guest-header h3 {font-size: 16px;}
+  .excursion-guest-meta {gap: 8px 12px; font-size: 12px;}
+  .excursion-guest-body {padding: 14px 16px 18px;}
+  .excursion-guest-toolbar {align-items: flex-start; flex-direction: column; gap: 10px;}
+  .excursion-guest-assignment {grid-template-columns: 1fr; gap: 10px;}
+  .excursion-guest-table-wrap {border: 0; overflow: visible;}
+  .excursion-guest-table, .excursion-guest-table tbody {display: block; min-width: 0; width: 100%;}
+  .excursion-guest-table thead {position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0);}
+  .excursion-guest-table tr {display: block; border: 1px solid #dce9f0; border-radius: 12px; overflow: hidden; margin-bottom: 12px;}
+  .excursion-guest-table td, .excursion-guest-table td:last-child {display: grid; grid-template-columns: minmax(90px, 34%) minmax(0, 1fr); gap: 12px; width: 100%; max-width: none; min-width: 0; padding: 10px 12px; border-right: 0;}
+  .excursion-guest-table td:first-child {background: #eaf5fa; border-top: 0;}
+  .excursion-guest-table td::before {content: attr(data-label); color: #587080; font-size: 12px; font-weight: 600;}
+  .excursion-guest-table td > * {min-width: 0; justify-self: start;}
+  .excursion-guest-reference {max-width: none;}
+  .excursion-guest-footer {padding: 12px 16px; align-items: flex-start;}
+}
