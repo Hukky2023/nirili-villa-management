@@ -1,8 +1,10 @@
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 
 const prefix='excursion-schedule:';
+const stayKey='hotel-stays-v1';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
 const validTime=(v:any)=>typeof v==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+const norm=(v:any)=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
 const clean=(x:any)=>{
  if(!x||!validDate(x.date)||!validTime(x.time))throw Error('Choose a valid date and departure time.');
  const name=String(x.name||'').trim().slice(0,180);
@@ -15,6 +17,29 @@ const clean=(x:any)=>{
  return {date:x.date,time:x.time,name,capacity,vesselId,crewIds,status,notes};
 };
 
+async function bookedPaxBySchedule(schedules:any[]){
+ try{
+  const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(stayKey).first<any>();
+  if(!row)return new Map<string,number>();
+  const state=JSON.parse(row.payload),orders=Array.isArray(state.orders)?state.orders:[];
+  const result=new Map<string,number>();
+  for(const schedule of schedules){
+   const total=orders.filter((o:any)=>{
+    if(o.kind!=='excursion'||o.status==='Cancelled')return false;
+    if(o.scheduleId&&o.scheduleId===schedule.id)return true;
+    const os=o.schedule||{};
+    const sameDate=(os.date||o.date)===schedule.date;
+    const sameTime=os.time===schedule.time;
+    const sameVessel=!schedule.vesselId||os.vesselId===schedule.vesselId;
+    const sameName=norm(o.name)===norm(schedule.name);
+    return sameDate&&sameTime&&sameVessel&&sameName;
+   }).reduce((sum:number,o:any)=>sum+Math.max(0,Number(o.quantity)||0),0);
+   result.set(schedule.id,total);
+  }
+  return result;
+ }catch{return new Map<string,number>();}
+}
+
 export async function GET(r:Request){
  const user=await currentUser();
  if(!user||user.role==='guest')return Response.json({error:'Staff login required.'},{status:403});
@@ -22,8 +47,16 @@ export async function GET(r:Request){
  if(!validDate(date))return Response.json({error:'Valid schedule date required.'},{status:400});
  try{
   const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(prefix+date+':%').all<any>();
-  const schedules=(rows.results||[]).map((row:any)=>({...JSON.parse(row.payload),revision:row.revision})).sort((a:any,b:any)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
-  return Response.json({date,schedules,canEdit:hasPermission(user,'edit_excursions')},{headers:{'Cache-Control':'no-store'}});
+  const raw=(rows.results||[]).map((row:any)=>({...JSON.parse(row.payload),revision:row.revision})).sort((a:any,b:any)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
+  const pax=await bookedPaxBySchedule(raw);
+  const schedules=raw.map((s:any)=>({...s,bookedPax:pax.get(s.id)||0,sharedBoatKey:s.vesselId?s.date+'|'+s.time+'|'+s.vesselId:''}));
+  const groups:Record<string,{scheduleIds:string[],bookedPax:number,capacity:number}>={};
+  for(const s of schedules){
+   if(!s.sharedBoatKey)continue;
+   const g=groups[s.sharedBoatKey]||(groups[s.sharedBoatKey]={scheduleIds:[],bookedPax:0,capacity:s.capacity});
+   g.scheduleIds.push(s.id);g.bookedPax+=s.bookedPax;g.capacity=Math.min(g.capacity,s.capacity);
+  }
+  return Response.json({date,schedules,sharedBoatGroups:groups,canEdit:hasPermission(user,'edit_excursions')},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load excursion schedules.'},{status:503});}
 }
 
