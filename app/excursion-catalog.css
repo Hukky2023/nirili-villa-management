@@ -2,7 +2,7 @@
 
 .guest-excursion-category-tabs{
  display:grid;
- grid-template-columns:repeat(3,minmax(0,1fr));
+ grid-template-columns:repeat(4,minmax(0,1fr));
  gap:10px;
  margin:14px 0 16px;
 }
@@ -28,4 +28,49 @@
 @media(max-width:680px){
  .guest-excursion-category-tabs{grid-template-columns:1fr}
  .guest-excursion-category-tabs button{width:100%}
+}
+
+.guest-excursion-option-grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+ gap:14px;
+}
+.guest-excursion-option-grid>article{
+ display:grid;
+ gap:12px;
+ padding:18px;
+ border:1px solid #d7e6ed;
+ border-radius:16px;
+ background:#fff;
+ box-shadow:0 5px 16px rgba(20,65,88,.04);
+}
+.guest-excursion-option-grid>article.is-full{border-color:#e5cf9f;background:#fffdf8}
+.guest-excursion-option-grid>article.is-closed{opacity:.68}
+.guest-option-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.guest-option-top small{color:#6a8492;font-weight:700}
+.guest-option-top h3{margin:4px 0 0;color:#14354a;font-size:19px}
+.guest-option-top>span{padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
+.guest-option-top>span.open{background:#eaf7ef;color:#176742}
+.guest-option-top>span.full{background:#fff0ce;color:#855c08}
+.guest-option-top>span.closed{background:#f4eded;color:#923b3b}
+.guest-excursion-option-grid article>p{margin:0;color:#5a7482;line-height:1.5}
+.guest-option-meta{display:flex;flex-wrap:wrap;gap:7px}
+.guest-option-meta span{padding:6px 9px;border-radius:999px;background:#eef7fb;color:#315d72;font-size:12px;font-weight:700}
+.guest-option-book{
+ min-height:44px;
+ margin-top:auto;
+ padding:10px 16px;
+ border:1px solid #087584;
+ border-radius:10px;
+ background:#087584;
+ color:#fff;
+ font-weight:800;
+ cursor:pointer;
+}
+.guest-option-book:disabled{background:#edf2f4;color:#647b87;border-color:#dae4e8;cursor:not-allowed}
+@media(max-width:820px){
+ .guest-excursion-category-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+ .guest-excursion-category-tabs{grid-template-columns:1fr}
 }
