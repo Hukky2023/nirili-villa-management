@@ -33,10 +33,10 @@ export default function ExcursionCatalog({items,canBook=true}:{items:any[];onBoo
   <ExcursionWeather/>
 
   <nav className="guest-excursion-category-tabs" aria-label="Excursion types">
+   <button type="button" className={category==='schedule'?'active':''} aria-pressed={category==='schedule'} onClick={()=>setCategory('schedule')}>Schedule</button>
    <button type="button" className={category==='single'?'active':''} aria-pressed={category==='single'} onClick={()=>setCategory('single')}>Single Excursion</button>
    <button type="button" className={category==='combined'?'active':''} aria-pressed={category==='combined'} onClick={()=>setCategory('combined')}>Combined Excursion</button>
    <button type="button" className={category==='special'?'active':''} aria-pressed={category==='special'} onClick={()=>setCategory('special')}>Special Packages</button>
-   <button type="button" className={category==='schedule'?'active':''} aria-pressed={category==='schedule'} onClick={()=>setCategory('schedule')}>Schedule</button>
   </nav>
 
   {myBookings.length>0&&<section className="guest-booked-excursions"><div className="guest-booked-heading"><div><small>MY EXCURSIONS</small><h3>Booked excursions</h3></div><CheckCircle2 size={24}/></div><div className="guest-booked-grid">{myBookings.map((b:any)=><article key={b.id}><div className="guest-booked-date"><CalendarDays size={17}/><span>{formatDateDMY(b.date)}</span><strong>{b.time}</strong></div><h4>{b.name}</h4><div className="guest-booked-meta"><span>{b.quantity} seat{b.quantity===1?'':'s'}</span><span>Room {b.room}</span><span>{b.status}</span>{b.cents>0&&<span>{usd(b.cents)}</span>}{b.vessel&&<span>{b.separateVessel?'Extra vessel: ':'Vessel: '}{b.vessel}</span>}</div>{b.canCancel&&<button type="button" className="guest-cancel-excursion" disabled={cancelling===b.id} onClick={()=>cancelBooking(b)}>{cancelling===b.id?'Cancelling…':'Cancel excursion'}</button>}</article>)}</div></section>}
