@@ -30,7 +30,7 @@ function maxByDay(times:string[],values:any[]){
 
 export async function GET(){
  const user=await currentUser();
- if(!user||user.role==='guest')return Response.json({error:'Staff login required.'},{status:403});
+ if(!user)return Response.json({error:'Login required.'},{status:403});
  try{
   const [weatherResponse,marineResponse]=await Promise.all([
    fetch(WEATHER_URL,{headers:{Accept:'application/json'},next:{revalidate:900}}),
