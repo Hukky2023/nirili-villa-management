@@ -3,6 +3,7 @@ import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {catalog,islandToday,validDate} from '../../../lib/guest-catalog';
 import {excursionResources} from '../../../lib/excursion-workflow';
+import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
 
 const prefix='excursion-schedule:';
 const norm=(v:any)=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
@@ -15,6 +16,7 @@ function matches(o:any,s:any){
 }
 function confirmed(o:any){return o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.status!=='Cancelled';}
 function pending(o:any){return o.approvalStatus==='Pending'&&o.status!=='Cancelled';}
+const sharedKey=(s:any)=>s.sharedGroup?s.date+'|'+s.time+'|group:'+s.sharedGroup:s.vesselId?s.date+'|'+s.time+'|vessel:'+s.vesselId:'';
 
 const excursionCatalog=catalog.filter((x:any)=>x.kind==='excursion');
 const byId=(id:string)=>excursionCatalog.find((x:any)=>x.id===id)?.cents||0;
@@ -48,6 +50,7 @@ export async function GET(r:Request){
  const date=new URL(r.url).searchParams.get('date')||islandToday();
  if(!validDate(date))return Response.json({error:'Choose a valid date.'},{status:400});
  try{
+  await ensureStandardDailyExcursions(date);
   const {state}=await loadStays();
   const stays=(state.stays||[]).filter((s:any)=>s.accountId===user.userId&&s.status==='In House');
   const eligibleStays=stays.filter((s:any)=>s.checkIn<=date&&date<s.checkOut).map((s:any)=>({id:s.id,room:s.room,guest:s.guest,checkIn:s.checkIn,checkOut:s.checkOut}));
@@ -58,7 +61,7 @@ export async function GET(r:Request){
    const own=orders.filter((o:any)=>o.accountId===user.userId&&o.scheduleId===s.id&&o.kind==='excursion').sort((a:any,b:any)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')))[0];
    const confirmedPax=orders.filter((o:any)=>matches(o,s)&&confirmed(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const pendingPax=orders.filter((o:any)=>matches(o,s)&&pending(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
-   const sharedBoatKey=s.vesselId?`${s.date}|${s.time}|${s.vesselId}`:'';
+   const sharedBoatKey=sharedKey(s);
    if(sharedBoatKey){const g=groups[sharedBoatKey]||(groups[sharedBoatKey]={capacity:s.capacity,confirmedPax:0,pendingPax:0,scheduleIds:[]});g.capacity=Math.min(g.capacity,s.capacity);g.confirmedPax+=confirmedPax;g.pendingPax+=pendingPax;g.scheduleIds.push(s.id);}
    return {id:s.id,date:s.date,time:s.time,name:s.name,status:s.status,capacity:s.capacity,notes:s.notes||'',priceCents:priceForSchedule(s),sharedBoatKey,confirmedPax,pendingPax,ownBooking:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus==='Approved'?'Confirmed':own.approvalStatus||own.status,createdAt:own.createdAt}:null};
   });
@@ -87,7 +90,8 @@ export async function POST(r:Request){
   const schedule=JSON.parse(row.payload);
   if(schedule.status!=='Open')throw Error('This excursion is closed for bookings.');
   const allSchedules=await schedulesForDate(date);
-  const groupSchedules=schedule.vesselId?allSchedules.filter((s:any)=>s.time===schedule.time&&s.vesselId===schedule.vesselId):[schedule];
+  const key=sharedKey(schedule);
+  const groupSchedules=key?allSchedules.filter((s:any)=>sharedKey(s)===key):[schedule];
   const groupIds=new Set(groupSchedules.map((s:any)=>s.id));
   const capacity=Math.min(...groupSchedules.map((s:any)=>Number(s.capacity)||1));
   const confirmedPax=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&(groupIds.has(o.scheduleId)||groupSchedules.some((s:any)=>matches(o,s)))).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
