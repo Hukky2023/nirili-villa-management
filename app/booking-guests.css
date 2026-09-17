@@ -1,1 +1,13 @@
 .booking-adult{min-width:0;margin:8px 0 18px;padding:18px;border:1px solid #c8dce3;border-radius:16px;background:#f4fafb;display:grid;gap:16px}.booking-adult legend{font-weight:700;color:#16465e;padding:0 7px}.booking-adult label{display:flex;flex-direction:column;gap:8px}.booking-adult input{max-width:100%;min-width:0}.booking-adult button{padding:12px;min-height:44px;background:white;border:1px solid #c8dce3;border-radius:10px;color:#16465e}.booking-passport-preview{display:block;width:100%;max-width:360px;max-height:280px;object-fit:contain;background:#e5eef2;border-radius:10px}.booking-adult input[type=file]{font-size:14px;padding:12px 4px}.booking-adult:disabled{opacity:.7}
+
+.modal.direct-booking-dialog{width:min(1100px,100%);max-height:calc(100dvh - 28px);display:flex;flex-direction:column}
+.direct-booking-dialog>header,.direct-booking-dialog>footer{flex-shrink:0}
+.modal.direct-booking-dialog>.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain;padding:20px;align-items:start}
+.direct-booking-dialog .booking-adult-count{grid-column:1 / -1;max-width:300px;width:100%}
+.direct-booking-dialog .booking-adults-grid{grid-column:1 / -1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:16px;align-items:start}
+.direct-booking-dialog .booking-adult{margin:0;padding:14px;gap:12px}
+.direct-booking-dialog .form>label{min-width:0}
+.direct-booking-dialog .form>p,.direct-booking-dialog .form>[role=alert]{grid-column:1 / -1;margin:0}
+.direct-booking-dialog input,.direct-booking-dialog select{width:100%;min-width:0;min-height:44px}
+.direct-booking-dialog>footer{flex-wrap:wrap}.direct-booking-dialog>footer button{min-height:44px}
+@media(max-width:600px){.modal.direct-booking-dialog>.form{grid-template-columns:1fr;padding:14px;gap:14px}.direct-booking-dialog .booking-adults-grid{grid-template-columns:1fr}.direct-booking-dialog .booking-adult-count{max-width:none}.direct-booking-dialog>header,.direct-booking-dialog>footer{padding:12px 14px}.direct-booking-dialog>footer button{flex:1}}
