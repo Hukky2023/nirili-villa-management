@@ -1,0 +1,165 @@
+/* Compact timetable presentation for Admin > Excursions > Schedule. */
+.excursion-panel .excursion-day-list{
+  display:grid;
+  gap:0;
+  overflow:hidden;
+  border:1px solid #cddfe7;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 4px 14px rgba(20,65,88,.04);
+}
+.excursion-panel .excursion-day-list::before{
+  content:'Time   |   Excursion / trip details   |   Actions';
+  display:block;
+  padding:11px 16px;
+  border-bottom:1px solid #cddfe7;
+  background:#edf6fa;
+  color:#466778;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  white-space:pre;
+}
+.excursion-panel .excursion-day-list>article{
+  display:grid;
+  grid-template-columns:92px minmax(0,1fr) 150px;
+  gap:0;
+  align-items:stretch;
+  padding:0;
+  border:0;
+  border-bottom:1px solid #e1ebf0;
+  border-radius:0;
+  background:#fff;
+  box-shadow:none;
+}
+.excursion-panel .excursion-day-list>article:last-child{border-bottom:0}
+.excursion-panel .excursion-day-list>article:hover{background:#fbfdfe}
+.excursion-panel .excursion-day-list>article.is-closed{opacity:.68;background:#fafafa}
+.excursion-panel .excursion-day-list>article.is-full{background:#fffdf7}
+.excursion-panel .excursion-day-list>article.is-shared-boat{box-shadow:inset 4px 0 0 #2b9ec4}
+
+.excursion-panel .excursion-day-time{
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:18px 10px;
+  border-right:1px solid #e1ebf0;
+  color:#087cad;
+  font-size:20px;
+  font-weight:900;
+  line-height:1.2;
+  background:#f8fcfe;
+}
+.excursion-panel .excursion-day-main{
+  min-width:0;
+  padding:14px 16px;
+}
+.excursion-panel .excursion-day-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:8px;
+}
+.excursion-panel .excursion-day-title strong{
+  color:#14354a;
+  font-size:16px;
+  line-height:1.35;
+}
+.excursion-panel .excursion-day-title span{
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800;
+}
+.excursion-panel .excursion-day-meta{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(130px,1fr));
+  gap:6px 14px;
+  color:#607c8b;
+  font-size:12px;
+  line-height:1.45;
+}
+.excursion-panel .excursion-day-meta span{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.excursion-panel .excursion-day-meta .shared-capacity-note{
+  grid-column:1/-1;
+  color:#1b718f;
+  font-weight:700;
+}
+.excursion-panel .excursion-day-main>p{
+  margin:8px 0 0;
+  padding-top:8px;
+  border-top:1px dashed #dce8ed;
+  color:#587483;
+  font-size:12px;
+}
+
+.excursion-panel .excursion-day-actions{
+  display:grid;
+  align-content:center;
+  gap:7px;
+  padding:12px;
+  border-left:1px solid #e1ebf0;
+  background:#fbfdfe;
+}
+.excursion-panel .excursion-day-actions button{
+  width:100%;
+  min-height:38px;
+  padding:8px 10px;
+  border-radius:8px;
+  font-size:12px;
+}
+.excursion-panel .excursion-day-actions .excursion-secondary-btn{
+  border-color:#9fc8d8;
+  background:#eef8fc;
+  color:#0b678a;
+}
+.excursion-panel .excursion-day-actions .excursion-delete-btn{
+  min-height:38px;
+  padding:8px 10px;
+  border:1px solid #edc5c0;
+  border-radius:8px;
+  background:#fff7f6;
+  color:#a4342b;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.excursion-panel .excursion-day-actions .excursion-delete-btn:hover{background:#fff0ee}
+
+/* Keep request/extra-vessel rows readable inside the timetable cell. */
+.excursion-panel .excursion-day-main select{max-width:230px}
+
+@media(max-width:1050px){
+  .excursion-panel .excursion-day-meta{grid-template-columns:repeat(2,minmax(150px,1fr))}
+}
+@media(max-width:760px){
+  .excursion-panel .excursion-day-list::before{content:'Daily excursion timetable'}
+  .excursion-panel .excursion-day-list>article{
+    grid-template-columns:78px minmax(0,1fr);
+  }
+  .excursion-panel .excursion-day-time{padding:15px 8px;font-size:18px}
+  .excursion-panel .excursion-day-main{padding:13px}
+  .excursion-panel .excursion-day-meta{grid-template-columns:1fr}
+  .excursion-panel .excursion-day-actions{
+    grid-column:1/-1;
+    grid-template-columns:1fr 1fr;
+    border-left:0;
+    border-top:1px solid #e1ebf0;
+    padding:10px 12px;
+  }
+}
+@media(max-width:480px){
+  .excursion-panel .excursion-day-list>article{grid-template-columns:1fr}
+  .excursion-panel .excursion-day-time{
+    justify-content:flex-start;
+    padding:10px 13px;
+    border-right:0;
+    border-bottom:1px solid #e1ebf0;
+  }
+  .excursion-panel .excursion-day-actions{grid-template-columns:1fr}
+}
