@@ -1,0 +1,1 @@
+.guest-services p.guest-message:has(+ .guest-excursion-schedule){display:none!important}
