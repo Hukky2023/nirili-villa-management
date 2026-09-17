@@ -19,6 +19,14 @@ function tideExtremes(times:string[],levels:any[]){
  }
  return byDay;
 }
+function maxByDay(times:string[],values:any[]){
+ const byDay:Record<string,number>={};
+ for(let i=0;i<times.length;i++){
+  const value=Number(values[i]);if(!Number.isFinite(value))continue;
+  const date=times[i].slice(0,10);byDay[date]=Math.max(byDay[date]??-Infinity,value);
+ }
+ return Object.fromEntries(Object.entries(byDay).map(([date,value])=>[date,rounded(value,1)]));
+}
 
 export async function GET(){
  const user=await currentUser();
@@ -31,9 +39,11 @@ export async function GET(){
   if(!weatherResponse.ok)throw Error('weather provider unavailable');
   const w=await weatherResponse.json();
   const m=marineResponse.ok?await marineResponse.json():null;
-  const tideByDay=m?tideExtremes(m.hourly?.time||[],m.hourly?.sea_level_height_msl||[]):{};
+  const marineTimes=m?.hourly?.time||[];
+  const tideByDay=m?tideExtremes(marineTimes,m.hourly?.sea_level_height_msl||[]):{};
+  const waveByDay=m?maxByDay(marineTimes,m.hourly?.wave_height||[]):{};
   const days=(w.daily?.time||[]).map((date:string,i:number)=>({
-   date,condition:condition(w.daily.weather_code?.[i]),weatherCode:w.daily.weather_code?.[i],maxC:w.daily.temperature_2m_max?.[i],minC:w.daily.temperature_2m_min?.[i],rainChance:w.daily.precipitation_probability_max?.[i],windKmh:w.daily.wind_speed_10m_max?.[i],gustKmh:w.daily.wind_gusts_10m_max?.[i],sunrise:w.daily.sunrise?.[i],sunset:w.daily.sunset?.[i],tides:(tideByDay as any)[date]||[]
+   date,condition:condition(w.daily.weather_code?.[i]),weatherCode:w.daily.weather_code?.[i],maxC:w.daily.temperature_2m_max?.[i],minC:w.daily.temperature_2m_min?.[i],rainChance:w.daily.precipitation_probability_max?.[i],windKmh:w.daily.wind_speed_10m_max?.[i],gustKmh:w.daily.wind_gusts_10m_max?.[i],sunrise:w.daily.sunrise?.[i],sunset:w.daily.sunset?.[i],waveMaxM:(waveByDay as any)[date]??null,tides:(tideByDay as any)[date]||[]
   }));
   return Response.json({
    location:'Dhiffushi, Maldives',timezone:w.timezone||'Indian/Maldives',
