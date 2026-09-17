@@ -27,11 +27,11 @@ export default function ExcursionWeather(){
  const wave=today?weather?.marine?.waveHeightM:selected?.waveMaxM;
  return <section className="excursion-weather-card" aria-label="Dhiffushi weather and tide forecast">
   <div className="excursion-weather-heading"><div><small>WEATHER &amp; TIDES · DHIFFUSHI</small><h3>Sea conditions for excursion operations</h3><p>Updated automatically every 15 minutes.</p></div><button type="button" onClick={load} disabled={loading}>{loading?'Updating…':'Refresh'}</button></div>
-  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',margin:'0 0 14px'}}>
-   <strong style={{color:'#14354a'}}>{selected?(today?'Today · ': 'Next day · ')+dayName(selected.date):''}</strong>
-   <div style={{display:'flex',gap:8}}>
-    <button type="button" onClick={()=>setDayIndex(0)} aria-pressed={dayIndex===0} style={{minHeight:40,padding:'8px 14px',border:'1px solid #bdd6e2',borderRadius:9,background:dayIndex===0?'#087cad':'#fff',color:dayIndex===0?'#fff':'#174158',fontWeight:800,cursor:'pointer'}}>Today</button>
-    <button type="button" onClick={()=>setDayIndex(1)} aria-pressed={dayIndex===1} disabled={!weather?.days?.[1]} style={{minHeight:40,padding:'8px 14px',border:'1px solid #bdd6e2',borderRadius:9,background:dayIndex===1?'#087cad':'#fff',color:dayIndex===1?'#fff':'#174158',fontWeight:800,cursor:'pointer'}}>Next day →</button>
+  <div className="excursion-weather-toolbar">
+   <strong>{selected?(today?'Today · ': 'Next day · ')+dayName(selected.date):''}</strong>
+   <div className="excursion-weather-day-buttons">
+    <button type="button" className={dayIndex===0?'active':''} onClick={()=>setDayIndex(0)} aria-pressed={dayIndex===0}>Today</button>
+    <button type="button" className={dayIndex===1?'active':''} onClick={()=>setDayIndex(1)} aria-pressed={dayIndex===1} disabled={!weather?.days?.[1]}>Next day →</button>
    </div>
   </div>
   {error&&<p className="excursion-weather-error">{error}</p>}
@@ -42,7 +42,7 @@ export default function ExcursionWeather(){
     <div><b>{headlineTemp}</b><strong>{headlineCondition}</strong><small>{headlineNote}</small></div>
     <dl><div><dt>Rain chance</dt><dd>{round(selected.rainChance)}%</dd></div><div><dt>Wind</dt><dd>{round(wind)} km/h</dd></div><div><dt>Gusts</dt><dd>{round(gust)} km/h</dd></div><div><dt>Wave height</dt><dd>{round(wave,1)} m</dd></div></dl>
    </div>
-   <div className="excursion-tide-now" style={{gridTemplateColumns:'repeat(2,minmax(0,1fr))'}}>
+   <div className="excursion-tide-now compact">
     <article><small>Ocean current now</small><b>{round(weather.marine?.currentKmh,1)} km/h</b></article>
     <article><small>{today?'Today’s tides':'Next day tides'}</small><b>{selected.tides?.length?selected.tides.map((t:any)=>`${t.type} ${t.time} (${round(t.heightM,2)} m)`).join(' · '):'No tide extrema available'}</b></article>
    </div>
