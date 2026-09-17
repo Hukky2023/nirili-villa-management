@@ -7,26 +7,41 @@ export const stayKey='hotel-stays-v1';
 export const money=(n:number)=>'$'+(n/100).toFixed(2);
 const excursionResetMarker='excursion-bookings-cleared-2026-09-17';
 const excursionResetCutoff='2026-09-17T18:53:00.000Z';
+const guestExcursionRequestResetMarker='guest-excursion-seat-requests-cleared-2026-09-18';
+const guestExcursionRequestResetCutoff='2026-09-17T19:59:00.000Z';
 export function seedStays(){return {rooms:roomNumbers.map((number,i)=>({number,...roomDetails,status:i===5?'Cleaning':i===9?'Maintenance':i<4?'Occupied':'Available',note:''})),stays:['Qiao Mingzhi','Liu Yutong','Marco Rossi','Victoria Chen'].map((guest,i)=>({id:'NV-'+(1260+i),guest,room:String(101+i),billRoom:String(101+i),checkIn:'2026-09-'+(12+i),checkOut:'2026-09-'+(15+i),meal:i===2?'Full Board':i===3?'Half Board':'Bed & Breakfast',source:'Direct',pax:2,status:'In House',base:[18000,24000,40000,32000][i],initialPaid:[18000,10000,40000,0][i],extensions:[] as any[],payments:[] as any[],history:[] as any[]}))};}
+function removeOrderRefs(state:any,removedIds:Set<string>){
+ for(const stay of state.stays||[]){
+  if(stay.paidBills&&typeof stay.paidBills==='object')for(const key of Object.keys(stay.paidBills))if(key.startsWith('Excursions:')&&removedIds.has(key.slice('Excursions:'.length)))delete stay.paidBills[key];
+ }
+}
 function clearExistingExcursions(state:any){
  state.dataResets??=[];
  if(state.dataResets.includes(excursionResetMarker))return false;
  const removedIds=new Set<string>((state.orders||[]).filter((o:any)=>o.kind==='excursion'&&(!o.createdAt||o.createdAt<=excursionResetCutoff)).map((o:any)=>o.id));
  state.orders=(state.orders||[]).filter((o:any)=>!removedIds.has(o.id));
- for(const stay of state.stays||[]){
-  if(stay.paidBills&&typeof stay.paidBills==='object')for(const key of Object.keys(stay.paidBills))if(key.startsWith('Excursions:')&&removedIds.has(key.slice('Excursions:'.length)))delete stay.paidBills[key];
- }
+ removeOrderRefs(state,removedIds);
  state.dataResets.push(excursionResetMarker);
+ return true;
+}
+function clearPreviousGuestExcursionRequests(state:any){
+ state.dataResets??=[];
+ if(state.dataResets.includes(guestExcursionRequestResetMarker))return false;
+ const removedIds=new Set<string>((state.orders||[]).filter((o:any)=>o.kind==='excursion'&&o.source==='Guest schedule'&&o.seatRequest===true&&(!o.createdAt||o.createdAt<=guestExcursionRequestResetCutoff)).map((o:any)=>o.id));
+ state.orders=(state.orders||[]).filter((o:any)=>!removedIds.has(o.id));
+ removeOrderRefs(state,removedIds);
+ state.dataResets.push(guestExcursionRequestResetMarker);
  return true;
 }
 export async function loadStays(){
  const row=await authDb().prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(stayKey).first<any>();
  const state=row?JSON.parse(row.payload):seedStays();state.requests??=[];state.orders??=[];
  let revision=row?.revision||0;
- if(clearExistingExcursions(state)){
-  const payload=JSON.stringify(state),saved=revision===0
-   ?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,payload,'system:'+excursionResetMarker).run()
-   :await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(payload,'system:'+excursionResetMarker,stayKey,revision).run();
+ const clearedOldExcursions=clearExistingExcursions(state),clearedSeatRequests=clearPreviousGuestExcursionRequests(state);
+ if(clearedOldExcursions||clearedSeatRequests){
+  const payload=JSON.stringify(state),marker=clearedSeatRequests?guestExcursionRequestResetMarker:excursionResetMarker,saved=revision===0
+   ?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,payload,'system:'+marker).run()
+   :await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(payload,'system:'+marker,stayKey,revision).run();
   if(saved.meta.changes)revision+=1;
  }
  updateRoomInventory(state);return {state,revision};
