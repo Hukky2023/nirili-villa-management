@@ -1,6 +1,7 @@
 import SessionButton from './session-button';
 import LanguageSelector from './ui-language';
 import GuestChat from './guest-chat';
+import AutoRefresh from './auto-refresh';
 import {tabBootstrap} from './tab-bootstrap';
 import type { Metadata } from "next";
 import "./globals.css";
@@ -21,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased"><script dangerouslySetInnerHTML={{__html:tabBootstrap}}/>{children}<GuestChat/><LanguageSelector/><SessionButton/></body>
+      <body className="antialiased"><script dangerouslySetInnerHTML={{__html:tabBootstrap}}/><AutoRefresh/>{children}<GuestChat/><LanguageSelector/><SessionButton/></body>
     </html>
   );
 }
