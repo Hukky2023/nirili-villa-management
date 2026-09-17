@@ -10,19 +10,21 @@ const catalogPrice=(...names:string[])=>{
  const item=catalog.find((x:any)=>x.kind==='excursion'&&names.some(name=>norm(x.name)===norm(name)));
  return item?.cents||0;
 };
+const catalogIdPrice=(id:string)=>catalog.find((x:any)=>x.kind==='excursion'&&x.id===id)?.cents||0;
+const sumPrices=(...ids:string[])=>ids.reduce((sum,id)=>sum+catalogIdPrice(id),0);
 
 export const standardDailyExcursions=[
- {time:'07:00',name:'Fish Tank + Sandbank',sharedGroup:'07-fishtank',priceCents:0},
+ {time:'07:00',name:'Fish Tank + Sandbank',sharedGroup:'07-fishtank',priceCents:sumPrices('fishtank','sandbank')},
  {time:'07:00',name:'Fish Tank only',sharedGroup:'07-fishtank',priceCents:catalogPrice('Fish Tank Snorkeling')},
- {time:'08:00',name:'Turtle Snorkeling + Coral Garden',sharedGroup:'',priceCents:0},
+ {time:'08:00',name:'Turtle Snorkeling + Coral Garden',sharedGroup:'',priceCents:sumPrices('turtle','coral')},
  {time:'10:30',name:'Sandbank only',sharedGroup:'1030-sandbank',priceCents:catalogPrice('Sandbank Trip')},
- {time:'10:30',name:'Sandbank + Turtle',sharedGroup:'1030-sandbank',priceCents:0},
+ {time:'10:30',name:'Sandbank + Turtle',sharedGroup:'1030-sandbank',priceCents:sumPrices('sandbank','turtle')},
  {time:'11:00',name:'Shark + Turtle',sharedGroup:'1100-shark',priceCents:catalogPrice('Shark + Turtle Snorkeling')},
  {time:'11:00',name:'Shark only',sharedGroup:'1100-shark',priceCents:catalogPrice('Shark Snorkeling (Nurse Shark)')},
  {time:'13:00',name:'Clown Fish Snorkeling only',sharedGroup:'1300-clownfish',priceCents:0},
  {time:'13:00',name:'Clown Fish Snorkeling + Manta',sharedGroup:'1300-clownfish',priceCents:0},
  {time:'16:30',name:'Dolphin only',sharedGroup:'',priceCents:catalogPrice('Dolphin Watching')},
- {time:'16:30',name:'Dolphin + Fishing',sharedGroup:'',priceCents:0}
+ {time:'16:30',name:'Dolphin + Fishing',sharedGroup:'',priceCents:sumPrices('dolphin','fishing')}
 ] as const;
 
 export async function ensureStandardDailyExcursions(date:string){
