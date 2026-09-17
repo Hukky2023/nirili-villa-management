@@ -3,6 +3,8 @@ import {useEffect,useState} from 'react';
 import {Clock,Users,ShipWheel,X,CalendarDays,CheckCircle2} from 'lucide-react';
 import {formatDateDMY} from '../lib/date-format';
 import './excursion-catalog.css';
+import './excursion-scheduler.css';
+import ExcursionWeather from './excursion-weather';
 
 function maldivesToday(){const p=new Intl.DateTimeFormat('en-US',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const g=(t:string)=>p.find(x=>x.type===t)?.value||'';return `${g('year')}-${g('month')}-${g('day')}`;}
 const shift=(date:string,days:number)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
@@ -18,7 +20,7 @@ export default function ExcursionCatalog({canBook=true}:{items:any[];onBook?:(it
  async function cancelBooking(item:any){if(cancelling)return;if(!confirm('Cancel '+item.name+' for '+formatDateDMY(item.date)+' at '+item.time+'?'))return;setCancelling(item.id);setMessage('');try{const r=await fetch('/api/guest-excursion-schedules',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({bookingId:item.id})}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not cancel excursion');setMessage('Excursion cancelled. Any charge from this booking was removed from your room bill.');await load(date);window.dispatchEvent(new Event('services-updated'));}catch(e){setMessage((e as Error).message);}finally{setCancelling('');}}
  const schedules=data?.schedules||[],stays=data?.stays||[],myBookings=data?.myBookings||[];
  return <section className="guest-excursion-schedule" aria-label="Scheduled excursions">
-  <header className="guest-excursion-hero"><small>NIRILI TOURS · DHIFFUSHI</small><h2>Scheduled excursions</h2><p>Choose a scheduled departure and book seats instantly while capacity is available. Once the boat is full, you can still request extra seats and Admin will decide whether they can be accepted.</p></header>
+  <ExcursionWeather/>
 
   {myBookings.length>0&&<section className="guest-booked-excursions"><div className="guest-booked-heading"><div><small>MY EXCURSIONS</small><h3>Booked excursions</h3></div><CheckCircle2 size={24}/></div><div className="guest-booked-grid">{myBookings.map((b:any)=><article key={b.id}><div className="guest-booked-date"><CalendarDays size={17}/><span>{formatDateDMY(b.date)}</span><strong>{b.time}</strong></div><h4>{b.name}</h4><div className="guest-booked-meta"><span>{b.quantity} seat{b.quantity===1?'':'s'}</span><span>Room {b.room}</span><span>{b.status}</span>{b.cents>0&&<span>{usd(b.cents)}</span>}{b.vessel&&<span>{b.separateVessel?'Extra vessel: ':'Vessel: '}{b.vessel}</span>}</div>{b.canCancel&&<button type="button" className="guest-cancel-excursion" disabled={cancelling===b.id} onClick={()=>cancelBooking(b)}>{cancelling===b.id?'Cancelling…':'Cancel excursion'}</button>}</article>)}</div></section>}
 
