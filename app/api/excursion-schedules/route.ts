@@ -1,7 +1,8 @@
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
+import {loadStays} from '../../../lib/stays';
+import {saveStayAccess} from '../../../lib/stay-login';
 
 const prefix='excursion-schedule:';
-const stayKey='hotel-stays-v1';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
 const validTime=(v:any)=>typeof v==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 const norm=(v:any)=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
@@ -16,29 +17,14 @@ const clean=(x:any)=>{
  const notes=String(x.notes||'').trim().slice(0,1000);
  return {date:x.date,time:x.time,name,capacity,vesselId,crewIds,status,notes};
 };
-
-async function bookedPaxBySchedule(schedules:any[]){
- try{
-  const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(stayKey).first<any>();
-  if(!row)return new Map<string,number>();
-  const state=JSON.parse(row.payload),orders=Array.isArray(state.orders)?state.orders:[];
-  const result=new Map<string,number>();
-  for(const schedule of schedules){
-   const total=orders.filter((o:any)=>{
-    if(o.kind!=='excursion'||o.status==='Cancelled')return false;
-    if(o.scheduleId&&o.scheduleId===schedule.id)return true;
-    const os=o.schedule||{};
-    const sameDate=(os.date||o.date)===schedule.date;
-    const sameTime=os.time===schedule.time;
-    const sameVessel=!schedule.vesselId||os.vesselId===schedule.vesselId;
-    const sameName=norm(o.name)===norm(schedule.name);
-    return sameDate&&sameTime&&sameVessel&&sameName;
-   }).reduce((sum:number,o:any)=>sum+Math.max(0,Number(o.quantity)||0),0);
-   result.set(schedule.id,total);
-  }
-  return result;
- }catch{return new Map<string,number>();}
+function matches(o:any,s:any){
+ if(o.kind!=='excursion'||o.status==='Cancelled'||o.approvalStatus==='Declined')return false;
+ if(o.scheduleId)return o.scheduleId===s.id;
+ const os=o.schedule||{};
+ return (os.date||o.date)===s.date&&os.time===s.time&&(!s.vesselId||os.vesselId===s.vesselId)&&norm(o.name)===norm(s.name);
 }
+const isConfirmed=(o:any)=>o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.status!=='Cancelled';
+const isPending=(o:any)=>o.approvalStatus==='Pending'&&o.status!=='Cancelled';
 
 export async function GET(r:Request){
  const user=await currentUser();
@@ -48,15 +34,26 @@ export async function GET(r:Request){
  try{
   const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(prefix+date+':%').all<any>();
   const raw=(rows.results||[]).map((row:any)=>({...JSON.parse(row.payload),revision:row.revision})).sort((a:any,b:any)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
-  const pax=await bookedPaxBySchedule(raw);
-  const schedules=raw.map((s:any)=>({...s,bookedPax:pax.get(s.id)||0,sharedBoatKey:s.vesselId?s.date+'|'+s.time+'|'+s.vesselId:''}));
-  const groups:Record<string,{scheduleIds:string[],bookedPax:number,capacity:number}>={};
+  const {state}=await loadStays(),orders=Array.isArray(state.orders)?state.orders:[];
+  const schedules=raw.map((s:any)=>{
+   const bookedPax=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
+   const pendingOrders=orders.filter((o:any)=>matches(o,s)&&isPending(o));
+   const pendingPax=pendingOrders.reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
+   return {...s,bookedPax,pendingPax,sharedBoatKey:s.vesselId?s.date+'|'+s.time+'|'+s.vesselId:'',pendingOrders};
+  });
+  const groups:Record<string,{scheduleIds:string[],bookedPax:number,pendingPax:number,capacity:number}>={};
   for(const s of schedules){
    if(!s.sharedBoatKey)continue;
-   const g=groups[s.sharedBoatKey]||(groups[s.sharedBoatKey]={scheduleIds:[],bookedPax:0,capacity:s.capacity});
-   g.scheduleIds.push(s.id);g.bookedPax+=s.bookedPax;g.capacity=Math.min(g.capacity,s.capacity);
+   const g=groups[s.sharedBoatKey]||(groups[s.sharedBoatKey]={scheduleIds:[],bookedPax:0,pendingPax:0,capacity:s.capacity});
+   g.scheduleIds.push(s.id);g.bookedPax+=s.bookedPax;g.pendingPax+=s.pendingPax;g.capacity=Math.min(g.capacity,s.capacity);
   }
-  return Response.json({date,schedules,sharedBoatGroups:groups,canEdit:hasPermission(user,'edit_excursions')},{headers:{'Cache-Control':'no-store'}});
+  const enriched=schedules.map((s:any)=>{
+   const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null,baseConfirmed=g?.bookedPax??s.bookedPax,capacity=g?.capacity??s.capacity;
+   const requests=s.pendingOrders.map((o:any)=>({id:o.id,guest:o.guest,room:o.room,quantity:o.quantity,notes:o.notes||'',createdAt:o.createdAt,overCapacity:baseConfirmed+Math.max(0,Number(o.quantity)||0)>capacity}));
+   const {pendingOrders,...rest}=s;
+   return {...rest,requests};
+  });
+  return Response.json({date,schedules:enriched,sharedBoatGroups:groups,canEdit:hasPermission(user,'edit_excursions')},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load excursion schedules.'},{status:503});}
 }
 
@@ -70,7 +67,8 @@ export async function POST(r:Request){
   const result=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(prefix+body.date+':'+id,JSON.stringify(record),user.userId).run();
   if(!result.meta.changes)throw Error('Could not create schedule.');
   return Response.json({schedule:{...record,revision:1}},{status:201});
- }catch(e){return Response.json({error:(e as Error).message||'Could not create schedule.'},{status:400});}
+ }catch(e){return Response.json({error:(e as Error).message||'Could not create schedule.'},{status:400});
+ }
 }
 
 export async function PUT(r:Request){
@@ -89,7 +87,33 @@ export async function PUT(r:Request){
   const result=await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision).run();
   if(!result.meta.changes)return Response.json({error:'Schedule changed elsewhere. Reload and try again.'},{status:409});
   return Response.json({schedule:{...record,revision:revision+1}});
- }catch(e){return Response.json({error:(e as Error).message||'Could not update schedule.'},{status:400});}
+ }catch(e){return Response.json({error:(e as Error).message||'Could not update schedule.'},{status:400});
+ }
+}
+
+export async function PATCH(r:Request){
+ const user=await currentUser();
+ if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
+ try{
+  const b=await r.json(),requestId=String(b.requestId||''),decision=String(b.decision||'');
+  if(!requestId||!['Approved','Declined'].includes(decision))throw Error('Choose Approve or Decline.');
+  const {state,revision}=await loadStays();
+  const order=(state.orders||[]).find((o:any)=>o.id===requestId&&o.kind==='excursion'&&o.seatRequest===true);
+  if(!order||order.approvalStatus!=='Pending')throw Error('This seat request has already been handled.');
+  const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(prefix+order.date+':'+order.scheduleId).first<any>();
+  if(!row)throw Error('The scheduled excursion no longer exists.');
+  const schedule=JSON.parse(row.payload);
+  order.approvalStatus=decision;order.reviewedAt=new Date().toISOString();order.reviewedBy=user.username;
+  if(decision==='Approved'){
+   const vessel=(state.excursionResources?.vessels||[]).find((v:any)=>v.id===schedule.vesselId);
+   const crew=(state.excursionResources?.crew||[]).filter((c:any)=>schedule.crewIds?.includes(c.id));
+   order.status='Scheduled';order.schedule={date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)};order.guestNotified=false;
+  }else{order.status='Cancelled';}
+  const saved=await saveStayAccess(state,revision,user.userId);
+  if(!saved)return Response.json({error:'Another update was saved. Reload and try again.'},{status:409});
+  return Response.json({ok:true,decision});
+ }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not review seat request.'},{status:400});
+ }
 }
 
 export async function DELETE(r:Request){
@@ -100,5 +124,6 @@ export async function DELETE(r:Request){
   if(!id||!validDate(date))throw Error('Invalid schedule record.');
   await authDb().prepare('DELETE FROM operation_records WHERE key=?').bind(prefix+date+':'+id).run();
   return Response.json({ok:true});
- }catch(e){return Response.json({error:(e as Error).message||'Could not delete schedule.'},{status:400});}
+ }catch(e){return Response.json({error:(e as Error).message||'Could not delete schedule.'},{status:400});
+ }
 }
