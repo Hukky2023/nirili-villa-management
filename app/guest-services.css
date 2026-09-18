@@ -6,3 +6,22 @@
 .guest-services>header{position:relative;display:block;padding-top:52px}.guest-sign-in{position:absolute;top:0;right:0;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border:1px solid #cddfe7;border-radius:10px;background:#fff;color:#086d9b;font-size:14px;font-weight:600;text-decoration:none}.guest-sign-in:hover{background:#e0f2fa}.guest-sign-in:focus-visible{outline:3px solid #087da0;outline-offset:3px}
 
 .guest-header-actions{position:absolute;top:0;right:0;display:flex;align-items:center;gap:8px}.guest-header-actions .guest-sign-in{position:static}.guest-header-actions .nv-language-inline{position:static;z-index:auto}.guest-header-actions .nv-language label{position:relative;justify-content:center;width:44px;height:44px;min-height:44px;padding:0;border-radius:10px;box-sizing:border-box;box-shadow:none}.guest-header-actions .nv-language label>span{font-size:21px;line-height:1;pointer-events:none}.guest-header-actions .nv-language select{position:absolute;inset:0;width:100%;height:100%;min-height:0;max-width:none;opacity:0;cursor:pointer}.guest-header-actions .nv-language label:focus-within{outline:3px solid #087da0;outline-offset:3px}
+
+
+.walkin-excursion-portal>nav{grid-template-columns:repeat(2,minmax(0,1fr))}
+.walkin-bill{padding:20px;border:1px solid #d5e4ea;border-radius:14px;background:#fff}
+.walkin-bill-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+.walkin-bill-head small{color:#087da0;font-weight:800;letter-spacing:.08em}
+.walkin-bill-head h2{margin:4px 0 0;color:#14394d}
+.walkin-bill-head>strong{display:grid;text-align:right;color:#087584;font-size:24px}
+.walkin-bill-head>strong small{font-size:11px;color:#6a8492;letter-spacing:0}
+.walkin-bill-list{display:grid;gap:10px}
+.walkin-bill-list article{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px;border:1px solid #dce8ed;border-radius:12px;background:#fbfdfe}
+.walkin-bill-list article>div{display:grid;gap:4px}
+.walkin-bill-list article>div:last-child{text-align:right}
+.walkin-bill-list small{color:#6a8492}
+.walkin-bill-totals{margin-top:18px;padding-top:12px;border-top:1px solid #dce8ed}
+.walkin-bill-totals p{display:flex;justify-content:space-between;gap:14px;margin:8px 0}
+.walkin-bill-totals p:last-child{font-size:18px;color:#14394d}
+.walkin-login-note{margin-top:16px;padding:12px 14px;border-radius:10px;background:#fff8e9;color:#77520b}
+@media(max-width:600px){.walkin-bill-head,.walkin-bill-list article{display:grid}.walkin-bill-head>strong,.walkin-bill-list article>div:last-child{text-align:left}}
