@@ -24,7 +24,7 @@ export function guideDepartureKey(schedule: any): string {
 }
 
 function matchesOrder(order: any, schedule: any): boolean {
-  if (order.scheduleId) return !!schedule.id && order.scheduleId === schedule.id;
+  if (order.scheduleId) return !!schedule.id && order.scheduleId === schedule.id && (order.date || order.schedule?.date) === schedule.date;
   const stored = order.schedule || {};
   return (stored.date || order.date) === schedule.date && (stored.time || order.time) === schedule.time
     && (!schedule.vesselId || stored.vesselId === schedule.vesselId)
