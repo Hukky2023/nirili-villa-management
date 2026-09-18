@@ -298,6 +298,20 @@ export async function PATCH(r:Request){
   if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(newDate<islandToday()||(expiryDate&&newDate>=expiryDate))throw Error('Choose a valid excursion date while your temporary login is active.');}
   if(newDate===order.date)return Response.json({ok:true,status:order.approvalStatus==='Approved'?'Confirmed':order.approvalStatus||order.status,date:order.date,time:order.time||order.schedule?.time||''});
 
+  if(isRomanticBeachDinner(order)){
+   const changedAt=new Date().toISOString();
+   order.dateChangeHistory=[...(order.dateChangeHistory||[]),{date:order.date||'',time:'',scheduleId:'',at:changedAt}];
+   order.date=newDate;order.time='';order.dateChangedAt=changedAt;order.dateChangedBy='guest';
+   order.approvalStatus='Pending';order.status='Awaiting confirmation';order.cents=0;
+   order.unscheduledRequest=true;order.serviceRequest=true;order.seatRequest=false;order.autoConfirmed=false;
+   order.serviceType=ROMANTIC_BEACH_DINNER_SERVICE;order.buggyRoundTrip=!!order.buggyRequested;order.guestNotified=false;
+   delete order.scheduleId;delete order.schedule;delete order.vesselId;delete order.crewIds;delete order.guideIds;
+   delete order.buggyArrivedAt;delete order.buggyBoardedAt;delete order.buggyDinnerDropoffAt;delete order.buggyReturnArrivedAt;delete order.buggyReturnBoardedAt;delete order.buggyReturnCompleteAt;
+   const saved=await saveStayAccess(state,revision,user.userId);
+   if(!saved)return Response.json({error:'Another update was saved at the same time. Please try again.'},{status:409});
+   return Response.json({ok:true,date:newDate,time:'',status:'Pending',requiresApproval:true,serviceRequest:true,romanticDinner:true});
+  }
+
   await ensureStandardDailyExcursions(newDate);
   const allSchedules=(await schedulesForDate(newDate)).filter((s:any)=>s.status==='Open'&&!excursionDeparturePassed(s.date,s.time));
   const menu=await loadExcursionMenu();
