@@ -12,3 +12,28 @@
 .pos-cashier-notice{padding:20px;border:1px solid #4b8b80;border-radius:16px;background:#163e3b;margin:18px 0;color:#dbfff5}.pos-cashier-notice strong{font-size:20px}.pos-cashier-notice p{margin:8px 0}.pos-release{width:100%;min-height:48px;margin-bottom:14px}
 
 .pos-new-order-alert{position:fixed!important;right:20px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:45;background:#aff4d5!important;color:#073a31!important;border:1px solid #7de4bf!important;border-radius:30px!important;padding:16px 22px!important;box-shadow:0 8px 32px #0005;font-weight:700}.pos-board{scroll-margin-top:20px;padding-bottom:90px}
+
+
+.restaurant-exchange-dialog small{display:block;color:#9fb0bd;font-size:11px;line-height:1.4}
+.pos-payment-dialog .pos-currency-summary{
+ margin:12px 0;
+ padding:14px;
+ border:1px solid #4f6270;
+ border-radius:12px;
+ background:#22303b;
+ display:grid;
+ gap:4px;
+}
+.pos-currency-summary span{color:#a9bac6;font-size:12px}
+.pos-currency-summary strong{font-size:24px;color:#8ee8cc}
+.pos-currency-summary small{color:#9fb0bd}
+.pos-bank-transfer{
+ margin:12px 0;
+ padding:14px;
+ border:1px solid #4f6270;
+ border-radius:12px;
+ background:#22303b;
+}
+.pos-bank-transfer>strong{display:block;margin-bottom:8px;color:#8ee8cc}
+.pos-bank-transfer p{margin:5px 0}
+.pos-bank-transfer small{display:block;margin-top:8px;color:#9fb0bd}
