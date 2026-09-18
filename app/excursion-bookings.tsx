@@ -99,17 +99,17 @@ export default function ExcursionBookings() {
         <dl className="excursion-booking-overview">
           <div><dt>Guest</dt><dd>{b.guest}<small>{b.guestType}</small></dd></div>
           <div><dt>Hotel / room</dt><dd>{b.hotel || 'Hotel not recorded'}<small>{b.room ? 'Room ' + b.room : 'Room not recorded'}</small></dd></div>
-          <div><dt>Booked for</dt><dd>{dateLabel(b.date)}<small>{b.time || 'Time not assigned yet'} · Maldives time</small></dd></div>
+          <div><dt>Booked for</dt><dd>{dateLabel(b.date)}<small>{b.serviceType==='romantic-beach-dinner'?'Romantic dinner service · No departure time':(b.time || 'Time not assigned yet')+' · Maldives time'}</small></dd></div>
           <div><dt>Booking created</dt><dd>{createdLabel(b.createdAt)}<small>Maldives time</small></dd></div>
           <div><dt>Guests / total</dt><dd>{b.guests} {b.guests === 1 ? 'guest' : 'guests'}<small>{b.adults} adult{b.adults===1?'':'s'} · {b.children} child{b.children===1?'':'ren'} · {b.infants} under 3</small><small>{money(b.totalCents)} USD</small></dd></div>
         </dl>
         <details className="excursion-booking-details"><summary>View details<span className="excursion-booking-sr-only"> for {b.guest}, booking {b.id}</span></summary>
           <dl>
             <div><dt>Phone / WhatsApp</dt><dd>{b.phone || 'Not recorded'}</dd></div>
-            <div><dt>Vessel</dt><dd>{b.vessel}{b.separateVessel && <small>Extra vessel booking</small>}</dd></div>
-            <div><dt>Assigned crew</dt><dd>{b.crew.length ? b.crew.join(', ') : 'Not assigned'}</dd></div>
+            <div><dt>Vessel</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.vessel}{b.separateVessel && <small>Extra vessel booking</small>}</dd></div>
+            <div><dt>Assigned crew</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.crew.length ? b.crew.join(', ') : 'Not assigned'}</dd></div>
             <div><dt>Trip status</dt><dd>{b.tripStatus}</dd></div>
-            <div><dt>Buggy pickup</dt><dd>{b.guestType==='In-house' ? 'Included automatically' : (b.buggyRequested ? 'Requested' : 'Not requested')}</dd></div>
+            <div><dt>Buggy pickup</dt><dd>{b.serviceType==='romantic-beach-dinner'?(b.buggyRequested?'Round trip to dinner location and back':'Not requested'):(b.guestType==='In-house' ? 'Included automatically' : (b.buggyRequested ? 'Requested' : 'Not requested'))}</dd></div>
             <div><dt>Children policy</dt><dd>Under 3 free<small>Ages 3–11: 50% · Ages 12+: full price</small></dd></div><div><dt>Payment status</dt><dd>{b.paymentStatus} · {money(b.totalCents)} USD</dd></div>
             <div><dt>Booking source</dt><dd>{b.source || 'Not recorded'}</dd></div>
             <div><dt>Booked by</dt><dd>{b.createdBy || 'Not recorded'}</dd></div>
