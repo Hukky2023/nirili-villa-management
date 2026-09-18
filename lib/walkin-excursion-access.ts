@@ -46,7 +46,7 @@ export function walkInExcursionBill(state:any,accountId:string){
    cents:Math.max(0,Number(order.cents)||0),
    date:order.date||'',
    time:order.time||order.schedule?.time||'',
-   status:order.approvalStatus==='Pending'?'Pending':order.status||'Booked',
+   status:order.approvalStatus==='Pending'?'Pending':order.approvalStatus==='Approved'&&order.status==='Scheduled'?'Confirmed':order.status||'Booked',
    paymentStatus:walkInExcursionOrderPaid(order)?'Paid':'Unpaid',
    createdAt:order.createdAt||''
   }))
