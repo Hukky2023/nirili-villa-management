@@ -37,3 +37,20 @@ export const plans=['Bed & Breakfast','Half Board','Full Board'];
 export function nightly(plan:string,pax:number){return ({'Bed & Breakfast':[5000,6000,7000],'Half Board':[7000,8000,9000],'Full Board':[8000,10000,12000]} as any)[plan]?.[pax-1]||0;}
 export const islandToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 export const validDate=(x:any)=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x;
+
+
+export function islandNowMinutes(){
+ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Indian/Maldives',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());
+ const get=(type:string)=>Number(parts.find(part=>part.type===type)?.value||0);
+ return get('hour')*60+get('minute');
+}
+export function excursionDeparturePassed(date:any,time:any){
+ if(!validDate(date))return false;
+ const today=islandToday();
+ if(date<today)return true;
+ if(date>today)return false;
+ const match=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(time||''));
+ if(!match)return false;
+ const departure=Number(match[1])*60+Number(match[2]);
+ return departure<=islandNowMinutes();
+}
