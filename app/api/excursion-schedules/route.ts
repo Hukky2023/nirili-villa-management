@@ -167,8 +167,8 @@ export async function PATCH(r:Request){
   }
 
   if(b.action==='admin-booking'){
-   const date=String(b.date||''),scheduleId=String(b.scheduleId||'').slice(0,100),guestType=String(b.guestType||''),quantity=Number(b.quantity),notes=String(b.notes||'').trim().slice(0,1000),requestedVesselId=String(b.vesselId||'').slice(0,100);
-   if(!validDate(date)||!scheduleId||!['inhouse','walkin'].includes(guestType)||!Number.isInteger(quantity)||quantity<1||quantity>100)throw Error('Check the excursion, guest type and number of guests.');
+   const date=String(b.date||''),scheduleId=String(b.scheduleId||'').slice(0,100),guestType=String(b.guestType||''),mix=excursionGuestMix(b,Number(b.quantity)||1,100),quantity=mix.total,notes=String(b.notes||'').trim().slice(0,1000),requestedVesselId=String(b.vesselId||'').slice(0,100);
+   if(!validDate(date)||!scheduleId||!['inhouse','walkin'].includes(guestType))throw Error('Check the excursion, guest type and number of guests.');
    const {state,revision}=await loadStays();
    const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(prefix+date+':'+scheduleId).first<any>();
    if(!row)throw Error('This scheduled excursion no longer exists.');
@@ -196,12 +196,12 @@ export async function PATCH(r:Request){
     guest=String(b.guest||'').trim().slice(0,100);phone=String(b.phone||'').replace(/[ ()-]/g,'');hotel=String(b.hotel||'').trim().slice(0,150);room=String(b.externalRoom||'').trim().slice(0,50);
     if(!guest||!hotel||!/^\+[1-9]\d{7,14}$/.test(phone))throw Error('Enter the walk-in guest name, hotel and WhatsApp number with country code.');
    }
-   const crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id)),unitPriceCents=Math.max(0,Number(schedule.priceCents)||0),cents=unitPriceCents*quantity,id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
+   const crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id)),unitPriceCents=Math.max(0,Number(schedule.priceCents)||0),cents=excursionPriceCents(unitPriceCents,'guest',mix),id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
    state.orders??=[];
-   state.orders.push({id,kind:'excursion',scheduleId:schedule.id,name:schedule.name,quantity,cents,unitPriceCents,quotedCents:cents,guest,phone,hotel,room,externalRoom:guestType==='walkin'?room:undefined,stayId,accountId,buggyRequested:guestType==='inhouse',date:schedule.date,time:schedule.time,notes,status:'Scheduled',approvalStatus:'Approved',seatRequest:false,autoConfirmed:true,adminCreated:true,separateVessel:needsExtraVessel,overflowVesselId:needsExtraVessel?vessel?.id:undefined,source:guestType==='inhouse'?'Admin · In-house':'Admin · Walk-in',schedule:{date:schedule.date,time:schedule.time,vesselId:vessel?.id||schedule.vesselId||'',vessel:vessel?.name||'',crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name),extraVessel:needsExtraVessel},guestNotified:false,createdBy:user.username,createdAt});
+   state.orders.push({id,kind:'excursion',scheduleId:schedule.id,name:schedule.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,cents,unitPriceCents,quotedCents:cents,guest,phone,hotel,room,externalRoom:guestType==='walkin'?room:undefined,stayId,accountId,buggyRequested:guestType==='inhouse',date:schedule.date,time:schedule.time,notes,status:'Scheduled',approvalStatus:'Approved',seatRequest:false,autoConfirmed:true,adminCreated:true,separateVessel:needsExtraVessel,overflowVesselId:needsExtraVessel?vessel?.id:undefined,source:guestType==='inhouse'?'Admin · In-house':'Admin · Walk-in',schedule:{date:schedule.date,time:schedule.time,vesselId:vessel?.id||schedule.vesselId||'',vessel:vessel?.name||'',crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name),extraVessel:needsExtraVessel},guestNotified:false,createdBy:user.username,createdAt});
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
-   return Response.json({booking:{id,guest,guestType,quantity,cents,separateVessel:needsExtraVessel,vessel:vessel?.name||''}},{status:201});
+   return Response.json({booking:{id,guest,guestType,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,cents,separateVessel:needsExtraVessel,vessel:vessel?.name||''}},{status:201});
   }
 
   const requestId=String(b.requestId||''),decision=String(b.decision||''),vesselId=String(b.vesselId||'').slice(0,100);
