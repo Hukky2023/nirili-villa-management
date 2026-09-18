@@ -163,3 +163,25 @@
 .guest-buggy-request>span{display:flex;align-items:center;gap:9px;color:#174158;font-weight:800}
 .guest-buggy-request input[type="checkbox"]{width:18px;height:18px;min-height:18px;padding:0;accent-color:#087584}
 .guest-buggy-request small{color:#6b8491;font-weight:500;line-height:1.45}
+
+
+.guest-buggy-arrived-alert,.guest-buggy-boarded-alert{
+ display:grid;
+ gap:3px;
+ margin:10px 0 0;
+ padding:10px 12px;
+ border-radius:10px;
+ font-size:12px;
+}
+.guest-buggy-arrived-alert{
+ background:#fff1ce;
+ border:1px solid #efd18c;
+ color:#805a0a;
+}
+.guest-buggy-boarded-alert{
+ background:#eaf7ef;
+ border:1px solid #badfca;
+ color:#176742;
+}
+.guest-buggy-arrived-alert strong,.guest-buggy-boarded-alert strong{font-size:13px}
+.guest-buggy-arrived-alert span,.guest-buggy-boarded-alert span{color:#607c8b}
