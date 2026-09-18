@@ -130,7 +130,7 @@ export async function POST(r:Request){
  try{
   const b=await r.json();
   const scheduleId=String(b.scheduleId||'').slice(0,100),menuItemId=String(b.menuItemId||'').slice(0,100),date=String(b.date||''),stayId=String(b.stayId||''),token=String(b.token||'');
-  const quantity=Number(b.quantity),buggyRequested=true,notes=String(b.notes||'').trim().slice(0,1000);
+  const quantity=Number(b.quantity),buggyRequestedInput=b.buggyRequested===true,notes=String(b.notes||'').trim().slice(0,1000);
   if((!scheduleId&&!menuItemId)||!validDate(date)||!stayId||!/^[-a-zA-Z0-9]{12,80}$/.test(token)||!Number.isInteger(quantity)||quantity<1||quantity>20)throw Error('Check the excursion, date, room and number of guests.');
   const {state,revision}=await loadStays();
   const old=(state.orders||[]).find((o:any)=>o.token===token&&o.accountId===user.userId);
