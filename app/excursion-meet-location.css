@@ -1,0 +1,45 @@
+.guest-booked-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.guest-booked-actions .guest-cancel-excursion {
+  margin-top: 0;
+  min-height: 44px;
+}
+
+.guest-booked-actions .guest-meet-location {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #b9dce7;
+  border-radius: 9px;
+  background: #edf8fc;
+  color: #086b82;
+  font: inherit;
+  font-weight: 800;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.guest-booked-actions .guest-meet-location:hover {
+  background: #dff2f8;
+  color: #07556a;
+}
+
+.guest-booked-actions .guest-meet-location:focus-visible {
+  outline: 3px solid #087b9c;
+  outline-offset: 3px;
+}
+
+.guest-booked-actions .guest-meet-location svg {
+  flex-shrink: 0;
+}

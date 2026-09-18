@@ -1,8 +1,9 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {Clock,Users,ShipWheel,X,CalendarDays,CheckCircle2} from 'lucide-react';
+import {Clock,Users,ShipWheel,X,CalendarDays,CheckCircle2,MapPin} from 'lucide-react';
 import {formatDateDMY} from '../lib/date-format';
 import './excursion-catalog.css';
+import './excursion-meet-location.css';
 import './excursion-scheduler.css';
 import ExcursionWeather from './excursion-weather';
 import DateFieldDMY from './date-field-dmy';
@@ -44,7 +45,7 @@ export default function ExcursionCatalog({items,canBook=true}:{items:any[];onBoo
    <button type="button" className={category==='special'?'active':''} aria-pressed={category==='special'} onClick={()=>setCategory('special')}>Special Packages</button>
   </nav>
 
-  {myBookings.length>0&&<section className="guest-booked-excursions"><div className="guest-booked-heading"><div><small>MY EXCURSIONS</small><h3>Booked excursions</h3></div><CheckCircle2 size={24}/></div><div className="guest-booked-grid">{myBookings.map((b:any)=><article key={b.id}><div className="guest-booked-date"><CalendarDays size={17}/><span>{formatDateDMY(b.date)}</span><strong>{b.time}</strong></div><h4>{b.name}</h4><div className="guest-booked-meta"><span>{b.quantity} seat{b.quantity===1?'':'s'}</span><span>Room {b.room}</span><span>{b.status}</span>{b.cents>0&&<span>{usd(b.cents)}</span>}{b.vessel&&<span>{b.separateVessel?'Extra vessel: ':'Vessel: '}{b.vessel}</span>}</div>{b.canCancel&&<button type="button" className="guest-cancel-excursion" disabled={cancelling===b.id} onClick={()=>cancelBooking(b)}>{cancelling===b.id?'Cancelling…':'Cancel excursion'}</button>}</article>)}</div></section>}
+  {myBookings.length>0&&<section className="guest-booked-excursions"><div className="guest-booked-heading"><div><small>MY EXCURSIONS</small><h3>Booked excursions</h3></div><CheckCircle2 size={24}/></div><div className="guest-booked-grid">{myBookings.map((b:any)=><article key={b.id}><div className="guest-booked-date"><CalendarDays size={17}/><span>{formatDateDMY(b.date)}</span><strong>{b.time}</strong></div><h4>{b.name}</h4><div className="guest-booked-meta"><span>{b.quantity} seat{b.quantity===1?'':'s'}</span><span>Room {b.room}</span><span>{b.status}</span>{b.cents>0&&<span>{usd(b.cents)}</span>}{b.vessel&&<span>{b.separateVessel?'Extra vessel: ':'Vessel: '}{b.vessel}</span>}</div><div className="guest-booked-actions">{b.canCancel&&<button type="button" className="guest-cancel-excursion" disabled={cancelling===b.id} onClick={()=>cancelBooking(b)}>{cancelling===b.id?'Cancelling…':'Cancel excursion'}</button>}<a className="guest-meet-location" href="https://maps.app.goo.gl/Z1aifPybaXUhMJ1M6?g_st=ac" target="_blank" rel="noopener noreferrer" aria-label={'Meet location for '+b.name+' (opens Google Maps in a new tab)'} title="Open meeting location in Google Maps"><MapPin size={17} aria-hidden="true"/><span>Meet location</span></a></div></article>)}</div></section>}
 
   {category==='schedule'&&<div className="guest-excursion-controls"><div className="guest-excursion-day-label"><small>Showing excursions for</small><strong>{formatDateDMY(date)}</strong></div><div className="guest-excursion-datebar"><button type="button" onClick={()=>setDate(shift(date,-1))}>← Previous</button><button type="button" onClick={()=>setDate(shift(date,1))}>Next →</button></div></div>}
   {message&&<p className="guest-excursion-message" role="status">{message}</p>}
