@@ -1,7 +1,7 @@
 import {authDb,currentUser,sameOrigin} from '../../../lib/auth';
 import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
-import {catalog,islandToday,validDate} from '../../../lib/guest-catalog';
+import {catalog,excursionDeparturePassed,islandToday,validDate} from '../../../lib/guest-catalog';
 import {excursionResources} from '../../../lib/excursion-workflow';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
@@ -121,7 +121,7 @@ export async function GET(r:Request){
    const pendingPax=orders.filter((o:any)=>matches(o,s)&&pending(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const sharedBoatKey=sharedKey(s);
    if(sharedBoatKey){const g=groups[sharedBoatKey]||(groups[sharedBoatKey]={capacity:s.capacity,confirmedPax:0,pendingPax:0,scheduleIds:[]});g.capacity=Math.min(g.capacity,s.capacity);g.confirmedPax+=confirmedPax;g.pendingPax+=pendingPax;g.scheduleIds.push(s.id);}
-   return {id:s.id,date:s.date,time:s.time,name:s.name,status:s.status,capacity:s.capacity,notes:s.notes||'',priceCents:priceForSchedule(s),sharedBoatKey,confirmedPax,pendingPax,ownBooking:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus==='Approved'?'Confirmed':own.approvalStatus||own.status,createdAt:own.createdAt}:null};
+   return {id:s.id,date:s.date,time:s.time,name:s.name,status:s.status,isPast:excursionDeparturePassed(s.date,s.time),capacity:s.capacity,notes:s.notes||'',priceCents:priceForSchedule(s),sharedBoatKey,confirmedPax,pendingPax,ownBooking:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus==='Approved'?'Confirmed':own.approvalStatus||own.status,createdAt:own.createdAt}:null};
   });
   const enriched=schedules.map((s:any)=>{const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null;const capacity=g?.capacity??s.capacity,confirmedPax=g?.confirmedPax??s.confirmedPax,pendingPax=g?.pendingPax??s.pendingPax;return {...s,capacity,confirmedPax,pendingPax,remainingSeats:Math.max(0,capacity-confirmedPax),isFull:confirmedPax>=capacity,sharedBoat:!!g&&g.scheduleIds.length>1};});
   const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled').map((o:any)=>{
@@ -148,6 +148,7 @@ export async function POST(r:Request){
   if(!stay&&!isWalkIn)throw Error('This excursion account is not available for booking.');
   const guest=stay?.guest||walkIn?.name||user.displayName,room=stay?.room||'',phone=stay?.whatsapp||walkIn?.phone||'',hotel=stay?'Nirili Villa':walkIn?.hotel||'',externalRoom=stay?'':walkIn?.room||'',orderStayId=stay?.id||'';
   const buggyRequested=isWalkIn?buggyRequestedInput:true;
+  if(date<islandToday())throw Error('Excursion bookings cannot be created for a past date.');
   if(stay&&(date<islandToday()||date<stay.checkIn||date>=stay.checkOut))throw Error('Choose an excursion date during your current stay.');
   if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(date<islandToday()||(expiryDate&&date>=expiryDate))throw Error('Choose a valid excursion date while your temporary login is active.');}
 
@@ -175,7 +176,7 @@ export async function POST(r:Request){
     for(let index=0;index<specialPackageSegments.length;index++){
      const spec=specialPackageSegments[index],segmentDate=dates[index];
      await ensureStandardDailyExcursions(segmentDate);
-     const allSchedules=(await schedulesForDate(segmentDate)).filter((s:any)=>s.status==='Open');
+     const allSchedules=(await schedulesForDate(segmentDate)).filter((s:any)=>s.status==='Open'&&!excursionDeparturePassed(s.date,s.time));
      const candidates=allSchedules
       .filter((s:any)=>scheduleCanServe(spec.matchName,s.name))
       .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,orders),rank:scheduleRank(spec.matchName,s)}))
@@ -202,7 +203,7 @@ export async function POST(r:Request){
     return Response.json({package:{id:packageGroupId,name:item.name,totalCents:packageTotalCents,confirmedCount,pendingCount,segments:results},booking:{id:packageGroupId,status:pendingCount?'Partially confirmed':'Confirmed',requiresApproval:pendingCount>0}},{status:201});
    }
    await ensureStandardDailyExcursions(date);
-   const allSchedules=(await schedulesForDate(date)).filter((s:any)=>s.status==='Open');
+   const allSchedules=(await schedulesForDate(date)).filter((s:any)=>s.status==='Open'&&!excursionDeparturePassed(s.date,s.time));
    const orders=Array.isArray(state.orders)?state.orders:[];
    const candidates=allSchedules
     .filter((s:any)=>scheduleCanServe(item.name,s.name))
@@ -239,6 +240,7 @@ export async function POST(r:Request){
   if(!row)throw Error('This excursion is no longer scheduled.');
   const schedule=JSON.parse(row.payload);
   if(schedule.status!=='Open')throw Error('This excursion is closed for bookings.');
+  if(excursionDeparturePassed(schedule.date,schedule.time))throw Error('This excursion departure time has already passed. Choose a future excursion.');
   const allSchedules=await schedulesForDate(date);
   const key=sharedKey(schedule);
   const groupSchedules=key?allSchedules.filter((s:any)=>sharedKey(s)===key):[schedule];
@@ -281,7 +283,7 @@ export async function PATCH(r:Request){
   if(newDate===order.date)return Response.json({ok:true,status:order.approvalStatus==='Approved'?'Confirmed':order.approvalStatus||order.status,date:order.date,time:order.time||order.schedule?.time||''});
 
   await ensureStandardDailyExcursions(newDate);
-  const allSchedules=(await schedulesForDate(newDate)).filter((s:any)=>s.status==='Open');
+  const allSchedules=(await schedulesForDate(newDate)).filter((s:any)=>s.status==='Open'&&!excursionDeparturePassed(s.date,s.time));
   const menu=await loadExcursionMenu();
   const menuItem=order.menuItemId?menu.find((x:any)=>x.id===order.menuItemId&&x.kind==='excursion'):undefined;
   const requestedName=menuItem?.name||order.name;
