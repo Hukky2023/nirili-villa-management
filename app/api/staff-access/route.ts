@@ -1,7 +1,7 @@
 import {credentialStatement} from '../../../lib/credential-store';
 import {loadStays} from '../../../lib/stays';
 import {authDb,currentUser,hashPassword,validPassword,sameOrigin,validEmail} from "../../../lib/auth";
-const permissions=["waiter_pos","restaurant_pos","edit_bills","edit_excursions","edit_transfers","buggy_driver"];
+const permissions=["waiter_pos","restaurant_pos","kitchen_pos","edit_bills","edit_excursions","edit_transfers","buggy_driver"];
 export async function GET(){if((await currentUser())?.role!=="admin")return Response.json({error:"Admin access required"},{status:403});try{const users=(await authDb().prepare("SELECT id,username,email,name,role,permissions,active FROM accounts ORDER BY name").all()).results;const {state}=await loadStays();return Response.json({staff:users.filter((u:any)=>u.role==='staff'),users:users.map((u:any)=>({...u,stays:u.role==='guest'?state.stays.filter((s:any)=>s.accountId===u.id).map((s:any)=>({id:s.id,room:s.room,status:s.status,meal:s.meal})):[]}))},{headers:{"Cache-Control":"no-store"}});}catch{return Response.json({error:"Could not load accounts."},{status:503});}}
 async function change(r:Request){
 const admin=await currentUser();if(admin?.role!=="admin")return Response.json({error:"Admin access required"},{status:403});
