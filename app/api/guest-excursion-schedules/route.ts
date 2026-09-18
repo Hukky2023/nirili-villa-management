@@ -149,14 +149,14 @@ export async function POST(r:Request){
     .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
 
    const chosen=candidates[0];
-   const unitPriceCents=Math.max(0,Number(item.cents)||0),quotedCents=unitPriceCents*quantity,id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
+   const unitPriceCents=Math.max(0,Number(item.cents)||0),pricingUnit=item.pricingUnit==='couple'?'couple':'guest',quotedCents=pricingUnit==='couple'?unitPriceCents*Math.ceil(quantity/2):unitPriceCents*quantity,id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
    state.orders??=[];
 
    if(chosen){
     const schedule=chosen.schedule,requiresApproval=chosen.confirmedPax+quantity>chosen.capacity;
     const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
     state.orders.push({
-     id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',menuItemId:item.id,name:item.name,quantity,
+     id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',menuItemId:item.id,name:item.name,quantity,pricingUnit,
      cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,scheduleId:schedule.id,
      seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',
      requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,matchedFromMenu:true,matchedScheduleName:schedule.name,
@@ -168,7 +168,7 @@ export async function POST(r:Request){
     return Response.json({booking:{id,status:requiresApproval?'Pending':'Confirmed',requiresApproval,requiresScheduling:false,matchedScheduleId:schedule.id,matchedScheduleName:schedule.name,time:schedule.time,remainingBefore:chosen.remaining,chargedCents:requiresApproval?0:quotedCents}},{status:201});
    }
 
-   state.orders.push({id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',menuItemId:item.id,name:item.name,quantity,cents:0,quotedCents,unitPriceCents,notes,date,time:'',status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false,createdAt:new Date().toISOString(),source:'Guest menu'});
+   state.orders.push({id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',menuItemId:item.id,name:item.name,quantity,pricingUnit,cents:0,quotedCents,unitPriceCents,notes,date,time:'',status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false,createdAt:new Date().toISOString(),source:'Guest menu'});
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
    return Response.json({booking:{id,status:'Pending',requiresApproval:true,requiresScheduling:true,noMatchingSchedule:true,chargedCents:0}},{status:201});
