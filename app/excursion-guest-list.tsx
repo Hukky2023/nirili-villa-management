@@ -90,7 +90,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
     onCancel={event => {event.preventDefault(); onClose();}}>
     <header className="excursion-guest-header">
       <div><h2 id={headingId}>Guest list</h2><h3>{manifest?.trip.name || tripName}</h3>
-        {manifest && <div className="excursion-guest-meta"><span>{dateLabel(manifest.trip.date)}</span><span>{manifest.trip.time} · Maldives time</span>
+        {manifest && <div className="excursion-guest-meta"><span>{dateLabel(manifest.trip.date)}</span><span>{manifest.trip.time}{manifest.trip.endTime?'–'+manifest.trip.endTime:''} · Maldives time</span>
           <span>{manifest.totals.pax} confirmed guests</span><span className="excursion-guest-badge trip-status">{manifest.trip.status}</span></div>}
       </div>
       <button type="button" className="excursion-guest-close" aria-label="Close guest list" onClick={onClose}>×</button>
@@ -122,7 +122,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
                 <div><dt>Booking reference</dt><dd>{b.id}</dd></div>
                 <div><dt>Booking status</dt><dd>Confirmed</dd></div>
                 <div><dt>Excursion booked</dt><dd>{b.excursion}</dd></div>
-                <div><dt>Trip date / time</dt><dd>{dateLabel(b.date)} · {b.time} · Maldives time</dd></div>
+                <div><dt>Trip date / time</dt><dd>{dateLabel(b.date)} · {b.time}{b.endTime?'–'+b.endTime:''} · Maldives time</dd></div>
                 <div><dt>Trip status</dt><dd>{b.tripStatus}</dd></div>
                 <div><dt>Assigned vessel</dt><dd>{b.vessel}</dd></div>
                 <div><dt>Assigned crew</dt><dd>{b.crew.join(', ') || 'Not assigned'}</dd></div>
