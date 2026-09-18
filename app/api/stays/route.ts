@@ -6,6 +6,7 @@ import {restaurantOnly} from '../../../lib/pos-access';
 import {billPaymentKey} from '../../../lib/bill-payment';
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {loadStays,stayView,stayKey,folioFor} from '../../../lib/stays';
+import {appendAccountHistory} from '../../../lib/account-history';
 export async function GET(){const u=await currentUser();if(!u||restaurantOnly(u)||u.role==='guest')return Response.json({error:'Staff login required'},{status:403});try{return Response.json(await stayView(),{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
 export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();if(!hasPermission(u,'edit_bills'))return Response.json({error:'Admin or bill editing permission is required.'},{status:403});const {state,revision}=await loadStays();
 if(b.action==='create'){
@@ -65,5 +66,5 @@ else if(b.action==='checkout'){
  detail='Guest checked out · In-house login terminated · Room marked Cleaning';
 }
 else throw Error('Unknown action');
-s.history.unshift({date:new Date().toISOString(),detail,by:u.username});const saved=await saveStayAccess(state,revision,u.userId,loginPlan,revoke);if(!saved)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});return Response.json(await stayView());
+s.history.unshift({date:new Date().toISOString(),detail,by:u.username});const saved=await saveStayAccess(state,revision,u.userId,loginPlan,revoke);if(!saved)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});if(b.action==='checkout'&&s.accountId)await appendAccountHistory(s.accountId,{at:s.checkedOutAt||new Date().toISOString(),action:'In-house login terminated at checkout',by:u.username,detail:'Room '+s.room+' · '+s.id});return Response.json(await stayView());
 }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not save. Please retry.'},{status:400})}}
