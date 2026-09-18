@@ -140,3 +140,26 @@
 }
 .guest-buggy-included strong{color:#174158}
 .guest-buggy-included small{color:#6b8491;font-weight:500;line-height:1.45}
+
+
+.guest-walkin-identity{
+ margin-top:13px;
+ padding:12px 14px;
+ border:1px solid #c9dfe8;
+ border-radius:11px;
+ background:#f7fbfd;
+ display:grid;
+ gap:3px;
+}
+.guest-walkin-identity strong{color:#14354a}
+.guest-walkin-identity span{color:#6b8491;font-size:13px}
+.guest-buggy-request{
+ margin-top:14px!important;
+ padding:12px 14px;
+ border:1px solid #c9dfe8;
+ border-radius:11px;
+ background:#f7fbfd;
+}
+.guest-buggy-request>span{display:flex;align-items:center;gap:9px;color:#174158;font-weight:800}
+.guest-buggy-request input[type="checkbox"]{width:18px;height:18px;min-height:18px;padding:0;accent-color:#087584}
+.guest-buggy-request small{color:#6b8491;font-weight:500;line-height:1.45}
