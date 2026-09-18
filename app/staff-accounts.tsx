@@ -7,7 +7,7 @@ import {useEffect,useState} from "react";
 import "./accounts.css";
 import AccountPassword from "./account-password";
 import GuestAccountForm from "./guest-account-form";
-const options=[["waiter_pos","Waiter: orders and kitchen only"],["restaurant_pos","Restaurant POS, kitchen and payments"],["edit_bills","Edit bills (discounts: Admin only)"],["edit_excursions","Edit excursions"],["edit_transfers","Edit transportation"],["buggy_driver","Buggy driver: pickup list, arrival notifications and boarding"]];
+const options=[["waiter_pos","Waiter: tables and orders"],["restaurant_pos","Restaurant POS, kitchen and payments"],["kitchen_pos","Kitchen: active orders and preparation status only"],["edit_bills","Edit bills (discounts: Admin only)"],["edit_excursions","Edit excursions"],["edit_transfers","Edit transportation"],["buggy_driver","Buggy driver: pickup list, arrival notifications and boarding"]];
 export default function StaffAccounts(){
 const [users,setUsers]=useState<any[]>([]),[query,setQuery]=useState(""),[roleFilter,setRoleFilter]=useState("All");
 const [staff,setStaff]=useState<any[]>([]),[form,setForm]=useState({name:"",username:"",email:"",password:"",permissions:[] as string[]}),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
