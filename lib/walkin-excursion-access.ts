@@ -7,6 +7,7 @@ export type WalkInExcursionProfile={
  room:string;
  active:boolean;
  createdAt:string;
+ departureDate:string;
  expiresAt:string;
  endedAt?:string;
 };
@@ -32,39 +33,37 @@ export function walkInExcursionOrderPaid(order:any):boolean{
 }
 
 export function walkInExcursionBill(state:any,accountId:string){
- const orders=(state.orders||[]).filter((order:any)=>order.kind==='excursion'&&order.accountId===accountId&&order.status!=='Cancelled'&&order.approvalStatus!=='Cancelled'&&order.approvalStatus!=='Declined');
- const totalCents=orders.reduce((sum:number,order:any)=>sum+Math.max(0,Number(order.cents)||0),0);
- const paidCents=orders.reduce((sum:number,order:any)=>sum+walkInExcursionPaidCents(order),0);
- return {
-  totalCents,
-  paidCents,
-  balanceCents:Math.max(0,totalCents-paidCents),
-  orders:orders.map((order:any)=>({
-   id:order.id,
-   name:order.name,
-   quantity:Number(order.quantity)||0,
-   cents:Math.max(0,Number(order.cents)||0),
-   date:order.date||'',
-   time:order.time||order.schedule?.time||'',
-   status:order.approvalStatus==='Pending'?'Pending':order.approvalStatus==='Approved'&&order.status==='Scheduled'?'Confirmed':order.status||'Booked',
-   paymentStatus:walkInExcursionOrderPaid(order)?'Paid':'Unpaid',
-   createdAt:order.createdAt||''
-  }))
- };
+ const excursionOrders=(state.orders||[]).filter((order:any)=>order.kind==='excursion'&&order.accountId===accountId&&order.status!=='Cancelled'&&order.approvalStatus!=='Cancelled'&&order.approvalStatus!=='Declined');
+ const restaurantOrders=(state.posOrders||[]).filter((order:any)=>order.guestKey==='guest:'+accountId);
+ const excursionRows=excursionOrders.map((order:any)=>({
+  id:order.id,department:'Excursion',name:order.name,quantity:Number(order.quantity)||0,cents:Math.max(0,Number(order.cents)||0),
+  date:order.date||'',time:order.time||order.schedule?.time||'',
+  status:order.approvalStatus==='Pending'?'Pending':order.approvalStatus==='Approved'&&order.status==='Scheduled'?'Confirmed':order.status||'Booked',
+  paymentStatus:walkInExcursionOrderPaid(order)?'Paid':'Unpaid',createdAt:order.createdAt||''
+ }));
+ const restaurantRows=restaurantOrders.map((order:any)=>({
+  id:order.id,department:'Restaurant',name:'Restaurant · Table '+String(order.table||''),quantity:1,cents:Math.max(0,Number(order.cents)||0),
+  date:String(order.createdAt||'').slice(0,10),time:String(order.createdAt||'').slice(11,16),status:order.kitchen||'Ordered',
+  paymentStatus:['Cash','Card'].includes(order.method)?'Paid':'Pay at cashier',createdAt:order.createdAt||''
+ }));
+ const orders=[...excursionRows,...restaurantRows].sort((a:any,b:any)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+ const totalCents=orders.reduce((sum:number,order:any)=>sum+order.cents,0);
+ const paidCents=orders.reduce((sum:number,order:any)=>sum+(order.paymentStatus==='Paid'?order.cents:0),0);
+ return {totalCents,paidCents,balanceCents:Math.max(0,totalCents-paidCents),orders};
 }
 
+function maldivesToday(){
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const get=(type:string)=>parts.find(part=>part.type===type)?.value||'';
+ return get('year')+'-'+get('month')+'-'+get('day');
+}
 export function syncWalkInExcursionAccess(state:any):string[]{
- const revoke:string[]=[];
- const profiles=walkInExcursionProfiles(state);
- for(const profile of profiles){
+ const revoke:string[]=[],today=maldivesToday();
+ for(const profile of walkInExcursionProfiles(state)){
   if(!profile.active)continue;
-  const orders=(state.orders||[]).filter((order:any)=>order.kind==='excursion'&&order.accountId===profile.accountId&&order.status!=='Cancelled'&&order.approvalStatus!=='Cancelled'&&order.approvalStatus!=='Declined');
-  if(!orders.length)continue;
-  const finished=orders.every((order:any)=>order.status==='Completed'&&walkInExcursionOrderPaid(order));
-  if(!finished)continue;
-  profile.active=false;
-  profile.endedAt=new Date().toISOString();
-  revoke.push(profile.accountId);
+  if(profile.departureDate&&today>profile.departureDate){
+   profile.active=false;profile.endedAt=new Date().toISOString();revoke.push(profile.accountId);
+  }
  }
  return revoke;
 }
