@@ -703,3 +703,61 @@
  .crew-trip-admin-actions{justify-content:stretch}
  .crew-trip-admin-actions button{width:100%}
 }
+
+
+/* Crew cards: balanced action buttons */
+.crew-member-card{
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+}
+.crew-member-card .crew-member-actions{
+  display:grid;
+  grid-template-columns:repeat(2,132px);
+  gap:10px;
+  align-items:center;
+  justify-content:end;
+}
+.crew-member-card .crew-action-btn{
+  width:132px;
+  min-width:132px;
+  max-width:132px;
+  min-height:42px;
+  height:42px;
+  padding:0 12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:10px;
+  font-size:14px;
+  line-height:1;
+  font-weight:800;
+  white-space:nowrap;
+}
+.crew-member-card .excursion-remove-crew-btn.crew-action-btn{
+  background:#fff6f4;
+  border-color:#e8bbb6;
+  color:#9b261f;
+}
+.crew-member-card .excursion-remove-crew-btn.crew-action-btn:hover{
+  background:#ffefec;
+}
+@media(max-width:760px){
+  .crew-member-card{
+    grid-template-columns:1fr;
+  }
+  .crew-member-card .crew-member-actions{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    width:100%;
+    justify-content:stretch;
+  }
+  .crew-member-card .crew-action-btn{
+    width:100%;
+    min-width:0;
+    max-width:none;
+  }
+}
+@media(max-width:420px){
+  .crew-member-card .crew-member-actions{
+    grid-template-columns:1fr;
+  }
+}
