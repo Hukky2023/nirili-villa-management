@@ -1,7 +1,7 @@
 import {sessionCookieName,currentTab} from './tab-session';
 import {env} from "cloudflare:workers";
 import {cookies} from "next/headers";
-import {walkInExcursionOrderPaid} from './walkin-excursion-access';
+
 export type Permission="waiter_pos"|"restaurant_pos"|"edit_bills"|"edit_excursions"|"edit_transfers"|"buggy_driver";
 export type Actor={userId:string;username:string;email:string;displayName:string;role:"admin"|"staff"|"guest";permissions:Permission[]};
 export function authDb(){if(!env.DB)throw new Error("Account service unavailable");return env.DB;}
@@ -41,8 +41,6 @@ export async function roomLoginActive(id:string){
  if(id.startsWith('walkin-exc-')){
   const profile=(state.walkinExcursionAccounts||[]).find((x:any)=>x.accountId===id);
   if(!profile||profile.active!==true||(profile.expiresAt&&Date.parse(profile.expiresAt)<=Date.now()))return false;
-  const orders=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&o.accountId===id&&o.status!=='Cancelled'&&o.approvalStatus!=='Cancelled'&&o.approvalStatus!=='Declined');
-  if(orders.length&&orders.every((o:any)=>o.status==='Completed'&&walkInExcursionOrderPaid(o)))return false;
   return true;
  }
  return state.stays.some((s:any)=>s.accountId===id&&s.status==='In House');
