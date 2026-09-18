@@ -194,3 +194,66 @@
     width:100%;
   }
 }
+
+
+/* Final compact excursion menu layout */
+.excursion-menu-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  align-items:start;
+  grid-auto-rows:max-content;
+}
+.excursion-menu-card{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:start;
+  align-self:start;
+  height:auto;
+  min-height:0;
+  gap:10px 14px;
+  padding:14px 16px;
+}
+.excursion-menu-card-top{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:start;
+  gap:8px 12px;
+  min-width:0;
+}
+.excursion-menu-card-top>div{min-width:0}
+.excursion-menu-card h4{
+  margin:0 0 4px;
+  font-size:17px;
+  line-height:1.25;
+}
+.excursion-menu-card p{
+  margin:0;
+  font-size:13px;
+  line-height:1.4;
+}
+.excursion-price-pill{
+  align-self:start;
+  padding:7px 10px;
+  font-size:13px;
+}
+.excursion-menu-card-actions{
+  display:flex;
+  align-items:flex-start;
+  justify-content:flex-end;
+  align-self:start;
+}
+.excursion-menu-card-actions .excursion-secondary-btn{
+  min-height:40px;
+  padding:8px 13px;
+}
+@media(max-width:900px){
+  .excursion-menu-grid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .excursion-menu-card{grid-template-columns:1fr}
+  .excursion-menu-card-top{grid-template-columns:1fr}
+  .excursion-price-pill{justify-self:start}
+  .excursion-menu-card-actions{justify-content:stretch}
+  .excursion-menu-card-actions .excursion-secondary-btn{width:100%}
+}
