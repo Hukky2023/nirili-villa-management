@@ -51,7 +51,7 @@ async function view(id:any){
   guest:id.user?.displayName||profile?.name||'',
   orders:(state.posOrders||[]).filter((o:any)=>o.guestKey===id.key).map((o:any)=>({
    id:o.id,table:o.table,items:o.items,cents:o.cents,kitchen:o.kitchen,createdAt:o.createdAt,
-   paymentStatus:o.method==='Cash'||o.method==='Card'||state.stays.find((s:any)=>s.id===o.stayId)?.paidBills?.['Restaurant:'+o.id]===o.cents?'Paid':o.method==='Room'?'Charged to room':'Pay at cashier'
+   paymentStatus:['Cash','Card','Bank transfer'].includes(o.method)||state.stays.find((s:any)=>s.id===o.stayId)?.paidBills?.['Restaurant:'+o.id]===o.cents?'Paid':o.method==='Room'?'Charged to room':'Pay at cashier'
   }))
  };
 }
