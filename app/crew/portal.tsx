@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useRef,useState} from 'react';
-import {MapPin,Navigation,RefreshCw,ShieldCheck,StopCircle} from 'lucide-react';
+import {CalendarDays,Clock3,MapPin,Navigation,RefreshCw,ShieldCheck,StopCircle,TriangleAlert} from 'lucide-react';
 import SessionButton from '../session-button';
 import './style.css';
 
@@ -12,16 +12,18 @@ function timeLabel(value:string){
 }
 
 export default function CrewLocationPortal(){
- const [profile,setProfile]=useState<any>(null),[location,setLocation]=useState<any>(null),[sharing,setSharing]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
+ const [profile,setProfile]=useState<any>(null),[location,setLocation]=useState<any>(null),[sharing,setSharing]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[trips,setTrips]=useState<any[]>([]),[requests,setRequests]=useState<any[]>([]),[unavailableTrip,setUnavailableTrip]=useState<any>(null),[reason,setReason]=useState(''),[requestBusy,setRequestBusy]=useState(false);
  const watchRef=useRef<number|null>(null),lastSent=useRef(0),lastPosition=useRef<GeolocationPosition|null>(null),heartbeatRef=useRef<ReturnType<typeof setInterval>|null>(null);
 
  async function load(){
   try{
-   const r=await fetch('/api/crew-location',{cache:'no-store'}),d=await r.json();
-   if(!r.ok)throw Error(d.error||'Could not load crew location.');
-   if(d.mode==='admin'){window.location.href='/?portal=admin';return;}
-   setProfile(d.profile);setLocation(d.location||null);setSharing(false);
-  }catch(e){setError(e instanceof Error?e.message:'Could not load crew location.');}
+   const [locationResponse,tripsResponse]=await Promise.all([fetch('/api/crew-location',{cache:'no-store'}),fetch('/api/crew-trip-requests',{cache:'no-store'})]);
+   const locationData=await locationResponse.json(),tripData=await tripsResponse.json();
+   if(!locationResponse.ok)throw Error(locationData.error||'Could not load crew location.');
+   if(locationData.mode==='admin'){window.location.href='/?portal=admin';return;}
+   if(!tripsResponse.ok)throw Error(tripData.error||'Could not load assigned trips.');
+   setProfile(locationData.profile);setLocation(locationData.location||null);setSharing(false);setTrips(tripData.trips||[]);setRequests(tripData.requests||[]);
+  }catch(e){setError(e instanceof Error?e.message:'Could not load crew portal.');}
  }
  useEffect(()=>{void load();return()=>{if(watchRef.current!==null)navigator.geolocation?.clearWatch(watchRef.current);if(heartbeatRef.current)clearInterval(heartbeatRef.current)}},[]);
 
@@ -47,6 +49,17 @@ export default function CrewLocationPortal(){
   heartbeatRef.current=setInterval(()=>{if(lastPosition.current)void sendPosition(lastPosition.current,true)},60000);
  }
 
+ async function submitUnableRequest(e:React.FormEvent){
+  e.preventDefault();if(!unavailableTrip||requestBusy)return;
+  const trimmed=reason.trim();if(trimmed.length<3){setError('Enter a reason for why you cannot go on this trip.');return;}
+  setRequestBusy(true);setError('');setMessage('');
+  try{
+   const r=await fetch('/api/crew-trip-requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scheduleId:unavailableTrip.scheduleIds[0],date:unavailableTrip.date,reason:trimmed})}),d=await r.json();
+   if(!r.ok)throw Error(d.error||'Could not send request.');
+   setUnavailableTrip(null);setReason('');setMessage('Your request was sent to Admin for approval.');await load();
+  }catch(e){setError(e instanceof Error?e.message:'Could not send request.');}
+  finally{setRequestBusy(false);}
+ }
  async function stopSharing(){
   if(watchRef.current!==null){navigator.geolocation.clearWatch(watchRef.current);watchRef.current=null;}
   if(heartbeatRef.current){clearInterval(heartbeatRef.current);heartbeatRef.current=null;}
@@ -74,6 +87,13 @@ export default function CrewLocationPortal(){
    <article><span>Last update</span><strong>{timeLabel(location?.updatedAt||'')}</strong></article>
    <article><span>Accuracy</span><strong>{location?.accuracy?('± '+Math.round(location.accuracy)+' m'):'—'}</strong></article>
   </section>
+  <section className="crew-trip-section">
+   <header><div><small>MY ASSIGNED TRIPS</small><h2>Upcoming excursion assignments</h2><p>If you cannot attend an assigned trip, send a reason to Admin. You remain assigned until Admin approves the request.</p></div><button type="button" onClick={load}><RefreshCw size={16}/>Refresh trips</button></header>
+   {!trips.length?<div className="crew-trip-empty"><CalendarDays size={28}/><strong>No upcoming assigned trips</strong><span>Your assigned excursions will appear here.</span></div>:<div className="crew-trip-grid">{trips.map((trip:any)=><article key={trip.key}><div className="crew-trip-date"><CalendarDays size={17}/><strong>{trip.date.split('-').reverse().join('-')}</strong><span><Clock3 size={15}/>{trip.time} · Maldives time</span></div><h3>{trip.tripNames.join(' + ')}</h3><div className="crew-trip-meta"><span>{trip.status}</span>{trip.request&&<span className="pending">Request pending</span>}</div>{trip.request?<div className="crew-trip-request-status"><strong>Unable-to-go request sent</strong><p>{trip.request.reason}</p><small>Waiting for Admin decision.</small></div>:<button type="button" className="crew-unable-btn" onClick={()=>{setUnavailableTrip(trip);setReason('');setError('')}}><TriangleAlert size={17}/>I am unable to go</button>}</article>)}</div>}
+   {requests.some((request:any)=>request.status!=='Pending')&&<details className="crew-request-history"><summary>Previous requests</summary><div>{requests.filter((request:any)=>request.status!=='Pending').map((request:any)=><article key={request.id}><strong>{request.tripNames?.join(' + ')||request.tripName}</strong><span>{request.date.split('-').reverse().join('-')} · {request.time}</span><b className={request.status.toLowerCase()}>{request.status}</b><p>{request.reason}</p>{request.decisionNote&&<small>Admin note: {request.decisionNote}</small>}</article>)}</div></details>}
+  </section>
+  {unavailableTrip&&<div className="crew-request-overlay" role="presentation"><form className="crew-request-dialog" onSubmit={submitUnableRequest}><header><div><small>UNABLE TO ATTEND</small><h2>Request to leave this trip</h2><p>{unavailableTrip.tripNames.join(' + ')} · {unavailableTrip.date.split('-').reverse().join('-')} · {unavailableTrip.time}</p></div><button type="button" disabled={requestBusy} onClick={()=>setUnavailableTrip(null)} aria-label="Close">×</button></header><label>Reason<textarea required autoFocus rows={5} maxLength={500} placeholder="Explain why you are unable to go on this trip." value={reason} onChange={e=>setReason(e.target.value)}/><small>{reason.length} / 500</small></label><div className="crew-request-note"><strong>You stay assigned until Admin approves.</strong><p>If approved, you will be removed from the trip and Admin will assign another crew member.</p></div><footer><button type="button" disabled={requestBusy} onClick={()=>setUnavailableTrip(null)}>Cancel</button><button type="submit" className="primary" disabled={requestBusy||reason.trim().length<3}>{requestBusy?'Sending…':'Send request to Admin'}</button></footer></form></div>}
+
   <section className="crew-location-privacy"><ShieldCheck size={20}/><div><strong>Location privacy</strong><p>The system stores only your latest shared position, not a route history. Live updates are sent only while this page is open and location sharing is turned on.</p></div></section>
   {error&&<p className="crew-location-message error" role="alert">{error}</p>}
   {message&&<p className="crew-location-message" role="status">{message}</p>}
