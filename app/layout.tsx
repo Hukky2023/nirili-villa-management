@@ -3,11 +3,18 @@ import LanguageSelector from './ui-language';
 import GuestChat from './guest-chat';
 import AutoRefresh from './auto-refresh';
 import {tabBootstrap} from './tab-bootstrap';
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./excursion-cancel.css";
 import "./excursion-timetable.css";
 import "./guest-excursion-cleanup.css";
+import "./admin-responsive.css";
+
+// Use the actual device width without disabling pinch-to-zoom.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: "Nirili Villa Management",

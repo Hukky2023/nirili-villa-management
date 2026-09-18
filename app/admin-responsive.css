@@ -1,0 +1,347 @@
+/* Responsive admin shell and excursion resources.
+   Scoped selectors intentionally beat the legacy compact/fixed-width card rules,
+   even when component styles are loaded after the root layout stylesheet. */
+.admin .shell,
+.admin .shell > main,
+.excursion-operations,
+.excursion-operations :is(.excursion-admin-shell, .excursion-panel) {
+  min-width: 0;
+}
+
+/* Size columns from the available content area, not the device width. */
+.excursion-operations .excursion-menu-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  align-items: stretch;
+  gap: 16px;
+}
+.excursion-operations .excursion-menu-card {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  align-self: stretch;
+  align-items: start;
+}
+.excursion-operations .excursion-menu-card-top {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.excursion-operations .excursion-menu-card-top > div {
+  min-width: 0;
+}
+.excursion-operations .excursion-menu-card :is(h4, p) {
+  overflow-wrap: anywhere;
+}
+.excursion-operations .excursion-price-pill {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Crew actions always have their own row; never squeeze out a name or login. */
+.excursion-operations .crew-member-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 14px;
+}
+.excursion-operations .crew-member-card .crew-member-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-column: 1 / -1;
+  align-self: end;
+  justify-content: stretch;
+  width: 100%;
+  min-width: 0;
+  gap: 10px;
+}
+.excursion-operations .crew-member-card .crew-action-btn {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  min-height: 44px;
+  height: auto;
+  padding: 10px 12px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.excursion-operations .excursion-admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.excursion-operations .excursion-admin-tabs > button {
+  flex: 1 1 8rem;
+  min-width: 0;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.excursion-operations .excursion-panel-head > div {
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+.excursion-operations .excursion-panel-head > button {
+  max-width: 100%;
+  white-space: normal;
+}
+
+/* Location cards must also fit inside the nested phone panel. */
+.excursion-operations .crew-location-admin > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.excursion-operations .crew-location-admin > header > div {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.excursion-operations .crew-location-admin > header > button {
+  justify-content: center;
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+}
+.excursion-operations .crew-location-admin-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+.excursion-operations .crew-location-admin-grid > article {
+  min-width: 0;
+}
+.excursion-operations .crew-location-person {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+.excursion-operations .crew-location-person > div {
+  min-width: 0;
+}
+.excursion-operations .crew-location-person :is(h5, span) {
+  overflow-wrap: anywhere;
+}
+.excursion-operations .crew-location-person > b {
+  grid-column: 2;
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.excursion-operations .crew-location-avatar {
+  grid-row: 1 / span 2;
+  align-self: start;
+}
+.excursion-operations :is(.crew-location-map, .crew-location-waiting) {
+  min-height: 44px;
+  padding: 10px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.excursion-operations .crew-location-meta > span {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+/* Remove fixed minimum tracks from the weather and tides cards. */
+.excursion-operations .excursion-weather-now {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+.excursion-operations .excursion-weather-now dl {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.excursion-operations .excursion-weather-now dl > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.excursion-operations .excursion-tide-now.compact {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+.excursion-operations .excursion-tide-now.compact > article {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Reuse the existing accessible Menu button and navigation, including tablets. */
+@media (max-width: 1024px) {
+  .admin > aside:first-child,
+  .admin > aside.open {
+    display: none;
+  }
+  .admin .shell {
+    margin-left: 0;
+  }
+  .admin .shell > main {
+    padding: 12px;
+  }
+  .admin .top {
+    height: auto;
+    min-height: 64px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .admin .top > button.mobile-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid #ffffff60;
+    background: #ffffff20;
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .admin .top > button.mobile-menu-trigger svg {
+    width: 21px;
+    height: 21px;
+  }
+  .admin .top > .brand-home {
+    flex: 1 1 10rem;
+    min-width: 0;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+  .admin .top .nv-header-actions {
+    position: static;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+    margin-left: auto;
+  }
+  .admin .top .nv-header-actions :is(button, a, .nv-language label) {
+    min-height: 44px;
+  }
+  .admin .top .phone-navigation {
+    display: grid;
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: calc(100% + 6px);
+    max-height: calc(100svh - 160px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: white;
+    border: 1px solid #d4e3eb;
+    border-radius: 13px;
+    padding: 8px;
+    color: #173c51;
+    box-shadow: 0 16px 40px #04263e40;
+  }
+  .admin .top .phone-navigation p {
+    margin: 7px 12px 9px;
+    color: #607b8b;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .admin .top .phone-navigation button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 13px 12px;
+    border: 0;
+    border-radius: 9px;
+    background: white;
+    color: #173c51;
+    font-size: 16px;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .admin .top .phone-navigation button[aria-current="page"] {
+    background: #e5f3ff;
+    color: #0869b3;
+    font-weight: 700;
+  }
+  .admin .top .phone-navigation button svg {
+    width: 21px;
+    height: 21px;
+    flex-shrink: 0;
+  }
+  .admin .top .phone-navigation .phone-current {
+    margin-left: auto;
+  }
+  .admin .phone-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    padding: 0;
+    background: #05243e55;
+  }
+  .admin .mobile-menu-trigger:focus-visible,
+  .admin .phone-navigation button:focus-visible {
+    outline: 3px solid #39c2e5;
+    outline-offset: 2px;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin .shell > main {
+    padding: 8px;
+  }
+  .admin .excursion-operations {
+    padding: 10px;
+  }
+  .excursion-operations :is(.excursion-admin-shell, .excursion-panel) {
+    padding: 12px;
+  }
+  .excursion-operations .excursion-admin-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .excursion-operations .excursion-admin-tabs > button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  .excursion-operations .excursion-menu-card {
+    padding: 14px;
+  }
+  .excursion-operations .crew-location-admin {
+    padding: 12px;
+  }
+  .excursion-operations .crew-location-admin > header > button {
+    width: 100%;
+  }
+  .excursion-operations .excursion-weather-now dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 540px) {
+  .admin .top {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .admin .top > .brand-home {
+    grid-column: 2;
+  }
+  .admin .top .nv-header-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .excursion-operations .crew-member-card .crew-member-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .excursion-operations .excursion-menu-card-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .excursion-operations .excursion-menu-card-top > .excursion-price-pill {
+    justify-self: start;
+  }
+}
