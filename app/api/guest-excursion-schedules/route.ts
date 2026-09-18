@@ -8,6 +8,7 @@ import {loadExcursionMenu} from '../../../lib/excursion-menu';
 import {walkInExcursionOrderPaid,walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
 
 const prefix='excursion-schedule:';
+const MIN_EXCURSION_PAX=1;
 const norm=(v:any)=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
 
 function matches(o:any,s:any){
@@ -131,7 +132,7 @@ export async function POST(r:Request){
   const b=await r.json();
   const scheduleId=String(b.scheduleId||'').slice(0,100),menuItemId=String(b.menuItemId||'').slice(0,100),date=String(b.date||''),stayId=String(b.stayId||''),token=String(b.token||'');
   const quantity=Number(b.quantity),buggyRequestedInput=b.buggyRequested===true,notes=String(b.notes||'').trim().slice(0,1000);
-  if((!scheduleId&&!menuItemId)||!validDate(date)||!stayId||!/^[-a-zA-Z0-9]{12,80}$/.test(token)||!Number.isInteger(quantity)||quantity<1||quantity>20)throw Error('Check the excursion, date, room and number of guests.');
+  if((!scheduleId&&!menuItemId)||!validDate(date)||!stayId||!/^[-a-zA-Z0-9]{12,80}$/.test(token)||!Number.isInteger(quantity)||quantity<MIN_EXCURSION_PAX||quantity>20)throw Error('Check the excursion, date, room and number of guests.');
   const {state,revision}=await loadStays();
   const old=(state.orders||[]).find((o:any)=>o.token===token&&o.accountId===user.userId);
   if(old)return Response.json({booking:{id:old.id,status:old.approvalStatus==='Approved'?'Confirmed':old.approvalStatus||old.status,requiresApproval:old.approvalStatus==='Pending',requiresScheduling:!old.scheduleId}});
