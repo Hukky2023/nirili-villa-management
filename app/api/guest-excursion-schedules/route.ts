@@ -127,7 +127,7 @@ export async function GET(r:Request){
   const enriched=schedules.map((s:any)=>{const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null;const capacity=g?.capacity??s.capacity,confirmedPax=g?.confirmedPax??s.confirmedPax,pendingPax=g?.pendingPax??s.pendingPax;return {...s,capacity,confirmedPax,pendingPax,remainingSeats:Math.max(0,capacity-confirmedPax),isFull:confirmedPax>=capacity,sharedBoat:!!g&&g.scheduleIds.length>1};});
   const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled').map((o:any)=>{
    const bookingStay=(state.stays||[]).find((s:any)=>s.id===o.stayId),bookingProfile=!bookingStay?walkInExcursionProfile(state,o.accountId):undefined,isWalkIn=!!bookingProfile;
-   return {id:o.id,stayId:o.stayId||('walkin:'+o.accountId),menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,adults:Number(o.adults??o.quantity)||0,children:Number(o.children)||0,infants:Number(o.infants)||0,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room||bookingProfile?.room||'',vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,serviceType:o.serviceType||'',buggyRoundTrip:!!o.buggyRoundTrip,packageGroupId:o.packageGroupId||'',packageName:o.packageName||'',packagePart:Number(o.packagePart)||0,packageParts:Number(o.packageParts)||0,buggyRequested:isWalkIn?!!o.buggyRequested:true,isWalkIn,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),checkIn:bookingStay?.checkIn||islandToday(),checkOut:bookingStay?.checkOut||String(bookingProfile?.expiresAt||'').slice(0,10),buggyArrivedAt:o.buggyArrivedAt||'',buggyArrivedBy:o.buggyArrivedBy||'',buggyBoardedAt:o.buggyBoardedAt||'',buggyBoardedBy:o.buggyBoardedBy||'',buggyDinnerDropoffAt:o.buggyDinnerDropoffAt||'',buggyReturnArrivedAt:o.buggyReturnArrivedAt||'',buggyReturnBoardedAt:o.buggyReturnBoardedAt||'',buggyReturnCompleteAt:o.buggyReturnCompleteAt||'',createdAt:o.createdAt};
+   return {id:o.id,stayId:o.stayId||('walkin:'+o.accountId),menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,adults:Number(o.adults??o.quantity)||0,children:Number(o.children)||0,infants:Number(o.infants)||0,date:o.date,time:o.time||o.schedule?.time||'',returnTime:o.returnTime||o.schedule?.returnTime||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room||bookingProfile?.room||'',vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,serviceType:o.serviceType||'',buggyRoundTrip:!!o.buggyRoundTrip,packageGroupId:o.packageGroupId||'',packageName:o.packageName||'',packagePart:Number(o.packagePart)||0,packageParts:Number(o.packageParts)||0,buggyRequested:isWalkIn?!!o.buggyRequested:true,isWalkIn,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),checkIn:bookingStay?.checkIn||islandToday(),checkOut:bookingStay?.checkOut||String(bookingProfile?.expiresAt||'').slice(0,10),buggyArrivedAt:o.buggyArrivedAt||'',buggyArrivedBy:o.buggyArrivedBy||'',buggyBoardedAt:o.buggyBoardedAt||'',buggyBoardedBy:o.buggyBoardedBy||'',buggyDinnerDropoffAt:o.buggyDinnerDropoffAt||'',buggyReturnArrivedAt:o.buggyReturnArrivedAt||'',buggyReturnBoardedAt:o.buggyReturnBoardedAt||'',buggyReturnCompleteAt:o.buggyReturnCompleteAt||'',createdAt:o.createdAt};
   }).sort((a:any,b:any)=>(String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
   return Response.json({date,stays:eligibleStays,schedules:enriched,myBookings},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load scheduled excursions.'},{status:503});}
@@ -206,7 +206,7 @@ export async function POST(r:Request){
      if(chosen){
       const schedule=chosen.schedule,requiresApproval=chosen.confirmedPax+quantity>chosen.capacity;
       const vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
-      orders.push({...common,cents:requiresApproval?0:quotedCents,time:schedule.time,scheduleId:schedule.id,seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,matchedFromMenu:true,matchedScheduleName:schedule.name,schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},guestNotified:requiresApproval?undefined:false});
+      orders.push({...common,cents:requiresApproval?0:quotedCents,time:schedule.time,scheduleId:schedule.id,seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,matchedFromMenu:true,matchedScheduleName:schedule.name,schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},guestNotified:requiresApproval?undefined:false});
       results.push({id,name:spec.name,date:segmentDate,time:schedule.time,status:requiresApproval?'Pending':'Confirmed',requiresApproval,matchedScheduleId:schedule.id,matchedScheduleName:schedule.name});
      }else{
       orders.push({...common,cents:0,time:'',status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false});
@@ -235,10 +235,10 @@ export async function POST(r:Request){
     const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
     state.orders.push({
      id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',menuItemId:item.id,name:item.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,pricingUnit,buggyRequested,
-     cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,scheduleId:schedule.id,
+     cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,returnTime:schedule.returnTime||'',scheduleId:schedule.id,
      seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',
      requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,matchedFromMenu:true,matchedScheduleName:schedule.name,
-     schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
+     schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
      guestNotified:requiresApproval?undefined:false,createdAt:new Date().toISOString(),source:isWalkIn?'Walk-in portal':'Guest menu'
     });
     const saved=await saveStayAccess(state,revision,user.userId);
@@ -269,9 +269,9 @@ export async function POST(r:Request){
   const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
   state.orders??=[];
   state.orders.push({
-   id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',name:schedule.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,buggyRequested,cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,scheduleId:schedule.id,
+   id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',name:schedule.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,buggyRequested,cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,returnTime:schedule.returnTime||'',scheduleId:schedule.id,
    seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,
-   schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
+   schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
    guestNotified:requiresApproval?undefined:false,createdAt:new Date().toISOString(),source:isWalkIn?'Walk-in portal':'Guest schedule'
   });
   const saved=await saveStayAccess(state,revision,user.userId);
@@ -340,6 +340,7 @@ export async function PATCH(r:Request){
    const schedule=chosen.schedule,requiresApproval=chosen.confirmedPax+quantity>chosen.capacity;
    const vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
    order.time=schedule.time;
+   order.returnTime=schedule.returnTime||'';
    order.scheduleId=schedule.id;
    order.matchedFromMenu=true;
    order.matchedScheduleName=schedule.name;
@@ -349,11 +350,12 @@ export async function PATCH(r:Request){
    order.status=requiresApproval?'Awaiting scheduling':'Scheduled';
    order.autoConfirmed=!requiresApproval;
    order.cents=requiresApproval?0:quotedCents;
-   order.schedule=requiresApproval?undefined:{date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)};
+   order.schedule=requiresApproval?undefined:{date:schedule.date,time:schedule.time,...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)};
    order.guestNotified=requiresApproval?undefined:false;
    if(requiresApproval){delete order.guestNotifiedAt;delete order.guestNotifiedBy;}
   }else{
    order.time='';
+   order.returnTime='';
    delete order.scheduleId;
    delete order.schedule;
    order.seatRequest=true;
