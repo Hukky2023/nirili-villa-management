@@ -11,7 +11,7 @@ const norm=(v:any)=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
 
 function matches(o:any,s:any){
  if(o.kind!=='excursion'||o.status==='Cancelled'||o.approvalStatus==='Declined'||o.approvalStatus==='Cancelled')return false;
- if(o.scheduleId)return o.scheduleId===s.id;
+ if(o.scheduleId)return o.scheduleId===s.id&&(o.date||o.schedule?.date)===s.date;
  const os=o.schedule||{};
  return (os.date||o.date)===s.date&&os.time===s.time&&(!s.vesselId||os.vesselId===s.vesselId)&&norm(o.name)===norm(s.name);
 }
@@ -110,7 +110,10 @@ export async function GET(r:Request){
    return {id:s.id,date:s.date,time:s.time,name:s.name,status:s.status,capacity:s.capacity,notes:s.notes||'',priceCents:priceForSchedule(s),sharedBoatKey,confirmedPax,pendingPax,ownBooking:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus==='Approved'?'Confirmed':own.approvalStatus||own.status,createdAt:own.createdAt}:null};
   });
   const enriched=schedules.map((s:any)=>{const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null;const capacity=g?.capacity??s.capacity,confirmedPax=g?.confirmedPax??s.confirmedPax,pendingPax=g?.pendingPax??s.pendingPax;return {...s,capacity,confirmedPax,pendingPax,remainingSeats:Math.max(0,capacity-confirmedPax),isFull:confirmedPax>=capacity,sharedBoat:!!g&&g.scheduleIds.length>1};});
-  const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled').map((o:any)=>({id:o.id,stayId:o.stayId,menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room,vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),createdAt:o.createdAt})).sort((a:any,b:any)=>(String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
+  const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled').map((o:any)=>{
+   const bookingStay=(state.stays||[]).find((s:any)=>s.id===o.stayId);
+   return {id:o.id,stayId:o.stayId,menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room,vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),checkIn:bookingStay?.checkIn||'',checkOut:bookingStay?.checkOut||'',createdAt:o.createdAt};
+  }).sort((a:any,b:any)=>(String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
   return Response.json({date,stays:eligibleStays,schedules:enriched,myBookings},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load scheduled excursions.'},{status:503});}
 }
@@ -210,6 +213,7 @@ export async function PATCH(r:Request){
   if(['Departed','Completed','Cancelled'].includes(order.status)||order.approvalStatus==='Cancelled')throw Error('This excursion date can no longer be changed online.');
   const stay=(state.stays||[]).find((s:any)=>s.id===order.stayId&&s.accountId===user.userId&&s.status==='In House');
   if(!stay)throw Error('This room is not available for excursion changes.');
+  if(Number(order.cents)>0&&stay.paidBills?.['Excursions:'+order.id]===Number(order.cents))throw Error('This excursion has already been paid. Please contact reception to change the date.');
   if(newDate<islandToday()||newDate<stay.checkIn||newDate>=stay.checkOut)throw Error('Choose a date during your current stay, before checkout.');
   if(newDate===order.date)return Response.json({ok:true,status:order.approvalStatus==='Approved'?'Confirmed':order.approvalStatus||order.status,date:order.date,time:order.time||order.schedule?.time||''});
 
