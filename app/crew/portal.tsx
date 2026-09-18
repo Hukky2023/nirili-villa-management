@@ -25,7 +25,7 @@ export default function CrewLocationPortal(){
    setProfile(locationData.profile);setLocation(locationData.location||null);setSharing(false);setTrips(tripData.trips||[]);setRequests(tripData.requests||[]);
   }catch(e){setError(e instanceof Error?e.message:'Could not load crew portal.');}
  }
- useEffect(()=>{void load();return()=>{if(watchRef.current!==null)navigator.geolocation?.clearWatch(watchRef.current);if(heartbeatRef.current)clearInterval(heartbeatRef.current)}},[]);
+ useEffect(()=>{void load();const onRefresh=()=>void load();window.addEventListener('nirili:auto-refresh',onRefresh);window.addEventListener('focus',onRefresh);return()=>{window.removeEventListener('nirili:auto-refresh',onRefresh);window.removeEventListener('focus',onRefresh);if(watchRef.current!==null)navigator.geolocation?.clearWatch(watchRef.current);if(heartbeatRef.current)clearInterval(heartbeatRef.current)}},[]);
 
  async function sendPosition(position:GeolocationPosition,force=false){
   lastPosition.current=position;
