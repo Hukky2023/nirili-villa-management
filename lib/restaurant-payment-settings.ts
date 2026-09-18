@@ -66,7 +66,7 @@ export async function loadRestaurantPaymentSettings():Promise<RestaurantPaymentS
 }
 
 async function onlineRate(quote:'EUR'|'MVR'){
- const response=await fetch('https://api.frankfurter.dev/v2/rate/USD/'+quote,{headers:{Accept:'application/json'}});
+ const response=await fetch('https://api.frankfurter.dev/v2/rate/usd/'+quote.toLowerCase(),{headers:{Accept:'application/json'}});
  if(!response.ok)throw Error('FX provider unavailable.');
  const data:any=await response.json();
  const rate=positive(data?.rate,0);
@@ -80,7 +80,7 @@ export async function refreshRestaurantFxRates(force=false):Promise<RestaurantPa
  let eur:any=null,mvr:any=null;
  try{[eur,mvr]=await Promise.all([onlineRate('EUR'),onlineRate('MVR')]);}
  catch{
-  return persist({...current,fxCheckedDate:today},'system-fx-check');
+  return current;
  }
  const next:RestaurantPaymentSettings={
   ...current,
@@ -103,7 +103,7 @@ export async function saveRestaurantPaymentSettings(input:any,by:string){
  const current=await loadRestaurantPaymentSettings();
  const mvrRate=Number(input?.usdToMvrRate),eurRate=Number(input?.usdToEurRate);
  if(!Number.isFinite(mvrRate)||mvrRate<=0||mvrRate>100)throw Error('Enter a valid USD to MVR exchange rate.');
- if(input?.usdToEurRate!==undefined&&(!Number.isFinite(eurRate)||eurRate<=0||eurRate>10))throw Error('Enter a valid USD to EUR exchange rate.');
+ if(input?.usdToEurRate!==undefined&&(!Number.isFinite(eurRate)||eurRate<0||eurRate>10))throw Error('Enter a valid USD to EUR exchange rate.');
  const settings:RestaurantPaymentSettings={
   ...current,
   usdToMvrRate:Math.round(mvrRate*1000000)/1000000,
