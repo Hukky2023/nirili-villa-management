@@ -4,7 +4,7 @@ export type ConfirmedExcursionBooking = {
   guestType: 'In-house' | 'Walk-in'; hotel: string; room: string;
   date: string; time: string; guests: number; adults: number; children: number; infants: number; totalCents: number;
   paymentStatus: 'Paid' | 'Unpaid'; tripStatus: string;
-  vessel: string; crew: string[]; separateVessel: boolean; buggyRequested: boolean;
+  vessel: string; crew: string[]; separateVessel: boolean; buggyRequested: boolean; buggyRoundTrip: boolean; serviceType: string;
   notes: string; source: string; createdAt: string; createdBy: string;
 };
 
@@ -41,7 +41,7 @@ export function toConfirmedExcursionBooking(
   const crew = crewIds.length
     ? crewIds.map((id: string, index: number) => text(resources.crew.find(c => c.id === id)?.name) || text(storedCrew[index]) || 'Unknown crew member')
     : storedCrew.map(text).filter(Boolean);
-  const inhouse = !!order.stayId;
+  const inhouse = !!order.stayId, romanticDinner = order.serviceType === 'romantic-beach-dinner';
   const amount = Number(order.cents), quantity = Number(order.quantity);
   return {
     id: text(order.id), excursion: text(order.name) || text(current?.name) || 'Excursion',
@@ -59,9 +59,9 @@ export function toConfirmedExcursionBooking(
     infants: Number.isFinite(Number(order.infants)) ? Math.max(0, Math.trunc(Number(order.infants))) : 0,
     totalCents: Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : 0,
     paymentStatus: paid ? 'Paid' : 'Unpaid',
-    tripStatus: historical ? (normal(order.status) === 'completed' ? 'Completed' : 'Departed') : 'Scheduled',
-    vessel: text(vessel?.name) || text(assignment.vessel) || 'Not assigned',
-    crew, separateVessel: !!order.separateVessel, buggyRequested: inhouse ? true : !!order.buggyRequested,
+    tripStatus: romanticDinner ? 'Dinner confirmed' : historical ? (normal(order.status) === 'completed' ? 'Completed' : 'Departed') : 'Scheduled',
+    vessel: romanticDinner ? 'Not required' : text(vessel?.name) || text(assignment.vessel) || 'Not assigned',
+    crew: romanticDinner ? [] : crew, separateVessel: !!order.separateVessel, buggyRequested: inhouse ? true : !!order.buggyRequested, buggyRoundTrip: !!order.buggyRoundTrip, serviceType: text(order.serviceType),
     notes: text(order.notes), source: text(order.source),
     createdAt: text(order.createdAt), createdBy: text(order.createdBy),
   };
