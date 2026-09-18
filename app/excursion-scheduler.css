@@ -462,3 +462,82 @@
  font-size:12px;
 }
 .resort-return-time strong{color:#805a0a}
+
+
+.excursion-day-list>article.is-cancelled{
+ background:#fff8f7;
+ border-color:#efc9c5;
+ opacity:1;
+}
+.excursion-day-list>article.is-cancelled .excursion-day-time,
+.excursion-day-list>article.is-cancelled .excursion-day-title strong{
+ color:#8e3434;
+}
+.excursion-cancellation-reason{
+ margin-top:8px!important;
+ padding:8px 10px;
+ border-radius:8px;
+ background:#fff0ee;
+ color:#9b261f!important;
+ font-size:12px;
+ line-height:1.45;
+}
+.excursion-cancellation-reason strong{color:#9b261f}
+.excursion-cancelled-btn{
+ min-height:44px;
+ padding:10px 14px;
+ border:1px solid #d7c4c2;
+ border-radius:10px;
+ background:#f6eded;
+ color:#8e3434;
+ font-weight:800;
+}
+.excursion-cancel-warning{
+ margin-bottom:15px;
+ padding:12px 14px;
+ border:1px solid #efcfca;
+ border-radius:11px;
+ background:#fff7f5;
+ color:#7f302b;
+}
+.excursion-cancel-warning p{
+ margin:5px 0 0;
+ color:#6f514f;
+ line-height:1.5;
+}
+.excursion-cancel-reason{
+ display:grid;
+ gap:6px;
+ color:#365c6f;
+ font-size:13px;
+ font-weight:800;
+}
+.excursion-cancel-reason textarea{
+ width:100%;
+ min-height:110px;
+ padding:11px 12px;
+ border:1px solid #d9bbb7;
+ border-radius:10px;
+ resize:vertical;
+ color:#14354a;
+ font:inherit;
+}
+.excursion-cancel-reason small{
+ justify-self:end;
+ color:#6b8491;
+ font-weight:500;
+}
+.excursion-cancel-confirm{
+ min-height:44px;
+ padding:10px 16px;
+ border:1px solid #b63b32;
+ border-radius:10px;
+ background:#b63b32;
+ color:#fff;
+ font-weight:800;
+ cursor:pointer;
+}
+.excursion-cancel-confirm:disabled{
+ opacity:.55;
+ cursor:not-allowed;
+}
