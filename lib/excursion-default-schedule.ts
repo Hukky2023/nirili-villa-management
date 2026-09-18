@@ -24,7 +24,7 @@ export const standardDailyExcursions=[
  {time:'13:00',name:'Clown Fish Snorkeling only',sharedGroup:'1300-clownfish',priceCents:0},
  {time:'13:00',name:'Clown Fish Snorkeling + Manta',sharedGroup:'1300-clownfish',priceCents:0},
  {time:'16:30',name:'Dolphin only',sharedGroup:'',priceCents:catalogPrice('Dolphin Watching')},
- {time:'16:30',name:'Dolphin + Fishing',sharedGroup:'',priceCents:sumPrices('dolphin','fishing')}
+ {time:'16:30',name:'Dolphin + Fishing',sharedGroup:'',priceCents:catalogPrice('Dolphin Watching + Fishing + Dinner')}
 ] as const;
 
 export async function ensureStandardDailyExcursions(date:string){
