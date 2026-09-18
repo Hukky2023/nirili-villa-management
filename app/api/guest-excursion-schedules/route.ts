@@ -134,7 +134,7 @@ export async function POST(r:Request){
  try{
   const b=await r.json();
   const scheduleId=String(b.scheduleId||'').slice(0,100),menuItemId=String(b.menuItemId||'').slice(0,100),date=String(b.date||''),stayId=String(b.stayId||''),token=String(b.token||'');
-  const mix=excursionGuestMix(b,Number(b.quantity)||1,20),quantity=mix.total,buggyRequestedInput=b.buggyRequested===true,notes=String(b.notes||'').trim().slice(0,1000);
+  const mix=excursionGuestMix(b,Number(b.quantity)||1,20),quantity=mix.total,buggyRequestedInput=b.buggyRequested===true,privateBoatRequested=quantity>=4&&b.privateBoatRequested===true,notes=String(b.notes||'').trim().slice(0,1000);
   if((!scheduleId&&!menuItemId)||!validDate(date)||!stayId||!/^[-a-zA-Z0-9]{12,80}$/.test(token))throw Error('Check the excursion, date, room and number of guests.');
   const {state,revision}=await loadStays();
   const old=(state.orders||[]).find((o:any)=>o.token===token&&o.accountId===user.userId);
@@ -221,30 +221,44 @@ export async function POST(r:Request){
     .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,orders),rank:scheduleRank(item.name,s)}))
     .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
 
-   const chosen=candidates[0];
-   const unitPriceCents=Math.max(0,Number(item.cents)||0),pricingUnit=item.pricingUnit==='couple'?'couple':'guest',quotedCents=excursionPriceCents(unitPriceCents,pricingUnit,mix),id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
+   const chosen=candidates[0],fallback=suggestedTripWindow(item.name);
+   const unitPriceCents=Math.max(0,Number(item.cents)||0),pricingUnit=item.pricingUnit==='couple'?'couple':'guest';
+   const baseQuotedCents=excursionPriceCents(unitPriceCents,pricingUnit,mix),privateBoatSurchargeCents=privateBoatRequested?PRIVATE_BOAT_SURCHARGE_CENTS:0,quotedCents=baseQuotedCents+privateBoatSurchargeCents,id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
    state.orders??=[];
+
+   if(privateBoatRequested){
+    const suggestedTime=chosen?.schedule.time||fallback.time,suggestedEndTime=chosen?.schedule.endTime||fallback.endTime;
+    state.orders.push({
+     id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',menuItemId:item.id,name:item.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,pricingUnit,buggyRequested,
+     cents:0,quotedCents,baseQuotedCents,unitPriceCents,privateBoatRequested:true,privateBoatSurchargeCents,notes,date,time:'',preferredTime:suggestedTime,preferredEndTime:suggestedEndTime,
+     preferredScheduleId:chosen?.schedule.id||'',matchedScheduleName:chosen?.schedule.name||'',seatRequest:false,unscheduledRequest:true,approvalStatus:'Pending',status:'Awaiting scheduling',
+     requestedOverCapacity:false,autoConfirmed:false,guestNotified:false,createdAt:new Date().toISOString(),source:isWalkIn?'Walk-in private boat':'Guest private boat'
+    });
+    const saved=await saveStayAccess(state,revision,user.userId);
+    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
+    return Response.json({booking:{id,status:'Pending',requiresApproval:true,requiresScheduling:true,privateBoatRequested:true,privateBoatSurchargeCents,chargedCents:0,suggestedTime,suggestedEndTime}},{status:201});
+   }
 
    if(chosen){
     const schedule=chosen.schedule,requiresApproval=chosen.confirmedPax+quantity>chosen.capacity;
     const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
     state.orders.push({
      id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',menuItemId:item.id,name:item.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,pricingUnit,buggyRequested,
-     cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,returnTime:schedule.returnTime||'',scheduleId:schedule.id,
+     cents:requiresApproval?0:quotedCents,quotedCents,baseQuotedCents,unitPriceCents,privateBoatRequested:false,privateBoatSurchargeCents:0,notes,date,time:schedule.time,endTime:schedule.endTime||'',returnTime:schedule.returnTime||'',scheduleId:schedule.id,
      seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',
      requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,matchedFromMenu:true,matchedScheduleName:schedule.name,
-     schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
+     schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,endTime:schedule.endTime||'',...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
      guestNotified:requiresApproval?undefined:false,createdAt:new Date().toISOString(),source:isWalkIn?'Walk-in portal':'Guest menu'
     });
     const saved=await saveStayAccess(state,revision,user.userId);
     if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
-    return Response.json({booking:{id,status:requiresApproval?'Pending':'Confirmed',requiresApproval,requiresScheduling:false,matchedScheduleId:schedule.id,matchedScheduleName:schedule.name,time:schedule.time,remainingBefore:chosen.remaining,chargedCents:requiresApproval?0:quotedCents}},{status:201});
+    return Response.json({booking:{id,status:requiresApproval?'Pending':'Confirmed',requiresApproval,requiresScheduling:false,matchedScheduleId:schedule.id,matchedScheduleName:schedule.name,time:schedule.time,endTime:schedule.endTime||'',remainingBefore:chosen.remaining,chargedCents:requiresApproval?0:quotedCents}},{status:201});
    }
 
-   state.orders.push({id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',menuItemId:item.id,name:item.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,pricingUnit,buggyRequested,cents:0,quotedCents,unitPriceCents,notes,date,time:'',status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false,createdAt:new Date().toISOString(),source:'Guest menu'});
+   state.orders.push({id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',menuItemId:item.id,name:item.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,pricingUnit,buggyRequested,cents:0,quotedCents,baseQuotedCents,unitPriceCents,privateBoatRequested:false,privateBoatSurchargeCents:0,notes,date,time:'',preferredTime:fallback.time,preferredEndTime:fallback.endTime,status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false,createdAt:new Date().toISOString(),source:isWalkIn?'Walk-in portal':'Guest menu'});
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
-   return Response.json({booking:{id,status:'Pending',requiresApproval:true,requiresScheduling:true,noMatchingSchedule:true,chargedCents:0}},{status:201});
+   return Response.json({booking:{id,status:'Pending',requiresApproval:true,requiresScheduling:true,noMatchingSchedule:true,chargedCents:0,suggestedTime:fallback.time,suggestedEndTime:fallback.endTime}},{status:201});
   }
 
   const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(prefix+date+':'+scheduleId).first<any>();
