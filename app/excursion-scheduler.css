@@ -779,3 +779,13 @@
  font-size:11px;
  font-weight:800;
 }
+
+
+.private-trip-badge{
+ padding:4px 8px!important;
+ border-radius:999px!important;
+ background:#e9f5ff!important;
+ color:#176080!important;
+ font-size:11px!important;
+ font-weight:900!important;
+}
