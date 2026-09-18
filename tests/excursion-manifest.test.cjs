@@ -32,9 +32,9 @@ test('selects confirmed bookings by exact schedule ID, not excursion name', () =
 test('shared boat seats and extra vessel passengers are counted separately', () => {
   const sibling = {...selected, id: 'trip-b', name: 'Coral Garden only'};
   const result = manifest([order(), order({id: 'sibling', scheduleId: sibling.id, quantity: 3}), order({id: 'extra', quantity: 4, separateVessel: true, overflowVesselId: 'boat-2'})], [selected, sibling]);
-  assert.deepEqual(result.totals, {bookings: 2, pax: 6, mainVesselPax: 2, extraVesselPax: 4, boatPax: 5, capacity: 6, sharedTrips: 2});
+  assert.deepEqual(result.totals, {bookings: 3, pax: 9, mainVesselPax: 5, extraVesselPax: 4, boatPax: 5, capacity: 6, sharedTrips: 2});
   assert.equal(result.bookings.find(b => b.id === 'extra').vessel, 'Extra boat');
-  assert.equal(result.bookings.some(b => b.id === 'sibling'), false);
+  assert.equal(result.bookings.some(b => b.id === 'sibling'), true);
 });
 test('same-boat groups work before a vessel is assigned', () => {
   const a = {...selected, vesselId: '', sharedGroup: 'morning'};
@@ -99,7 +99,7 @@ function route({allowed = true, schedules = [selected], fail = false} = {}) {
     '../../../lib/stays': {loadStays: async () => {reads++; if (fail) throw Error('private database details'); return {state: {orders: [order()], stays: []}};}},
     '../../../lib/excursion-workflow': {excursionResources: () => resources, excursionPaid: () => false},
   });
-  return {get: id => GET(new Request('https://example.test/api/excursion-manifest' + (id === undefined ? '' : '?scheduleId=' + encodeURIComponent(id)))), reads: () => reads};
+  return {get: (id, date = selected.date) => GET(new Request('https://example.test/api/excursion-manifest' + (id === undefined ? '' : '?scheduleId=' + encodeURIComponent(id) + '&date=' + encodeURIComponent(date)))), reads: () => reads};
 }
 test('API denies unauthorized access before reading guest records', async () => {
   const api = route({allowed: false}); const response = await api.get(selected.id);
@@ -110,6 +110,7 @@ test('API validates IDs and does not reveal unrelated bookings for a deleted tri
   const api = route();
   assert.equal((await api.get()).status, 400);
   assert.equal((await api.get('x'.repeat(161))).status, 400);
+  assert.equal((await api.get(selected.id, '')).status, 400);
   assert.equal(api.reads(), 0);
   assert.equal((await api.get('deleted')).status, 404);
 });
@@ -127,9 +128,19 @@ test('API errors are retryable and do not disclose database details', async () =
 });
 test('scheduler puts View immediately after Delete and the dialog compiles', () => {
   const scheduler = fs.readFileSync(path.join(root, 'app/excursion-scheduler.tsx'), 'utf8');
-  assert.match(scheduler, /Delete<\/button><ExcursionGuestListButton scheduleId=\{item.id\}/);
+  assert.match(scheduler, /Delete<\/button><ExcursionGuestListButton scheduleId=\{item.id\} tripName=\{item.name\} date=\{item.date\}/);
   for (const name of ['app/excursion-scheduler.tsx', 'app/excursion-guest-list.tsx']) {
     const result = ts.transpileModule(fs.readFileSync(path.join(root, name), 'utf8'), {fileName: name, reportDiagnostics: true, compilerOptions: {jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022}});
     assert.equal(result.diagnostics.length, 0, name);
   }
+});
+
+test('reused standard schedule IDs are scoped to the booked date', () => {
+  const nextDay = {...selected, date: '2026-09-19'};
+  const result = buildExcursionManifest(selected, [selected, nextDay], {orders: [
+    order({id: 'today', date: selected.date}),
+    order({id: 'tomorrow', date: nextDay.date}),
+  ]}, resources, () => false);
+  assert.deepEqual(result.bookings.map(b => b.id), ['today']);
+  assert.equal(result.totals.boatPax, 2);
 });
