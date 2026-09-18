@@ -1,5 +1,6 @@
 import {catalog,validDate} from './guest-catalog';
 import {scheduleExcursion} from './excursion-schedule';
+import {inferTripEndTime,timeRangesOverlap} from './excursion-operations';
 export const vesselConditions=['Available','Under maintenance','Out of service'];
 const norm=(s:string)=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
 function validateVesselCapacity(value:any){
@@ -96,8 +97,14 @@ export function applyExcursionAction(state:any,b:any,today:string,by:string){
  if(excursionStage(o)==='Departed')throw Error('A departed trip cannot be rescheduled.');const resources=excursionResources(state);const vessel=resources.vessels.find(x=>x.id===b.vesselId);const crew=Array.isArray(b.crewIds)?b.crewIds.map((id:string)=>resources.crew.find(x=>x.id===id)):[];
  if(vessel&&vessel.condition!=='Available')throw Error('This vessel is unavailable. Choose an available vessel.');
  if(!vessel||!crew.length||crew.some(x=>!x)||new Set(b.crewIds).size!==crew.length)throw Error('Select a vessel and different crew members from the lists.');
- const clash=state.orders.find((x:any)=>x.id!==o.id&&x.kind==='excursion'&&x.status!=='Cancelled'&&x.schedule?.date===b.date&&x.schedule?.time===b.time&&(norm(x.schedule.vessel)===norm(vessel.name)||x.schedule.crew.some((n:string)=>crew.some(c=>norm(c.name)===norm(n)))));
- if(clash)throw Error('Vessel or crew already assigned at this date and time (booking '+clash.id+'). Choose another time or team.');
+ const requestedEnd=b.endTime||inferTripEndTime(o.name,b.time);
+ const clash=state.orders.find((x:any)=>{
+  if(x.id===o.id||x.kind!=='excursion'||x.status==='Cancelled'||x.schedule?.date!==b.date)return false;
+  const otherEnd=x.schedule?.endTime||inferTripEndTime(x.name,x.schedule?.time);
+  if(!timeRangesOverlap(b.time,requestedEnd,x.schedule?.time,otherEnd))return false;
+  return norm(x.schedule.vessel)===norm(vessel.name)||x.schedule.crew.some((n:string)=>crew.some(c=>norm(c.name)===norm(n)));
+ });
+ if(clash)throw Error('Vessel or crew is already assigned to overlapping trip '+clash.id+'. Choose another boat, team or non-overlapping time.');
  scheduleExcursion(o,{...b,vessel:vessel.name,crew:crew.map(c=>c.name)},today,by);o.schedule.vesselId=vessel.id;o.schedule.crewIds=crew.map(c=>c.id);o.status='Scheduled';o.guestNotified=false;delete o.guestNotifiedAt;delete o.guestNotifiedBy;return;
  }
  if(b.action==='excursion-notified'){
