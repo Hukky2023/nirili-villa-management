@@ -18,7 +18,11 @@ export async function GET() {
     const rows = await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?')
       .bind('excursion-schedule:%').all<any>();
     const schedules = (rows.results || []).map((row: any) => JSON.parse(row.payload));
-    const byId = new Map(schedules.map((s: any) => [s.id, s]));
+    // Standard recurring schedules can reuse the same schedule id on different dates.
+    // Never resolve a booking by schedule id alone or a later day's row can overwrite the booked date.
+    const byDateAndId = new Map(schedules.map((s: any) => [String(s.date || '') + '|' + String(s.id || ''), s]));
+    const byId = new Map<string, any[]>();
+    for (const s of schedules) byId.set(String(s.id || ''), [...(byId.get(String(s.id || '')) || []), s]);
     const byDeparture = new Map<string, any[]>();
     for (const s of schedules) {
       const key = legacyKey(s.date, s.time, s.name);
@@ -27,7 +31,12 @@ export async function GET() {
     const stays = new Map((state.stays || []).map((s: any) => [s.id, s]));
     const resources = excursionResources(state);
     const bookings = (state.orders || []).filter(isConfirmedExcursion).map((order: any) => {
-      let schedule = order.scheduleId ? byId.get(order.scheduleId) : undefined;
+      const bookedDate = order.date || order.schedule?.date || '';
+      let schedule = order.scheduleId ? byDateAndId.get(String(bookedDate) + '|' + String(order.scheduleId)) : undefined;
+      if (order.scheduleId && !schedule) {
+        const idMatches = byId.get(String(order.scheduleId)) || [];
+        schedule = idMatches.length === 1 ? idMatches[0] : undefined;
+      }
       if (!order.scheduleId) {
         const matches = byDeparture.get(legacyKey(order.schedule?.date || order.date, order.schedule?.time || order.time, order.name)) || [];
         // Never guess between two different departures sharing a name and time.
