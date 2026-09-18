@@ -2,9 +2,9 @@
 export type ConfirmedExcursionBooking = {
   id: string; excursion: string; guest: string; phone: string;
   guestType: 'In-house' | 'Walk-in'; hotel: string; room: string;
-  date: string; time: string; returnTime: string; guests: number; adults: number; children: number; infants: number; totalCents: number;
+  date: string; time: string; endTime: string; returnTime: string; guests: number; adults: number; children: number; infants: number; totalCents: number;
   paymentStatus: 'Paid' | 'Unpaid'; tripStatus: string;
-  vessel: string; crew: string[]; separateVessel: boolean; buggyRequested: boolean; buggyRoundTrip: boolean; serviceType: string;
+  vessel: string; crew: string[]; separateVessel: boolean; privateBoatRequested: boolean; privateBoatSurchargeCents: number; buggyRequested: boolean; buggyRoundTrip: boolean; serviceType: string;
   notes: string; source: string; createdAt: string; createdBy: string;
 };
 
@@ -53,6 +53,7 @@ export function toConfirmedExcursionBooking(
     // The guest-selected/booked-for date and time are authoritative. Live schedule data is only an assignment fallback.
     date: text(order.date) || text(stored.date) || text(current?.date),
     time: text(order.time) || text(stored.time) || text(current?.time),
+    endTime: text(order.endTime) || text(stored.endTime) || text(current?.endTime),
     returnTime: text(order.returnTime) || text(stored.returnTime) || text(current?.returnTime),
     guests: Number.isFinite(quantity) ? Math.max(0, Math.trunc(quantity)) : 0,
     adults: Number.isFinite(Number(order.adults)) ? Math.max(0, Math.trunc(Number(order.adults))) : (Number.isFinite(quantity) ? Math.max(0, Math.trunc(quantity)) : 0),
@@ -62,7 +63,7 @@ export function toConfirmedExcursionBooking(
     paymentStatus: paid ? 'Paid' : 'Unpaid',
     tripStatus: romanticDinner ? 'Dinner confirmed' : historical ? (normal(order.status) === 'completed' ? 'Completed' : 'Departed') : 'Scheduled',
     vessel: romanticDinner ? 'Not required' : text(vessel?.name) || text(assignment.vessel) || 'Not assigned',
-    crew: romanticDinner ? [] : crew, separateVessel: !!order.separateVessel, buggyRequested: inhouse ? true : !!order.buggyRequested, buggyRoundTrip: !!order.buggyRoundTrip, serviceType: text(order.serviceType),
+    crew: romanticDinner ? [] : crew, separateVessel: !!order.separateVessel, privateBoatRequested: !!order.privateBoatRequested, privateBoatSurchargeCents: Math.max(0,Number(order.privateBoatSurchargeCents)||0), buggyRequested: inhouse ? true : !!order.buggyRequested, buggyRoundTrip: !!order.buggyRoundTrip, serviceType: text(order.serviceType),
     notes: text(order.notes), source: text(order.source),
     createdAt: text(order.createdAt), createdBy: text(order.createdBy),
   };
