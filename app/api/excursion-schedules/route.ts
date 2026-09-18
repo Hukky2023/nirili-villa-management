@@ -235,7 +235,7 @@ export async function PATCH(r:Request){
    const assignedGuides=assignedGuideCount(guides,body.crewIds,resources.crew);
    if(assignedGuides<requiredGuides)throw Error('This booking has '+order.quantity+' guests. Assign at least '+requiredGuides+' guides before scheduling.');
    const scheduleId='req-'+crypto.randomUUID(),now=new Date().toISOString();
-   const record={id:scheduleId,...body,...(resortVisit?{returnTime,serviceType:RESORT_VISIT_SERVICE}:{}),guideIds:guides,createdFromRequest:order.id,createdAt:now,updatedAt:now};
+   const record={id:scheduleId,...body,...(resortVisit?{returnTime,serviceType:RESORT_VISIT_SERVICE}:{}),guideIds:guides,privateTrip:!!order.privateBoatRequested,createdFromRequest:order.id,createdAt:now,updatedAt:now};
    const key=prefix+body.date+':'+scheduleId;
    const inserted=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(key,JSON.stringify(record),user.userId).run();
    if(!inserted.meta.changes)throw Error('Could not create the requested trip.');
@@ -243,7 +243,7 @@ export async function PATCH(r:Request){
    order.scheduleId=scheduleId;order.time=body.time;order.endTime=body.endTime;if(resortVisit){order.returnTime=returnTime;order.serviceType=RESORT_VISIT_SERVICE;}order.approvalStatus='Approved';order.status='Scheduled';order.cents=Math.max(0,Number(order.quotedCents)||0);
    order.seatRequest=false;order.unscheduledRequest=false;order.autoConfirmed=false;order.adminScheduled=true;order.requestedOverCapacity=false;
    order.reviewedAt=now;order.reviewedBy=user.username;order.guestNotified=false;
-   order.schedule={date:body.date,time:body.time,endTime:body.endTime,...(resortVisit?{returnTime}:{}),vesselId:body.vesselId,vessel:vessel.name,crewIds:body.crewIds,guideIds:guides,crew:crew.map((c:any)=>c.name)};
+   order.schedule={date:body.date,time:body.time,endTime:body.endTime,...(resortVisit?{returnTime}:{}),vesselId:body.vesselId,vessel:vessel.name,crewIds:body.crewIds,guideIds:guides,crew:crew.map((c:any)=>c.name),privateBoat:!!order.privateBoatRequested};
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved){
     await authDb().prepare('DELETE FROM operation_records WHERE key=?').bind(key).run();
