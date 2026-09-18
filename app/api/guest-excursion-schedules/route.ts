@@ -5,6 +5,7 @@ import {catalog,islandToday,validDate} from '../../../lib/guest-catalog';
 import {excursionResources} from '../../../lib/excursion-workflow';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
+import {walkInExcursionOrderPaid,walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
 
 const prefix='excursion-schedule:';
 const norm=(v:any)=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
@@ -97,7 +98,12 @@ export async function GET(r:Request){
   await ensureStandardDailyExcursions(date);
   const {state}=await loadStays();
   const stays=(state.stays||[]).filter((s:any)=>s.accountId===user.userId&&s.status==='In House');
-  const eligibleStays=stays.filter((s:any)=>s.checkIn<=date&&date<s.checkOut).map((s:any)=>({id:s.id,room:s.room,guest:s.guest,checkIn:s.checkIn,checkOut:s.checkOut}));
+  const walkIn=walkInExcursionProfile(state,user.userId);
+  const eligibleStays=stays.filter((s:any)=>s.checkIn<=date&&date<s.checkOut).map((s:any)=>({id:s.id,room:s.room,guest:s.guest,checkIn:s.checkIn,checkOut:s.checkOut,walkIn:false}));
+  if(walkIn?.active){
+   const checkIn=islandToday(),checkOut=String(walkIn.expiresAt||'').slice(0,10);
+   if(date>=checkIn&&(!checkOut||date<checkOut))eligibleStays.push({id:'walkin:'+user.userId,room:walkIn.room||'',guest:walkIn.name,checkIn,checkOut:checkOut||'2099-12-31',walkIn:true,hotel:walkIn.hotel,phone:walkIn.phone} as any);
+  }
   const raw=await schedulesForDate(date);
   const orders=Array.isArray(state.orders)?state.orders:[];
   const groups:Record<string,{capacity:number,confirmedPax:number,pendingPax:number,scheduleIds:string[]}>={};
@@ -111,8 +117,8 @@ export async function GET(r:Request){
   });
   const enriched=schedules.map((s:any)=>{const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null;const capacity=g?.capacity??s.capacity,confirmedPax=g?.confirmedPax??s.confirmedPax,pendingPax=g?.pendingPax??s.pendingPax;return {...s,capacity,confirmedPax,pendingPax,remainingSeats:Math.max(0,capacity-confirmedPax),isFull:confirmedPax>=capacity,sharedBoat:!!g&&g.scheduleIds.length>1};});
   const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled').map((o:any)=>{
-   const bookingStay=(state.stays||[]).find((s:any)=>s.id===o.stayId);
-   return {id:o.id,stayId:o.stayId,menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room,vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,buggyRequested:true,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),checkIn:bookingStay?.checkIn||'',checkOut:bookingStay?.checkOut||'',createdAt:o.createdAt};
+   const bookingStay=(state.stays||[]).find((s:any)=>s.id===o.stayId),bookingProfile=!bookingStay?walkInExcursionProfile(state,o.accountId):undefined,isWalkIn=!!bookingProfile;
+   return {id:o.id,stayId:o.stayId||('walkin:'+o.accountId),menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room||bookingProfile?.room||'',vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,buggyRequested:isWalkIn?!!o.buggyRequested:true,isWalkIn,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),checkIn:bookingStay?.checkIn||islandToday(),checkOut:bookingStay?.checkOut||String(bookingProfile?.expiresAt||'').slice(0,10),createdAt:o.createdAt};
   }).sort((a:any,b:any)=>(String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
   return Response.json({date,stays:eligibleStays,schedules:enriched,myBookings},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load scheduled excursions.'},{status:503});}
@@ -130,8 +136,12 @@ export async function POST(r:Request){
   const old=(state.orders||[]).find((o:any)=>o.token===token&&o.accountId===user.userId);
   if(old)return Response.json({booking:{id:old.id,status:old.approvalStatus==='Approved'?'Confirmed':old.approvalStatus||old.status,requiresApproval:old.approvalStatus==='Pending',requiresScheduling:!old.scheduleId}});
   const stay=(state.stays||[]).find((s:any)=>s.id===stayId&&s.accountId===user.userId&&s.status==='In House');
-  if(!stay)throw Error('This room is not available for excursion booking.');
-  if(date<islandToday()||date<stay.checkIn||date>=stay.checkOut)throw Error('Choose an excursion date during your current stay.');
+  const walkIn=walkInExcursionProfile(state,user.userId),isWalkIn=!stay&&walkIn?.active===true&&stayId==='walkin:'+user.userId;
+  if(!stay&&!isWalkIn)throw Error('This excursion account is not available for booking.');
+  const guest=stay?.guest||walkIn?.name||user.displayName,room=stay?.room||'',phone=stay?.whatsapp||walkIn?.phone||'',hotel=stay?'Nirili Villa':walkIn?.hotel||'',externalRoom=stay?'':walkIn?.room||'',orderStayId=stay?.id||'';
+  const buggyRequested=isWalkIn?buggyRequestedInput:true;
+  if(stay&&(date<islandToday()||date<stay.checkIn||date>=stay.checkOut))throw Error('Choose an excursion date during your current stay.');
+  if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(date<islandToday()||(expiryDate&&date>=expiryDate))throw Error('Choose a valid excursion date while your temporary login is active.');}
 
   if(menuItemId&&!scheduleId){
    const menu=await loadExcursionMenu();
@@ -156,19 +166,19 @@ export async function POST(r:Request){
     const schedule=chosen.schedule,requiresApproval=chosen.confirmedPax+quantity>chosen.capacity;
     const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
     state.orders.push({
-     id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',menuItemId:item.id,name:item.name,quantity,pricingUnit,buggyRequested,
+     id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',menuItemId:item.id,name:item.name,quantity,pricingUnit,buggyRequested,
      cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,scheduleId:schedule.id,
      seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',
      requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,matchedFromMenu:true,matchedScheduleName:schedule.name,
      schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
-     guestNotified:requiresApproval?undefined:false,createdAt:new Date().toISOString(),source:'Guest menu'
+     guestNotified:requiresApproval?undefined:false,createdAt:new Date().toISOString(),source:isWalkIn?'Walk-in portal':'Guest menu'
     });
     const saved=await saveStayAccess(state,revision,user.userId);
     if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
     return Response.json({booking:{id,status:requiresApproval?'Pending':'Confirmed',requiresApproval,requiresScheduling:false,matchedScheduleId:schedule.id,matchedScheduleName:schedule.name,time:schedule.time,remainingBefore:chosen.remaining,chargedCents:requiresApproval?0:quotedCents}},{status:201});
    }
 
-   state.orders.push({id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',menuItemId:item.id,name:item.name,quantity,pricingUnit,buggyRequested,cents:0,quotedCents,unitPriceCents,notes,date,time:'',status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false,createdAt:new Date().toISOString(),source:'Guest menu'});
+   state.orders.push({id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',menuItemId:item.id,name:item.name,quantity,pricingUnit,buggyRequested,cents:0,quotedCents,unitPriceCents,notes,date,time:'',status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false,createdAt:new Date().toISOString(),source:'Guest menu'});
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
    return Response.json({booking:{id,status:'Pending',requiresApproval:true,requiresScheduling:true,noMatchingSchedule:true,chargedCents:0}},{status:201});
@@ -190,10 +200,10 @@ export async function POST(r:Request){
   const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
   state.orders??=[];
   state.orders.push({
-   id,token,accountId:user.userId,stayId:stay.id,guest:stay.guest,room:stay.room,kind:'excursion',name:schedule.name,quantity,buggyRequested,cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,scheduleId:schedule.id,
+   id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',name:schedule.name,quantity,buggyRequested,cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,scheduleId:schedule.id,
    seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,
    schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
-   guestNotified:requiresApproval?undefined:false,createdAt:new Date().toISOString(),source:'Guest schedule'
+   guestNotified:requiresApproval?undefined:false,createdAt:new Date().toISOString(),source:isWalkIn?'Walk-in portal':'Guest schedule'
   });
   const saved=await saveStayAccess(state,revision,user.userId);
   if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
@@ -211,10 +221,12 @@ export async function PATCH(r:Request){
   const order=(state.orders||[]).find((o:any)=>o.id===bookingId&&o.kind==='excursion'&&o.accountId===user.userId);
   if(!order)throw Error('Excursion booking not found.');
   if(['Departed','Completed','Cancelled'].includes(order.status)||order.approvalStatus==='Cancelled')throw Error('This excursion date can no longer be changed online.');
-  const stay=(state.stays||[]).find((s:any)=>s.id===order.stayId&&s.accountId===user.userId&&s.status==='In House');
-  if(!stay)throw Error('This room is not available for excursion changes.');
-  if(Number(order.cents)>0&&stay.paidBills?.['Excursions:'+order.id]===Number(order.cents))throw Error('This excursion has already been paid. Please contact reception to change the date.');
-  if(newDate<islandToday()||newDate<stay.checkIn||newDate>=stay.checkOut)throw Error('Choose a date during your current stay, before checkout.');
+  const stay=(state.stays||[]).find((s:any)=>s.id===order.stayId&&s.accountId===user.userId&&s.status==='In House'),walkIn=walkInExcursionProfile(state,user.userId),isWalkIn=!stay&&walkIn?.active===true;
+  if(!stay&&!isWalkIn)throw Error('This excursion account is not available for changes.');
+  if(stay&&Number(order.cents)>0&&stay.paidBills?.['Excursions:'+order.id]===Number(order.cents))throw Error('This excursion has already been paid. Please contact reception to change the date.');
+  if(isWalkIn&&walkInExcursionOrderPaid(order)&&Number(order.cents)>0)throw Error('This excursion has already been paid. Please contact reception to change the date.');
+  if(stay&&(newDate<islandToday()||newDate<stay.checkIn||newDate>=stay.checkOut))throw Error('Choose a date during your current stay, before checkout.');
+  if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(newDate<islandToday()||(expiryDate&&newDate>=expiryDate))throw Error('Choose a valid excursion date while your temporary login is active.');}
   if(newDate===order.date)return Response.json({ok:true,status:order.approvalStatus==='Approved'?'Confirmed':order.approvalStatus||order.status,date:order.date,time:order.time||order.schedule?.time||''});
 
   await ensureStandardDailyExcursions(newDate);
