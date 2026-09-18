@@ -5,6 +5,7 @@ import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-sche
 import {excursionResources} from '../../../lib/excursion-workflow';
 import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requiredExcursionGuides} from '../../../lib/excursion-guides';
 import {excursionDeparturePassed} from '../../../lib/guest-catalog';
+import {isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE} from '../../../lib/excursion-services';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -77,7 +78,7 @@ export async function GET(r:Request){
   const unscheduledRequests=orders.filter((o:any)=>o.kind==='excursion'&&o.date===date&&o.unscheduledRequest===true&&o.approvalStatus==='Pending'&&o.status!=='Cancelled').map((o:any)=>({
    id:o.id,name:o.name,guest:o.guest||'Guest',phone:o.phone||'',hotel:o.hotel||'',room:o.room||o.externalRoom||'',inHouse:!!o.stayId,quantity:Number(o.quantity)||0,adults:Number(o.adults??o.quantity)||0,children:Number(o.children)||0,infants:Number(o.infants)||0,date:o.date,
    quotedCents:Math.max(0,Number(o.quotedCents)||0),unitPriceCents:Math.max(0,Number(o.unitPriceCents)||0),pricingUnit:o.pricingUnit||'guest',
-   buggyRequested:!!o.buggyRequested,notes:o.notes||'',source:o.source||'',createdAt:o.createdAt||''
+   buggyRequested:!!o.buggyRequested,serviceType:o.serviceType||'',serviceRequest:!!o.serviceRequest,notes:o.notes||'',source:o.source||'',createdAt:o.createdAt||''
   }));
   return Response.json({date,schedules:enriched,sharedBoatGroups:groups,unscheduledRequests,canEdit:hasPermission(user,'edit_excursions')},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load excursion schedules.'},{status:503});}
@@ -132,6 +133,23 @@ export async function PATCH(r:Request){
  if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{
   const b=await r.json();
+  if(b.action==='confirm-romantic-dinner'){
+   const requestId=String(b.requestId||'').slice(0,100);
+   if(!requestId)throw Error('Choose a dinner booking request.');
+   const {state,revision}=await loadStays();
+   const order=(state.orders||[]).find((o:any)=>o.id===requestId&&o.kind==='excursion'&&o.unscheduledRequest===true&&o.approvalStatus==='Pending'&&o.status!=='Cancelled'&&isRomanticBeachDinner(o));
+   if(!order)throw Error('This romantic dinner request has already been handled.');
+   const now=new Date().toISOString();
+   order.approvalStatus='Approved';order.status='Confirmed';order.cents=Math.max(0,Number(order.quotedCents)||0);
+   order.unscheduledRequest=false;order.seatRequest=false;order.autoConfirmed=false;order.adminScheduled=false;order.serviceRequest=false;
+   order.serviceType=ROMANTIC_BEACH_DINNER_SERVICE;order.buggyRoundTrip=!!order.buggyRequested;
+   order.reviewedAt=now;order.reviewedBy=user.username;order.guestNotified=false;
+   delete order.scheduleId;delete order.schedule;delete order.time;delete order.vesselId;delete order.crewIds;delete order.guideIds;
+   const saved=await saveStayAccess(state,revision,user.userId);
+   if(!saved)return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
+   return Response.json({ok:true,booking:{id:order.id,status:'Confirmed',serviceType:order.serviceType,buggyRoundTrip:order.buggyRoundTrip}});
+  }
+
   if(b.action==='schedule-request'){
    const requestId=String(b.requestId||'').slice(0,100),time=String(b.time||''),vesselId=String(b.vesselId||'').slice(0,100);
    const capacity=Math.max(1,Math.min(100,Math.round(Number(b.capacity)||1)));
