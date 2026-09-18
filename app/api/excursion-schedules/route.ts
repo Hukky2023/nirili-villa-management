@@ -44,6 +44,14 @@ function matches(o:any,s:any){
 const isConfirmed=(o:any)=>o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled'&&o.status!=='Cancelled';
 const isPending=(o:any)=>o.approvalStatus==='Pending'&&o.status!=='Cancelled';
 const sharedKey=(s:any)=>s.sharedGroup?s.date+'|'+s.time+'|group:'+s.sharedGroup:s.vesselId?s.date+'|'+s.time+'|vessel:'+s.vesselId:'';
+function separateVesselConflict(orders:any[],vesselId:string,date:string,time:string,endTime:string,excludeOrderId=''){
+ return orders.find((order:any)=>{
+  if(!order||order.id===excludeOrderId||!order.separateVessel||order.status==='Cancelled'||order.approvalStatus==='Cancelled')return false;
+  const assignedVessel=String(order.overflowVesselId||order.schedule?.vesselId||'');
+  const assignedDate=String(order.date||order.schedule?.date||''),assignedTime=String(order.time||order.schedule?.time||''),assignedEnd=String(order.endTime||order.schedule?.endTime||inferTripEndTime(order.name,assignedTime));
+  return assignedVessel===vesselId&&assignedDate===date&&timeRangesOverlap(time,endTime,assignedTime,assignedEnd);
+ })||null;
+}
 
 async function schedulesForDate(date:string){
  const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(prefix+date+':%').all<any>();
@@ -265,6 +273,11 @@ export async function PATCH(r:Request){
     if(!vessel||vessel.condition!=='Available')throw Error('Choose an available vessel.');
     const originalVesselIds=new Set(groupSchedules.map((s:any)=>String(s.vesselId||'')).filter(Boolean));
     if(originalVesselIds.has(vessel.id))throw Error('Choose a different vessel from the vessel already assigned to this departure.');
+    const endTime=schedule.endTime||inferTripEndTime(schedule.name,schedule.time);
+    const scheduledConflict=vesselConflict(sameDay,{date:schedule.date,time:schedule.time,endTime,vesselId:vessel.id});
+    if(scheduledConflict)throw Error(vessel.name+' is already in use for '+scheduledConflict.name+' from '+scheduledConflict.time+' to '+(scheduledConflict.endTime||inferTripEndTime(scheduledConflict.name,scheduledConflict.time))+'.');
+    const bookingConflict=separateVesselConflict(state.orders||[],vessel.id,schedule.date,schedule.time,endTime);
+    if(bookingConflict)throw Error(vessel.name+' is already assigned to another private/extra-vessel booking during this time.');
    }else vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId);
    let stay:any=null,guest='',phone='',hotel='',room='',accountId:any=undefined,stayId:any=undefined;
    if(guestType==='inhouse'){
@@ -277,7 +290,7 @@ export async function PATCH(r:Request){
    }
    const crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id)),unitPriceCents=Math.max(0,Number(schedule.priceCents)||0),cents=excursionPriceCents(unitPriceCents,'guest',mix),id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
    state.orders??=[];
-   state.orders.push({id,kind:'excursion',scheduleId:schedule.id,name:schedule.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,cents,unitPriceCents,quotedCents:cents,guest,phone,hotel,room,externalRoom:guestType==='walkin'?room:undefined,stayId,accountId,buggyRequested:guestType==='inhouse',date:schedule.date,time:schedule.time,returnTime:schedule.returnTime||'',notes,status:'Scheduled',approvalStatus:'Approved',seatRequest:false,autoConfirmed:true,adminCreated:true,separateVessel:needsExtraVessel,overflowVesselId:needsExtraVessel?vessel?.id:undefined,source:guestType==='inhouse'?'Admin · In-house':'Admin · Walk-in',schedule:{date:schedule.date,time:schedule.time,...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:vessel?.id||schedule.vesselId||'',vessel:vessel?.name||'',crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name),extraVessel:needsExtraVessel},guestNotified:false,createdBy:user.username,createdAt});
+   state.orders.push({id,kind:'excursion',scheduleId:schedule.id,name:schedule.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,cents,unitPriceCents,quotedCents:cents,guest,phone,hotel,room,externalRoom:guestType==='walkin'?room:undefined,stayId,accountId,buggyRequested:guestType==='inhouse',date:schedule.date,time:schedule.time,endTime:schedule.endTime||inferTripEndTime(schedule.name,schedule.time),returnTime:schedule.returnTime||'',notes,status:'Scheduled',approvalStatus:'Approved',seatRequest:false,autoConfirmed:true,adminCreated:true,separateVessel:needsExtraVessel,overflowVesselId:needsExtraVessel?vessel?.id:undefined,source:guestType==='inhouse'?'Admin · In-house':'Admin · Walk-in',schedule:{date:schedule.date,time:schedule.time,endTime:schedule.endTime||inferTripEndTime(schedule.name,schedule.time),...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:vessel?.id||schedule.vesselId||'',vessel:vessel?.name||'',crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name),extraVessel:needsExtraVessel},guestNotified:false,createdBy:user.username,createdAt});
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
    return Response.json({booking:{id,guest,guestType,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,cents,separateVessel:needsExtraVessel,vessel:vessel?.name||''}},{status:201});
