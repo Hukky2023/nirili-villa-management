@@ -14,19 +14,19 @@ function createdLabel(value: string) {
   }).format(date);
 }
 
-type Props = {scheduleId: string; tripName: string};
+type Props = {scheduleId: string; tripName: string; date: string};
 
-export default function ExcursionGuestListButton({scheduleId, tripName}: Props) {
+export default function ExcursionGuestListButton({scheduleId, tripName, date}: Props) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   return <>
     <button type="button" className="excursion-secondary-btn excursion-view-btn" aria-haspopup="dialog"
       aria-label={'View guest list for ' + tripName} onClick={() => setOpen(true)}>View</button>
-    {open && createPortal(<GuestListDialog key={scheduleId} scheduleId={scheduleId} tripName={tripName} onClose={close}/>, document.body)}
+    {open && createPortal(<GuestListDialog key={scheduleId+'|'+date} scheduleId={scheduleId} tripName={tripName} date={date} onClose={close}/>, document.body)}
   </>;
 }
 
-function GuestListDialog({scheduleId, tripName, onClose}: Props & {onClose: () => void}) {
+function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose: () => void}) {
   const [manifest, setManifest] = useState<ExcursionManifest | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState('');
   const request = useRef<AbortController | null>(null);
@@ -40,7 +40,7 @@ function GuestListDialog({scheduleId, tripName, onClose}: Props & {onClose: () =
     request.current = controller;
     if (!background) setLoading(true);
     try {
-      const response = await fetch('/api/excursion-manifest?scheduleId=' + encodeURIComponent(scheduleId), {
+      const response = await fetch('/api/excursion-manifest?scheduleId=' + encodeURIComponent(scheduleId) + '&date=' + encodeURIComponent(date), {
         cache: 'no-store', signal: controller.signal,
       });
       const result = await response.json();
@@ -58,7 +58,7 @@ function GuestListDialog({scheduleId, tripName, onClose}: Props & {onClose: () =
     } finally {
       if (request.current === controller) {request.current = null; setLoading(false);}
     }
-  }, [scheduleId]);
+  }, [scheduleId, date]);
 
   useEffect(() => {
     const element = dialog.current;
@@ -96,7 +96,7 @@ function GuestListDialog({scheduleId, tripName, onClose}: Props & {onClose: () =
       <button type="button" className="excursion-guest-close" aria-label="Close guest list" onClick={onClose}>×</button>
     </header>
     <div className="excursion-guest-body" aria-busy={loading}>
-      <div className="excursion-guest-toolbar"><p id={descriptionId}>Confirmed bookings for this excursion only. Each row is a booking; Pax includes all guests in that booking.</p>
+      <div className="excursion-guest-toolbar"><p id={descriptionId}>Confirmed guests sharing this scheduled boat and departure. Each row is a booking; Pax includes all guests in that booking.</p>
         <button type="button" className="excursion-guest-button" disabled={loading} onClick={() => void load()}>{loading ? 'Loading…' : 'Refresh guest list'}</button></div>
       {error && <div className="excursion-guest-error" role="alert"><strong>{error}</strong>{manifest && <p>Showing the last loaded guest list. It may be out of date.</p>}</div>}
       {loading && !manifest && <p className="excursion-guest-empty" role="status">Loading confirmed guests…</p>}
@@ -138,7 +138,7 @@ function GuestListDialog({scheduleId, tripName, onClose}: Props & {onClose: () =
     <footer className="excursion-guest-footer">
       {manifest && <div className="excursion-guest-totals" aria-live="polite"><div><span>Confirmed bookings: <strong>{manifest.totals.bookings}</strong></span><span>Total guests (pax): <strong>{manifest.totals.pax}</strong></span></div>
         <small>{manifest.totals.sharedTrips > 1 ? 'Shared boat occupancy' : 'Scheduled boat occupancy'}: {manifest.totals.boatPax} / {manifest.totals.capacity}
-          {manifest.totals.sharedTrips > 1 && <> across {manifest.totals.sharedTrips} excursions; this list shows only the selected excursion.</>}
+          {manifest.totals.sharedTrips > 1 && <> across {manifest.totals.sharedTrips} excursions; this list shows all confirmed guests sharing the scheduled boat.</>}
           {manifest.totals.extraVesselPax > 0 && <> · {manifest.totals.extraVesselPax} guests on extra vessels for this excursion (not counted in scheduled boat occupancy).</>}</small>
       </div>}
       <button type="button" className="excursion-guest-button" onClick={onClose}>Close</button>
