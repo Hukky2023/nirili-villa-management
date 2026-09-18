@@ -6,6 +6,7 @@ import DateFieldDMY from './date-field-dmy';
 import AdminExcursionBooking from './admin-excursion-booking';
 import ExcursionBookings from './excursion-bookings';
 import ExcursionGuestListButton from './excursion-guest-list';
+import ExcursionShareTimetable from './excursion-share-timetable';
 import {useEffect,useMemo,useState} from 'react';
 
 type ExcursionTab='Bookings'|'Schedule'|'Excursion menu'|'Crew members'|'Vessels';
@@ -52,7 +53,7 @@ export default function ExcursionScheduler({data}:{data?:any}){
    {tab==='Bookings'&&<ExcursionBookings/>}
 
    {tab==='Schedule'&&<section className="excursion-panel">
-    <div className="excursion-panel-head"><div><h3>Schedule</h3><p>Create excursion trips in advance and manage each day's operating plan.</p></div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><AdminExcursionBooking schedules={schedules} sharedBoatGroups={sharedBoatGroups} resources={resources} stays={data?.stays||[]} date={date} onSaved={()=>load(date)} onMessage={setMessage}/><button type="button" className="excursion-primary-btn" onClick={createSchedule}>+ Create schedule</button></div></div>
+    <div className="excursion-panel-head"><div><h3>Schedule</h3><p>Create excursion trips in advance and manage each day's operating plan.</p></div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><AdminExcursionBooking schedules={schedules} sharedBoatGroups={sharedBoatGroups} resources={resources} stays={data?.stays||[]} date={date} onSaved={()=>load(date)} onMessage={setMessage}/><button type="button" className="excursion-primary-btn" onClick={createSchedule}>+ Create schedule</button><ExcursionShareTimetable key={date} date={date} disabled={loading||saving}/></div></div>
     <div className="excursion-schedule-tools"><button type="button" onClick={()=>setDate(shiftDate(date,-1))}>← Previous day</button><label>Date<DateFieldDMY value={date} onChange={setDate} ariaLabel="Schedule date"/></label><button type="button" onClick={()=>setDate(shiftDate(date,1))}>Next day →</button></div>
     {message&&<p className="excursion-schedule-message" role="status">{message}</p>}
     {loading?<div className="excursion-empty-state"><strong>Loading schedule…</strong></div>:schedules.length?<div className="excursion-timetable"><div className="excursion-timetable-head"><span>Time</span><span>Excursion / trip</span><span>Vessel</span><span>Pax</span><span>Price</span><span>Crew</span><span>Actions</span></div><div className="excursion-day-list">{schedules.map((item:any)=>{const group=item.sharedBoatKey?sharedBoatGroups[item.sharedBoatKey]:null;const shared=!!group&&group.scheduleIds?.length>1;const booked=shared?group.bookedPax:(item.bookedPax||0);const pending=shared?group.pendingPax:(item.pendingPax||0);const capacity=shared?group.capacity:item.capacity;const full=booked>=capacity;const requests=item.requests||[],extra=item.extraVesselBookings||[];return <article key={item.id} className={(item.status==='Closed'?'is-closed ':'')+(shared?'is-shared-boat ':'')+(full?'is-full':'')}>
