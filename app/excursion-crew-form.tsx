@@ -6,7 +6,7 @@ type Crew = {id: string; name: string};
 type Props = {
  crew: Crew[];
  canManage: boolean;
- onSave: (name: string) => Promise<void>;
+ onSave: (name: string) => Promise<any>;
  onClose: () => void;
 };
 const normalizeName = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
