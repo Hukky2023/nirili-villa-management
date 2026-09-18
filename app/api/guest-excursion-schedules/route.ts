@@ -108,7 +108,7 @@ export async function GET(r:Request){
   const orders=Array.isArray(state.orders)?state.orders:[];
   const groups:Record<string,{capacity:number,confirmedPax:number,pendingPax:number,scheduleIds:string[]}>={};
   const schedules=raw.map((s:any)=>{
-   const own=orders.filter((o:any)=>o.accountId===user.userId&&o.scheduleId===s.id&&o.kind==='excursion').sort((a:any,b:any)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')))[0];
+   const own=orders.filter((o:any)=>o.accountId===user.userId&&o.scheduleId===s.id&&(o.date||o.schedule?.date)===s.date&&o.kind==='excursion').sort((a:any,b:any)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')))[0];
    const confirmedPax=orders.filter((o:any)=>matches(o,s)&&confirmed(o)&&!o.separateVessel).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const pendingPax=orders.filter((o:any)=>matches(o,s)&&pending(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const sharedBoatKey=sharedKey(s);
