@@ -125,3 +125,72 @@
 .excursion-menu-card.crew-inactive h4,.excursion-menu-card.crew-inactive p{color:#718792}
 .excursion-price-pill.inactive{background:#f3eded;color:#8f3b3b}
 .excursion-crew-inactive-note{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#fff7e8;color:#77520b;font-size:13px;line-height:1.5}
+
+
+/* Compact excursion menu cards: remove stretched empty space and keep actions beside content. */
+.excursion-menu-grid{
+  align-items:start;
+}
+.excursion-menu-card{
+  align-self:start;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px 14px;
+  padding:14px 16px;
+}
+.excursion-menu-card-top{
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:start;
+  gap:10px 14px;
+  flex-wrap:nowrap;
+}
+.excursion-menu-card-top>div{
+  min-width:0;
+}
+.excursion-menu-card h4{
+  font-size:17px;
+  margin-bottom:3px;
+}
+.excursion-menu-card p{
+  line-height:1.4;
+}
+.excursion-price-pill{
+  padding:7px 10px;
+  font-size:13px;
+}
+.excursion-menu-card-actions{
+  align-self:center;
+  justify-content:flex-end;
+}
+.excursion-menu-card-actions .excursion-secondary-btn{
+  min-height:40px;
+  padding:8px 13px;
+}
+@media(max-width:760px){
+  .excursion-menu-card{
+    grid-template-columns:1fr;
+  }
+  .excursion-menu-card-top{
+    grid-template-columns:minmax(0,1fr) auto;
+  }
+  .excursion-menu-card-actions{
+    grid-column:1;
+    justify-content:flex-end;
+  }
+}
+@media(max-width:520px){
+  .excursion-menu-card-top{
+    grid-template-columns:1fr;
+  }
+  .excursion-price-pill{
+    justify-self:start;
+  }
+  .excursion-menu-card-actions{
+    justify-content:stretch;
+  }
+  .excursion-menu-card-actions .excursion-secondary-btn{
+    width:100%;
+  }
+}
