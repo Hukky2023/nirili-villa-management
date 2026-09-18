@@ -26,9 +26,6 @@ export function baseExcursionMenu(){
 }
 export async function loadExcursionMenu(){
  const base=baseExcursionMenu();
- const retiredBaseIds=new Set(['snorkeling']);
- const latestPosterAt=Date.parse('2026-09-18T09:14:34.000Z');
- const latestPosterIds=new Set(['turtle','coral','fishtank','dolphin','fishing','beach-seafood-dinner','sandbank','shark','sandbank-dinner']);
  const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(PREFIX+'%').all<any>();
  const overrides=new Map<string,any>();
  for(const row of rows.results||[]){
@@ -37,13 +34,11 @@ export async function loadExcursionMenu(){
  const merged=base.map((item:any)=>{
   const override=overrides.get(item.id);
   if(!override)return item;
-  if(latestPosterIds.has(String(item.id))&&(!override.updatedAt||Date.parse(String(override.updatedAt))<=latestPosterAt)){overrides.delete(item.id);return item;}
   overrides.delete(item.id);
   const category=(override.category||item.category) as ExcursionCategory;
   return {...item,...override,kind:'excursion',category,group:categoryGroup(category),active:override.active!==false};
  });
  for(const item of overrides.values()){
-  if(retiredBaseIds.has(String(item.id)))continue;
   const category=excursionCategoryFromGroup(item.category||item.group,item.name);
   merged.push({...item,kind:'excursion',category,group:categoryGroup(category),active:item.active!==false});
  }
