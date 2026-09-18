@@ -8,6 +8,7 @@ import {loadExcursionMenu} from '../../../lib/excursion-menu';
 import {walkInExcursionOrderPaid,walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
 import {excursionGuestMix,excursionPriceCents} from '../../../lib/excursion-children';
 import {isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE} from '../../../lib/excursion-services';
+import {PRIVATE_BOAT_SURCHARGE_CENTS,scheduleCanServeRequest,scheduleMatchRank,suggestedTripWindow} from '../../../lib/excursion-operations';
 
 const prefix='excursion-schedule:';
 const MIN_EXCURSION_PAX=1;
@@ -49,10 +50,7 @@ function excursionComponents(name:any){
  }
  return out.filter(x=>x!=='snorkeling'||out.length===1);
 }
-function scheduleCanServe(menuName:any,scheduleName:any){
- const wanted=excursionComponents(menuName),offered=excursionComponents(scheduleName);
- return wanted.length>0&&wanted.every(x=>offered.includes(x));
-}
+function scheduleCanServe(menuName:any,scheduleName:any){return scheduleCanServeRequest(menuName,scheduleName);}
 function candidateLoad(schedule:any,allSchedules:any[],orders:any[]){
  const key=sharedKey(schedule);
  const groupSchedules=key?allSchedules.filter((s:any)=>sharedKey(s)===key):[schedule];
@@ -61,10 +59,7 @@ function candidateLoad(schedule:any,allSchedules:any[],orders:any[]){
  const confirmedPax=orders.filter((o:any)=>o.kind==='excursion'&&!o.separateVessel&&o.status!=='Cancelled'&&o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled'&&(groupIds.has(o.scheduleId)||groupSchedules.some((s:any)=>matches(o,s)))).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
  return {capacity,confirmedPax,remaining:Math.max(0,capacity-confirmedPax)};
 }
-function scheduleRank(menuName:any,schedule:any){
- const wanted=excursionComponents(menuName),offered=excursionComponents(schedule.name);
- return Math.max(0,offered.length-wanted.length);
-}
+function scheduleRank(menuName:any,schedule:any){return scheduleMatchRank(menuName,schedule.name);}
 const SPECIAL_PACKAGE_ID='special-package';
 const specialPackageSegments=[
  {name:'Turtle Snorkeling + Shark Snorkeling',matchName:'Shark + Turtle Snorkeling',priceMenuId:'shark-turtle'},
@@ -108,10 +103,10 @@ export async function GET(r:Request){
   const {state}=await loadStays();
   const stays=(state.stays||[]).filter((s:any)=>s.accountId===user.userId&&s.status==='In House');
   const walkIn=walkInExcursionProfile(state,user.userId);
-  const eligibleStays=stays.filter((s:any)=>s.checkIn<=date&&date<s.checkOut).map((s:any)=>({id:s.id,room:s.room,guest:s.guest,checkIn:s.checkIn,checkOut:s.checkOut,walkIn:false}));
+  const eligibleStays=stays.map((s:any)=>({id:s.id,room:s.room,guest:s.guest,checkIn:s.checkIn,checkOut:s.checkOut,walkIn:false}));
   if(walkIn?.active){
    const checkIn=islandToday(),checkOut=String(walkIn.expiresAt||'').slice(0,10);
-   if(date>=checkIn&&(!checkOut||date<checkOut))eligibleStays.push({id:'walkin:'+user.userId,room:walkIn.room||'',guest:walkIn.name,checkIn,checkOut:checkOut||'2099-12-31',walkIn:true,hotel:walkIn.hotel,phone:walkIn.phone} as any);
+   eligibleStays.push({id:'walkin:'+user.userId,room:walkIn.room||'',guest:walkIn.name,checkIn,checkOut:checkOut||'2099-12-31',walkIn:true,hotel:walkIn.hotel,phone:walkIn.phone} as any);
   }
   const raw=await schedulesForDate(date);
   const orders=Array.isArray(state.orders)?state.orders:[];
@@ -122,7 +117,7 @@ export async function GET(r:Request){
    const pendingPax=orders.filter((o:any)=>matches(o,s)&&pending(o)).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const sharedBoatKey=sharedKey(s);
    if(sharedBoatKey){const g=groups[sharedBoatKey]||(groups[sharedBoatKey]={capacity:s.capacity,confirmedPax:0,pendingPax:0,scheduleIds:[]});g.capacity=Math.min(g.capacity,s.capacity);g.confirmedPax+=confirmedPax;g.pendingPax+=pendingPax;g.scheduleIds.push(s.id);}
-   return {id:s.id,date:s.date,time:s.time,name:s.name,status:s.status,isPast:excursionDeparturePassed(s.date,s.time),capacity:s.capacity,notes:s.notes||'',priceCents:priceForSchedule(s),sharedBoatKey,confirmedPax,pendingPax,ownBooking:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus==='Approved'?'Confirmed':own.approvalStatus||own.status,createdAt:own.createdAt}:null};
+   return {id:s.id,date:s.date,time:s.time,endTime:s.endTime||'',name:s.name,status:s.status,isPast:excursionDeparturePassed(s.date,s.time),capacity:s.capacity,notes:s.notes||'',priceCents:priceForSchedule(s),sharedBoatKey,confirmedPax,pendingPax,ownBooking:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus==='Approved'?'Confirmed':own.approvalStatus||own.status,createdAt:own.createdAt}:null};
   });
   const enriched=schedules.map((s:any)=>{const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null;const capacity=g?.capacity??s.capacity,confirmedPax=g?.confirmedPax??s.confirmedPax,pendingPax=g?.pendingPax??s.pendingPax;return {...s,capacity,confirmedPax,pendingPax,remainingSeats:Math.max(0,capacity-confirmedPax),isFull:confirmedPax>=capacity,sharedBoat:!!g&&g.scheduleIds.length>1};});
   const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&(o.status!=='Cancelled'||o.scheduleCancelled===true)&&o.approvalStatus!=='Declined'&&(o.approvalStatus!=='Cancelled'||o.scheduleCancelled===true)).map((o:any)=>{
@@ -150,7 +145,7 @@ export async function POST(r:Request){
   const guest=stay?.guest||walkIn?.name||user.displayName,room=stay?.room||'',phone=stay?.whatsapp||walkIn?.phone||'',hotel=stay?'Nirili Villa':walkIn?.hotel||'',externalRoom=stay?'':walkIn?.room||'',orderStayId=stay?.id||'';
   const buggyRequested=isWalkIn?buggyRequestedInput:true;
   if(date<islandToday())throw Error('Excursion bookings cannot be created for a past date.');
-  if(stay&&(date<islandToday()||date<stay.checkIn||date>=stay.checkOut))throw Error('Choose an excursion date during your current stay.');
+  if(stay&&date<islandToday())throw Error('Choose today or a future excursion date.');
   if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(date<islandToday()||(expiryDate&&date>=expiryDate))throw Error('Choose a valid excursion date while your temporary login is active.');}
 
   if(menuItemId&&!scheduleId){
@@ -176,7 +171,7 @@ export async function POST(r:Request){
     const dates=Array.isArray(b.packageDates)?b.packageDates.map((value:any)=>String(value||'')):[date,date,date];
     if(dates.length!==3||dates.some((value:string)=>!validDate(value)))throw Error('Choose a valid date for all three special package trips.');
     for(const value of dates){
-     if(stay&&(value<islandToday()||value<stay.checkIn||value>=stay.checkOut))throw Error('Choose all package trip dates during your current stay.');
+     if(stay&&value<islandToday())throw Error('Choose today or a future date for every package trip.');
      if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(value<islandToday()||(expiryDate&&value>=expiryDate))throw Error('Choose package trip dates while your temporary login is active.');}
     }
     const pricingUnit=item.pricingUnit==='couple'?'couple':'guest',unitPriceCents=Math.max(0,Number(item.cents)||0);
@@ -297,7 +292,7 @@ export async function PATCH(r:Request){
   if(stay&&Number(order.cents)>0&&stay.paidBills?.['Excursions:'+order.id]===Number(order.cents))throw Error('This excursion has already been paid. Please contact reception to edit the booking.');
   if(isWalkIn&&walkInExcursionOrderPaid(order)&&Number(order.cents)>0)throw Error('This excursion has already been paid. Please contact reception to edit the booking.');
 
-  if(stay&&(newDate<islandToday()||newDate<stay.checkIn||newDate>=stay.checkOut))throw Error('Choose a date during your current stay, before checkout.');
+  if(stay&&newDate<islandToday())throw Error('Choose today or a future excursion date.');
   if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(newDate<islandToday()||(expiryDate&&newDate>=expiryDate))throw Error('Choose a valid excursion date while your temporary login is active.');}
 
   const mix=excursionGuestMix(b,Number(order.quantity)||1,20),quantity=mix.total;
