@@ -10,7 +10,7 @@ export function excursionResources(state:any){
  const saved=state.excursionResources||{vessels:[],crew:[]};const vessels=[...saved.vessels],crew=[...saved.crew];
  const add=(list:any[],name:string,prefix:string)=>{if(name&&!list.some(x=>norm(x.name)===norm(name)))list.push({id:prefix+norm(name),name:name.trim()});};
  for(const o of state.orders||[]){if(o.kind!=='excursion'||!o.schedule)continue;if(!vessels.some(v=>v.id===o.schedule.vesselId)&&!(state.excursionRemovedVessels||[]).includes(norm(o.schedule.vessel)))add(vessels,o.schedule.vessel,'v:');for(const name of o.schedule.crew||[])add(crew,name,'c:');}
- return {vessels:vessels.map(v=>({...v,condition:v.condition||'Available'})),crew};
+ return {vessels:vessels.map(v=>({...v,condition:v.condition||'Available'})),crew:crew.map(c=>({...c,active:c.active!==false&&c.active!==0}))};
 }
 export function excursionStage(o:any){if(['Completed','Cancelled','Departed'].includes(o.status))return o.status;return o.schedule||o.status==='Scheduled and informed'?'Scheduled':'Awaiting scheduling';}
 export function excursionPaid(o:any,state:any){const stay=state.stays.find((s:any)=>s.id===o.stayId);if(stay)return !stay.markedUnpaid&&stay.paidBills?.['Excursions:'+o.id]===o.cents;return (o.excursionPayments||[]).reduce((sum:number,p:any)=>sum+p.cents,0)>=o.cents&&!!o.excursionPayments?.length;}
@@ -26,6 +26,22 @@ export function applyExcursionAction(state:any,b:any,today:string,by:string){
  if(b.action==='excursion-resource'){
  if(!['vessels','crew'].includes(b.resourceType)||typeof b.name!=='string'||!b.name.trim()||b.name.length>100)throw Error('Enter a vessel or crew member name.');
  const resources=excursionResources(state),list=resources[b.resourceType as 'vessels'|'crew'];if(list.some(x=>norm(x.name)===norm(b.name)))throw Error('That name is already in the list.');if(b.resourceType==='vessels'&&b.condition!==undefined&&!vesselConditions.includes(b.condition))throw Error('Choose a valid vessel condition.');if(b.resourceType==='vessels')validateVesselCapacity(b.capacity);list.push({id:crypto.randomUUID(),name:b.name.trim(),...(b.resourceType==='vessels'?{condition:b.condition||'Available',...(b.capacity!=null?{capacity:b.capacity}:{})}:{})});state.excursionResources=resources;return;
+ }
+ if(b.action==='excursion-crew-update'){
+ const resources=excursionResources(state),member=resources.crew.find(c=>c.id===b.crewId);if(!member)throw Error('Crew member not found.');
+ const name=String(b.name===undefined?member.name:b.name).trim();
+ if(!name||name.length>100)throw Error('Enter a crew member name of 1–100 characters.');
+ if(resources.crew.some(c=>c.id!==member.id&&norm(c.name)===norm(name)))throw Error('That name is already in the crew list.');
+ if(typeof b.active!=='boolean')throw Error('Choose whether this crew member is active or inactive.');
+ const oldName=member.name;member.name=name;member.active=b.active;member.updatedBy=by;member.updatedAt=new Date().toISOString();
+ for(const order of state.orders||[]){
+  if(order.kind!=='excursion'||!order.schedule)continue;
+  const ids=Array.isArray(order.schedule.crewIds)?order.schedule.crewIds:[];
+  const names=Array.isArray(order.schedule.crew)?order.schedule.crew:[];
+  if(ids.includes(member.id))order.schedule.crew=ids.map((id:string)=>resources.crew.find(c=>c.id===id)?.name||names[ids.indexOf(id)]||id);
+  else if(norm(oldName)!==norm(name))order.schedule.crew=names.map((crewName:string)=>norm(crewName)===norm(oldName)?name:crewName);
+ }
+ state.excursionResources=resources;return;
  }
  if(['excursion-vessel-condition','excursion-vessel-remove'].includes(b.action)){
  const resources=excursionResources(state),vessel=resources.vessels.find(v=>v.id===b.vesselId);if(!vessel)throw Error('Vessel not found.');
