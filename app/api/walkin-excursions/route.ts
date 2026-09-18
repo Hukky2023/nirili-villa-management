@@ -47,7 +47,7 @@ export async function POST(r:Request){
   const ip=r.headers.get('cf-connecting-ip')||'unknown';
   if(!await limit('walkin-exc-account-ip:'+ip,8,3600000))throw Error('Too many temporary account requests. Please contact reception.');
   const {state,revision}=await loadStays();
-  const existing=walkInExcursionProfiles(state).find((x:any)=>x.active===true&&x.phone===phone);
+  const existing=walkInExcursionProfiles(state).find((x:any)=>x.active===true&&x.phone===phone&&(!x.expiresAt||Date.parse(x.expiresAt)>Date.now()));
   if(existing)throw Error('An active temporary excursion login already exists for this WhatsApp number. Use your existing login or contact reception.');
   const username=await uniqueUsername(),password=temporaryPassword(),accountId='walkin-exc-'+crypto.randomUUID(),hash=await hashPassword(password),createdAt=new Date().toISOString();
   state.walkinExcursionAccounts??=[];
