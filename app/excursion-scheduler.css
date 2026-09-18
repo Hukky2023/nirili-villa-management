@@ -381,3 +381,43 @@
  color:#087cad;
  font-size:20px;
 }
+
+
+.romantic-dinner-summary{
+ border-color:#edd6b4;
+ background:#fffaf1;
+}
+.romantic-dinner-logistics{
+ display:grid;
+ grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:10px;
+ margin:0 0 14px;
+}
+.romantic-dinner-logistics>div{
+ display:grid;
+ gap:4px;
+ padding:12px;
+ border:1px solid #d8e5ec;
+ border-radius:10px;
+ background:#fff;
+}
+.romantic-dinner-logistics span{
+ color:#6b8491;
+ font-size:11px;
+ font-weight:700;
+ text-transform:uppercase;
+ letter-spacing:.04em;
+}
+.romantic-dinner-logistics strong{color:#14354a}
+.romantic-dinner-buggy-note{
+ margin:0;
+ padding:12px 14px;
+ border:1px solid #c9dfe8;
+ border-radius:10px;
+ background:#f4fbfd;
+ color:#365c6f;
+ line-height:1.5;
+}
+@media(max-width:620px){
+ .romantic-dinner-logistics{grid-template-columns:1fr}
+}
