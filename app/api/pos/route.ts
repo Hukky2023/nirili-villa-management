@@ -52,7 +52,7 @@ if(b.action==='create'){
  else if(b.action==='pay'){
  if(!canTakePayment(u))return Response.json({error:'Cashier access required to record payments.'},{status:403});
  const settings=await loadRestaurantPaymentSettings();
- if(b.method==='Cash'){
+ if(['Cash','Card'].includes(b.method)){
   const currency=b.currency==='MVR'?'MVR':'USD';
   b.currency=currency;
   if(currency==='MVR'){
