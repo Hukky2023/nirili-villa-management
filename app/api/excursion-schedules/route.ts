@@ -119,7 +119,9 @@ export async function PUT(r:Request){
   // Older clients retain recorded guides, but a removed crew member is no longer a guide.
   const selection=raw.guideIds===undefined?(old.guideIds||[]).filter((guide:string)=>body.crewIds.includes(guide)):raw.guideIds;
   const guideIds=cleanGuideSelection(selection,body.crewIds,crew);
+  const crewChanged=raw.crewIds!==undefined&&JSON.stringify([...(old.crewIds||[])].sort())!==JSON.stringify([...(body.crewIds||[])].sort());
   const record={...old,...body,guideIds,id,updatedAt:new Date().toISOString()};
+  if(crewChanged){delete record.crewReplacementNeeded;delete record.lastCrewUnavailability;}
   // Closing an unsafe/understaffed trip must remain possible; departure is guarded separately.
   if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,await schedulesForDate(body.date),state.orders||[],crew,old));
   const result=await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision).run();
