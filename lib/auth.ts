@@ -32,4 +32,14 @@ export async function limit(key:string,max:number,ms:number){const bucket=Math.f
 export function validPassword(p:unknown):p is string{return typeof p==="string"&&p.length>=8&&p.length<=128;}
 export const validEmail=(e:string)=>e.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
-export async function roomLoginActive(id:string){if(!id.startsWith('room-'))return true;const r=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind('hotel-stays-v1').first<any>();return !!r&&JSON.parse(r.payload).stays.some((s:any)=>s.accountId===id&&s.status==='In House');}
+export async function roomLoginActive(id:string){
+ if(!id.startsWith('room-')&&!id.startsWith('walkin-exc-'))return true;
+ const r=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind('hotel-stays-v1').first<any>();
+ if(!r)return false;
+ const state=JSON.parse(r.payload);
+ if(id.startsWith('walkin-exc-')){
+  const profile=(state.walkinExcursionAccounts||[]).find((x:any)=>x.accountId===id);
+  return !!profile&&profile.active===true&&(!profile.expiresAt||Date.parse(profile.expiresAt)>Date.now());
+ }
+ return state.stays.some((s:any)=>s.accountId===id&&s.status==='In House');
+}
