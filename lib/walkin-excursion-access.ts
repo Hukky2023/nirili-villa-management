@@ -44,7 +44,7 @@ export function walkInExcursionBill(state:any,accountId:string){
  const restaurantRows=restaurantOrders.map((order:any)=>({
   id:order.id,department:'Restaurant',name:'Restaurant · Table '+String(order.table||''),quantity:1,cents:Math.max(0,Number(order.cents)||0),
   date:String(order.createdAt||'').slice(0,10),time:String(order.createdAt||'').slice(11,16),status:order.kitchen||'Ordered',
-  paymentStatus:['Cash','Card'].includes(order.method)?'Paid':'Pay at cashier',createdAt:order.createdAt||''
+  paymentStatus:['Cash','Card','Bank transfer'].includes(order.method)?'Paid':'Pay at cashier',createdAt:order.createdAt||''
  }));
  const orders=[...excursionRows,...restaurantRows].sort((a:any,b:any)=>String(a.createdAt).localeCompare(String(b.createdAt)));
  const totalCents=orders.reduce((sum:number,order:any)=>sum+order.cents,0);
