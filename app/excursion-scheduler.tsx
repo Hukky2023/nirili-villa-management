@@ -121,13 +121,13 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
   <ExcursionWeather/>
 
   <div className="excursion-admin-shell">
-   <header className="excursion-admin-header"><small>EXCURSION OPERATIONS</small><h2>Excursion management</h2><p>Build the operating schedule first. Guests will book from trips that admin has made available.</p></header>
+   <header className="excursion-admin-header"><small>EXCURSION OPERATIONS</small><h2>Excursion management</h2><p>Guests can book any excursion for a future date. Matching bookings join the regular timetable; unmatched, private-boat and Dolphin-only requests come to Admin for scheduling.</p></header>
    <nav className="excursion-admin-tabs" aria-label="Excursion management sections">{tabs.map(name=><button key={name} type="button" className={tab===name?'active':''} aria-pressed={tab===name} onClick={()=>setTab(name)}>{name}</button>)}</nav>
 
    {tab==='Bookings'&&<ExcursionBookings/>}
 
    {tab==='Schedule'&&<section className="excursion-panel">
-    <div className="excursion-panel-head"><div><h3>Schedule</h3><p>Create excursion trips in advance and manage each day's operating plan.</p></div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><AdminExcursionBooking schedules={schedules} sharedBoatGroups={sharedBoatGroups} resources={resources} stays={data?.stays||[]} date={date} onSaved={()=>load(date)} onMessage={setMessage}/><button type="button" className="excursion-primary-btn" onClick={createSchedule}>+ Create schedule</button><ExcursionShareTimetable key={date} date={date} disabled={loading||saving}/></div></div>
+    <div className="excursion-panel-head"><div><h3>Schedule</h3><p>Manage the six regular daily trips, trip end times, boats, crew and additional trips created from guest requests.</p></div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><AdminExcursionBooking schedules={schedules} sharedBoatGroups={sharedBoatGroups} resources={resources} stays={data?.stays||[]} date={date} onSaved={()=>load(date)} onMessage={setMessage}/><button type="button" className="excursion-primary-btn" onClick={createSchedule}>+ Create schedule</button><ExcursionShareTimetable key={date} date={date} disabled={loading||saving}/></div></div>
     <p className="excursion-guide-notice"><strong>Guide rule: 5 or more confirmed passengers require at least 3 guides.</strong>Assign them using Crew → Guide. Trips needing guides are flagged below; existing bookings are kept.</p>
     <div className="excursion-schedule-tools"><button type="button" onClick={()=>setDate(shiftDate(date,-1))}>← Previous day</button><label>Date<DateFieldDMY value={date} onChange={setDate} ariaLabel="Schedule date"/></label><button type="button" onClick={()=>setDate(shiftDate(date,1))}>Next day →</button></div>
     {message&&<p className="excursion-schedule-message" role="status">{message}</p>}
