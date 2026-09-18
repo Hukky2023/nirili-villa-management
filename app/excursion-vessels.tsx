@@ -15,6 +15,7 @@ export default function ExcursionVessels({data}: {data?: VesselData | null}) {
  const [notice, setNotice] = useState('');
  const [error, setError] = useState('');
  const [busy, setBusy] = useState(false);
+ const [deletingId, setDeletingId] = useState('');
  const [conflict, setConflict] = useState(false);
  const lock = useRef(false);
  const dialog = useRef<HTMLFormElement>(null);
@@ -56,6 +57,25 @@ export default function ExcursionVessels({data}: {data?: VesselData | null}) {
   setEditor({id: vessel?.id || '', name: vessel?.name || '', condition: vessel?.condition || 'Available', revision: current!.revision!});
  }
  function close() { if (!lock.current) setEditor(null); }
+
+ // Use the existing server-side deletion action; never remove the card optimistically.
+ async function remove(vessel: Vessel) {
+  if (!canManage || lock.current) return;
+  if (!window.confirm(`Delete vessel “${vessel.name}”?\n\nThe vessel will be removed from this list. Existing bookings and bills will not be deleted. Vessels assigned to active bookings cannot be deleted.`)) return;
+  lock.current = true; setBusy(true); setDeletingId(vessel.id); setError(''); setNotice('');
+  try {
+   const response = await fetch('/api/guest-services', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'excursion-vessel-remove', vesselId: vessel.id, revision: current!.revision!}),
+   });
+   const result = await response.json();
+   if (!response.ok) throw Error(result.error || 'Could not delete the vessel. Please refresh and try again.');
+   setSaved(result);
+   setNotice(`${vessel.name} deleted from the vessel list.`);
+   window.dispatchEvent(new Event('services-updated'));
+  } catch (e) { setError(e instanceof Error ? e.message : 'Could not delete the vessel. Please refresh and try again.'); }
+  finally { lock.current = false; setBusy(false); setDeletingId(''); }
+ }
 
  async function reload() {
   if (!editor || lock.current) return;
@@ -109,11 +129,15 @@ export default function ExcursionVessels({data}: {data?: VesselData | null}) {
    <button type="button" className="excursion-primary-btn" disabled={!canManage || busy} onClick={() => open()}>+ Add vessel</button>
   </div>
   {notice && <p className="excursion-schedule-message" role="status">{notice}</p>}
+  {error && !editor && <p className="excursion-dialog-message" role="alert">{error}</p>}
   {!current ? <div className="excursion-empty-state"><strong>Loading vessels…</strong></div>
-   : <>{!canManage && <p role="status">Only Admin can add vessels or change their status.</p>}
+   : <>{!canManage && <p role="status">Only Admin can add, manage or delete vessels.</p>}
     {vessels.length ? <div className="excursion-menu-grid">{vessels.map(vessel => <article className="excursion-menu-card" key={vessel.id}>
      <div className="excursion-menu-card-top"><div><h4>{vessel.name}</h4><p>Excursion vessel</p></div><span className="excursion-price-pill">{vessel.condition || 'Available'}</span></div>
-     <div className="excursion-menu-card-actions"><button type="button" className="excursion-secondary-btn" disabled={!canManage || busy} aria-label={'Manage ' + vessel.name} onClick={() => open(vessel)}>Manage</button></div>
+     <div className="excursion-menu-card-actions" style={{gap: 10}}>
+      <button type="button" className="excursion-secondary-btn" disabled={!canManage || busy} aria-label={'Manage ' + vessel.name} onClick={() => open(vessel)}>Manage</button>
+      <button type="button" className="excursion-delete-btn" disabled={!canManage || busy} aria-label={'Delete ' + vessel.name} onClick={() => remove(vessel)}>{deletingId === vessel.id ? 'Deleting…' : 'Delete'}</button>
+     </div>
     </article>)}</div> : <div className="excursion-empty-state"><strong>No vessels added yet</strong><p>Use Add vessel to register a boat and set its availability.</p></div>}
    </>}
   {editor && <div className="excursion-schedule-overlay" role="presentation" onClick={event => {if (event.target === event.currentTarget) close();}}>
