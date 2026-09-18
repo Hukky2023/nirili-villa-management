@@ -3,15 +3,20 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {ConfirmedExcursionBooking} from '../lib/excursion-bookings';
 import './excursion-bookings.css';
+import DateFieldDMY from './date-field-dmy';
 
 const pageSize = 25;
 const money = (cents: number) => '$' + (cents / 100).toFixed(2);
-const dateLabel = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.split('-').reverse().join('/') : 'Not recorded';
+const dateLabel = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.split('-').reverse().join('-') : 'Not recorded';
 function createdLabel(value: string) {
   const date = new Date(value);
-  return !value || Number.isNaN(date.getTime()) ? 'Not recorded' : new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Indian/Maldives', dateStyle: 'medium', timeStyle: 'short',
-  }).format(date);
+  if (!value || Number.isNaN(date.getTime())) return 'Not recorded';
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Indian/Maldives', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(date);
+  const get = (type: string) => parts.find(part => part.type === type)?.value || '';
+  return `${get('day')}-${get('month')}-${get('year')} ${get('hour')}:${get('minute')}`;
 }
 
 export default function ExcursionBookings() {
@@ -79,7 +84,7 @@ export default function ExcursionBookings() {
     </div>
     <div className="excursion-booking-filters">
       <label>Search bookings<input type="search" value={query} placeholder="Guest, room, booking reference or excursion" onChange={e => {setQuery(e.target.value); setPage(1);}}/></label>
-      <label>Trip date<input type="date" value={date} onChange={e => {setDate(e.target.value); setPage(1);}}/></label>
+      <label>Trip date<DateFieldDMY value={date} onChange={value => {setDate(value); setPage(1);}} ariaLabel="Trip date"/></label>
       <label>Payment<select value={payment} onChange={e => {setPayment(e.target.value); setPage(1);}}><option value="">All payments</option><option value="Paid">Paid</option><option value="Unpaid">Unpaid</option></select></label>
       <button type="button" className="excursion-secondary-btn" disabled={!hasFilters} onClick={clearFilters}>Clear filters</button>
     </div>
