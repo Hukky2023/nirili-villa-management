@@ -3,12 +3,13 @@ import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
 import {excursionResources} from '../../../lib/excursion-workflow';
+import {assertGuideRule,cleanGuideSelection,guideRuleFor} from '../../../lib/excursion-guides';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
 const validTime=(v:any)=>typeof v==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 const norm=(v:any)=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
-const clean=async (x:any)=>{
+const clean=async (x:any,state:any)=>{
  if(!x||!validDate(x.date)||!validTime(x.time))throw Error('Choose a valid date and departure time.');
  const name=String(x.name||'').trim().slice(0,180);
  if(!name)throw Error('Excursion name is required.');
@@ -23,7 +24,6 @@ const clean=async (x:any)=>{
  // for both Create/Edit and each row in the shared-departure assignment flow.
  // Only raise the scheduled limit; do not change bookings or the vessel record.
  if(vesselId){
-  const {state}=await loadStays();
   const vessel=excursionResources(state).vessels.find((v:any)=>v.id===vesselId);
   const vesselCapacity=Number(vessel?.capacity);
   if(Number.isSafeInteger(vesselCapacity)&&vesselCapacity>capacity)capacity=vesselCapacity;
@@ -71,7 +71,7 @@ export async function GET(r:Request){
    const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null,capacity=g?.capacity??s.capacity;
    const requests=s.pendingOrders.map((o:any)=>({id:o.id,guest:o.guest,room:o.room,quantity:o.quantity,name:o.name||s.name,matchedScheduleName:o.matchedScheduleName||s.name,notes:o.notes||'',createdAt:o.createdAt,overCapacity:true}));
    const {pendingOrders,...rest}=s;
-   return {...rest,requests,capacity};
+   return {...rest,requests,capacity,guideRule:guideRuleFor(s,raw,orders,excursionResources(state).crew)};
   });
   return Response.json({date,schedules:enriched,sharedBoatGroups:groups,canEdit:hasPermission(user,'edit_excursions')},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load excursion schedules.'},{status:503});}
@@ -81,9 +81,12 @@ export async function POST(r:Request){
  const user=await currentUser();
  if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{
-  const body=await clean(await r.json());
+  const input=await r.json(),{state}=await loadStays();
+  const body=await clean(input,state),crew=excursionResources(state).crew;
+  const guideIds=cleanGuideSelection(input.guideIds,body.crewIds,crew);
   const id=crypto.randomUUID();
-  const record={id,...body,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+  const record={id,...body,guideIds,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+  if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,await schedulesForDate(body.date),state.orders||[],crew));
   const result=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(prefix+body.date+':'+id,JSON.stringify(record),user.userId).run();
   if(!result.meta.changes)throw Error('Could not create schedule.');
   return Response.json({schedule:{...record,revision:1}},{status:201});
@@ -98,12 +101,19 @@ export async function PUT(r:Request){
   const raw=await r.json();
   const id=String(raw.id||'').slice(0,100),revision=Number(raw.revision);
   if(!id||!Number.isInteger(revision)||revision<1)throw Error('Invalid schedule record.');
-  const body=await clean(raw);
+  const {state}=await loadStays();
+  const body=await clean(raw,state);
   const key=prefix+body.date+':'+id;
   const existing=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(key).first<any>();
   if(!existing)throw Error('Schedule not found.');
   const old=JSON.parse(existing.payload);
-  const record={...old,...body,id,updatedAt:new Date().toISOString()};
+  const crew=excursionResources(state).crew;
+  // Older clients retain recorded guides, but a removed crew member is no longer a guide.
+  const selection=raw.guideIds===undefined?(old.guideIds||[]).filter((guide:string)=>body.crewIds.includes(guide)):raw.guideIds;
+  const guideIds=cleanGuideSelection(selection,body.crewIds,crew);
+  const record={...old,...body,guideIds,id,updatedAt:new Date().toISOString()};
+  // Closing an unsafe/understaffed trip must remain possible; departure is guarded separately.
+  if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,await schedulesForDate(body.date),state.orders||[],crew,old));
   const result=await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision).run();
   if(!result.meta.changes)return Response.json({error:'Schedule changed elsewhere. Reload and try again.'},{status:409});
   return Response.json({schedule:{...record,revision:revision+1}});
@@ -148,7 +158,7 @@ export async function PATCH(r:Request){
    }
    const crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id)),unitPriceCents=Math.max(0,Number(schedule.priceCents)||0),cents=unitPriceCents*quantity,id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
    state.orders??=[];
-   state.orders.push({id,kind:'excursion',scheduleId:schedule.id,name:schedule.name,quantity,cents,unitPriceCents,quotedCents:cents,guest,phone,hotel,room,externalRoom:guestType==='walkin'?room:undefined,stayId,accountId,date:schedule.date,time:schedule.time,notes,status:'Scheduled',approvalStatus:'Approved',seatRequest:false,autoConfirmed:true,adminCreated:true,separateVessel:needsExtraVessel,overflowVesselId:needsExtraVessel?vessel?.id:undefined,source:guestType==='inhouse'?'Admin · In-house':'Admin · Walk-in',schedule:{date:schedule.date,time:schedule.time,vesselId:vessel?.id||schedule.vesselId||'',vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name),extraVessel:needsExtraVessel},guestNotified:false,createdBy:user.username,createdAt});
+   state.orders.push({id,kind:'excursion',scheduleId:schedule.id,name:schedule.name,quantity,cents,unitPriceCents,quotedCents:cents,guest,phone,hotel,room,externalRoom:guestType==='walkin'?room:undefined,stayId,accountId,date:schedule.date,time:schedule.time,notes,status:'Scheduled',approvalStatus:'Approved',seatRequest:false,autoConfirmed:true,adminCreated:true,separateVessel:needsExtraVessel,overflowVesselId:needsExtraVessel?vessel?.id:undefined,source:guestType==='inhouse'?'Admin · In-house':'Admin · Walk-in',schedule:{date:schedule.date,time:schedule.time,vesselId:vessel?.id||schedule.vesselId||'',vessel:vessel?.name||'',crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name),extraVessel:needsExtraVessel},guestNotified:false,createdBy:user.username,createdAt});
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
    return Response.json({booking:{id,guest,guestType,quantity,cents,separateVessel:needsExtraVessel,vessel:vessel?.name||''}},{status:201});
@@ -174,7 +184,7 @@ export async function PATCH(r:Request){
    const crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
    order.cents=Math.max(0,Number(order.quotedCents)||0);
    order.status='Scheduled';order.separateVessel=true;order.overflowVesselId=vessel.id;order.originalScheduleId=schedule.id;
-   order.schedule={date:schedule.date,time:schedule.time,vesselId:vessel.id,vessel:vessel.name,crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name),extraVessel:true};order.guestNotified=false;
+   order.schedule={date:schedule.date,time:schedule.time,vesselId:vessel.id,vessel:vessel.name,crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name),extraVessel:true};order.guestNotified=false;
   }else{order.cents=0;order.status='Cancelled';}
   const saved=await saveStayAccess(state,revision,user.userId);
   if(!saved)return Response.json({error:'Another update was saved. Reload and try again.'},{status:409});

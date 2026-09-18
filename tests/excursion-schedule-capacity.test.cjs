@@ -8,6 +8,16 @@ const vm = require('node:vm');
 const crypto = require('node:crypto');
 const ts = require('typescript');
 
+// Load the real pure guide rule alongside the route; it imports only the booking projection.
+function loadPure(relative) {
+  const file = path.join(__dirname, '../lib', relative + '.ts');
+  const output = ts.transpileModule(fs.readFileSync(file, 'utf8'), {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
+  const module = {exports: {}};
+  vm.runInNewContext(output, {module, exports: module.exports, require: id => loadPure(id.replace(/^\.\//, ''))});
+  return module.exports;
+}
+const guideRules = loadPure('excursion-guides');
+
 const source = fs.readFileSync(path.join(__dirname, '../app/api/excursion-schedules/route.ts'), 'utf8');
 const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
@@ -28,7 +38,7 @@ const order = (overrides = {}) => ({
 });
 
 function fixture({ schedules = [trip()], vessels = [{ id: 'boat-1', name: 'Test boat', capacity: 12, condition: 'Available' }], orders = [order()], revision = 1, user = { role: 'admin', userId: 'admin-1', username: 'admin' }, allowed = true, origin = true, failResources = false } = {}) {
-  let state = { stays: [], orders: structuredClone(orders), excursionResources: { vessels: structuredClone(vessels), crew: [{ id: 'crew-1', name: 'Test crew' }] } };
+  let state = { stays: [], orders: structuredClone(orders), excursionResources: { vessels: structuredClone(vessels), crew: [{ id: 'crew-1', name: 'Test crew' }, {id: 'crew-2', name: 'Second guide'}, {id: 'crew-3', name: 'Third guide'}] } };
   const rows = new Map(schedules.map(s => [keyOf(s), { payload: JSON.stringify(s), revision }]));
   let resourceReads = 0;
   const db = {
@@ -66,6 +76,7 @@ function fixture({ schedules = [trip()], vessels = [{ id: 'boat-1', name: 'Test 
     },
   };
   const mocks = {
+    '../../../lib/excursion-guides': guideRules,
     '../../../lib/auth': { authDb: () => db, currentUser: async () => user, hasPermission: () => allowed, sameOrigin: () => origin },
     '../../../lib/stays': { loadStays: async () => { resourceReads++; if (failResources) throw Error('Resource read failed'); return { state, revision: 1 }; } },
     '../../../lib/stay-login': { saveStayAccess: async next => { state = next; return true; } },
@@ -117,8 +128,9 @@ test('creating a trip with a larger assigned vessel uses its saved capacity', as
 });
 
 test('shared-departure assignment updates each row, but does not multiply boat seats or passengers', async () => {
-  const a = trip({ sharedGroup: 'morning' });
-  const b = trip({ id: 'trip-2', name: 'Coral Garden only', sharedGroup: 'morning' });
+  const guideTeam = {crewIds: ['crew-1', 'crew-2', 'crew-3'], guideIds: ['crew-1', 'crew-2', 'crew-3']};
+  const a = trip({ sharedGroup: 'morning', ...guideTeam });
+  const b = trip({ id: 'trip-2', name: 'Coral Garden only', sharedGroup: 'morning', ...guideTeam });
   const otherDate = trip({ id: 'trip-3', date: '2026-09-25' });
   const f = fixture({ schedules: [a, b, otherDate], orders: [order(), order({ id: 'booking-2', scheduleId: 'trip-2', quantity: 3 }), order({ id: 'extra', quantity: 4, separateVessel: true }), order({ id: 'pending', quantity: 7, approvalStatus: 'Pending' }), order({ id: 'cancelled', quantity: 9, status: 'Cancelled' })] });
   // This is the existing scheduler's shared-group assignment loop.
@@ -164,12 +176,12 @@ test('read saved vessel capacity instead of client-supplied vessel metadata', as
   assert.equal((await response.json()).schedule.capacity, 12);
 });
 
-test('an unassigned trip keeps its configured limit without fetching resources', async () => {
+test('an unassigned trip keeps its limit while validating actual crew and passengers', async () => {
   const f = fixture();
   const response = await f.route.POST(request('POST', trip()));
   assert.equal(response.status, 201);
   assert.equal((await response.json()).schedule.capacity, 6);
-  assert.equal(f.reads(), 0);
+  assert.equal(f.reads(), 1);
 });
 
 test('stale revisions are rejected without overwriting the saved trip', async () => {
@@ -206,6 +218,7 @@ test('new bookings can use the added seats without requiring an extra vessel', a
   const { booking } = await response.json();
   assert.equal(booking.separateVessel, false);
   const view = await (await f.route.GET(request('GET'))).json();
+  assert.equal(view.schedules[0].guideRule.needsGuides, true);
   assert.equal(view.schedules[0].bookedPax, 10);
   assert.equal(view.schedules[0].capacity, 12);
 });

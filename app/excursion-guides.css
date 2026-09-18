@@ -1,0 +1,17 @@
+.excursion-guide-picker{min-width:0;border:1px solid #d8e7ee;border-radius:12px;padding:14px;margin:14px 0}
+.excursion-guide-picker legend{font-weight:700;padding:0 6px}
+.excursion-guide-picker>p{font-size:13px;line-height:1.5;margin:8px 0}
+.excursion-guide-options{display:grid;gap:8px;margin-top:12px}
+.excursion-guide-option{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid #e0eaf0;border-radius:9px;padding:10px}
+.excursion-guide-option label{display:flex;align-items:center;gap:8px;min-height:28px;cursor:pointer}
+.excursion-guide-option label:first-child{min-width:0;flex:1}
+.excursion-guide-option label:last-child{flex-shrink:0}
+.excursion-guide-option input{width:18px;height:18px;flex-shrink:0}
+.excursion-guide-option span{overflow-wrap:anywhere}
+.excursion-guide-notice{border:1px solid #cde3e9;background:#f0f8fa;color:#254d5c;border-radius:9px;padding:10px;font-size:13px;line-height:1.5}
+.excursion-guide-notice strong,.excursion-guide-notice small{display:block;margin-top:3px}
+.excursion-guide-notice.needs-guides{background:#fff4eb;border-color:#eab28d;color:#873800}
+.excursion-guide-status{display:block;border-radius:6px;padding:5px 7px;margin:7px 0;font-size:12px;line-height:1.45;background:#e8f5ef;color:#256042;overflow-wrap:anywhere}
+.excursion-guide-status.needs-guides{background:#fff0e5;color:#873800;font-weight:700}
+.excursion-assignment-dialog .excursion-dialog-message{white-space:normal;overflow-wrap:anywhere}
+@media(max-width:480px){.excursion-guide-picker{padding:10px}.excursion-guide-option{gap:8px;padding:8px}.excursion-guide-option label{font-size:13px}}
