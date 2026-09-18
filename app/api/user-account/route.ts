@@ -10,6 +10,16 @@ async function change(r:Request){
  const result=await db.batch([db.prepare("UPDATE accounts SET active=0 WHERE id=? AND role<>'admin'").bind(b.id),db.prepare("DELETE FROM account_sessions WHERE account_id=? AND EXISTS(SELECT 1 FROM accounts WHERE id=? AND active=0 AND role<>'admin')").bind(b.id,b.id)]);
  return Response.json({ok:!!result[0].meta.changes});
  }
+ if(account.role==='staff'){
+  // Staff accounts can be removed directly by Admin. Historical orders, bills,
+  // excursions and audit records keep their recorded names/usernames.
+  await db.batch([
+   db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(b.id),
+   db.prepare('DELETE FROM operation_records WHERE key=?').bind('credential:'+b.id),
+   db.prepare("DELETE FROM accounts WHERE id=? AND role='staff'").bind(b.id)
+  ]);
+  return Response.json({ok:true},{headers:{'Cache-Control':'no-store'}});
+ }
  if(account.active)return Response.json({error:'Disable this account before deleting it.'},{status:409});
  // Keep historic bookings/bills unchanged. A current stay must retain its linked login.
  const results=await db.batch([
