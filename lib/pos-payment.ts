@@ -1,5 +1,5 @@
 export function changePOSPayment(state:any,o:any,b:any,username:string){
- if(!['Cash','Card','Room'].includes(b.method))throw Error('Choose cash, card or room charge.');
+ if(!['Cash','Card','Bank transfer','Room'].includes(b.method))throw Error('Choose cash, card, bank transfer or room charge.');
  if(o.method===b.method)return;
  const date=new Date().toISOString(),previous=o.method||'Unpaid';
  let s=state.stays.find((s:any)=>s.id===o.stayId);
@@ -7,8 +7,8 @@ export function changePOSPayment(state:any,o:any,b:any,username:string){
  if(s?.paidBills?.['Restaurant:'+o.id]===o.cents&&o.cents>0)throw Error('This bill was settled through the room folio. Reverse that settlement in booking details before changing its payment method.');
  if(b.method==='Room'&&!s){s=state.stays.find((s:any)=>s.id===b.stayId&&s.status==='In House');if(!s)throw Error('Select a checked-in room.');}
  if(s){s.posBills??=[];s.payments??=[];s.history??=[];
-  if(['Cash','Card'].includes(previous)&&o.stayId){
-   const paid=s.payments.filter((p:any)=>p.reference===o.id&&['Cash','Card'].includes(p.method)&&!p.reversedAt&&p.cents>=0);
+  if(['Cash','Card','Bank transfer'].includes(previous)&&o.stayId){
+   const paid=s.payments.filter((p:any)=>p.reference===o.id&&['Cash','Card','Bank transfer'].includes(p.method)&&!p.reversedAt&&p.cents>=0);
    if(o.cents>0&&paid.reduce((n:number,p:any)=>n+p.cents,0)!==o.cents)throw Error('Payment records do not match this bill. Ask Admin to review them.');
    for(const p of paid){p.reversedAt=date;p.reversedBy=username;s.payments.push({id:crypto.randomUUID(),cents:-p.cents,method:'Payment reversal',reference:o.id,reverses:p.id,date,by:username});}
   }
@@ -20,5 +20,12 @@ export function changePOSPayment(state:any,o:any,b:any,username:string){
   if(b.method!=='Room')s.payments.push({id:crypto.randomUUID(),cents:o.cents,method:b.method,reference:o.id,date,by:username});
   s.history.unshift({date,by:username,detail:'Restaurant bill '+o.id+' payment changed: '+previous+' → '+b.method});
  }
- o.method=b.method;o.paidAt=b.method==='Room'?null:date;o.history??=[];o.history.push({date,by:username,detail:'Payment changed: '+previous+' → '+b.method,cents:o.cents});
+ o.method=b.method;o.paidAt=b.method==='Room'?null:date;
+ if(b.method==='Cash'){
+  o.paymentCurrency=b.currency==='MVR'?'MVR':'USD';
+  if(o.paymentCurrency==='MVR'){o.exchangeRate=Number(b.exchangeRate)||0;o.paidMvr=Number(b.paidMvr)||0;}else{delete o.exchangeRate;delete o.paidMvr;}
+ }else{delete o.paymentCurrency;delete o.exchangeRate;delete o.paidMvr;}
+ if(b.method==='Bank transfer'){o.bankName=String(b.bankName||'');o.bankAccountName=String(b.accountName||'');o.bankAccountNumber=String(b.accountNumber||'');}
+ else{delete o.bankName;delete o.bankAccountName;delete o.bankAccountNumber;}
+ o.history??=[];o.history.push({date,by:username,detail:'Payment changed: '+previous+' → '+b.method+(b.method==='Cash'&&b.currency==='MVR'?' · MVR '+Number(b.paidMvr||0).toFixed(2)+' @ '+Number(b.exchangeRate||0):''),cents:o.cents});
 }
