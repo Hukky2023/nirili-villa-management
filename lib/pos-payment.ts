@@ -17,15 +17,15 @@ export function changePOSPayment(state:any,o:any,b:any,username:string){
   o.stayId=s.id;o.room=s.room;o.customer=s.guest;
   delete s.paidBills?.['Restaurant:'+o.id];
   bill.status=b.method==='Room'?'Posted':'Paid';bill.settledAtPOS=b.method!=='Room';
-  if(b.method!=='Room')s.payments.push({id:crypto.randomUUID(),cents:o.cents,method:b.method,reference:o.id,date,by:username});
+  if(b.method!=='Room')s.payments.push({id:crypto.randomUUID(),cents:o.cents,method:b.method,reference:o.id,date,by:username,...(['Cash','Card'].includes(b.method)?{currency:b.currency==='MVR'?'MVR':'USD',...(b.currency==='MVR'?{exchangeRate:Number(b.exchangeRate)||0,paidMvr:Number(b.paidMvr)||0}:{})}:{})});
   s.history.unshift({date,by:username,detail:'Restaurant bill '+o.id+' payment changed: '+previous+' → '+b.method});
  }
  o.method=b.method;o.paidAt=b.method==='Room'?null:date;
- if(b.method==='Cash'){
+ if(['Cash','Card'].includes(b.method)){
   o.paymentCurrency=b.currency==='MVR'?'MVR':'USD';
   if(o.paymentCurrency==='MVR'){o.exchangeRate=Number(b.exchangeRate)||0;o.paidMvr=Number(b.paidMvr)||0;}else{delete o.exchangeRate;delete o.paidMvr;}
  }else{delete o.paymentCurrency;delete o.exchangeRate;delete o.paidMvr;}
  if(b.method==='Bank transfer'){o.bankName=String(b.bankName||'');o.bankAccountName=String(b.accountName||'');o.bankAccountNumber=String(b.accountNumber||'');}
  else{delete o.bankName;delete o.bankAccountName;delete o.bankAccountNumber;}
- o.history??=[];o.history.push({date,by:username,detail:'Payment changed: '+previous+' → '+b.method+(b.method==='Cash'&&b.currency==='MVR'?' · MVR '+Number(b.paidMvr||0).toFixed(2)+' @ '+Number(b.exchangeRate||0):''),cents:o.cents});
+ o.history??=[];o.history.push({date,by:username,detail:'Payment changed: '+previous+' → '+b.method+(['Cash','Card'].includes(b.method)&&b.currency==='MVR'?' · MVR '+Number(b.paidMvr||0).toFixed(2)+' @ '+Number(b.exchangeRate||0):''),cents:o.cents});
 }
