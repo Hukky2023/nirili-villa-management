@@ -8,3 +8,12 @@ export function isRomanticBeachDinner(value:any){
  const name=normalize(value?.name||value);
  return id===ROMANTIC_BEACH_DINNER_ID||name==='romantic beach dinner';
 }
+
+
+export const RESORT_VISIT_SERVICE='resort-visit';
+
+export function isPrivateResortVisit(value:any){
+ const id=normalize(value?.menuItemId||value?.itemId||value?.id);
+ const name=normalize(value?.name||value);
+ return id.includes('resort')||name.includes('private resort visit')||name.includes('resort visit');
+}
