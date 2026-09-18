@@ -52,18 +52,15 @@ export function confirmedGuidePax(schedule: any, schedules: any[], orders: any[]
   return passengers;
 }
 
-/** Assigned crew count as guides by default. If guideIds are explicitly saved,
- * that smaller selection is respected for older records that distinguish crew roles.
+/** Nirili excursion crew are also the trip guides.
+ * Guide IDs are retained in stored records for compatibility, but staffing is based on
+ * the distinct active crew members actually assigned to the departure.
  */
-export function assignedGuideCount(guideIds: unknown, crewIds: unknown, crew: any[]): number {
-  const assignedIds = ids(crewIds);
-  const assigned = new Set(assignedIds);
-  const marked = ids(guideIds);
-  const guidePool = marked.length ? marked : assignedIds;
+export function assignedGuideCount(_guideIds: unknown, crewIds: unknown, crew: any[]): number {
   const people = new Set<string>();
-  for (const id of guidePool) {
+  for (const id of ids(crewIds)) {
     const member = crew.find(person => person.id === id);
-    if (!assigned.has(id) || !member || member.active === false || member.active === 0) continue;
+    if (!member || member.active === false || member.active === 0) continue;
     // Legacy imported aliases for the same person cannot supply two of the three guides.
     people.add(text(member.accountId) || text(member.userId) || normal(member.name) || id);
   }
