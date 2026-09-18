@@ -584,3 +584,23 @@
 @media(max-width:620px){
  .crew-login-details{grid-template-columns:1fr}
 }
+
+
+.excursion-remove-crew-btn{
+ min-height:40px;
+ padding:9px 13px;
+ border:1px solid #e2b8b4;
+ border-radius:9px;
+ background:#fff4f2;
+ color:#9b261f;
+ font-weight:800;
+ cursor:pointer;
+}
+.excursion-remove-crew-btn:hover{
+ background:#ffe9e6;
+ border-color:#d89a94;
+}
+.excursion-remove-crew-btn:disabled{
+ opacity:.55;
+ cursor:not-allowed;
+}
