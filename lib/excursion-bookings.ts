@@ -50,8 +50,9 @@ export function toConfirmedExcursionBooking(
     guestType: inhouse ? 'In-house' : 'Walk-in',
     hotel: inhouse ? 'Nirili Villa' : text(order.hotel),
     room: inhouse ? text(stay?.room) || text(order.room) : text(order.externalRoom) || text(order.room),
-    date: text(current?.date) || text(stored.date) || text(order.date),
-    time: text(current?.time) || text(stored.time) || text(order.time),
+    // The guest-selected/booked-for date and time are authoritative. Live schedule data is only an assignment fallback.
+    date: text(order.date) || text(stored.date) || text(current?.date),
+    time: text(order.time) || text(stored.time) || text(current?.time),
     guests: Number.isFinite(quantity) ? Math.max(0, Math.trunc(quantity)) : 0,
     totalCents: Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : 0,
     paymentStatus: paid ? 'Paid' : 'Unpaid',
