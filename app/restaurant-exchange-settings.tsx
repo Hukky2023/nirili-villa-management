@@ -42,7 +42,7 @@ export default function RestaurantExchangeSettings(){
    <h2>Exchange & bank transfer</h2>
    <p>USD, MVR and EUR rates are checked online once each Maldives day. Admin can still adjust the stored rates manually if needed.</p>
    <label>USD → MVR exchange rate<input required type="number" min="0.01" max="100" step="0.000001" value={draft?.usdToMvrRate??15.42} onChange={e=>setDraft({...draft,usdToMvrRate:Number(e.target.value)})}/><small>Used for MVR cash and card payments.</small></label>
-   <label>USD → EUR exchange rate<input required type="number" min="0.000001" max="10" step="0.000001" value={draft?.usdToEurRate??0} onChange={e=>setDraft({...draft,usdToEurRate:Number(e.target.value)})}/><small>Used for EUR cash and card payments.</small></label>
+   <label>USD → EUR exchange rate<input required type="number" min="0" max="10" step="0.000001" value={draft?.usdToEurRate??0} onChange={e=>setDraft({...draft,usdToEurRate:Number(e.target.value)})}/><small>Used for EUR cash and card payments.</small></label>
    <div className="restaurant-fx-status"><strong>Daily online FX</strong><span>Source: {draft?.fxSource||'Not fetched yet'}</span><span>Last checked: {draft?.fxCheckedDate||'—'}</span><span>EUR source date: {draft?.eurRateDate||'—'} · MVR source date: {draft?.mvrRateDate||'—'}</span><button type="button" disabled={busy} onClick={refreshOnline}>{busy?'Refreshing…':'Refresh online rates now'}</button></div>
    <label>Bank name<input maxLength={120} value={draft?.bankName||''} onChange={e=>setDraft({...draft,bankName:e.target.value})}/></label>
    <label>Restaurant account name<input maxLength={120} value={draft?.accountName||''} onChange={e=>setDraft({...draft,accountName:e.target.value})}/></label>
