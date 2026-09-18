@@ -81,7 +81,7 @@ export async function GET(r:Request){
   const unscheduledRequests=orders.filter((o:any)=>o.kind==='excursion'&&o.date===date&&o.unscheduledRequest===true&&o.approvalStatus==='Pending'&&o.status!=='Cancelled').map((o:any)=>({
    id:o.id,name:o.name,guest:o.guest||'Guest',phone:o.phone||'',hotel:o.hotel||'',room:o.room||o.externalRoom||'',inHouse:!!o.stayId,quantity:Number(o.quantity)||0,adults:Number(o.adults??o.quantity)||0,children:Number(o.children)||0,infants:Number(o.infants)||0,date:o.date,
    quotedCents:Math.max(0,Number(o.quotedCents)||0),unitPriceCents:Math.max(0,Number(o.unitPriceCents)||0),pricingUnit:o.pricingUnit||'guest',
-   buggyRequested:!!o.buggyRequested,serviceType:o.serviceType||'',serviceRequest:!!o.serviceRequest,notes:o.notes||'',source:o.source||'',createdAt:o.createdAt||''
+   buggyRequested:!!o.buggyRequested,privateBoatRequested:!!o.privateBoatRequested,privateBoatSurchargeCents:Number(o.privateBoatSurchargeCents)||0,preferredTime:o.preferredTime||'',preferredEndTime:o.preferredEndTime||'',serviceType:o.serviceType||'',serviceRequest:!!o.serviceRequest,notes:o.notes||'',source:o.source||'',createdAt:o.createdAt||''
   }));
   return Response.json({date,schedules:enriched,sharedBoatGroups:groups,unscheduledRequests,canEdit:hasPermission(user,'edit_excursions')},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load excursion schedules.'},{status:503});}
@@ -199,7 +199,7 @@ export async function PATCH(r:Request){
   }
 
   if(b.action==='schedule-request'){
-   const requestId=String(b.requestId||'').slice(0,100),time=String(b.time||''),returnTime=String(b.returnTime||''),vesselId=String(b.vesselId||'').slice(0,100);
+   const requestId=String(b.requestId||'').slice(0,100),time=String(b.time||''),requestedEndTime=String(b.endTime||''),returnTime=String(b.returnTime||''),vesselId=String(b.vesselId||'').slice(0,100);
    const capacity=Math.max(1,Math.min(100,Math.round(Number(b.capacity)||1)));
    const crewIds=Array.isArray(b.crewIds)?b.crewIds:[],guideIdsInput=Array.isArray(b.guideIds)?b.guideIds:[];
    if(!requestId||!validTime(time)||!vesselId)throw Error('Choose a departure time and vessel.');
@@ -211,10 +211,15 @@ export async function PATCH(r:Request){
     if(!validTime(returnTime))throw Error('Choose a valid return pickup time for the resort visit.');
     if(returnTime<=time)throw Error('Return pickup time must be later than the departure time.');
    }
+   const endTime=resortVisit?returnTime:(validTime(requestedEndTime)?requestedEndTime:(order.preferredEndTime||inferTripEndTime(order.name,time)));
+   if(!validTime(endTime)||clockMinutes(endTime)<=clockMinutes(time))throw Error('Choose an end time later than the departure time.');
    const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===vesselId);
    if(!vessel||vessel.condition!=='Available')throw Error('Choose an available vessel.');
    const priceCents=Math.max(0,Number(order.operationalPriceCents)||Number(order.unitPriceCents)||Math.round((Number(order.quotedCents)||0)/Math.max(1,Number(order.quantity)||1)));
-   const body=await clean({date:order.date,time,name:order.name,capacity,priceCents,vesselId,crewIds,status:'Open',notes:'Created from booking request '+order.id,sharedGroup:''},state);
+   const body=await clean({date:order.date,time,endTime,name:order.name,capacity,priceCents,vesselId,crewIds,status:'Open',notes:'Created from booking request '+order.id,sharedGroup:''},state);
+   const daySchedules=await schedulesForDate(body.date);
+   const conflict=vesselConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,vesselId:body.vesselId});
+   if(conflict)throw Error('This vessel is already in use for '+conflict.name+' from '+conflict.time+' to '+(conflict.endTime||inferTripEndTime(conflict.name,conflict.time))+'. Choose another vessel or a non-overlapping time.');
    if(excursionDeparturePassed(body.date,body.time))throw Error('This departure time is already in the past. Choose a future departure time.');
    if(body.capacity<Math.max(1,Number(order.quantity)||1))throw Error('Boat capacity must cover all guests in this booking.');
    const guides=cleanGuideSelection(guideIdsInput,body.crewIds,resources.crew);
@@ -227,10 +232,10 @@ export async function PATCH(r:Request){
    const inserted=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(key,JSON.stringify(record),user.userId).run();
    if(!inserted.meta.changes)throw Error('Could not create the requested trip.');
    const crew=resources.crew.filter((c:any)=>body.crewIds.includes(c.id));
-   order.scheduleId=scheduleId;order.time=body.time;if(resortVisit){order.returnTime=returnTime;order.serviceType=RESORT_VISIT_SERVICE;}order.approvalStatus='Approved';order.status='Scheduled';order.cents=Math.max(0,Number(order.quotedCents)||0);
+   order.scheduleId=scheduleId;order.time=body.time;order.endTime=body.endTime;if(resortVisit){order.returnTime=returnTime;order.serviceType=RESORT_VISIT_SERVICE;}order.approvalStatus='Approved';order.status='Scheduled';order.cents=Math.max(0,Number(order.quotedCents)||0);
    order.seatRequest=false;order.unscheduledRequest=false;order.autoConfirmed=false;order.adminScheduled=true;order.requestedOverCapacity=false;
    order.reviewedAt=now;order.reviewedBy=user.username;order.guestNotified=false;
-   order.schedule={date:body.date,time:body.time,...(resortVisit?{returnTime}:{}),vesselId:body.vesselId,vessel:vessel.name,crewIds:body.crewIds,guideIds:guides,crew:crew.map((c:any)=>c.name)};
+   order.schedule={date:body.date,time:body.time,endTime:body.endTime,...(resortVisit?{returnTime}:{}),vesselId:body.vesselId,vessel:vessel.name,crewIds:body.crewIds,guideIds:guides,crew:crew.map((c:any)=>c.name)};
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved){
     await authDb().prepare('DELETE FROM operation_records WHERE key=?').bind(key).run();
