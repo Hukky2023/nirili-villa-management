@@ -69,7 +69,7 @@ export async function GET(r:Request){
   }
   const enriched=schedules.map((s:any)=>{
    const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null,capacity=g?.capacity??s.capacity;
-   const requests=s.pendingOrders.map((o:any)=>({id:o.id,guest:o.guest,room:o.room,quantity:o.quantity,name:o.name||s.name,matchedScheduleName:o.matchedScheduleName||s.name,buggyRequested:!!o.buggyRequested,notes:o.notes||'',createdAt:o.createdAt,overCapacity:true}));
+   const requests=s.pendingOrders.map((o:any)=>({id:o.id,guest:o.guest,room:o.room||o.externalRoom||'',inHouse:!!o.stayId,quantity:o.quantity,name:o.name||s.name,matchedScheduleName:o.matchedScheduleName||s.name,buggyRequested:!!o.buggyRequested,notes:o.notes||'',createdAt:o.createdAt,overCapacity:true}));
    const {pendingOrders,...rest}=s;
    return {...rest,requests,capacity,guideRule:guideRuleFor(s,raw,orders,excursionResources(state).crew)};
   });
