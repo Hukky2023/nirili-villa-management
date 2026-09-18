@@ -257,3 +257,100 @@
   .excursion-menu-card-actions{justify-content:stretch}
   .excursion-menu-card-actions .excursion-secondary-btn{width:100%}
 }
+
+
+/* Guest requests for trips that are not on the regular schedule */
+.excursion-unscheduled-requests{
+  margin:16px 0 20px;
+  padding:16px;
+  border:1px solid #f0d7a4;
+  border-radius:14px;
+  background:#fffaf0;
+}
+.excursion-unscheduled-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:12px;
+}
+.excursion-unscheduled-head small{
+  color:#9a6a0a;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+}
+.excursion-unscheduled-head h4{
+  margin:3px 0 5px;
+  color:#14354a;
+  font-size:18px;
+}
+.excursion-unscheduled-head p{
+  margin:0;
+  color:#647d89;
+  font-size:13px;
+  line-height:1.45;
+}
+.excursion-unscheduled-head>span{
+  padding:6px 10px;
+  border-radius:999px;
+  background:#fff1ce;
+  color:#805a0a;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.excursion-unscheduled-list{
+  display:grid;
+  gap:10px;
+}
+.excursion-unscheduled-list article{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:13px 14px;
+  border:1px solid #ead9b6;
+  border-radius:11px;
+  background:#fff;
+}
+.excursion-unscheduled-list article>div{
+  min-width:0;
+}
+.excursion-unscheduled-list strong{
+  color:#14354a;
+}
+.excursion-unscheduled-list p{
+  margin:4px 0;
+  color:#4f6c79;
+  font-size:13px;
+}
+.excursion-unscheduled-list small{
+  color:#6b8491;
+  line-height:1.45;
+}
+.excursion-request-summary{
+  margin:0 0 16px;
+  padding:12px 14px;
+  border:1px solid #cfe3eb;
+  border-radius:11px;
+  background:#f6fbfd;
+  color:#174158;
+}
+.excursion-request-summary p{
+  margin:5px 0 0;
+  color:#607c8b;
+  line-height:1.45;
+}
+@media(max-width:700px){
+  .excursion-unscheduled-head,
+  .excursion-unscheduled-list article{
+    display:grid;
+  }
+  .excursion-unscheduled-head>span{
+    justify-self:start;
+  }
+  .excursion-unscheduled-list article button{
+    width:100%;
+  }
+}
