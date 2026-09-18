@@ -8,17 +8,26 @@ const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
 const validTime=(v:any)=>typeof v==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 const norm=(v:any)=>String(v||'').trim().replace(/\s+/g,' ').toLowerCase();
-const clean=(x:any)=>{
+const clean=async (x:any)=>{
  if(!x||!validDate(x.date)||!validTime(x.time))throw Error('Choose a valid date and departure time.');
  const name=String(x.name||'').trim().slice(0,180);
  if(!name)throw Error('Excursion name is required.');
- const capacity=Math.max(1,Math.min(100,Number(x.capacity)||1));
+ let capacity=Math.max(1,Math.min(100,Number(x.capacity)||1));
  const priceCents=Math.max(0,Math.min(1000000,Math.round(Number(x.priceCents)||0)));
  const vesselId=String(x.vesselId||'').slice(0,100);
  const crewIds=Array.isArray(x.crewIds)?[...new Set(x.crewIds.map((id:any)=>String(id).slice(0,100)).filter(Boolean))].slice(0,20):[];
  const status=x.status==='Closed'?'Closed':'Open';
  const notes=String(x.notes||'').trim().slice(0,1000);
  const sharedGroup=String(x.sharedGroup||'').trim().slice(0,80);
+ // Read the saved vessel, not a capacity supplied by the browser. This runs
+ // for both Create/Edit and each row in the shared-departure assignment flow.
+ // Only raise the scheduled limit; do not change bookings or the vessel record.
+ if(vesselId){
+  const {state}=await loadStays();
+  const vessel=excursionResources(state).vessels.find((v:any)=>v.id===vesselId);
+  const vesselCapacity=Number(vessel?.capacity);
+  if(Number.isSafeInteger(vesselCapacity)&&vesselCapacity>capacity)capacity=vesselCapacity;
+ }
  return {date:x.date,time:x.time,name,capacity,priceCents,vesselId,crewIds,status,notes,sharedGroup};
 };
 function matches(o:any,s:any){
@@ -72,7 +81,7 @@ export async function POST(r:Request){
  const user=await currentUser();
  if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{
-  const body=clean(await r.json());
+  const body=await clean(await r.json());
   const id=crypto.randomUUID();
   const record={id,...body,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
   const result=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(prefix+body.date+':'+id,JSON.stringify(record),user.userId).run();
@@ -89,7 +98,7 @@ export async function PUT(r:Request){
   const raw=await r.json();
   const id=String(raw.id||'').slice(0,100),revision=Number(raw.revision);
   if(!id||!Number.isInteger(revision)||revision<1)throw Error('Invalid schedule record.');
-  const body=clean(raw);
+  const body=await clean(raw);
   const key=prefix+body.date+':'+id;
   const existing=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(key).first<any>();
   if(!existing)throw Error('Schedule not found.');
