@@ -3,3 +3,28 @@
 .guest-create{background:white;border:1px solid #d8e7e4;border-radius:16px;padding:22px;margin:24px 0}.guest-create form{max-width:560px}.guest-create label{display:grid;gap:7px;margin:12px 0}.guest-create input,.guest-create select{padding:12px;border:1px solid #c6dad5;border-radius:8px;max-width:100%;font-size:16px}
 
 .account-user-actions{display:flex;gap:12px;margin-top:20px}.account-user-actions button{min-height:48px;padding:12px 20px;border:1px solid #d2dee3;border-radius:12px;font:inherit}.account-user-actions .delete-user-button{background:#fff0ef;color:#9c241d;border-color:#e7b8b4;font-weight:700}.account-user-actions button:disabled{opacity:.5;cursor:wait}@media(max-width:640px){.account-user-actions button{width:100%}}
+
+
+.staff-field-help{
+ display:block;
+ margin-top:5px;
+ color:#6b8491;
+ font-size:12px;
+ line-height:1.4;
+}
+.staff-permission-heading{
+ display:grid;
+ gap:3px;
+ margin:18px 0 8px;
+ color:#173a4d;
+}
+.staff-permission-heading span{
+ color:#6b8491;
+ font-size:13px;
+}
+.staff-form-message{
+ min-height:22px;
+ margin-top:12px;
+ color:#9b261f;
+ font-weight:700;
+}
