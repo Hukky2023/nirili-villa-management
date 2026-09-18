@@ -29,7 +29,7 @@ if(b.action==='create'){
  else if(b.action==='edit'){
  if(!canTakePayment(u))return Response.json({error:'Bill editing permission required.'},{status:403});
  const s=state.stays.find((s:any)=>s.id===o.stayId);
- if(o.method==='Cash'||o.method==='Card'||s?.paidBills?.['Restaurant:'+o.id]===o.cents)throw Error('This bill is paid. Reverse the room payment before editing, or review cash/card payments with Admin.');
+ if(['Cash','Card','Bank transfer'].includes(o.method)||s?.paidBills?.['Restaurant:'+o.id]===o.cents)throw Error('This bill is paid. Reverse the room payment before editing, or review the recorded payment with Admin.');
  if(s?.status==='Checked Out')throw Error('Check the guest back in before editing this room bill.');
  const nextStayId=b.stayId===undefined?(o.stayId||''):b.stayId;
  if(typeof nextStayId!=='string')throw Error('Choose a valid guest room.');
