@@ -25,10 +25,10 @@ export function changeExcursionStatus(o:any,status:string,state:any,by:string){
 export function applyExcursionAction(state:any,b:any,today:string,by:string){
  if(b.action==='excursion-resource'){
  if(!['vessels','crew'].includes(b.resourceType)||typeof b.name!=='string'||!b.name.trim()||b.name.length>100)throw Error('Enter a vessel or crew member name.');
- const resources=excursionResources(state),list=resources[b.resourceType as 'vessels'|'crew'];if(list.some(x=>norm(x.name)===norm(b.name)))throw Error('That name is already in the list.');if(b.resourceType==='vessels'&&b.condition!==undefined&&!vesselConditions.includes(b.condition))throw Error('Choose a valid vessel condition.');if(b.resourceType==='vessels')validateVesselCapacity(b.capacity);list.push({id:b.resourceId||crypto.randomUUID(),name:b.name.trim(),...(b.resourceType==='vessels'?{condition:b.condition||'Available',...(b.capacity!=null?{capacity:b.capacity}:{})}:{accountId:b.accountId||'',username:b.username||''})});state.excursionResources=resources;return;
+ const resources=excursionResources(state),list=resources[b.resourceType as 'vessels'|'crew'];if(list.some(x=>!x.removed&&norm(x.name)===norm(b.name)))throw Error('That name is already in the list.');if(b.resourceType==='vessels'&&b.condition!==undefined&&!vesselConditions.includes(b.condition))throw Error('Choose a valid vessel condition.');if(b.resourceType==='vessels')validateVesselCapacity(b.capacity);list.push({id:b.resourceId||crypto.randomUUID(),name:b.name.trim(),...(b.resourceType==='vessels'?{condition:b.condition||'Available',...(b.capacity!=null?{capacity:b.capacity}:{})}:{accountId:b.accountId||'',username:b.username||''})});state.excursionResources=resources;return;
  }
  if(b.action==='excursion-crew-update'){
- const resources=excursionResources(state),member=resources.crew.find(c=>c.id===b.crewId);if(!member)throw Error('Crew member not found.');
+ const resources=excursionResources(state),member=resources.crew.find(c=>c.id===b.crewId&&!c.removed);if(!member)throw Error('Crew member not found.');
  const name=String(b.name===undefined?member.name:b.name).trim();
  if(!name||name.length>100)throw Error('Enter a crew member name of 1–100 characters.');
  if(resources.crew.some(c=>c.id!==member.id&&norm(c.name)===norm(name)))throw Error('That name is already in the crew list.');
@@ -41,6 +41,13 @@ export function applyExcursionAction(state:any,b:any,today:string,by:string){
   if(ids.includes(member.id))order.schedule.crew=ids.map((id:string)=>resources.crew.find(c=>c.id===id)?.name||names[ids.indexOf(id)]||id);
   else if(norm(oldName)!==norm(name))order.schedule.crew=names.map((crewName:string)=>norm(crewName)===norm(oldName)?name:crewName);
  }
+ state.excursionResources=resources;return;
+ }
+ if(b.action==='excursion-crew-remove'){
+ const resources=excursionResources(state),member=resources.crew.find(c=>c.id===b.crewId&&!c.removed);if(!member)throw Error('Crew member not found.');
+ const activeOrder=state.orders.some((o:any)=>o.kind==='excursion'&&o.schedule&&!['Completed','Cancelled'].includes(excursionStage(o))&&((o.schedule.crewIds||[]).includes(member.id)||(o.schedule.crew||[]).some((name:string)=>norm(name)===norm(member.name))));
+ if(activeOrder)throw Error('This crew member is assigned to an active excursion. Reassign or cancel that trip before removing the crew member.');
+ member.active=false;member.removed=true;member.removedAt=new Date().toISOString();member.removedBy=by;
  state.excursionResources=resources;return;
  }
  if(['excursion-vessel-condition','excursion-vessel-remove'].includes(b.action)){
