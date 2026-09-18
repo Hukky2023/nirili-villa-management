@@ -7,7 +7,8 @@ import {authDb,currentUser,sameOrigin,hasPermission} from '../../../lib/auth';
 import {canPOS,canTakePayment} from '../../../lib/pos-access';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {loadMenu} from '../../../lib/menu-server';
-async function view(){const {state,revision}=await loadStays();const actor=await currentUser();return {revision,canPay:canTakePayment(actor),canEdit:canTakePayment(actor),canDiscount:canTakePayment(actor),guestOrders:state.orders.filter((o:any)=>o.kind==='food'&&o.status!=='Cancelled').map((o:any)=>({id:o.id,createdAt:o.createdAt,customer:o.guest,room:state.stays.find((s:any)=>s.id===o.stayId)?.room||o.room,notes:o.notes,name:o.name,quantity:o.quantity,kitchen:o.status==='Completed'?'Served':o.kitchen||'Sent'})),rooms:state.stays.filter((s:any)=>s.status==='In House').map((s:any)=>({id:s.id,room:s.room,guest:s.guest,meal:s.meal})),orders:(state.posOrders||[]).map((o:any)=>{const s=state.stays.find((s:any)=>s.id===o.stayId);return {...o,paymentStatus:o.complimentary?'Complimentary':o.method==='Cash'||o.method==='Card'?'Paid':s?.paidBills?.['Restaurant:'+o.id]===o.cents?'Paid':o.method==='Room'?'Charged to room':'Unpaid'};})};}
+import {loadRestaurantPaymentSettings} from '../../../lib/restaurant-payment-settings';
+async function view(){const {state,revision}=await loadStays();const actor=await currentUser();const paymentSettings=await loadRestaurantPaymentSettings();return {revision,canPay:canTakePayment(actor),canEdit:canTakePayment(actor),canDiscount:canTakePayment(actor),canSetExchange:actor?.role==='admin',paymentSettings,guestOrders:state.orders.filter((o:any)=>o.kind==='food'&&o.status!=='Cancelled').map((o:any)=>({id:o.id,createdAt:o.createdAt,customer:o.guest,room:state.stays.find((s:any)=>s.id===o.stayId)?.room||o.room,notes:o.notes,name:o.name,quantity:o.quantity,kitchen:o.status==='Completed'?'Served':o.kitchen||'Sent'})),rooms:state.stays.filter((s:any)=>s.status==='In House').map((s:any)=>({id:s.id,room:s.room,guest:s.guest,meal:s.meal})),orders:(state.posOrders||[]).map((o:any)=>{const s=state.stays.find((s:any)=>s.id===o.stayId);return {...o,paymentStatus:o.complimentary?'Complimentary':['Cash','Card','Bank transfer'].includes(o.method)?'Paid':s?.paidBills?.['Restaurant:'+o.id]===o.cents?'Paid':o.method==='Room'?'Charged to room':'Unpaid'};})};}
 export async function GET(){if(!canPOS(await currentUser()))return Response.json({error:'Restaurant access required.'},{status:403});return Response.json(await view(),{headers:{'Cache-Control':'no-store'}});}
 export async function POST(r:Request){const u=await currentUser();if(!canPOS(u)||!sameOrigin(r))return Response.json({error:'Restaurant access required.'},{status:403});try{const b=await r.json(),{state,revision}=await loadStays();state.posOrders??=[];
 if(b.action==='create'&&state.posOrders.some((o:any)=>o.token===b.token&&o.by===u!.userId))return Response.json(await view());
@@ -48,7 +49,24 @@ if(b.action==='create'){
 
  }
  else if(b.action==='discount'||b.action==='free'){if(!canTakePayment(u))return Response.json({error:'Cashier access required to discount bills.'},{status:403});discountPOSBill(state,o,b,u!.username);}
- else if(b.action==='pay'){if(!canTakePayment(u))return Response.json({error:'Cashier access required to record payments.'},{status:403});changePOSPayment(state,o,b,u!.username);}
+ else if(b.action==='pay'){
+ if(!canTakePayment(u))return Response.json({error:'Cashier access required to record payments.'},{status:403});
+ const settings=await loadRestaurantPaymentSettings();
+ if(b.method==='Cash'){
+  const currency=b.currency==='MVR'?'MVR':'USD';
+  b.currency=currency;
+  if(currency==='MVR'){
+   if(!Number.isFinite(settings.usdToMvrRate)||settings.usdToMvrRate<=0)throw Error('Set the USD to MVR exchange rate first.');
+   b.exchangeRate=settings.usdToMvrRate;
+   b.paidMvr=Math.round((o.cents/100)*settings.usdToMvrRate*100)/100;
+  }
+ }
+ if(b.method==='Bank transfer'){
+  if(!settings.accountNumber)throw Error('Admin must set the restaurant bank account number before recording a bank transfer.');
+  b.bankName=settings.bankName;b.accountName=settings.accountName;b.accountNumber=settings.accountNumber;
+ }
+ changePOSPayment(state,o,b,u!.username);
+}
  else throw Error('Unknown action.');
 }
 const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});return Response.json(await view());
