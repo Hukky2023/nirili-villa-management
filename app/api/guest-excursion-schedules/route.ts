@@ -7,6 +7,7 @@ import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-sche
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
 import {walkInExcursionOrderPaid,walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
 import {excursionGuestMix,excursionPriceCents} from '../../../lib/excursion-children';
+import {isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE} from '../../../lib/excursion-services';
 
 const prefix='excursion-schedule:';
 const MIN_EXCURSION_PAX=1;
@@ -126,7 +127,7 @@ export async function GET(r:Request){
   const enriched=schedules.map((s:any)=>{const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null;const capacity=g?.capacity??s.capacity,confirmedPax=g?.confirmedPax??s.confirmedPax,pendingPax=g?.pendingPax??s.pendingPax;return {...s,capacity,confirmedPax,pendingPax,remainingSeats:Math.max(0,capacity-confirmedPax),isFull:confirmedPax>=capacity,sharedBoat:!!g&&g.scheduleIds.length>1};});
   const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled').map((o:any)=>{
    const bookingStay=(state.stays||[]).find((s:any)=>s.id===o.stayId),bookingProfile=!bookingStay?walkInExcursionProfile(state,o.accountId):undefined,isWalkIn=!!bookingProfile;
-   return {id:o.id,stayId:o.stayId||('walkin:'+o.accountId),menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,adults:Number(o.adults??o.quantity)||0,children:Number(o.children)||0,infants:Number(o.infants)||0,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room||bookingProfile?.room||'',vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,packageGroupId:o.packageGroupId||'',packageName:o.packageName||'',packagePart:Number(o.packagePart)||0,packageParts:Number(o.packageParts)||0,buggyRequested:isWalkIn?!!o.buggyRequested:true,isWalkIn,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),checkIn:bookingStay?.checkIn||islandToday(),checkOut:bookingStay?.checkOut||String(bookingProfile?.expiresAt||'').slice(0,10),buggyArrivedAt:o.buggyArrivedAt||'',buggyArrivedBy:o.buggyArrivedBy||'',buggyBoardedAt:o.buggyBoardedAt||'',buggyBoardedBy:o.buggyBoardedBy||'',createdAt:o.createdAt};
+   return {id:o.id,stayId:o.stayId||('walkin:'+o.accountId),menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,adults:Number(o.adults??o.quantity)||0,children:Number(o.children)||0,infants:Number(o.infants)||0,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room||bookingProfile?.room||'',vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,serviceType:o.serviceType||'',buggyRoundTrip:!!o.buggyRoundTrip,packageGroupId:o.packageGroupId||'',packageName:o.packageName||'',packagePart:Number(o.packagePart)||0,packageParts:Number(o.packageParts)||0,buggyRequested:isWalkIn?!!o.buggyRequested:true,isWalkIn,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),checkIn:bookingStay?.checkIn||islandToday(),checkOut:bookingStay?.checkOut||String(bookingProfile?.expiresAt||'').slice(0,10),buggyArrivedAt:o.buggyArrivedAt||'',buggyArrivedBy:o.buggyArrivedBy||'',buggyBoardedAt:o.buggyBoardedAt||'',buggyBoardedBy:o.buggyBoardedBy||'',buggyDinnerDropoffAt:o.buggyDinnerDropoffAt||'',buggyReturnArrivedAt:o.buggyReturnArrivedAt||'',buggyReturnBoardedAt:o.buggyReturnBoardedAt||'',buggyReturnCompleteAt:o.buggyReturnCompleteAt||'',createdAt:o.createdAt};
   }).sort((a:any,b:any)=>(String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
   return Response.json({date,stays:eligibleStays,schedules:enriched,myBookings},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load scheduled excursions.'},{status:503});}
@@ -156,6 +157,21 @@ export async function POST(r:Request){
    const menu=await loadExcursionMenu();
    const item=menu.find((x:any)=>x.id===menuItemId&&x.kind==='excursion');
    if(!item)throw Error('This excursion is no longer available in the menu.');
+   if(isRomanticBeachDinner(item)){
+    const unitPriceCents=Math.max(0,Number(item.cents)||0),pricingUnit=item.pricingUnit==='couple'?'couple':'guest';
+    const quotedCents=excursionPriceCents(unitPriceCents,pricingUnit,mix),id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
+    state.orders??=[];
+    state.orders.push({
+     id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',menuItemId:item.id,name:item.name,
+     quantity,adults:mix.adults,children:mix.children,infants:mix.infants,pricingUnit,buggyRequested,buggyRoundTrip:buggyRequested,
+     cents:0,quotedCents,unitPriceCents,notes,date,time:'',serviceType:ROMANTIC_BEACH_DINNER_SERVICE,serviceRequest:true,
+     status:'Awaiting confirmation',approvalStatus:'Pending',seatRequest:false,unscheduledRequest:true,autoConfirmed:false,guestNotified:false,
+     createdAt,source:isWalkIn?'Walk-in romantic dinner':'Guest romantic dinner'
+    });
+    const saved=await saveStayAccess(state,revision,user.userId);
+    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
+    return Response.json({booking:{id,status:'Pending',requiresApproval:true,requiresScheduling:false,serviceRequest:true,romanticDinner:true,chargedCents:0}},{status:201});
+   }
    if(item.id===SPECIAL_PACKAGE_ID){
     const dates=Array.isArray(b.packageDates)?b.packageDates.map((value:any)=>String(value||'')):[date,date,date];
     if(dates.length!==3||dates.some((value:string)=>!validDate(value)))throw Error('Choose a valid date for all three special package trips.');
