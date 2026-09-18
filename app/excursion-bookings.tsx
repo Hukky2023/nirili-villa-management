@@ -95,7 +95,7 @@ export default function ExcursionBookings() {
         <span><strong>{guests}</strong> guests</span><span><strong>{money(total)}</strong> total booking value (USD)</span>
       </div>
       {visible.length ? <div className="excursion-booking-list">{visible.map(b => <article className="excursion-confirmed-booking" key={b.id}>
-        <header className="excursion-booking-card-head"><div><small>{b.id}</small><h4>{b.excursion}</h4></div><div className="excursion-booking-badges"><span className="confirmed">Confirmed</span><span className={b.paymentStatus.toLowerCase()}>{b.paymentStatus}</span>{b.buggyRequested&&<span className="buggy">Buggy included</span>}</div></header>
+        <header className="excursion-booking-card-head"><div><small>{b.id}</small><h4>{b.excursion}</h4></div><div className="excursion-booking-badges"><span className="confirmed">Confirmed</span><span className={b.paymentStatus.toLowerCase()}>{b.paymentStatus}</span>{b.buggyRequested&&<span className="buggy">{b.guestType==='In-house'?'Buggy included':'Buggy requested'}</span>}</div></header>
         <dl className="excursion-booking-overview">
           <div><dt>Guest</dt><dd>{b.guest}<small>{b.guestType}</small></dd></div>
           <div><dt>Hotel / room</dt><dd>{b.hotel || 'Hotel not recorded'}<small>{b.room ? 'Room ' + b.room : 'Room not recorded'}</small></dd></div>
