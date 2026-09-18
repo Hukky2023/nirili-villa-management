@@ -3,7 +3,7 @@ import type {ManifestSchedule} from './excursion-manifest';
 
 export type TimetableVessel = {vessel: string; crew: string[]; pax: number};
 export type TimetableTrip = {
-  id: string; name: string; time: string; status: string;
+  id: string; name: string; time: string; endTime: string; status: string;
   confirmedPax: number; mainVesselPax: number; vessel: string; crew: string[];
   extraVessels: TimetableVessel[]; sharedTrips: number; sharedBoatPax: number; capacity: number;
 };
@@ -42,7 +42,7 @@ export function buildExcursionTimetable(
       extras.set(key, group);
     }
     return {
-      id: schedule.id, name: manifest.trip.name, time: manifest.trip.time, status: manifest.trip.status,
+      id: schedule.id, name: manifest.trip.name, time: manifest.trip.time, endTime: String((schedule as any).endTime||''), status: manifest.trip.status,
       confirmedPax: manifest.totals.pax, mainVesselPax: manifest.totals.mainVesselPax,
       vessel: manifest.trip.vessel, crew: manifest.trip.crew,
       extraVessels: [...extras.values()].sort((a, b) => a.vessel.localeCompare(b.vessel)),
@@ -71,7 +71,7 @@ const crewLabel = (crew: string[]) => crew.length ? crew.map(inline).join(', ') 
 export function formatExcursionTimetable(data: ExcursionTimetable): string {
   const lines = ['NIRILI VILLA | EXCURSION TIMETABLE', timetableDateLabel(data.date), 'All departure times: Maldives time (UTC+5)', ''];
   for (const trip of data.trips) {
-    lines.push(`${trip.time} | ${inline(trip.name)}`, `Confirmed pax: ${trip.confirmedPax}`,
+    lines.push(`${trip.time}${trip.endTime?'–'+trip.endTime:''} | ${inline(trip.name)}`, `Confirmed pax: ${trip.confirmedPax}`,
       `Assigned vessel: ${inline(trip.vessel)}`, `Assigned crew: ${crewLabel(trip.crew)}`);
     if (trip.status !== 'Open') lines.push(`Booking status: ${inline(trip.status)}`);
     if (trip.sharedTrips > 1) lines.push(`Shared boat: ${trip.sharedBoatPax} / ${trip.capacity} pax across ${trip.sharedTrips} trips (combined, not extra pax).`);
