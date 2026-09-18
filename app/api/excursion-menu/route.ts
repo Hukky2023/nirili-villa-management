@@ -8,7 +8,7 @@ function clean(raw:any,id?:string){
  const category=String(raw?.category||'single') as ExcursionCategory;
  if(!validCategory(category))throw Error('Choose Single, Combined or Special.');
  const cents=Math.max(0,Math.min(1000000,Math.round(Number(raw?.cents)||0)));
- const minGuests=Math.max(1,Math.min(20,Math.round(Number(raw?.minGuests)||1)));
+ const minGuests=1;
  const pricingUnit=raw?.pricingUnit==='couple'?'couple':'guest';
  const detail=String(raw?.detail||'').trim().slice(0,1000);
  return {id:id||String(raw?.id||''),kind:'excursion',name,cents,category,group:categoryGroup(category),minGuests,pricingUnit,detail,active:raw?.active!==false,updatedAt:new Date().toISOString()};
