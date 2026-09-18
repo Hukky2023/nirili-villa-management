@@ -221,3 +221,40 @@
 @media(max-width:620px){
  .guest-package-dates>label{grid-template-columns:1fr}
 }
+
+
+.guest-age-pricing{
+ margin-top:14px;
+ padding:13px;
+ border:1px solid #cfe1e9;
+ border-radius:12px;
+ background:#f8fcfd;
+ display:grid;
+ gap:10px;
+}
+.guest-age-pricing-head{
+ display:grid;
+ gap:4px;
+}
+.guest-age-pricing-head strong{color:#174158}
+.guest-age-pricing-head span{color:#6b8491;font-size:12px;line-height:1.45}
+.guest-age-pricing-grid{
+ display:grid;
+ grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:10px;
+}
+.guest-age-pricing-grid label{
+ margin:0!important;
+ display:grid;
+ gap:5px;
+ color:#365c6f;
+ font-size:12px;
+ font-weight:700;
+}
+.guest-age-pricing>small{
+ color:#607c8b;
+ font-weight:700;
+}
+@media(max-width:620px){
+ .guest-age-pricing-grid{grid-template-columns:1fr}
+}
