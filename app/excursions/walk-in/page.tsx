@@ -1,15 +1,78 @@
 'use client';
-import {startLiveRefresh} from '../../../lib/live-refresh';
-import {UiText,UiField,UiOption} from '../../ui-language';
 
 import {useEffect,useState} from 'react';
+import {ArrowRight,Copy,KeyRound} from 'lucide-react';
 import {tabNavigate} from '../../../lib/tab-navigation';
+import {UiText,UiField} from '../../ui-language';
 import './style.css';
+
 export default function WalkInExcursions(){
- const [data,setData]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[itemId,setItem]=useState(''),[quantity,setQuantity]=useState(2),[date,setDate]=useState(''),[token,setToken]=useState(''),[success,setSuccess]=useState<any>(null);
- async function load(){try{const r=await fetch('/api/walkin-excursions'),d=await r.json();if(!r.ok)throw Error(d.error);setData(d);setError('');}catch(e){setError((e as Error).message);}}
- useEffect(()=>{load();setToken(crypto.randomUUID());return startLiveRefresh(load);},[]);
- const item=data?.items.find((i:any)=>i.id===itemId),money=(n:number)=>'$'+(n/100).toFixed(2);
- async function book(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(busy)return;const f=new FormData(e.currentTarget);setBusy(true);setError('');try{const r=await fetch('/api/walkin-excursions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,itemId,quantity,date,expectedCents:item.cents*quantity,name:f.get('name'),phone:String(f.get('phone')).replace(/[\s()-]/g,''),hotel:f.get('hotel'),room:f.get('room'),notes:f.get('notes')})}),d=await r.json();if(!r.ok)throw Error(d.error);setSuccess(d.order);setToken(crypto.randomUUID());await load();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- return <main className="walk-exc"><button className="walk-back" onClick={()=>tabNavigate('/login?portal=guest')}><UiText>← Back to guest options</UiText></button><header><small><UiText>NIRILI TOURS · DHIFFUSHI</UiText></small><h1><UiText>Book an excursion</UiText></h1><p><UiText>Visiting for the day or staying at another hotel? Join us on the water.</UiText></p><p><UiText>Reserve now, pay later. Our team will confirm your trip and departure time by WhatsApp. Minimum 2 guests.</UiText></p></header><UiText>{error&&<p role="alert"><UiText>{error}</UiText></p>}<UiText></UiText>{!data?<button onClick={load}><UiText>Load excursions</UiText></button>:success?<section role="status"><h2><UiText>Booking request received</UiText></h2><p><UiText>{success.name}</UiText> · <UiText>{success.quantity}</UiText> <UiText>guests · </UiText><UiText>{success.date}</UiText></p><p><UiText>Total: </UiText><UiText>{money(success.cents)}</UiText> <UiText>· Pay later</UiText></p><p><UiText>Reference: </UiText><UiText>{success.id}</UiText></p><p><UiText>Your request is awaiting confirmation from our team.</UiText></p><button onClick={()=>setSuccess(null)}><UiText>Book another excursion</UiText></button></section>:<form onSubmit={book}><fieldset disabled={busy}><label><UiText>Excursion</UiText><select required value={itemId} onChange={e=>setItem(e.target.value)}><UiOption value="">Choose an excursion</UiOption><UiText>{data.items.map((i:any)=><UiOption key={i.id} value={i.id}>{i.name} — {money(i.cents)} / person</UiOption>)}</UiText></select></label><UiText>{item&&<p><UiText>{item.detail}</UiText></p>}</UiText><div className="walk-grid"><label><UiText>Number of guests</UiText><input required type="number" min={2} max={20} value={quantity} onChange={e=>setQuantity(Number(e.target.value))}/></label><label><UiText>Preferred date</UiText><input required type="date" min={data.today} value={date} onChange={e=>setDate(e.target.value)}/></label><label><UiText>Your name</UiText><input name="name" required maxLength={100} autoComplete="name"/></label><label><UiText>WhatsApp / contact number</UiText><UiField as="input" name="phone" type="tel" required maxLength={30} placeholder="+960…" autoComplete="tel"/></label><label><UiText>Hotel or meeting location</UiText><UiField as="input" name="hotel" required maxLength={150} placeholder="Hotel name, or visiting Dhiffushi"/></label><label><UiText>Hotel room (optional)</UiText><input name="room" maxLength={30}/></label></div><label><UiText>Notes (optional)</UiText><UiField as="textarea" name="notes" maxLength={1000} placeholder="Tell us about any requests"/></label><UiText>{item&&<p className="walk-total"><UiText>Total USD </UiText><UiText>{money(item.cents*quantity)}</UiText> <UiText>· Pay later</UiText></p>}</UiText><button type="submit" disabled={!item||!token}><UiText>{busy?'Sending…':'Book excursion'}</UiText></button></fieldset></form>}<UiText></UiText>{data?.orders.length>0&&<section><h2><UiText>Your excursion requests</UiText></h2><UiText>{data.orders.slice().reverse().map((o:any)=><article key={o.id}><b><UiText>{o.name}</UiText></b><p><UiText>{o.date}</UiText> · <UiText>{o.quantity}</UiText> <UiText>guests · </UiText><UiText>{money(o.cents)}</UiText></p><p><UiText>{o.status==='Placed'?'Awaiting confirmation':o.status}</UiText></p></article>)}</UiText></section>}</UiText></main>;
+ const [error,setError]=useState(''),[busy,setBusy]=useState(false),[account,setAccount]=useState<any>(null);
+ const [name,setName]=useState(''),[phone,setPhone]=useState(''),[hotel,setHotel]=useState(''),[room,setRoom]=useState('');
+ const [loginUser,setLoginUser]=useState(''),[loginPassword,setLoginPassword]=useState('');
+
+ useEffect(()=>{(async()=>{try{const r=await fetch('/api/walkin-excursions',{cache:'no-store'}),d=await r.json();if(r.ok&&d.signedIn)tabNavigate('/?portal=guest');}catch{}})()},[]);
+
+ async function createAccount(e:React.FormEvent){
+  e.preventDefault();if(busy)return;setBusy(true);setError('');
+  try{
+   const r=await fetch('/api/walkin-excursions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone:phone.replace(/[\s()-]/g,''),hotel,room})}),d=await r.json();
+   if(!r.ok)throw Error(d.error||'Could not create temporary login.');
+   setAccount(d.account);setLoginUser(d.account.username);setLoginPassword(d.account.password);
+  }catch(e){setError((e as Error).message);}finally{setBusy(false);}
+ }
+
+ async function signIn(username=loginUser,password=loginPassword){
+  if(busy)return;setBusy(true);setError('');
+  try{
+   const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,portal:'guest',returnTo:'/'})}),d=await r.json();
+   if(!r.ok)throw Error(d.error||'Could not sign in.');
+   tabNavigate(d.redirect);
+  }catch(e){setError((e as Error).message);setBusy(false);}
+ }
+
+ async function copy(value:string){
+  try{await navigator.clipboard.writeText(value);}catch{}
+ }
+
+ return <main className="walk-exc">
+  <button className="walk-back" onClick={()=>tabNavigate('/login?portal=guest')}><UiText>← Back to guest options</UiText></button>
+  <header><small><UiText>NIRILI TOURS · DHIFFUSHI</UiText></small><h1><UiText>Walk-in excursion access</UiText></h1><p><UiText>Enter your information first. We will create a temporary excursion login so you can view the schedule, book excursions and check your bill.</UiText></p></header>
+
+  {error&&<p role="alert"><UiText>{error}</UiText></p>}
+
+  {!account&&<form onSubmit={createAccount}>
+   <h2><UiText>Your information</UiText></h2>
+   <p className="walk-help"><UiText>This temporary account is only for your Nirili Tours excursions.</UiText></p>
+   <div className="walk-grid">
+    <label><UiText>Your name</UiText><UiField as="input" required maxLength={100} autoComplete="name" value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></label>
+    <label><UiText>WhatsApp / contact number</UiText><UiField as="input" type="tel" required maxLength={30} autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+960…"/></label>
+    <label><UiText>Hotel or meeting location</UiText><UiField as="input" required maxLength={150} value={hotel} onChange={e=>setHotel(e.target.value)} placeholder="Hotel name or visiting Dhiffushi"/></label>
+    <label><UiText>Hotel room (optional)</UiText><UiField as="input" maxLength={50} value={room} onChange={e=>setRoom(e.target.value)} placeholder="Room number"/></label>
+   </div>
+   <button type="submit" disabled={busy}><UiText>{busy?'Creating login…':'Create temporary excursion login'}</UiText><ArrowRight size={18}/></button>
+  </form>}
+
+  {account&&<section className="walk-account-created" role="status">
+   <div className="walk-account-icon"><KeyRound size={28}/></div>
+   <h2><UiText>Your temporary login is ready</UiText></h2>
+   <p><UiText>Save these details until your excursions are finished and your bill is paid.</UiText></p>
+   <div className="walk-credentials">
+    <div><span><UiText>Username</UiText></span><strong>{account.username}</strong><button type="button" onClick={()=>copy(account.username)} aria-label="Copy username"><Copy size={17}/></button></div>
+    <div><span><UiText>Password</UiText></span><strong>{account.password}</strong><button type="button" onClick={()=>copy(account.password)} aria-label="Copy password"><Copy size={17}/></button></div>
+   </div>
+   <p className="walk-lifecycle"><UiText>Your temporary login will end automatically after all your excursions are completed and your excursion bill is fully paid.</UiText></p>
+   <button type="button" disabled={busy} onClick={()=>signIn(account.username,account.password)}><UiText>{busy?'Signing in…':'Continue to excursions'}</UiText><ArrowRight size={18}/></button>
+  </section>}
+
+  <section className="walk-returning">
+   <h2><UiText>Already have a temporary excursion login?</UiText></h2>
+   <p><UiText>Use the username and password provided when you registered.</UiText></p>
+   <div className="walk-grid">
+    <label><UiText>Username</UiText><UiField as="input" autoCapitalize="none" autoComplete="username" value={loginUser} onChange={e=>setLoginUser(e.target.value)} placeholder="exc-xxxxxxx"/></label>
+    <label><UiText>Password</UiText><UiField as="input" type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="Temporary password"/></label>
+   </div>
+   <button type="button" disabled={busy||!loginUser||!loginPassword} onClick={()=>signIn()}><UiText>{busy?'Signing in…':'Sign in to excursion portal'}</UiText></button>
+  </section>
+ </main>;
 }
