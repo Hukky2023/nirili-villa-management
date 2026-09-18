@@ -2,7 +2,7 @@
 export type ConfirmedExcursionBooking = {
   id: string; excursion: string; guest: string; phone: string;
   guestType: 'In-house' | 'Walk-in'; hotel: string; room: string;
-  date: string; time: string; guests: number; adults: number; children: number; infants: number; totalCents: number;
+  date: string; time: string; returnTime: string; guests: number; adults: number; children: number; infants: number; totalCents: number;
   paymentStatus: 'Paid' | 'Unpaid'; tripStatus: string;
   vessel: string; crew: string[]; separateVessel: boolean; buggyRequested: boolean; buggyRoundTrip: boolean; serviceType: string;
   notes: string; source: string; createdAt: string; createdBy: string;
@@ -53,6 +53,7 @@ export function toConfirmedExcursionBooking(
     // The guest-selected/booked-for date and time are authoritative. Live schedule data is only an assignment fallback.
     date: text(order.date) || text(stored.date) || text(current?.date),
     time: text(order.time) || text(stored.time) || text(current?.time),
+    returnTime: text(order.returnTime) || text(stored.returnTime) || text(current?.returnTime),
     guests: Number.isFinite(quantity) ? Math.max(0, Math.trunc(quantity)) : 0,
     adults: Number.isFinite(Number(order.adults)) ? Math.max(0, Math.trunc(Number(order.adults))) : (Number.isFinite(quantity) ? Math.max(0, Math.trunc(quantity)) : 0),
     children: Number.isFinite(Number(order.children)) ? Math.max(0, Math.trunc(Number(order.children))) : 0,
