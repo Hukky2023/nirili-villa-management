@@ -4,9 +4,9 @@ import {useEffect, useRef, useState, type FormEvent} from 'react';
 
 const conditions = ['Available', 'Under maintenance', 'Out of service'] as const;
 type Condition = typeof conditions[number];
-type Vessel = {id: string; name: string; condition?: string};
+type Vessel = {id: string; name: string; condition?: string; capacity?: number | null};
 type VesselData = {canSchedule?: boolean; revision?: number; resources?: {vessels?: Vessel[]}};
-type Editor = {id: string; name: string; condition: string; revision: number};
+type Editor = {id: string; name: string; capacity: string; condition: string; revision: number};
 
 // Reuse the admin-only, revision-checked actions and the existing vessel IDs.
 export default function ExcursionVessels({data}: {data?: VesselData | null}) {
@@ -54,7 +54,7 @@ export default function ExcursionVessels({data}: {data?: VesselData | null}) {
  function open(vessel?: Vessel) {
   if (!canManage || lock.current) return;
   setError(''); setNotice(''); setConflict(false);
-  setEditor({id: vessel?.id || '', name: vessel?.name || '', condition: vessel?.condition || 'Available', revision: current!.revision!});
+  setEditor({id: vessel?.id || '', name: vessel?.name || '', capacity: vessel?.capacity == null ? '' : String(vessel.capacity), condition: vessel?.condition || 'Available', revision: current!.revision!});
  }
  function close() { if (!lock.current) setEditor(null); }
 
@@ -88,7 +88,7 @@ export default function ExcursionVessels({data}: {data?: VesselData | null}) {
    setSaved(latest);
    const vessel: Vessel | undefined = latest.resources?.vessels?.find((item: Vessel) => item.id === editor.id);
    if (editor.id && !vessel) throw Error('This vessel is no longer available. Close this window and refresh the page.');
-   setEditor({...editor, name: vessel?.name ?? editor.name, condition: vessel?.condition || (editor.id ? 'Available' : editor.condition), revision: latest.revision});
+   setEditor({...editor, name: vessel?.name ?? editor.name, capacity: vessel ? (vessel.capacity == null ? '' : String(vessel.capacity)) : editor.capacity, condition: vessel?.condition || (editor.id ? 'Available' : editor.condition), revision: latest.revision});
    setConflict(false);
    window.dispatchEvent(new Event('services-updated'));
   } catch (e) { setError(e instanceof Error ? e.message : 'Could not reload vessels.'); }
@@ -101,12 +101,14 @@ export default function ExcursionVessels({data}: {data?: VesselData | null}) {
   if (!canManage) { setError('Admin access is required to manage vessels.'); return; }
   const name = editor.name.trim();
   if (!name || name.length > 100) { setError('Enter a vessel name of 1–100 characters.'); return; }
+  const capacity = editor.capacity.trim() === '' ? null : Number(editor.capacity);
+  if (capacity !== null && (!Number.isSafeInteger(capacity) || capacity < 1)) { setError('Enter a positive whole number for passenger capacity, or leave it blank.'); return; }
   if (!conditions.includes(editor.condition as Condition)) { setError('Choose a valid vessel status.'); return; }
   lock.current = true; setBusy(true); setError('');
   try {
    const action = editor.id
-    ? {action: 'excursion-vessel-condition', vesselId: editor.id, condition: editor.condition}
-    : {action: 'excursion-resource', resourceType: 'vessels', name, condition: editor.condition};
+    ? {action: 'excursion-vessel-condition', vesselId: editor.id, name, capacity, condition: editor.condition}
+    : {action: 'excursion-resource', resourceType: 'vessels', name, capacity, condition: editor.condition};
    const response = await fetch('/api/guest-services', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({...action, revision: editor.revision}),
@@ -117,7 +119,7 @@ export default function ExcursionVessels({data}: {data?: VesselData | null}) {
     throw Error(result.error || 'Could not save the vessel. Please try again.');
    }
    setSaved(result); setEditor(null);
-   setNotice(editor.id ? `${name}: status saved as ${editor.condition}.` : `${name} added successfully.`);
+   setNotice(editor.id ? `${name}: vessel details saved.` : `${name} added successfully.`);
    window.dispatchEvent(new Event('services-updated'));
   } catch (e) { setError(e instanceof Error ? e.message : 'Could not save the vessel. Please try again.'); }
   finally { lock.current = false; setBusy(false); }
@@ -125,7 +127,7 @@ export default function ExcursionVessels({data}: {data?: VesselData | null}) {
 
  return <section className="excursion-panel">
   <div className="excursion-panel-head">
-   <div><h3>Vessels</h3><p>Manage boats and their availability for excursion trips.</p></div>
+   <div><h3>Vessels</h3><p>Manage vessel names, passenger capacities and availability.</p></div>
    <button type="button" className="excursion-primary-btn" disabled={!canManage || busy} onClick={() => open()}>+ Add vessel</button>
   </div>
   {notice && <p className="excursion-schedule-message" role="status">{notice}</p>}
@@ -133,20 +135,22 @@ export default function ExcursionVessels({data}: {data?: VesselData | null}) {
   {!current ? <div className="excursion-empty-state"><strong>Loading vessels…</strong></div>
    : <>{!canManage && <p role="status">Only Admin can add, manage or delete vessels.</p>}
     {vessels.length ? <div className="excursion-menu-grid">{vessels.map(vessel => <article className="excursion-menu-card" key={vessel.id}>
-     <div className="excursion-menu-card-top"><div><h4>{vessel.name}</h4><p>Excursion vessel</p></div><span className="excursion-price-pill">{vessel.condition || 'Available'}</span></div>
+     <div className="excursion-menu-card-top"><div><h4>{vessel.name}</h4><p>{vessel.capacity == null ? 'Capacity: Not set' : `Capacity: ${vessel.capacity} ${vessel.capacity === 1 ? 'passenger' : 'passengers'}`}</p></div><span className="excursion-price-pill">{vessel.condition || 'Available'}</span></div>
      <div className="excursion-menu-card-actions" style={{gap: 10}}>
       <button type="button" className="excursion-secondary-btn" disabled={!canManage || busy} aria-label={'Manage ' + vessel.name} onClick={() => open(vessel)}>Manage</button>
       <button type="button" className="excursion-delete-btn" disabled={!canManage || busy} aria-label={'Delete ' + vessel.name} onClick={() => remove(vessel)}>{deletingId === vessel.id ? 'Deleting…' : 'Delete'}</button>
      </div>
-    </article>)}</div> : <div className="excursion-empty-state"><strong>No vessels added yet</strong><p>Use Add vessel to register a boat and set its availability.</p></div>}
+    </article>)}</div> : <div className="excursion-empty-state"><strong>No vessels added yet</strong><p>Use Add vessel to register a boat, passenger capacity and availability.</p></div>}
    </>}
   {editor && <div className="excursion-schedule-overlay" role="presentation" onClick={event => {if (event.target === event.currentTarget) close();}}>
    <form ref={dialog} className="excursion-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="vessel-editor-title" onSubmit={submit}>
-    <header><div><small>EXCURSION VESSEL</small><h3 id="vessel-editor-title">{editor.id ? 'Manage vessel' : 'Add vessel'}</h3><p>{editor.id ? 'Update the availability of this vessel.' : 'Add a boat to the excursion vessel list.'}</p></div>
+    <header><div><small>EXCURSION VESSEL</small><h3 id="vessel-editor-title">{editor.id ? 'Manage vessel' : 'Add vessel'}</h3><p>{editor.id ? 'Edit this vessel’s name, passenger capacity and availability.' : 'Add a boat to the excursion vessel list.'}</p></div>
      <button type="button" className="excursion-dialog-close" disabled={busy} onClick={close} aria-label="Close vessel window">×</button>
     </header>
     <div className="excursion-schedule-form-grid">
-     <label className="full">Vessel name<input required maxLength={100} readOnly={!!editor.id} disabled={busy} value={editor.name} onChange={event => setEditor({...editor, name: event.target.value})}/></label>
+     <label className="full">Vessel name<input required maxLength={100} disabled={busy || conflict} value={editor.name} onChange={event => setEditor({...editor, name: event.target.value})}/></label>
+     <label className="full">Passenger capacity (pax)<input type="number" inputMode="numeric" min={1} step={1} placeholder="Not set" aria-describedby="vessel-capacity-help" disabled={busy || conflict} value={editor.capacity} onChange={event => setEditor({...editor, capacity: event.target.value})}/></label>
+     <p id="vessel-capacity-help" className="full assignment-shared-note">Passenger seats, excluding crew. Leave blank if not yet recorded. Trip booking limits are managed separately in Schedule.</p>
      <label className="full">Vessel status<select required disabled={busy || conflict} value={editor.condition} onChange={event => setEditor({...editor, condition: event.target.value})}>{conditions.map(condition => <option key={condition} value={condition}>{condition}</option>)}</select></label>
     </div>
     <p className="assignment-shared-note">Changing status does not remove existing trip assignments. Review the schedule and reassign trips when a boat is unavailable.</p>
