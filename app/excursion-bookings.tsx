@@ -99,7 +99,8 @@ export default function ExcursionBookings() {
         <dl className="excursion-booking-overview">
           <div><dt>Guest</dt><dd>{b.guest}<small>{b.guestType}</small></dd></div>
           <div><dt>Hotel / room</dt><dd>{b.hotel || 'Hotel not recorded'}<small>{b.room ? 'Room ' + b.room : 'Room not recorded'}</small></dd></div>
-          <div><dt>Trip date / time</dt><dd>{dateLabel(b.date)}<small>{b.time || 'Time not recorded'} · Maldives time</small></dd></div>
+          <div><dt>Booked for</dt><dd>{dateLabel(b.date)}<small>{b.time || 'Time not assigned yet'} · Maldives time</small></dd></div>
+          <div><dt>Booking created</dt><dd>{createdLabel(b.createdAt)}<small>Maldives time</small></dd></div>
           <div><dt>Guests / total</dt><dd>{b.guests} {b.guests === 1 ? 'guest' : 'guests'}<small>{money(b.totalCents)} USD</small></dd></div>
         </dl>
         <details className="excursion-booking-details"><summary>View details<span className="excursion-booking-sr-only"> for {b.guest}, booking {b.id}</span></summary>
