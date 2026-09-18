@@ -32,7 +32,7 @@ const clean=async (x:any,state:any)=>{
 };
 function matches(o:any,s:any){
  if(o.kind!=='excursion'||o.status==='Cancelled'||o.approvalStatus==='Declined'||o.approvalStatus==='Cancelled')return false;
- if(o.scheduleId)return o.scheduleId===s.id;
+ if(o.scheduleId)return o.scheduleId===s.id&&(o.date||o.schedule?.date)===s.date;
  const os=o.schedule||{};
  return (os.date||o.date)===s.date&&os.time===s.time&&(!s.vesselId||os.vesselId===s.vesselId)&&norm(o.name)===norm(s.name);
 }
