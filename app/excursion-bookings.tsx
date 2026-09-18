@@ -95,11 +95,11 @@ export default function ExcursionBookings() {
         <span><strong>{guests}</strong> guests</span><span><strong>{money(total)}</strong> total booking value (USD)</span>
       </div>
       {visible.length ? <div className="excursion-booking-list">{visible.map(b => <article className="excursion-confirmed-booking" key={b.id}>
-        <header className="excursion-booking-card-head"><div><small>{b.id}</small><h4>{b.excursion}</h4></div><div className="excursion-booking-badges"><span className="confirmed">Confirmed</span><span className={b.paymentStatus.toLowerCase()}>{b.paymentStatus}</span>{b.buggyRequested&&<span className="buggy">{b.guestType==='In-house'?'Buggy included':'Buggy requested'}</span>}</div></header>
+        <header className="excursion-booking-card-head"><div><small>{b.id}</small><h4>{b.excursion}</h4></div><div className="excursion-booking-badges"><span className="confirmed">Confirmed</span><span className={b.paymentStatus.toLowerCase()}>{b.paymentStatus}</span>{b.privateBoatRequested&&<span className="buggy">Private boat +$50</span>}{b.buggyRequested&&<span className="buggy">{b.guestType==='In-house'?'Buggy included':'Buggy requested'}</span>}</div></header>
         <dl className="excursion-booking-overview">
           <div><dt>Guest</dt><dd>{b.guest}<small>{b.guestType}</small></dd></div>
           <div><dt>Hotel / room</dt><dd>{b.hotel || 'Hotel not recorded'}<small>{b.room ? 'Room ' + b.room : 'Room not recorded'}</small></dd></div>
-          <div><dt>Booked for</dt><dd>{dateLabel(b.date)}<small>{b.serviceType==='romantic-beach-dinner'?(b.time?'Dinner time '+b.time+' · Maldives time':'Dinner time not assigned'):(b.time || 'Time not assigned yet')+' · Maldives time'}</small></dd></div>
+          <div><dt>Booked for</dt><dd>{dateLabel(b.date)}<small>{b.serviceType==='romantic-beach-dinner'?(b.time?'Dinner time '+b.time+' · Maldives time':'Dinner time not assigned'):(b.time || 'Time not assigned yet')+(b.endTime?'–'+b.endTime:'')+' · Maldives time'}</small></dd></div>
           <div><dt>Booking created</dt><dd>{createdLabel(b.createdAt)}<small>Maldives time</small></dd></div>
           <div><dt>Guests / total</dt><dd>{b.guests} {b.guests === 1 ? 'guest' : 'guests'}<small>{b.adults} adult{b.adults===1?'':'s'} · {b.children} child{b.children===1?'':'ren'} · {b.infants} under 3</small><small>{money(b.totalCents)} USD</small></dd></div>
         </dl>
@@ -108,7 +108,7 @@ export default function ExcursionBookings() {
             <div><dt>Phone / WhatsApp</dt><dd>{b.phone || 'Not recorded'}</dd></div>
             <div><dt>Vessel</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.vessel}{b.separateVessel && <small>Extra vessel booking</small>}</dd></div>
             <div><dt>Assigned crew</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.crew.length ? b.crew.join(', ') : 'Not assigned'}</dd></div>
-            <div><dt>Trip status</dt><dd>{b.tripStatus}{b.returnTime&&<small>Return pickup: {b.returnTime} · Maldives time</small>}</dd></div>
+            <div><dt>Trip status</dt><dd>{b.tripStatus}{b.endTime&&<small>Trip end: {b.endTime} · Maldives time</small>}{b.returnTime&&<small>Return pickup: {b.returnTime} · Maldives time</small>}{b.privateBoatRequested&&<small>Private boat surcharge: {money(b.privateBoatSurchargeCents)}</small>}</dd></div>
             <div><dt>Buggy pickup</dt><dd>{b.serviceType==='romantic-beach-dinner'?(b.buggyRequested?'Round trip to dinner location and back':'Not requested'):(b.guestType==='In-house' ? 'Included automatically' : (b.buggyRequested ? 'Requested' : 'Not requested'))}</dd></div>
             <div><dt>Children policy</dt><dd>Under 3 free<small>Ages 3–11: 50% · Ages 12+: full price</small></dd></div><div><dt>Payment status</dt><dd>{b.paymentStatus} · {money(b.totalCents)} USD</dd></div>
             <div><dt>Booking source</dt><dd>{b.source || 'Not recorded'}</dd></div>
