@@ -50,7 +50,20 @@ else if(b.action==='roomstatus'){if(!['Available','Cleaning','Maintenance'].incl
 else if(b.action==='payment'){if(typeof b.requestId!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.requestId)||!Number.isInteger(b.cents)||b.cents<=0||b.cents>Math.max(0,f.balanceCents)||!['Cash','Card','Bank transfer'].includes(b.method)||typeof b.reference!=='string'||b.reference.length>200)throw Error('Enter a valid payment no greater than the outstanding balance.');s.payments.push({id:b.requestId,cents:b.cents,method:b.method,reference:b.reference,date:new Date().toISOString(),by:u.username});detail='Payment received: $'+(b.cents/100).toFixed(2)+' · '+b.method;}
 else if(b.action==='move'){if(s.status==='Checked Out')throw Error('This guest has already checked out.');const target=state.rooms.find((x:any)=>x.number===b.target);if(!target||target.number===s.room||target.status!=='Available'||state.stays.some((x:any)=>x.id!==s.id&&x.room===b.target&&x.status!=='Checked Out'&&x.checkIn<s.checkOut&&x.checkOut>s.checkIn))throw Error('That room is unavailable for these stay dates.');detail='Moved from room '+s.room+' to '+b.target;if(s.status==='In House'){room.status='Cleaning';target.status='Occupied';}s.room=b.target;if(s.status==='In House')loginPlan=await prepareStayLogin(state,s);}
 else if(b.action==='extend'){if(s.status==='Checked Out')throw Error('This guest has already checked out.');const d=String(b.date);const nights=(Date.parse(d)-Date.parse(s.checkOut))/86400000;if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||new Date(d).toISOString().slice(0,10)!==d||!Number.isInteger(nights)||nights<1||nights>365||!Number.isInteger(b.rateCents)||b.rateCents<0||b.rateCents>1000000)throw Error('Choose a later checkout date and a valid nightly rate.');if(state.stays.some((x:any)=>x.id!==s.id&&x.room===s.room&&x.status!=='Checked Out'&&x.checkIn<d&&x.checkOut>s.checkOut))throw Error('This room has another booking during the extension.');s.extensions.push({id:'EXT-'+crypto.randomUUID(),from:s.checkOut,to:d,nights,cents:nights*b.rateCents});s.checkOut=d;detail='Stay extended to '+d+' · '+nights+(nights===1?' night':' nights');}
-else if(b.action==='checkout'){if(s.status!=='In House')throw Error('Only checked-in guests can check out.');if(f.balanceCents!==0)throw Error('Settle the outstanding balance before checking out.');if(s.accountId&&!state.stays.some((x:any)=>x.id!==s.id&&x.accountId===s.accountId&&x.status==='In House'))revoke.push(s.accountId);s.status='Checked Out';s.checkedOutAt=new Date().toISOString();room.status='Cleaning';detail='Guest checked out · Room marked Cleaning';}
+else if(b.action==='checkout'){
+ if(s.status!=='In House')throw Error('Only checked-in guests can check out.');
+ if(f.balanceCents!==0)throw Error('Settle the outstanding balance before checking out.');
+ const checkedOutAt=new Date().toISOString();
+ if(s.accountId){
+  // Every in-house stay login is terminated immediately at checkout.
+  // saveStayAccess deactivates the guest account and deletes all active sessions.
+  revoke.push(s.accountId);
+  s.loginTerminatedAt=checkedOutAt;
+  s.loginTerminatedAccountId=s.accountId;
+ }
+ s.status='Checked Out';s.checkedOutAt=checkedOutAt;room.status='Cleaning';
+ detail='Guest checked out · In-house login terminated · Room marked Cleaning';
+}
 else throw Error('Unknown action');
 s.history.unshift({date:new Date().toISOString(),detail,by:u.username});const saved=await saveStayAccess(state,revision,u.userId,loginPlan,revoke);if(!saved)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});return Response.json(await stayView());
 }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not save. Please retry.'},{status:400})}}
