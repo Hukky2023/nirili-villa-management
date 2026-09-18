@@ -4,6 +4,7 @@ import {saveStayAccess} from '../../../lib/stay-login';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
 import {excursionResources} from '../../../lib/excursion-workflow';
 import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requiredExcursionGuides} from '../../../lib/excursion-guides';
+import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -143,6 +144,7 @@ export async function PATCH(r:Request){
    if(!vessel||vessel.condition!=='Available')throw Error('Choose an available vessel.');
    const priceCents=Math.max(0,Number(order.operationalPriceCents)||Number(order.unitPriceCents)||Math.round((Number(order.quotedCents)||0)/Math.max(1,Number(order.quantity)||1)));
    const body=await clean({date:order.date,time,name:order.name,capacity,priceCents,vesselId,crewIds,status:'Open',notes:'Created from booking request '+order.id,sharedGroup:''},state);
+   if(excursionDeparturePassed(body.date,body.time))throw Error('This departure time is already in the past. Choose a future departure time.');
    if(body.capacity<Math.max(1,Number(order.quantity)||1))throw Error('Boat capacity must cover all guests in this booking.');
    const guides=cleanGuideSelection(guideIdsInput,body.crewIds,resources.crew);
    const requiredGuides=requiredExcursionGuides(Math.max(0,Number(order.quantity)||0));
@@ -174,6 +176,7 @@ export async function PATCH(r:Request){
    if(!row)throw Error('This scheduled excursion no longer exists.');
    const schedule=JSON.parse(row.payload);
    if(schedule.status!=='Open')throw Error('This excursion is closed for bookings.');
+   if(excursionDeparturePassed(schedule.date,schedule.time))throw Error('This excursion departure time has already passed. A booking cannot be created for it.');
    const sameDay=await schedulesForDate(date),key=sharedKey(schedule),groupSchedules=key?sameDay.filter((s:any)=>sharedKey(s)===key):[schedule],groupIds=new Set(groupSchedules.map((s:any)=>s.id));
    const capacity=Math.min(...groupSchedules.map((s:any)=>Math.max(1,Number(s.capacity)||1)));
    const confirmedPax=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&!o.separateVessel&&isConfirmed(o)&&(groupIds.has(o.scheduleId)||groupSchedules.some((s:any)=>matches(o,s)))).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
@@ -212,6 +215,7 @@ export async function PATCH(r:Request){
   const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(prefix+order.date+':'+order.scheduleId).first<any>();
   if(!row)throw Error('The scheduled excursion no longer exists.');
   const schedule=JSON.parse(row.payload);
+  if(decision==='Approved'&&excursionDeparturePassed(schedule.date,schedule.time))throw Error('This excursion departure time has already passed. Move the booking to a future trip instead.');
   order.approvalStatus=decision;order.reviewedAt=new Date().toISOString();order.reviewedBy=user.username;
   if(decision==='Approved'){
    if(!vesselId)throw Error('Assign a new vessel before approving this over-capacity request.');
