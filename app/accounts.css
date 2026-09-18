@@ -28,3 +28,51 @@
  color:#9b261f;
  font-weight:700;
 }
+
+
+.account-directory article.guest-account-card.inhouse{
+ border-top:4px solid #159a67;
+}
+.account-directory article.guest-account-card.walkin{
+ border-top:4px solid #087cad;
+}
+.account-directory article>header>div{
+ min-width:0;
+}
+.guest-type-badge{
+ display:inline-flex;
+ width:max-content;
+ margin-top:7px;
+ padding:5px 9px;
+ border-radius:999px;
+ font-size:11px;
+ font-weight:800;
+}
+.guest-type-badge.inhouse{
+ background:#eaf7ef;
+ color:#176742;
+}
+.guest-type-badge.walkin{
+ background:#eaf5fb;
+ color:#176080;
+}
+.guest-type-badge.guest{
+ background:#f1f4f6;
+ color:#586f7a;
+}
+.guest-account-info{
+ margin-top:8px;
+ padding:11px 12px;
+ border-radius:10px;
+}
+.guest-account-info p{
+ margin:4px 0;
+}
+.guest-account-info.inhouse{
+ background:#f3fbf7;
+ border:1px solid #cfe8da;
+}
+.guest-account-info.walkin{
+ background:#f2f9fc;
+ border:1px solid #cde2ec;
+}
