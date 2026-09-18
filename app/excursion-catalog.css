@@ -258,3 +258,85 @@
 @media(max-width:620px){
  .guest-age-pricing-grid{grid-template-columns:1fr}
 }
+
+
+.guest-booked-heading-actions{
+ display:flex;
+ align-items:center;
+ gap:10px;
+}
+.guest-enable-alerts{
+ min-height:36px;
+ padding:7px 10px;
+ border:1px solid #b9d7e4;
+ border-radius:9px;
+ background:#eef8fc;
+ color:#176080;
+ font-size:12px;
+ font-weight:800;
+ cursor:pointer;
+}
+.guest-pickup-alert-overlay{
+ position:fixed;
+ inset:0;
+ z-index:2200;
+ display:grid;
+ place-items:center;
+ padding:18px;
+ background:rgba(7,28,39,.68);
+ backdrop-filter:blur(4px);
+}
+.guest-pickup-alert-dialog{
+ width:min(460px,100%);
+ padding:26px;
+ border:2px solid #0a8ba0;
+ border-radius:20px;
+ background:#fff;
+ color:#14354a;
+ text-align:center;
+ box-shadow:0 28px 80px rgba(0,0,0,.32);
+}
+.guest-pickup-alert-icon{
+ font-size:52px;
+ line-height:1;
+ margin-bottom:10px;
+}
+.guest-pickup-alert-dialog h2{
+ margin:0 0 10px;
+ font-size:26px;
+ color:#0a6578;
+}
+.guest-pickup-alert-dialog>p{
+ margin:0;
+ font-size:16px;
+ line-height:1.55;
+ color:#476675;
+}
+.guest-pickup-alert-trip{
+ display:grid;
+ gap:4px;
+ margin:18px 0;
+ padding:12px 14px;
+ border-radius:12px;
+ background:#eef8fc;
+}
+.guest-pickup-alert-trip strong{color:#14354a}
+.guest-pickup-alert-trip span{color:#607c8b;font-size:13px}
+.guest-pickup-alert-dialog button{
+ width:100%;
+ min-height:48px;
+ padding:11px 16px;
+ border:1px solid #087584;
+ border-radius:11px;
+ background:#087584;
+ color:#fff;
+ font-size:16px;
+ font-weight:900;
+ cursor:pointer;
+}
+@media(max-width:560px){
+ .guest-booked-heading{align-items:flex-start}
+ .guest-booked-heading-actions{display:grid;justify-items:end}
+ .guest-pickup-alert-overlay{padding:10px}
+ .guest-pickup-alert-dialog{padding:22px 18px}
+}
