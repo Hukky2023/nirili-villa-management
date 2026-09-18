@@ -361,23 +361,31 @@ export async function PATCH(r:Request){
    .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,availabilityOrders),rank:scheduleRank(requestedName,s)}))
    .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
 
-  const chosen=candidates[0],resources=excursionResources(state);
+  const chosen=candidates[0],resources=excursionResources(state),fallback=suggestedTripWindow(requestedName);
   order.date=newDate;order.separateVessel=false;
   delete order.overflowVesselId;delete order.originalScheduleId;
 
-  if(chosen){
+  if(privateBoatRequested){
+   order.time='';order.endTime='';order.returnTime='';delete order.scheduleId;delete order.schedule;
+   order.preferredTime=chosen?.schedule.time||fallback.time;order.preferredEndTime=chosen?.schedule.endTime||fallback.endTime;order.preferredScheduleId=chosen?.schedule.id||'';
+   order.seatRequest=false;order.unscheduledRequest=true;order.requestedOverCapacity=false;
+   order.approvalStatus='Pending';order.status='Awaiting scheduling';order.autoConfirmed=false;order.cents=0;order.guestNotified=false;
+   order.matchedScheduleName=chosen?.schedule.name||'';
+  }else if(chosen){
    const schedule=chosen.schedule,requiresApproval=chosen.confirmedPax+quantity>chosen.capacity;
    const vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
-   order.time=schedule.time;order.returnTime=schedule.returnTime||'';order.scheduleId=schedule.id;
+   order.time=schedule.time;order.endTime=schedule.endTime||'';order.returnTime=schedule.returnTime||'';order.scheduleId=schedule.id;
+   delete order.preferredTime;delete order.preferredEndTime;delete order.preferredScheduleId;
    order.matchedFromMenu=true;order.matchedScheduleName=schedule.name;
    order.seatRequest=requiresApproval;order.unscheduledRequest=false;order.requestedOverCapacity=requiresApproval;
    order.approvalStatus=requiresApproval?'Pending':'Approved';order.status=requiresApproval?'Awaiting scheduling':'Scheduled';order.autoConfirmed=!requiresApproval;
    order.cents=requiresApproval?0:quotedCents;
-   order.schedule=requiresApproval?undefined:{date:schedule.date,time:schedule.time,...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)};
+   order.schedule=requiresApproval?undefined:{date:schedule.date,time:schedule.time,endTime:schedule.endTime||'',...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)};
    order.guestNotified=requiresApproval?undefined:false;
    if(requiresApproval){delete order.guestNotifiedAt;delete order.guestNotifiedBy;}
   }else{
-   order.time='';order.returnTime='';delete order.scheduleId;delete order.schedule;
+   order.time='';order.endTime='';order.returnTime='';delete order.scheduleId;delete order.schedule;
+   order.preferredTime=fallback.time;order.preferredEndTime=fallback.endTime;delete order.preferredScheduleId;
    order.seatRequest=true;order.unscheduledRequest=true;order.requestedOverCapacity=false;
    order.approvalStatus='Pending';order.status='Awaiting scheduling';order.autoConfirmed=false;order.cents=0;order.guestNotified=undefined;
    delete order.matchedScheduleName;
@@ -385,7 +393,7 @@ export async function PATCH(r:Request){
 
   const saved=await saveStayAccess(state,revision,user.userId);
   if(!saved)return Response.json({error:'Another update was saved at the same time. Please try again.'},{status:409});
-  return Response.json({ok:true,date:newDate,time:order.time||'',quantity,adults:mix.adults,children:mix.children,infants:mix.infants,buggyRequested,status:order.approvalStatus==='Approved'?'Confirmed':order.approvalStatus||order.status,requiresApproval:order.approvalStatus==='Pending',noMatchingSchedule:!chosen});
+  return Response.json({ok:true,date:newDate,time:order.time||'',quantity,adults:mix.adults,children:mix.children,infants:mix.infants,buggyRequested,privateBoatRequested,status:order.approvalStatus==='Approved'?'Confirmed':order.approvalStatus||order.status,requiresApproval:order.approvalStatus==='Pending',noMatchingSchedule:!chosen||privateBoatRequested});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not edit excursion booking.'},{status:400});}
 }
 
