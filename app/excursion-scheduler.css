@@ -451,3 +451,14 @@
 @media(max-width:900px){
  .romantic-dinner-logistics{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+.resort-return-time{
+ margin-top:7px!important;
+ padding:7px 9px;
+ border-radius:8px;
+ background:#fff7e8;
+ color:#805a0a!important;
+ font-size:12px;
+}
+.resort-return-time strong{color:#805a0a}
