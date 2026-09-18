@@ -59,7 +59,7 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
     {needsExtraVessel&&<label className="full">New vessel<select required value={form.vesselId} onChange={e=>setForm({...form,vesselId:e.target.value})}><option value="">Assign separate vessel</option>{availableVessels.map((v:any)=><option key={v.id} value={v.id}>{v.name}</option>)}</select><small>This booking will not be counted against the already-full original vessel.</small></label>}
     <label className="full">Notes<textarea rows={3} maxLength={1000} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label>
    </div>
-   <footer><button type="button" className="excursion-secondary-btn" disabled={saving} onClick={close}>Cancel</button><button type="submit" className="excursion-primary-btn" disabled={saving}>{saving?'Saving…':'Confirm booking'}</button></footer>
+   <footer><button type="button" className="excursion-secondary-btn" disabled={saving} onClick={close}>Cancel</button><button type="submit" className="excursion-primary-btn" disabled={saving||!form.quantity||form.quantity<1||form.quantity>100}>{saving?'Saving…':'Confirm booking'}</button></footer>
   </form></div>}
  </>;
 }
