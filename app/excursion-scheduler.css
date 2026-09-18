@@ -604,3 +604,102 @@
  opacity:.55;
  cursor:not-allowed;
 }
+
+
+.crew-trip-admin-requests{
+ margin:14px 0 18px;
+ padding:14px;
+ border:1px solid #e6d29b;
+ border-radius:14px;
+ background:#fffdf7;
+}
+.crew-trip-admin-head{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:14px;
+ margin-bottom:11px;
+}
+.crew-trip-admin-head small{
+ color:#9b6814;
+ font-size:10px;
+ font-weight:900;
+ letter-spacing:.12em;
+}
+.crew-trip-admin-head h4{
+ margin:4px 0;
+ color:#503a13;
+ font-size:18px;
+}
+.crew-trip-admin-head p{
+ margin:0;
+ color:#76684c;
+ font-size:12px;
+ line-height:1.45;
+}
+.crew-trip-admin-head>span{
+ padding:6px 9px;
+ border-radius:999px;
+ background:#fff0c7;
+ color:#805a0a;
+ font-size:11px;
+ font-weight:900;
+ white-space:nowrap;
+}
+.crew-trip-admin-list{
+ display:grid;
+ gap:9px;
+}
+.crew-trip-admin-list>article{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:16px;
+ padding:12px;
+ border:1px solid #eadbb4;
+ border-radius:11px;
+ background:#fff;
+}
+.crew-trip-admin-main strong{
+ color:#9b261f;
+}
+.crew-trip-admin-main h5{
+ margin:3px 0;
+ color:#173a4d;
+ font-size:15px;
+}
+.crew-trip-admin-main p{
+ margin:0;
+ color:#607c8b;
+ font-size:11px;
+}
+.crew-trip-admin-main blockquote{
+ margin:8px 0 0;
+ padding:8px 10px;
+ border-left:3px solid #d4a64b;
+ border-radius:0 7px 7px 0;
+ background:#fff9eb;
+ color:#654e23;
+ font-size:12px;
+}
+.crew-trip-admin-actions{
+ display:flex;
+ gap:8px;
+ flex-wrap:wrap;
+ justify-content:flex-end;
+}
+.crew-replacement-needed{
+ display:inline-flex;
+ width:max-content;
+ margin-top:5px;
+ padding:5px 8px;
+ border-radius:8px;
+ background:#fff0ce;
+ color:#8c5a00!important;
+ font-weight:900!important;
+}
+@media(max-width:720px){
+ .crew-trip-admin-head,.crew-trip-admin-list>article{display:grid}
+ .crew-trip-admin-actions{justify-content:stretch}
+ .crew-trip-admin-actions button{width:100%}
+}
