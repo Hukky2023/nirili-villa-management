@@ -1,11 +1,11 @@
 import {authDb,currentUser,hashPassword,limit,sameOrigin} from '../../../lib/auth';
-import {islandToday} from '../../../lib/guest-catalog';
+import {islandToday,validDate} from '../../../lib/guest-catalog';
 import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {walkInExcursionProfile,walkInExcursionProfiles} from '../../../lib/walkin-excursion-access';
 
 const cleanPhone=(value:any)=>String(value||'').replace(/[\s()-]/g,'');
-const expiry=()=>new Date(Date.now()+365*86400000).toISOString();
+const expiryFor=(departureDate:string)=>new Date(departureDate+'T23:59:59+05:00').toISOString();
 
 async function uniqueUsername(){
  const db=authDb();
@@ -29,7 +29,7 @@ export async function GET(){
   const user=await currentUser();
   if(user?.role==='guest'&&user.userId.startsWith('walkin-exc-')){
    const {state}=await loadStays(),profile=walkInExcursionProfile(state,user.userId);
-   return Response.json({today:islandToday(),signedIn:!!profile?.active,profile:profile?.active?{name:profile.name,hotel:profile.hotel,room:profile.room}:null},{headers:{'Cache-Control':'no-store'}});
+   return Response.json({today:islandToday(),signedIn:!!profile?.active,profile:profile?.active?{name:profile.name,hotel:profile.hotel,room:profile.room,departureDate:profile.departureDate||''}:null},{headers:{'Cache-Control':'no-store'}});
   }
   return Response.json({today:islandToday(),signedIn:false},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load walk-in excursion access.'},{status:503});}
@@ -42,8 +42,8 @@ export async function POST(r:Request){
   const name=String(b.name||'').trim().replace(/\s+/g,' ').slice(0,100);
   const phone=cleanPhone(b.phone);
   const hotel=String(b.hotel||'').trim().replace(/\s+/g,' ').slice(0,150);
-  const room=String(b.room||'').trim().slice(0,50);
-  if(!name||!/^\+[1-9]\d{7,14}$/.test(phone)||!hotel)throw Error('Enter your name, WhatsApp number with country code, and hotel or meeting location.');
+  const room=String(b.room||'').trim().slice(0,50),departureDate=String(b.departureDate||'');
+  if(!name||!/^\+[1-9]\d{7,14}$/.test(phone)||!hotel||!validDate(departureDate)||departureDate<islandToday())throw Error('Enter your name, WhatsApp number, hotel or meeting location, and the date you are leaving Dhiffushi.');
   const ip=r.headers.get('cf-connecting-ip')||'unknown';
   if(!await limit('walkin-exc-account-ip:'+ip,8,3600000))throw Error('Too many temporary account requests. Please contact reception.');
   const {state,revision}=await loadStays();
@@ -51,11 +51,11 @@ export async function POST(r:Request){
   if(existing)throw Error('An active temporary excursion login already exists for this WhatsApp number. Use your existing login or contact reception.');
   const username=await uniqueUsername(),password=temporaryPassword(),accountId='walkin-exc-'+crypto.randomUUID(),hash=await hashPassword(password),createdAt=new Date().toISOString();
   state.walkinExcursionAccounts??=[];
-  const expiresAt=expiry();
-  state.walkinExcursionAccounts.push({accountId,username,name,phone,hotel,room,active:true,createdAt,expiresAt});
+  const expiresAt=expiryFor(departureDate);
+  state.walkinExcursionAccounts.push({accountId,username,name,phone,hotel,room,departureDate,active:true,createdAt,expiresAt});
   const plan={id:accountId,username,password,hash,name,retire:[]};
   const saved=await saveStayAccess(state,revision,'walkin-excursion-registration',plan);
   if(!saved)return Response.json({error:'Another update was saved at the same time. Please try again.'},{status:409});
-  return Response.json({account:{username,password,name,expiresAt}},{status:201,headers:{'Cache-Control':'no-store'}});
+  return Response.json({account:{username,password,name,departureDate,expiresAt}},{status:201,headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not create temporary excursion login.'},{status:400});}
 }
