@@ -52,11 +52,16 @@ export function confirmedGuidePax(schedule: any, schedules: any[], orders: any[]
   return passengers;
 }
 
-/** Guides must be explicitly marked; assigning a captain or other crew alone does not count. */
+/** Assigned crew count as guides by default. If guideIds are explicitly saved,
+ * that smaller selection is respected for older records that distinguish crew roles.
+ */
 export function assignedGuideCount(guideIds: unknown, crewIds: unknown, crew: any[]): number {
-  const assigned = new Set(ids(crewIds));
+  const assignedIds = ids(crewIds);
+  const assigned = new Set(assignedIds);
+  const marked = ids(guideIds);
+  const guidePool = marked.length ? marked : assignedIds;
   const people = new Set<string>();
-  for (const id of ids(guideIds)) {
+  for (const id of guidePool) {
     const member = crew.find(person => person.id === id);
     if (!assigned.has(id) || !member || member.active === false || member.active === 0) continue;
     // Legacy imported aliases for the same person cannot supply two of the three guides.
