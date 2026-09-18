@@ -85,14 +85,16 @@ if(!saved){
  return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
 }
 generatedCrewCommitted=true;
-if(generatedCrewLogin)await appendAccountHistory(generatedCrewLogin.accountId,{at:new Date().toISOString(),action:'Crew account created',by:u.username,detail:'Automatic Crew Member login generated from Excursions → Crew members.'});
+if(generatedCrewLogin){try{await appendAccountHistory(generatedCrewLogin.accountId,{at:new Date().toISOString(),action:'Crew account created',by:u.username,detail:'Automatic Crew Member login generated from Excursions → Crew members.'});}catch{}}
 if(b.action==='excursion-crew-update'){
  const member=excursionResources(state).crew.find((crew:any)=>crew.id===b.crewId);
  if(member?.accountId){
-  const active=member.active!==false&&member.active!==0,db=authDb();
-  await db.prepare("UPDATE accounts SET name=?,active=? WHERE id=? AND role='staff'").bind(member.name,active?1:0,member.accountId).run();
-  if(!active)await db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(member.accountId).run();
-  await appendAccountHistory(member.accountId,{at:new Date().toISOString(),action:active?'Crew profile updated':'Crew account disabled',by:u.username,detail:'Crew name/status updated from Excursions.'});
+  try{
+   const active=member.active!==false&&member.active!==0,db=authDb();
+   await db.prepare("UPDATE accounts SET name=?,active=? WHERE id=? AND role='staff'").bind(member.name,active?1:0,member.accountId).run();
+   if(!active)await db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(member.accountId).run();
+   try{await appendAccountHistory(member.accountId,{at:new Date().toISOString(),action:active?'Crew profile updated':'Crew account disabled',by:u.username,detail:'Crew name/status updated from Excursions.'});}catch{}
+  }catch{}
  }
 }
 const response=await view(u);
