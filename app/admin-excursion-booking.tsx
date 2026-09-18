@@ -3,6 +3,7 @@ import {useMemo,useState} from 'react';
 import {X} from 'lucide-react';
 import {formatDateDMY} from '../lib/date-format';
 import {excursionChildPolicyText,excursionPriceCents} from '../lib/excursion-children';
+import {excursionDeparturePassed} from '../lib/guest-catalog';
 
 type Props={
  schedules:any[];
@@ -17,7 +18,8 @@ type Props={
 export default function AdminExcursionBooking({schedules,sharedBoatGroups,resources,stays,date,onSaved,onMessage}:Props){
  const [open,setOpen]=useState(false),[saving,setSaving]=useState(false);
  const [form,setForm]=useState<any>({scheduleId:'',guestType:'inhouse',stayId:'',guest:'',hotel:'',externalRoom:'',phone:'',quantity:1,adults:1,children:0,infants:0,notes:'',vesselId:''});
- const selected=useMemo(()=>schedules.find((s:any)=>s.id===form.scheduleId),[schedules,form.scheduleId]);
+ const bookableSchedules=useMemo(()=>schedules.filter((s:any)=>!excursionDeparturePassed(s.date,s.time)),[schedules]);
+ const selected=useMemo(()=>bookableSchedules.find((s:any)=>s.id===form.scheduleId),[bookableSchedules,form.scheduleId]);
  const group=selected?.sharedBoatKey?sharedBoatGroups[selected.sharedBoatKey]:null;
  const booked=group?.bookedPax??selected?.bookedPax??0;
  const capacity=group?.capacity??selected?.capacity??0;
@@ -46,7 +48,7 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
   {open&&<div className="excursion-schedule-overlay"><form className="excursion-schedule-dialog admin-excursion-booking" onSubmit={submit}>
    <header><div><small>ADMIN BOOKING</small><h3>Book scheduled excursion</h3><p>{formatDateDMY(date)} · Book an in-house or walk-in guest.</p></div><button type="button" className="excursion-dialog-close" aria-label="Close" onClick={close}><X/></button></header>
    <div className="excursion-schedule-form-grid">
-    <label className="full">Scheduled excursion<select required value={form.scheduleId} onChange={e=>setForm({...form,scheduleId:e.target.value,vesselId:''})}><option value="">Choose excursion</option>{schedules.map((s:any)=><option key={s.id} value={s.id}>{s.time} · {s.name}</option>)}</select></label>
+    <label className="full">Scheduled excursion<select required value={form.scheduleId} onChange={e=>setForm({...form,scheduleId:e.target.value,vesselId:''})}><option value="">Choose future excursion</option>{bookableSchedules.map((s:any)=><option key={s.id} value={s.id}>{s.time} · {s.name}</option>)}</select></label>
     <label>Guest type<select value={form.guestType} onChange={e=>setForm({...form,guestType:e.target.value,stayId:'',guest:'',hotel:'',externalRoom:'',phone:''})}><option value="inhouse">In-house guest</option><option value="walkin">Walk-in guest</option></select></label>
     <div className="full admin-child-policy"><strong>Children policy</strong><span>{excursionChildPolicyText()}</span></div><label>Adults (12+)<input required type="number" min={0} max={100} value={form.adults} onChange={e=>{const adults=Math.max(0,Number(e.target.value)||0),children=Math.max(0,Number(form.children)||0),infants=Math.max(0,Number(form.infants)||0);setForm({...form,adults,quantity:adults+children+infants})}}/></label><label>Children (3–11)<input required type="number" min={0} max={100} value={form.children} onChange={e=>{const children=Math.max(0,Number(e.target.value)||0),adults=Math.max(0,Number(form.adults)||0),infants=Math.max(0,Number(form.infants)||0);setForm({...form,children,quantity:adults+children+infants})}}/></label><label>Children under 3<input required type="number" min={0} max={100} value={form.infants} onChange={e=>{const infants=Math.max(0,Number(e.target.value)||0),adults=Math.max(0,Number(form.adults)||0),children=Math.max(0,Number(form.children)||0);setForm({...form,infants,quantity:adults+children+infants})}}/></label><div className="admin-booking-total-seats"><span>Total seats</span><strong>{form.quantity}</strong></div>
     {form.guestType==='inhouse'?<label className="full">In-house guest<select required value={form.stayId} onChange={e=>setForm({...form,stayId:e.target.value})}><option value="">Choose room / guest</option>{inHouse.map((s:any)=><option key={s.id} value={s.id}>Room {s.room} · {s.guest}</option>)}</select><small>The excursion charge will be added to the room's main bill.</small></label>:<>
