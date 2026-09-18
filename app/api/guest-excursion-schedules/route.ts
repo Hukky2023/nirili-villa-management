@@ -147,9 +147,6 @@ export async function POST(r:Request){
    const menu=await loadExcursionMenu();
    const item=menu.find((x:any)=>x.id===menuItemId&&x.kind==='excursion');
    if(!item)throw Error('This excursion is no longer available in the menu.');
-   const minGuests=Math.max(1,Number(item.minGuests)||1);
-   if(quantity<minGuests)throw Error('This excursion requires at least '+minGuests+' guest'+(minGuests===1?'':'s')+'.');
-
    await ensureStandardDailyExcursions(date);
    const allSchedules=(await schedulesForDate(date)).filter((s:any)=>s.status==='Open');
    const orders=Array.isArray(state.orders)?state.orders:[];
