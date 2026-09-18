@@ -4,13 +4,13 @@ import {discountPOSBill} from '../../../lib/pos-discount';
 import {changePOSPayment} from '../../../lib/pos-payment';
 import {restaurantTables} from '../../../lib/restaurant-tables';
 import {authDb,currentUser,sameOrigin,hasPermission} from '../../../lib/auth';
-import {canPOS,canTakePayment} from '../../../lib/pos-access';
+import {canPOS,canKitchen,canTakePayment} from '../../../lib/pos-access';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {loadMenu} from '../../../lib/menu-server';
 import {loadRestaurantPaymentSettingsWithDailyRates} from '../../../lib/restaurant-payment-settings';
 async function view(){const {state,revision}=await loadStays();const actor=await currentUser();const paymentSettings=await loadRestaurantPaymentSettingsWithDailyRates();return {revision,canPay:canTakePayment(actor),canEdit:canTakePayment(actor),canDiscount:canTakePayment(actor),canSetExchange:actor?.role==='admin',paymentSettings,guestOrders:state.orders.filter((o:any)=>o.kind==='food'&&o.status!=='Cancelled').map((o:any)=>({id:o.id,createdAt:o.createdAt,customer:o.guest,room:state.stays.find((s:any)=>s.id===o.stayId)?.room||o.room,notes:o.notes,name:o.name,quantity:o.quantity,kitchen:o.status==='Completed'?'Served':o.kitchen||'Sent'})),rooms:state.stays.filter((s:any)=>s.status==='In House').map((s:any)=>({id:s.id,room:s.room,guest:s.guest,meal:s.meal})),orders:(state.posOrders||[]).map((o:any)=>{const s=state.stays.find((s:any)=>s.id===o.stayId);return {...o,paymentStatus:o.complimentary?'Complimentary':['Cash','Card','Bank transfer'].includes(o.method)?'Paid':s?.paidBills?.['Restaurant:'+o.id]===o.cents?'Paid':o.method==='Room'?'Charged to room':'Unpaid'};})};}
-export async function GET(){if(!canPOS(await currentUser()))return Response.json({error:'Restaurant access required.'},{status:403});return Response.json(await view(),{headers:{'Cache-Control':'no-store'}});}
-export async function POST(r:Request){const u=await currentUser();if(!canPOS(u)||!sameOrigin(r))return Response.json({error:'Restaurant access required.'},{status:403});try{const b=await r.json(),{state,revision}=await loadStays();state.posOrders??=[];
+export async function GET(){if(!canKitchen(await currentUser()))return Response.json({error:'Restaurant kitchen access required.'},{status:403});return Response.json(await view(),{headers:{'Cache-Control':'no-store'}});}
+export async function POST(r:Request){const u=await currentUser();if(!canKitchen(u)||!sameOrigin(r))return Response.json({error:'Restaurant kitchen access required.'},{status:403});try{const b=await r.json();const kitchenOnly=!canPOS(u);if(kitchenOnly&&!['kitchen','guestkitchen'].includes(String(b.action||'')))return Response.json({error:'Kitchen accounts can only update kitchen order status.'},{status:403});const {state,revision}=await loadStays();state.posOrders??=[];
 if(b.action==='create'&&state.posOrders.some((o:any)=>o.token===b.token&&o.by===u!.userId))return Response.json(await view());
 if(b.revision!==revision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
 if(b.action==='create'){
