@@ -136,7 +136,7 @@ export async function POST(r:Request){
   const old=(state.orders||[]).find((o:any)=>o.token===token&&o.accountId===user.userId);
   if(old)return Response.json({booking:{id:old.id,status:old.approvalStatus==='Approved'?'Confirmed':old.approvalStatus||old.status,requiresApproval:old.approvalStatus==='Pending',requiresScheduling:!old.scheduleId}});
   const stay=(state.stays||[]).find((s:any)=>s.id===stayId&&s.accountId===user.userId&&s.status==='In House');
-  const walkIn=walkInExcursionProfile(state,user.userId),isWalkIn=!stay&&walkIn?.active===true&&stayId==='walkin:'+user.userId;
+  const walkIn=walkInExcursionProfile(state,user.userId),isWalkIn=!stay&&walkIn?.active===true&&(stayId==='walkin'||stayId==='walkin:'+user.userId);
   if(!stay&&!isWalkIn)throw Error('This excursion account is not available for booking.');
   const guest=stay?.guest||walkIn?.name||user.displayName,room=stay?.room||'',phone=stay?.whatsapp||walkIn?.phone||'',hotel=stay?'Nirili Villa':walkIn?.hotel||'',externalRoom=stay?'':walkIn?.room||'',orderStayId=stay?.id||'';
   const buggyRequested=isWalkIn?buggyRequestedInput:true;
