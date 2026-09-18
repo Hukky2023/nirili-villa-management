@@ -112,7 +112,7 @@ export async function GET(r:Request){
   const enriched=schedules.map((s:any)=>{const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null;const capacity=g?.capacity??s.capacity,confirmedPax=g?.confirmedPax??s.confirmedPax,pendingPax=g?.pendingPax??s.pendingPax;return {...s,capacity,confirmedPax,pendingPax,remainingSeats:Math.max(0,capacity-confirmedPax),isFull:confirmedPax>=capacity,sharedBoat:!!g&&g.scheduleIds.length>1};});
   const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled').map((o:any)=>{
    const bookingStay=(state.stays||[]).find((s:any)=>s.id===o.stayId);
-   return {id:o.id,stayId:o.stayId,menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room,vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,buggyRequested:!!o.buggyRequested,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),checkIn:bookingStay?.checkIn||'',checkOut:bookingStay?.checkOut||'',createdAt:o.createdAt};
+   return {id:o.id,stayId:o.stayId,menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room,vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,buggyRequested:true,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),checkIn:bookingStay?.checkIn||'',checkOut:bookingStay?.checkOut||'',createdAt:o.createdAt};
   }).sort((a:any,b:any)=>(String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
   return Response.json({date,stays:eligibleStays,schedules:enriched,myBookings},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load scheduled excursions.'},{status:503});}
@@ -124,7 +124,7 @@ export async function POST(r:Request){
  try{
   const b=await r.json();
   const scheduleId=String(b.scheduleId||'').slice(0,100),menuItemId=String(b.menuItemId||'').slice(0,100),date=String(b.date||''),stayId=String(b.stayId||''),token=String(b.token||'');
-  const quantity=Number(b.quantity),buggyRequested=b.buggyRequested===true,notes=String(b.notes||'').trim().slice(0,1000);
+  const quantity=Number(b.quantity),buggyRequested=true,notes=String(b.notes||'').trim().slice(0,1000);
   if((!scheduleId&&!menuItemId)||!validDate(date)||!stayId||!/^[-a-zA-Z0-9]{12,80}$/.test(token)||!Number.isInteger(quantity)||quantity<1||quantity>20)throw Error('Check the excursion, date, room and number of guests.');
   const {state,revision}=await loadStays();
   const old=(state.orders||[]).find((o:any)=>o.token===token&&o.accountId===user.userId);
