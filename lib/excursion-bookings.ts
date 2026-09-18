@@ -4,7 +4,7 @@ export type ConfirmedExcursionBooking = {
   guestType: 'In-house' | 'Walk-in'; hotel: string; room: string;
   date: string; time: string; guests: number; totalCents: number;
   paymentStatus: 'Paid' | 'Unpaid'; tripStatus: string;
-  vessel: string; crew: string[]; separateVessel: boolean;
+  vessel: string; crew: string[]; separateVessel: boolean; buggyRequested: boolean;
   notes: string; source: string; createdAt: string; createdBy: string;
 };
 
@@ -58,7 +58,7 @@ export function toConfirmedExcursionBooking(
     paymentStatus: paid ? 'Paid' : 'Unpaid',
     tripStatus: historical ? (normal(order.status) === 'completed' ? 'Completed' : 'Departed') : 'Scheduled',
     vessel: text(vessel?.name) || text(assignment.vessel) || 'Not assigned',
-    crew, separateVessel: !!order.separateVessel,
+    crew, separateVessel: !!order.separateVessel, buggyRequested: !!order.buggyRequested,
     notes: text(order.notes), source: text(order.source),
     createdAt: text(order.createdAt), createdBy: text(order.createdBy),
   };
