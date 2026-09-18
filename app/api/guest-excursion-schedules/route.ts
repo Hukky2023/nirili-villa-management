@@ -110,7 +110,7 @@ export async function GET(r:Request){
    return {id:s.id,date:s.date,time:s.time,name:s.name,status:s.status,capacity:s.capacity,notes:s.notes||'',priceCents:priceForSchedule(s),sharedBoatKey,confirmedPax,pendingPax,ownBooking:own?{id:own.id,quantity:own.quantity,status:own.approvalStatus==='Approved'?'Confirmed':own.approvalStatus||own.status,createdAt:own.createdAt}:null};
   });
   const enriched=schedules.map((s:any)=>{const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null;const capacity=g?.capacity??s.capacity,confirmedPax=g?.confirmedPax??s.confirmedPax,pendingPax=g?.pendingPax??s.pendingPax;return {...s,capacity,confirmedPax,pendingPax,remainingSeats:Math.max(0,capacity-confirmedPax),isFull:confirmedPax>=capacity,sharedBoat:!!g&&g.scheduleIds.length>1};});
-  const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled').map((o:any)=>({id:o.id,name:o.name,quantity:o.quantity,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room,vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),createdAt:o.createdAt})).sort((a:any,b:any)=>(String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
+  const myBookings=orders.filter((o:any)=>o.accountId===user.userId&&o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled').map((o:any)=>({id:o.id,stayId:o.stayId,menuItemId:o.menuItemId||'',name:o.name,quantity:o.quantity,date:o.date,time:o.time||o.schedule?.time||'',status:o.approvalStatus==='Approved'?'Confirmed':o.approvalStatus||o.status,cents:Number(o.cents)||0,room:o.room,vessel:o.schedule?.vessel||'',separateVessel:!!o.separateVessel,canCancel:!['Departed','Completed','Cancelled'].includes(o.status),canChangeDate:!['Departed','Completed','Cancelled'].includes(o.status),createdAt:o.createdAt})).sort((a:any,b:any)=>(String(a.date)+String(a.time)).localeCompare(String(b.date)+String(b.time)));
   return Response.json({date,stays:eligibleStays,schedules:enriched,myBookings},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load scheduled excursions.'},{status:503});}
 }
@@ -196,6 +196,82 @@ export async function POST(r:Request){
   if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
   return Response.json({booking:{id,status:requiresApproval?'Pending':'Confirmed',requiresApproval,overCapacity:requiresApproval,remainingBefore:Math.max(0,capacity-confirmedPax),chargedCents:requiresApproval?0:quotedCents}},{status:201});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not book excursion seats.'},{status:400});}
+}
+
+export async function PATCH(r:Request){
+ const user=await currentUser();
+ if(!user||user.role!=='guest'||!sameOrigin(r))return Response.json({error:'Guest login required.'},{status:403});
+ try{
+  const b=await r.json(),bookingId=String(b.bookingId||'').slice(0,100),newDate=String(b.date||'');
+  if(!bookingId||!validDate(newDate))throw Error('Choose a valid new excursion date.');
+  const {state,revision}=await loadStays();
+  const order=(state.orders||[]).find((o:any)=>o.id===bookingId&&o.kind==='excursion'&&o.accountId===user.userId);
+  if(!order)throw Error('Excursion booking not found.');
+  if(['Departed','Completed','Cancelled'].includes(order.status)||order.approvalStatus==='Cancelled')throw Error('This excursion date can no longer be changed online.');
+  const stay=(state.stays||[]).find((s:any)=>s.id===order.stayId&&s.accountId===user.userId&&s.status==='In House');
+  if(!stay)throw Error('This room is not available for excursion changes.');
+  if(newDate<islandToday()||newDate<stay.checkIn||newDate>=stay.checkOut)throw Error('Choose a date during your current stay, before checkout.');
+  if(newDate===order.date)return Response.json({ok:true,status:order.approvalStatus==='Approved'?'Confirmed':order.approvalStatus||order.status,date:order.date,time:order.time||order.schedule?.time||''});
+
+  await ensureStandardDailyExcursions(newDate);
+  const allSchedules=(await schedulesForDate(newDate)).filter((s:any)=>s.status==='Open');
+  const menu=await loadExcursionMenu();
+  const menuItem=order.menuItemId?menu.find((x:any)=>x.id===order.menuItemId&&x.kind==='excursion'):undefined;
+  const requestedName=menuItem?.name||order.name;
+  const quantity=Math.max(1,Number(order.quantity)||1);
+  const candidates=allSchedules
+   .filter((s:any)=>scheduleCanServe(requestedName,s.name))
+   .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,state.orders||[]),rank:scheduleRank(requestedName,s)}))
+   .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
+
+  const chosen=candidates[0];
+  const quotedCents=Math.max(0,Number(order.quotedCents)||Number(order.unitPriceCents||0)*quantity||Number(order.cents)||0);
+  const resources=excursionResources(state);
+  const changedAt=new Date().toISOString();
+  const previous={date:order.date||'',time:order.time||order.schedule?.time||'',scheduleId:order.scheduleId||'',at:changedAt};
+  order.date=newDate;
+  order.dateChangeHistory=[...(order.dateChangeHistory||[]),previous];
+  order.dateChangedAt=changedAt;
+  order.dateChangedBy='guest';
+  order.separateVessel=false;
+  delete order.overflowVesselId;
+  delete order.originalScheduleId;
+
+  if(chosen){
+   const schedule=chosen.schedule,requiresApproval=chosen.confirmedPax+quantity>chosen.capacity;
+   const vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
+   order.time=schedule.time;
+   order.scheduleId=schedule.id;
+   order.matchedFromMenu=true;
+   order.matchedScheduleName=schedule.name;
+   order.seatRequest=requiresApproval;
+   order.requestedOverCapacity=requiresApproval;
+   order.approvalStatus=requiresApproval?'Pending':'Approved';
+   order.status=requiresApproval?'Awaiting scheduling':'Scheduled';
+   order.autoConfirmed=!requiresApproval;
+   order.cents=requiresApproval?0:quotedCents;
+   order.schedule=requiresApproval?undefined:{date:schedule.date,time:schedule.time,vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)};
+   order.guestNotified=requiresApproval?undefined:false;
+   if(requiresApproval){delete order.guestNotifiedAt;delete order.guestNotifiedBy;}
+  }else{
+   order.time='';
+   delete order.scheduleId;
+   delete order.schedule;
+   order.seatRequest=true;
+   order.unscheduledRequest=true;
+   order.requestedOverCapacity=false;
+   order.approvalStatus='Pending';
+   order.status='Awaiting scheduling';
+   order.autoConfirmed=false;
+   order.cents=0;
+   order.guestNotified=undefined;
+   delete order.matchedScheduleName;
+  }
+
+  const saved=await saveStayAccess(state,revision,user.userId);
+  if(!saved)return Response.json({error:'Another update was saved at the same time. Please try again.'},{status:409});
+  return Response.json({ok:true,date:newDate,time:order.time||'',status:order.approvalStatus==='Approved'?'Confirmed':order.approvalStatus||order.status,requiresApproval:order.approvalStatus==='Pending',noMatchingSchedule:!chosen});
+ }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not change excursion date.'},{status:400});}
 }
 
 export async function DELETE(r:Request){
