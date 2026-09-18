@@ -273,14 +273,28 @@ export async function POST(r:Request){
   const capacity=Math.min(...groupSchedules.map((s:any)=>Number(s.capacity)||1));
   const confirmedPax=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&!o.separateVessel&&o.status!=='Cancelled'&&o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled'&&(groupIds.has(o.scheduleId)||groupSchedules.some((s:any)=>matches(o,s)))).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
   const requiresApproval=confirmedPax+quantity>capacity;
-  const unitPriceCents=priceForSchedule(schedule),quotedCents=excursionPriceCents(unitPriceCents,'guest',mix);
+  const unitPriceCents=priceForSchedule(schedule),baseQuotedCents=excursionPriceCents(unitPriceCents,'guest',mix),privateBoatSurchargeCents=privateBoatRequested?PRIVATE_BOAT_SURCHARGE_CENTS:0,quotedCents=baseQuotedCents+privateBoatSurchargeCents;
   const id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
   const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
   state.orders??=[];
+
+  if(privateBoatRequested){
+   state.orders.push({
+    id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',name:schedule.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,buggyRequested,
+    cents:0,quotedCents,baseQuotedCents,unitPriceCents,privateBoatRequested:true,privateBoatSurchargeCents,notes,date,time:'',preferredTime:schedule.time,preferredEndTime:schedule.endTime||'',preferredScheduleId:schedule.id,
+    seatRequest:false,unscheduledRequest:true,approvalStatus:'Pending',status:'Awaiting scheduling',requestedOverCapacity:false,autoConfirmed:false,guestNotified:false,
+    createdAt:new Date().toISOString(),source:isWalkIn?'Walk-in private boat':'Guest private boat'
+   });
+   const saved=await saveStayAccess(state,revision,user.userId);
+   if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
+   return Response.json({booking:{id,status:'Pending',requiresApproval:true,requiresScheduling:true,privateBoatRequested:true,privateBoatSurchargeCents,chargedCents:0,suggestedTime:schedule.time,suggestedEndTime:schedule.endTime||''}},{status:201});
+  }
+
   state.orders.push({
-   id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',name:schedule.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,buggyRequested,cents:requiresApproval?0:quotedCents,quotedCents,unitPriceCents,notes,date,time:schedule.time,returnTime:schedule.returnTime||'',scheduleId:schedule.id,
+   id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',name:schedule.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,buggyRequested,
+   cents:requiresApproval?0:quotedCents,quotedCents,baseQuotedCents,unitPriceCents,privateBoatRequested:false,privateBoatSurchargeCents:0,notes,date,time:schedule.time,endTime:schedule.endTime||'',returnTime:schedule.returnTime||'',scheduleId:schedule.id,
    seatRequest:requiresApproval,approvalStatus:requiresApproval?'Pending':'Approved',status:requiresApproval?'Awaiting scheduling':'Scheduled',requestedOverCapacity:requiresApproval,autoConfirmed:!requiresApproval,
-   schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
+   schedule:requiresApproval?undefined:{date:schedule.date,time:schedule.time,endTime:schedule.endTime||'',...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((c:any)=>c.name)},
    guestNotified:requiresApproval?undefined:false,createdAt:new Date().toISOString(),source:isWalkIn?'Walk-in portal':'Guest schedule'
   });
   const saved=await saveStayAccess(state,revision,user.userId);
