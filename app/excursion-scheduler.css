@@ -97,3 +97,24 @@
 .excursion-category-badge.single{background:#eaf7ef;color:#176742}
 .excursion-category-badge.combined{background:#eef6fb;color:#176080}
 .excursion-category-badge.special{background:#fff3d8;color:#805a0a}
+
+
+/* Keep excursion-menu categories visually separated. */
+.excursion-menu-groups{display:grid;gap:24px}
+.excursion-menu-group{padding:18px;border:1px solid #d8e5ec;border-radius:16px;background:#fff}
+.excursion-menu-group-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;padding-bottom:13px;border-bottom:1px solid #e5eef2}
+.excursion-menu-group-head h4{margin:0;color:#14354a;font-size:22px;line-height:1.2}
+.excursion-menu-group-head p{margin:5px 0 0;color:#6b8491;font-size:14px}
+.excursion-menu-group-head>span{display:inline-flex;align-items:center;justify-content:center;min-width:72px;padding:7px 10px;border-radius:999px;background:#eef7fb;color:#315d72;font-size:12px;font-weight:800;white-space:nowrap}
+.excursion-menu-group.single{border-top:4px solid #159a67}
+.excursion-menu-group.combined{border-top:4px solid #087cad}
+.excursion-menu-group.special{border-top:4px solid #f39a21}
+.excursion-menu-group.single .excursion-menu-group-head h4{color:#176742}
+.excursion-menu-group.combined .excursion-menu-group-head h4{color:#176080}
+.excursion-menu-group.special .excursion-menu-group-head h4{color:#9a5b08}
+.excursion-menu-group-empty{padding:18px;border:1px dashed #c9dce5;border-radius:12px;background:#f8fcfe;color:#607c8b;text-align:center}
+@media(max-width:640px){
+ .excursion-menu-group{padding:14px}
+ .excursion-menu-group-head{display:grid;gap:10px}
+ .excursion-menu-group-head>span{justify-self:start}
+}
