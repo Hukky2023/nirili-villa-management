@@ -129,13 +129,14 @@
 .guest-date-change-dialog>label{display:grid;gap:6px;margin-top:14px;color:#365c6f;font-size:13px;font-weight:700}
 
 
-.guest-buggy-request{
- margin-top:14px!important;
+.guest-buggy-included{
+ margin-top:14px;
  padding:12px 14px;
  border:1px solid #c9dfe8;
  border-radius:11px;
  background:#f7fbfd;
+ display:grid;
+ gap:4px;
 }
-.guest-buggy-request>span{display:flex;align-items:center;gap:9px;color:#174158;font-weight:800}
-.guest-buggy-request input[type="checkbox"]{width:18px;height:18px;min-height:18px;padding:0;accent-color:#087584}
-.guest-buggy-request small{color:#6b8491;font-weight:500;line-height:1.45}
+.guest-buggy-included strong{color:#174158}
+.guest-buggy-included small{color:#6b8491;font-weight:500;line-height:1.45}
