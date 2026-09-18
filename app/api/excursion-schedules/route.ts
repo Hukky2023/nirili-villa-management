@@ -1,5 +1,5 @@
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
-import {loadStays} from '../../../lib/stays';
+import {loadStays,stayKey} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
 import {excursionResources} from '../../../lib/excursion-workflow';
@@ -65,7 +65,7 @@ export async function GET(r:Request){
   });
   const groups:Record<string,{scheduleIds:string[],bookedPax:number,pendingPax:number,capacity:number}>={};
   for(const s of schedules){
-   if(!s.sharedBoatKey)continue;
+   if(s.status==='Cancelled'||!s.sharedBoatKey)continue;
    const g=groups[s.sharedBoatKey]||(groups[s.sharedBoatKey]={scheduleIds:[],bookedPax:0,pendingPax:0,capacity:s.capacity});
    g.scheduleIds.push(s.id);g.bookedPax+=s.bookedPax;g.pendingPax+=s.pendingPax;g.capacity=Math.min(g.capacity,s.capacity);
   }
@@ -114,6 +114,7 @@ export async function PUT(r:Request){
   const existing=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(key).first<any>();
   if(!existing)throw Error('Schedule not found.');
   const old=JSON.parse(existing.payload);
+  if(old.status==='Cancelled')throw Error('Cancelled excursions cannot be edited. Create a new schedule instead.');
   const crew=excursionResources(state).crew;
   // Older clients retain recorded guides, but a removed crew member is no longer a guide.
   const selection=raw.guideIds===undefined?(old.guideIds||[]).filter((guide:string)=>body.crewIds.includes(guide)):raw.guideIds;
@@ -133,6 +134,40 @@ export async function PATCH(r:Request){
  if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{
   const b=await r.json();
+  if(b.action==='cancel-schedule'){
+   const id=String(b.id||'').slice(0,100),date=String(b.date||''),reason=String(b.reason||'').trim().slice(0,500);
+   if(!id||!validDate(date))throw Error('Choose a valid scheduled excursion.');
+   if(!reason)throw Error('Enter a reason for cancelling this excursion.');
+   const db=authDb(),key=prefix+date+':'+id;
+   const row=await db.prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(key).first<any>();
+   if(!row)throw Error('Scheduled excursion not found.');
+   const schedule=JSON.parse(row.payload);
+   if(schedule.status==='Cancelled')return Response.json({ok:true,alreadyCancelled:true,reason:schedule.cancellationReason||''});
+   const {state,revision}=await loadStays();
+   const now=new Date().toISOString();
+   const affected=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Cancelled'&&matches(o,schedule));
+   for(const order of affected){
+    order.status='Cancelled';
+    order.approvalStatus='Cancelled';
+    order.cents=0;
+    order.cancelledAt=now;
+    order.cancelledBy=user.username;
+    order.cancellationReason=reason;
+    order.scheduleCancelled=true;
+    order.guestNotified=false;
+   }
+   const cancelledSchedule={...schedule,status:'Cancelled',cancellationReason:reason,cancelledAt:now,cancelledBy:user.username,updatedAt:now};
+   const stayPayload=JSON.stringify(state);
+   const statements:any[]=[
+    db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(cancelledSchedule),user.userId,key,Number(row.revision))
+   ];
+   if(revision===0)statements.push(db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,stayPayload,user.userId));
+   else statements.push(db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(stayPayload,user.userId,stayKey,revision));
+   const results=await db.batch(statements);
+   if(!results[0].meta.changes||!results[1].meta.changes)return Response.json({error:'The excursion changed elsewhere. Reload and try again.'},{status:409});
+   return Response.json({ok:true,cancelledBookings:affected.length,reason,status:'Cancelled'});
+  }
+
   if(b.action==='confirm-romantic-dinner'){
    const requestId=String(b.requestId||'').slice(0,100),time=String(b.time||'');
    if(!requestId)throw Error('Choose a dinner booking request.');
@@ -265,11 +300,5 @@ export async function PATCH(r:Request){
 export async function DELETE(r:Request){
  const user=await currentUser();
  if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
- try{
-  const body=await r.json(),id=String(body.id||'').slice(0,100),date=String(body.date||'');
-  if(!id||!validDate(date))throw Error('Invalid schedule record.');
-  await authDb().prepare('DELETE FROM operation_records WHERE key=?').bind(prefix+date+':'+id).run();
-  return Response.json({ok:true});
- }catch(e){return Response.json({error:(e as Error).message||'Could not delete schedule.'},{status:400});
- }
+ return Response.json({error:'Scheduled excursions are not deleted. Use Cancel excursion and provide a reason.'},{status:400});
 }
