@@ -141,7 +141,7 @@ export async function PATCH(r:Request){
    if(!order)throw Error('This scheduling request has already been handled.');
    const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===vesselId);
    if(!vessel||vessel.condition!=='Available')throw Error('Choose an available vessel.');
-   const priceCents=Math.max(0,Number(order.unitPriceCents)||Math.round((Number(order.quotedCents)||0)/Math.max(1,Number(order.quantity)||1)));
+   const priceCents=Math.max(0,Number(order.operationalPriceCents)||Number(order.unitPriceCents)||Math.round((Number(order.quotedCents)||0)/Math.max(1,Number(order.quantity)||1)));
    const body=await clean({date:order.date,time,name:order.name,capacity,priceCents,vesselId,crewIds,status:'Open',notes:'Created from booking request '+order.id,sharedGroup:''},state);
    if(body.capacity<Math.max(1,Number(order.quantity)||1))throw Error('Boat capacity must cover all guests in this booking.');
    const guides=cleanGuideSelection(guideIdsInput,body.crewIds,resources.crew);
