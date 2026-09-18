@@ -314,10 +314,15 @@ export async function PATCH(r:Request){
    const sameDay=await schedulesForDate(order.date),key=sharedKey(schedule);
    const originalVesselIds=new Set((key?sameDay.filter((s:any)=>sharedKey(s)===key):[schedule]).map((s:any)=>String(s.vesselId||'')).filter(Boolean));
    if(originalVesselIds.has(vessel.id))throw Error('Choose a different vessel from the vessel already assigned to this departure.');
+   const endTime=schedule.endTime||inferTripEndTime(schedule.name,schedule.time);
+   const scheduledConflict=vesselConflict(sameDay,{date:schedule.date,time:schedule.time,endTime,vesselId:vessel.id});
+   if(scheduledConflict)throw Error(vessel.name+' is already in use for '+scheduledConflict.name+' from '+scheduledConflict.time+' to '+(scheduledConflict.endTime||inferTripEndTime(scheduledConflict.name,scheduledConflict.time))+'.');
+   const bookingConflict=separateVesselConflict(state.orders||[],vessel.id,schedule.date,schedule.time,endTime,order.id);
+   if(bookingConflict)throw Error(vessel.name+' is already assigned to another private/extra-vessel booking during this time.');
    const crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
    order.cents=Math.max(0,Number(order.quotedCents)||0);
    order.status='Scheduled';order.separateVessel=true;order.overflowVesselId=vessel.id;order.originalScheduleId=schedule.id;
-   order.returnTime=schedule.returnTime||'';order.schedule={date:schedule.date,time:schedule.time,...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:vessel.id,vessel:vessel.name,crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name),extraVessel:true};order.guestNotified=false;
+   order.endTime=endTime;order.returnTime=schedule.returnTime||'';order.schedule={date:schedule.date,time:schedule.time,endTime,...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:vessel.id,vessel:vessel.name,crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name),extraVessel:true};order.guestNotified=false;
   }else{order.cents=0;order.status='Cancelled';}
   const saved=await saveStayAccess(state,revision,user.userId);
   if(!saved)return Response.json({error:'Another update was saved. Reload and try again.'},{status:409});
