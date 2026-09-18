@@ -29,7 +29,9 @@ export default function WalkInExcursions(){
   try{
    const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,portal:'guest',returnTo:'/'})}),d=await r.json();
    if(!r.ok)throw Error(d.error||'Could not sign in.');
-   tabNavigate('/?portal=guest&service='+service);
+   const target=new URL(d.redirect,window.location.origin);
+   target.searchParams.set('service',service);
+   tabNavigate(target.pathname+target.search+target.hash);
   }catch(e){setError((e as Error).message);setBusy(false);}
  }
 
