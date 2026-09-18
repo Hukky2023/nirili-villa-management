@@ -58,7 +58,7 @@ export function toConfirmedExcursionBooking(
     paymentStatus: paid ? 'Paid' : 'Unpaid',
     tripStatus: historical ? (normal(order.status) === 'completed' ? 'Completed' : 'Departed') : 'Scheduled',
     vessel: text(vessel?.name) || text(assignment.vessel) || 'Not assigned',
-    crew, separateVessel: !!order.separateVessel, buggyRequested: !!order.buggyRequested,
+    crew, separateVessel: !!order.separateVessel, buggyRequested: inhouse ? true : !!order.buggyRequested,
     notes: text(order.notes), source: text(order.source),
     createdAt: text(order.createdAt), createdBy: text(order.createdBy),
   };
