@@ -355,3 +355,27 @@
  color:#805a0a!important;
  font-weight:800;
 }
+
+
+.guest-excursion-cancelled-alert,
+.guest-schedule-cancel-reason{
+ margin-top:10px;
+ padding:10px 12px;
+ border:1px solid #efc9c5;
+ border-radius:10px;
+ background:#fff3f1;
+ color:#8e3434;
+}
+.guest-excursion-cancelled-alert{
+ display:grid;
+ gap:3px;
+}
+.guest-excursion-cancelled-alert strong,
+.guest-schedule-cancel-reason strong{
+ color:#9b261f;
+}
+.guest-excursion-cancelled-alert span{
+ color:#6f514f;
+ font-size:12px;
+ line-height:1.45;
+}
