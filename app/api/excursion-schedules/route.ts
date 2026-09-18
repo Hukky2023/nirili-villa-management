@@ -134,20 +134,22 @@ export async function PATCH(r:Request){
  try{
   const b=await r.json();
   if(b.action==='confirm-romantic-dinner'){
-   const requestId=String(b.requestId||'').slice(0,100);
+   const requestId=String(b.requestId||'').slice(0,100),time=String(b.time||'');
    if(!requestId)throw Error('Choose a dinner booking request.');
+   if(!validTime(time))throw Error('Choose a valid dinner time.');
    const {state,revision}=await loadStays();
    const order=(state.orders||[]).find((o:any)=>o.id===requestId&&o.kind==='excursion'&&o.unscheduledRequest===true&&o.approvalStatus==='Pending'&&o.status!=='Cancelled'&&isRomanticBeachDinner(o));
    if(!order)throw Error('This romantic dinner request has already been handled.');
+   if(excursionDeparturePassed(order.date,time))throw Error('This dinner time is already in the past. Choose a future time.');
    const now=new Date().toISOString();
-   order.approvalStatus='Approved';order.status='Confirmed';order.cents=Math.max(0,Number(order.quotedCents)||0);
+   order.time=time;order.dinnerTime=time;order.approvalStatus='Approved';order.status='Confirmed';order.cents=Math.max(0,Number(order.quotedCents)||0);
    order.unscheduledRequest=false;order.seatRequest=false;order.autoConfirmed=false;order.adminScheduled=false;order.serviceRequest=false;
    order.serviceType=ROMANTIC_BEACH_DINNER_SERVICE;order.buggyRoundTrip=!!order.buggyRequested;
    order.reviewedAt=now;order.reviewedBy=user.username;order.guestNotified=false;
-   delete order.scheduleId;delete order.schedule;delete order.time;delete order.vesselId;delete order.crewIds;delete order.guideIds;
+   delete order.scheduleId;delete order.schedule;delete order.vesselId;delete order.crewIds;delete order.guideIds;
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
-   return Response.json({ok:true,booking:{id:order.id,status:'Confirmed',serviceType:order.serviceType,buggyRoundTrip:order.buggyRoundTrip}});
+   return Response.json({ok:true,booking:{id:order.id,status:'Confirmed',time:order.time,serviceType:order.serviceType,buggyRoundTrip:order.buggyRoundTrip}});
   }
 
   if(b.action==='schedule-request'){
