@@ -51,10 +51,11 @@ export async function POST(r:Request){
   if(existing)throw Error('An active temporary excursion login already exists for this WhatsApp number. Use your existing login or contact reception.');
   const username=await uniqueUsername(),password=temporaryPassword(),accountId='walkin-exc-'+crypto.randomUUID(),hash=await hashPassword(password),createdAt=new Date().toISOString();
   state.walkinExcursionAccounts??=[];
-  state.walkinExcursionAccounts.push({accountId,username,name,phone,hotel,room,active:true,createdAt,expiresAt:expiry()});
+  const expiresAt=expiry();
+  state.walkinExcursionAccounts.push({accountId,username,name,phone,hotel,room,active:true,createdAt,expiresAt});
   const plan={id:accountId,username,password,hash,name,retire:[]};
   const saved=await saveStayAccess(state,revision,'walkin-excursion-registration',plan);
   if(!saved)return Response.json({error:'Another update was saved at the same time. Please try again.'},{status:409});
-  return Response.json({account:{username,password,name,expiresAt:state.walkinExcursionAccounts.at(-1)?.expiresAt}},{status:201,headers:{'Cache-Control':'no-store'}});
+  return Response.json({account:{username,password,name,expiresAt}},{status:201,headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not create temporary excursion login.'},{status:400});}
 }
