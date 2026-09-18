@@ -65,9 +65,9 @@ function scheduleRank(menuName:any,schedule:any){
 }
 const SPECIAL_PACKAGE_ID='special-package';
 const specialPackageSegments=[
- {name:'Turtle Snorkeling + Shark Snorkeling',matchName:'Shark + Turtle Snorkeling'},
- {name:'Sandbank + Coral Garden',matchName:'Coral Garden + Sandbank'},
- {name:'Dolphin Watching + Fishing with Dinner',matchName:'Dolphin Watching + Fishing'}
+ {name:'Turtle Snorkeling + Shark Snorkeling',matchName:'Shark + Turtle Snorkeling',priceMenuId:'shark-turtle'},
+ {name:'Sandbank + Coral Garden',matchName:'Coral Garden + Sandbank',priceMenuId:'coral-sandbank'},
+ {name:'Dolphin Watching + Fishing with Dinner',matchName:'Dolphin Watching + Fishing',priceMenuId:'dolphin-fishing-dinner'}
 ];
 
 const excursionCatalog=catalog.filter((x:any)=>x.kind==='excursion');
@@ -164,6 +164,9 @@ export async function POST(r:Request){
     const pricingUnit=item.pricingUnit==='couple'?'couple':'guest',unitPriceCents=Math.max(0,Number(item.cents)||0);
     const packageTotalCents=pricingUnit==='couple'?unitPriceCents*Math.ceil(quantity/2):unitPriceCents*quantity;
     const packageGroupId='PKG-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
+    const operationalPrices=specialPackageSegments.map(spec=>Math.max(0,Number(menu.find((x:any)=>x.id===spec.priceMenuId)?.cents)||0));
+    const operationalTotal=operationalPrices.reduce((sum,value)=>sum+value,0)||specialPackageSegments.length;
+    let allocatedSoFar=0;
     state.orders??=[];
     const orders=state.orders;
     const resources=excursionResources(state);
@@ -177,8 +180,11 @@ export async function POST(r:Request){
       .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,orders),rank:scheduleRank(spec.matchName,s)}))
       .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
      const chosen=candidates[0],id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
-     const quotedCents=index===0?packageTotalCents:0,segmentUnitCents=index===0?unitPriceCents:0;
-     const common={id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',menuItemId:item.id,name:spec.name,quantity,pricingUnit,buggyRequested,quotedCents,unitPriceCents:segmentUnitCents,notes,date:segmentDate,packageGroupId,packageName:item.name,packagePart:index+1,packageParts:3,packageTotalCents,packageSegmentName:spec.name,specialPackage:true,createdAt,source:isWalkIn?'Walk-in special package':'Guest special package'};
+     const operationalPriceCents=operationalPrices[index]||0;
+     const quotedCents=index===specialPackageSegments.length-1?packageTotalCents-allocatedSoFar:Math.round(packageTotalCents*(operationalPriceCents||1)/operationalTotal);
+     allocatedSoFar+=quotedCents;
+     const segmentUnitCents=quantity>0?Math.round(quotedCents/quantity):0;
+     const common={id,token,accountId:user.userId,stayId:orderStayId,guest,room,phone,hotel,externalRoom,kind:'excursion',menuItemId:item.id,name:spec.name,quantity,pricingUnit,buggyRequested,quotedCents,unitPriceCents:segmentUnitCents,operationalPriceCents,notes,date:segmentDate,packageGroupId,packageName:item.name,packagePart:index+1,packageParts:3,packageTotalCents,packageSegmentName:spec.name,specialPackage:true,createdAt,source:isWalkIn?'Walk-in special package':'Guest special package'};
      if(chosen){
       const schedule=chosen.schedule,requiresApproval=chosen.confirmedPax+quantity>chosen.capacity;
       const vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
