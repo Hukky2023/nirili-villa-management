@@ -3,7 +3,7 @@ import {loadStays} from '../../../lib/stays';
 import {authDb,currentUser,hashPassword,validPassword,sameOrigin,validEmail} from "../../../lib/auth";
 import {walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
 import {appendAccountHistory,readAccountHistory} from '../../../lib/account-history';
-const permissions=["waiter_pos","restaurant_pos","kitchen_pos","edit_bills","edit_excursions","edit_transfers","buggy_driver"];
+const permissions=["waiter_pos","restaurant_pos","kitchen_pos","edit_bills","edit_excursions","edit_transfers","buggy_driver","crew_location"];
 function historyFor(user:any,state:any,stays:any[],walkIn:any,audit:any[]){
  const events:any[]=[...audit];
  const add=(at:any,action:string,detail='',by='')=>{if(at)events.push({at:String(at),action,detail:String(detail||''),by:String(by||'')});};
