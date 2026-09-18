@@ -19,6 +19,7 @@ export function categoryGroup(category:ExcursionCategory){
 export function baseExcursionMenu(){
  return catalog.filter((x:any)=>x.kind==='excursion').map((x:any)=>({
   ...x,
+  minGuests:1,
   category:excursionCategoryFromGroup(x.group,x.name),
   group:categoryGroup(excursionCategoryFromGroup(x.group,x.name)),
   active:x.active!==false
@@ -36,11 +37,11 @@ export async function loadExcursionMenu(){
   if(!override)return item;
   overrides.delete(item.id);
   const category=(override.category||item.category) as ExcursionCategory;
-  return {...item,...override,kind:'excursion',category,group:categoryGroup(category),active:override.active!==false};
+  return {...item,...override,kind:'excursion',minGuests:1,category,group:categoryGroup(category),active:override.active!==false};
  });
  for(const item of overrides.values()){
   const category=excursionCategoryFromGroup(item.category||item.group,item.name);
-  merged.push({...item,kind:'excursion',category,group:categoryGroup(category),active:item.active!==false});
+  merged.push({...item,kind:'excursion',minGuests:1,category,group:categoryGroup(category),active:item.active!==false});
  }
  return merged.filter((x:any)=>x.active!==false).sort((a:any,b:any)=>{
   const order:any={single:0,combined:1,special:2};
