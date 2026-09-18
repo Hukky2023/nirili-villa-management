@@ -1,5 +1,5 @@
 "use client";
-import {UiText,UiField,UiOption} from '../ui-language';
+import {UiText,UiField} from '../ui-language';
 
 import {tabNavigate} from '../../lib/tab-navigation';
 import {useState} from 'react';
