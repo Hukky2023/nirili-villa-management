@@ -8,7 +8,23 @@ import {canPOS,canKitchen,canTakePayment} from '../../../lib/pos-access';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {loadMenu} from '../../../lib/menu-server';
 import {loadRestaurantPaymentSettingsWithDailyRates} from '../../../lib/restaurant-payment-settings';
-async function view(){const {state,revision}=await loadStays();const actor=await currentUser();const paymentSettings=await loadRestaurantPaymentSettingsWithDailyRates();return {revision,canPay:canTakePayment(actor),canEdit:canTakePayment(actor),canDiscount:canTakePayment(actor),canSetExchange:actor?.role==='admin',paymentSettings,guestOrders:state.orders.filter((o:any)=>o.kind==='food'&&o.status!=='Cancelled').map((o:any)=>({id:o.id,createdAt:o.createdAt,customer:o.guest,room:state.stays.find((s:any)=>s.id===o.stayId)?.room||o.room,notes:o.notes,name:o.name,quantity:o.quantity,kitchen:o.status==='Completed'?'Served':o.kitchen||'Sent'})),rooms:state.stays.filter((s:any)=>s.status==='In House').map((s:any)=>({id:s.id,room:s.room,guest:s.guest,meal:s.meal})),orders:(state.posOrders||[]).map((o:any)=>{const s=state.stays.find((s:any)=>s.id===o.stayId);return {...o,paymentStatus:o.complimentary?'Complimentary':['Cash','Card','Bank transfer'].includes(o.method)?'Paid':s?.paidBills?.['Restaurant:'+o.id]===o.cents?'Paid':o.method==='Room'?'Charged to room':'Unpaid'};})};}
+async function view(){
+ const {state,revision}=await loadStays();
+ const actor=await currentUser();
+ const kitchenOnly=!!actor&&canKitchen(actor)&&!canPOS(actor);
+ const guestOrders=state.orders.filter((o:any)=>o.kind==='food'&&o.status!=='Cancelled').map((o:any)=>({
+  id:o.id,createdAt:o.createdAt,customer:o.guest,room:state.stays.find((s:any)=>s.id===o.stayId)?.room||o.room,notes:o.notes,name:o.name,quantity:o.quantity,kitchen:o.status==='Completed'?'Served':o.kitchen||'Sent'
+ }));
+ const orders=(state.posOrders||[]).map((o:any)=>{
+  const s=state.stays.find((s:any)=>s.id===o.stayId);
+  const paymentStatus=o.complimentary?'Complimentary':['Cash','Card','Bank transfer'].includes(o.method)?'Paid':s?.paidBills?.['Restaurant:'+o.id]===o.cents?'Paid':o.method==='Room'?'Charged to room':'Unpaid';
+  if(kitchenOnly)return {id:o.id,createdAt:o.createdAt,customer:o.customer,room:o.room,table:o.table,notes:o.notes,items:o.items,cents:o.cents,kitchen:o.kitchen,paymentStatus};
+  return {...o,paymentStatus};
+ });
+ if(kitchenOnly)return {revision,kitchenOnly:true,guestOrders,orders};
+ const paymentSettings=await loadRestaurantPaymentSettingsWithDailyRates();
+ return {revision,canPay:canTakePayment(actor),canEdit:canTakePayment(actor),canDiscount:canTakePayment(actor),canSetExchange:actor?.role==='admin',paymentSettings,guestOrders,rooms:state.stays.filter((s:any)=>s.status==='In House').map((s:any)=>({id:s.id,room:s.room,guest:s.guest,meal:s.meal})),orders};
+}
 export async function GET(){if(!canKitchen(await currentUser()))return Response.json({error:'Restaurant kitchen access required.'},{status:403});return Response.json(await view(),{headers:{'Cache-Control':'no-store'}});}
 export async function POST(r:Request){const u=await currentUser();if(!canKitchen(u)||!sameOrigin(r))return Response.json({error:'Restaurant kitchen access required.'},{status:403});try{const b=await r.json();const kitchenOnly=!canPOS(u);if(kitchenOnly&&!['kitchen','guestkitchen'].includes(String(b.action||'')))return Response.json({error:'Kitchen accounts can only update kitchen order status.'},{status:403});const {state,revision}=await loadStays();state.posOrders??=[];
 if(b.action==='create'&&state.posOrders.some((o:any)=>o.token===b.token&&o.by===u!.userId))return Response.json(await view());
