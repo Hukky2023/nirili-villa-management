@@ -15,6 +15,16 @@ export default function RestaurantExchangeSettings(){
  useEffect(()=>{void load()},[]);
  if(!canEdit)return null;
 
+ async function refreshOnline(){
+  if(busy)return;setBusy(true);setMessage('');
+  try{
+   const r=await fetch('/api/restaurant-payment-settings',{method:'POST'}),d=await r.json();
+   if(!r.ok)throw Error(d.error||'Could not refresh online rates.');
+   setSettings(d.settings);setDraft(d.settings);setMessage('Online rates refreshed.');
+   window.dispatchEvent(new Event('pos-updated'));
+  }catch(e){setMessage(e instanceof Error?e.message:'Could not refresh online rates.');}
+  finally{setBusy(false);}
+ }
  async function save(e:React.FormEvent){
   e.preventDefault();if(busy)return;setBusy(true);setMessage('');
   try{
@@ -30,8 +40,10 @@ export default function RestaurantExchangeSettings(){
   <button type="button" onClick={()=>{setDraft(settings);setMessage('');setOpen(true)}}><span>⇄</span>Exchange</button>
   {open&&<div className="menu-overlay"><form className="menu-dialog restaurant-exchange-dialog" onSubmit={save}>
    <h2>Exchange & bank transfer</h2>
-   <p>Set the restaurant cash conversion rate and bank transfer account shown during payment.</p>
-   <label>USD → MVR exchange rate<input required type="number" min="0.01" max="100" step="0.0001" value={draft?.usdToMvrRate??15.42} onChange={e=>setDraft({...draft,usdToMvrRate:Number(e.target.value)})}/><small>Example: 15.42 means USD 1 = MVR 15.42.</small></label>
+   <p>USD, MVR and EUR rates are checked online once each Maldives day. Admin can still adjust the stored rates manually if needed.</p>
+   <label>USD → MVR exchange rate<input required type="number" min="0.01" max="100" step="0.000001" value={draft?.usdToMvrRate??15.42} onChange={e=>setDraft({...draft,usdToMvrRate:Number(e.target.value)})}/><small>Used for MVR cash and card payments.</small></label>
+   <label>USD → EUR exchange rate<input required type="number" min="0.000001" max="10" step="0.000001" value={draft?.usdToEurRate??0} onChange={e=>setDraft({...draft,usdToEurRate:Number(e.target.value)})}/><small>Used for EUR cash and card payments.</small></label>
+   <div className="restaurant-fx-status"><strong>Daily online FX</strong><span>Source: {draft?.fxSource||'Not fetched yet'}</span><span>Last checked: {draft?.fxCheckedDate||'—'}</span><span>EUR source date: {draft?.eurRateDate||'—'} · MVR source date: {draft?.mvrRateDate||'—'}</span><button type="button" disabled={busy} onClick={refreshOnline}>{busy?'Refreshing…':'Refresh online rates now'}</button></div>
    <label>Bank name<input maxLength={120} value={draft?.bankName||''} onChange={e=>setDraft({...draft,bankName:e.target.value})}/></label>
    <label>Restaurant account name<input maxLength={120} value={draft?.accountName||''} onChange={e=>setDraft({...draft,accountName:e.target.value})}/></label>
    <label>Restaurant account number<input maxLength={120} value={draft?.accountNumber||''} onChange={e=>setDraft({...draft,accountNumber:e.target.value})}/></label>
