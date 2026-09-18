@@ -68,8 +68,8 @@ test('strictly more than four passengers, not capacity or booking count', () => 
   const status = guides.guideRuleFor(trip({capacity: 100}), [trip()], [booking({quantity: 4})], crew);
   assert.equal(status.requiredGuides, 0);
 });
-test('only explicitly marked, assigned, distinct active guides count', () => {
-  assert.equal(guides.assignedGuideCount([], ['a', 'b', 'c'], crew), 0);
+test('assigned crew count as guides by default while explicit guide selections remain supported', () => {
+  assert.equal(guides.assignedGuideCount([], ['a', 'b', 'c'], crew), 3);
   assert.equal(guides.assignedGuideCount(['a', 'a', 'b'], ['a', 'b'], crew), 2);
   assert.equal(guides.assignedGuideCount(['a', 'b', 'c'], ['a', 'b'], crew), 2);
   assert.equal(guides.assignedGuideCount(['a', 'b', 'unknown'], ['a', 'b', 'unknown'], crew), 2);
