@@ -379,3 +379,48 @@
  font-size:12px;
  line-height:1.45;
 }
+
+
+/* Private-boat booking option */
+.guest-private-boat{
+ display:grid;
+ gap:6px;
+ padding:12px 14px;
+ border:1px solid #b8d9e6;
+ border-radius:12px;
+ background:#f3fbfe;
+ color:#174158;
+}
+.guest-private-boat>span{
+ display:flex;
+ align-items:center;
+ gap:9px;
+ font-weight:900;
+}
+.guest-private-boat input{
+ width:19px;
+ height:19px;
+ accent-color:#087cad;
+}
+.guest-private-boat small{
+ color:#607c8b;
+ line-height:1.45;
+}
+.private-boat-badge{
+ background:#e9f5ff!important;
+ color:#176080!important;
+ font-weight:900!important;
+}
+.guest-excursion-time{
+ display:flex;
+ align-items:center;
+ gap:6px;
+ flex-wrap:wrap;
+}
+.guest-excursion-time small{
+ width:100%;
+ padding-left:24px;
+ color:#6b8491;
+ font-size:11px;
+ font-weight:700;
+}
