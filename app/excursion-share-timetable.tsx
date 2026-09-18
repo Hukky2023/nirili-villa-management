@@ -89,7 +89,7 @@ export default function ExcursionShareTimetable({date, disabled = false}: {date:
           <div className="excursion-share-summary"><strong>{data.totals.trips} scheduled trips</strong><strong>{data.totals.pax} confirmed passenger places</strong></div>
           {!data.trips.length ? <p>No scheduled trips for this date. Choose another date in Schedule.</p> : <div className="excursion-share-table-wrap"><table className="excursion-share-table"><thead><tr><th>Time</th><th>Excursion / trip</th><th>Confirmed pax</th><th>Assigned vessel</th><th>Assigned crew</th></tr></thead><tbody>
             {data.trips.map(trip => <tr key={trip.id}>
-              <td data-label="Time"><strong>{trip.time}</strong></td>
+              <td data-label="Time"><strong>{trip.time}</strong>{trip.endTime&&<small>Ends {trip.endTime}</small>}</td>
               <td data-label="Excursion / trip"><strong>{trip.name}</strong>{trip.status !== 'Open' && <small>Booking status: {trip.status}</small>}{trip.sharedTrips > 1 && <small>Shared boat: {trip.sharedBoatPax} / {trip.capacity} pax across {trip.sharedTrips} trips (combined).</small>}</td>
               <td data-label="Confirmed pax"><strong>{trip.confirmedPax}</strong>{trip.extraVessels.length > 0 && <small>{trip.mainVesselPax} on main vessel; {trip.confirmedPax - trip.mainVesselPax} on extra vessels.</small>}</td>
               <td data-label="Assigned vessel">{trip.vessel}{trip.extraVessels.map((extra, index) => <small key={index}>Extra: {extra.vessel} · {extra.pax} pax</small>)}</td>
