@@ -13,7 +13,7 @@ function timeLabel(value:string){
 
 export default function CrewLocationPortal(){
  const [profile,setProfile]=useState<any>(null),[location,setLocation]=useState<any>(null),[sharing,setSharing]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
- const watchRef=useRef<number|null>(null),lastSent=useRef(0);
+ const watchRef=useRef<number|null>(null),lastSent=useRef(0),lastPosition=useRef<GeolocationPosition|null>(null),heartbeatRef=useRef<ReturnType<typeof setInterval>|null>(null);
 
  async function load(){
   try{
@@ -23,10 +23,11 @@ export default function CrewLocationPortal(){
    setProfile(d.profile);setLocation(d.location||null);setSharing(false);
   }catch(e){setError(e instanceof Error?e.message:'Could not load crew location.');}
  }
- useEffect(()=>{void load();return()=>{if(watchRef.current!==null)navigator.geolocation?.clearWatch(watchRef.current)}},[]);
+ useEffect(()=>{void load();return()=>{if(watchRef.current!==null)navigator.geolocation?.clearWatch(watchRef.current);if(heartbeatRef.current)clearInterval(heartbeatRef.current)}},[]);
 
- async function sendPosition(position:GeolocationPosition){
-  const now=Date.now();if(now-lastSent.current<20000)return;lastSent.current=now;
+ async function sendPosition(position:GeolocationPosition,force=false){
+  lastPosition.current=position;
+  const now=Date.now();if(!force&&now-lastSent.current<20000)return;lastSent.current=now;
   try{
    const r=await fetch('/api/crew-location',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'update',latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy})}),d=await r.json();
    if(!r.ok)throw Error(d.error||'Could not share location.');
@@ -38,15 +39,18 @@ export default function CrewLocationPortal(){
   if(!navigator.geolocation){setError('Location services are not available in this browser.');return;}
   setBusy(true);setError('');setMessage('Requesting location permission…');
   watchRef.current=navigator.geolocation.watchPosition(
-   pos=>{setBusy(false);setSharing(true);void sendPosition(pos)},
+   pos=>{setBusy(false);setSharing(true);lastPosition.current=pos;void sendPosition(pos)},
    err=>{setBusy(false);setSharing(false);setError(err.code===1?'Location permission was denied. Allow location access in your browser settings and try again.':'Could not read your current location. Check GPS/location services and try again.');},
    {enableHighAccuracy:true,maximumAge:15000,timeout:20000}
   );
+  if(heartbeatRef.current)clearInterval(heartbeatRef.current);
+  heartbeatRef.current=setInterval(()=>{if(lastPosition.current)void sendPosition(lastPosition.current,true)},60000);
  }
 
  async function stopSharing(){
   if(watchRef.current!==null){navigator.geolocation.clearWatch(watchRef.current);watchRef.current=null;}
-  setSharing(false);setBusy(true);setError('');setMessage('');
+  if(heartbeatRef.current){clearInterval(heartbeatRef.current);heartbeatRef.current=null;}
+  lastPosition.current=null;setSharing(false);setBusy(true);setError('');setMessage('');
   try{
    const r=await fetch('/api/crew-location',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'stop'})}),d=await r.json();
    if(!r.ok)throw Error(d.error||'Could not stop location sharing.');
