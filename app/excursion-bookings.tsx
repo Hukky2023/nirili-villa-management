@@ -108,7 +108,7 @@ export default function ExcursionBookings() {
             <div><dt>Phone / WhatsApp</dt><dd>{b.phone || 'Not recorded'}</dd></div>
             <div><dt>Vessel</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.vessel}{b.separateVessel && <small>Extra vessel booking</small>}</dd></div>
             <div><dt>Assigned crew</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.crew.length ? b.crew.join(', ') : 'Not assigned'}</dd></div>
-            <div><dt>Trip status</dt><dd>{b.tripStatus}</dd></div>
+            <div><dt>Trip status</dt><dd>{b.tripStatus}{b.returnTime&&<small>Return pickup: {b.returnTime} · Maldives time</small>}</dd></div>
             <div><dt>Buggy pickup</dt><dd>{b.serviceType==='romantic-beach-dinner'?(b.buggyRequested?'Round trip to dinner location and back':'Not requested'):(b.guestType==='In-house' ? 'Included automatically' : (b.buggyRequested ? 'Requested' : 'Not requested'))}</dd></div>
             <div><dt>Children policy</dt><dd>Under 3 free<small>Ages 3–11: 50% · Ages 12+: full price</small></dd></div><div><dt>Payment status</dt><dd>{b.paymentStatus} · {money(b.totalCents)} USD</dd></div>
             <div><dt>Booking source</dt><dd>{b.source || 'Not recorded'}</dd></div>
