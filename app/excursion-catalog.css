@@ -108,3 +108,22 @@
 .guest-departure-list strong{font-size:20px;color:#087cad}
 .guest-departure-list span{color:#607c8b;font-size:13px}
 .guest-option-top>span.closed{white-space:normal;text-align:center}
+
+
+.guest-change-date{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ gap:7px;
+ min-height:42px;
+ padding:9px 13px;
+ border:1px solid #b9d7e4;
+ border-radius:10px;
+ background:#eef8fc;
+ color:#176080;
+ font-weight:800;
+ cursor:pointer;
+}
+.guest-change-date:hover:not(:disabled){background:#e2f3f9}
+.guest-change-date:disabled{opacity:.55;cursor:not-allowed}
+.guest-date-change-dialog>label{display:grid;gap:6px;margin-top:14px;color:#365c6f;font-size:13px;font-weight:700}
