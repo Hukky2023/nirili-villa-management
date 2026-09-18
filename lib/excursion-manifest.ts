@@ -26,7 +26,12 @@ export function buildExcursionManifest(
   state: {orders?: any[]; stays?: any[]},
   resources: {vessels: any[]; crew: any[]}, isPaid: (order: any) => boolean,
 ): ExcursionManifest {
-  const byId = new Map(schedules.map(s => [s.id, s]));
+  // Standard daily schedules intentionally reuse the same schedule id on different dates.
+  // Resolve a booking by schedule id + booked date so guests from another day never leak
+  // into this manifest.
+  const byIdDate = new Map(schedules.map(s => [JSON.stringify([s.date, s.id]), s]));
+  const byId = new Map<string, ManifestSchedule[]>();
+  for (const s of schedules) byId.set(s.id, [...(byId.get(s.id) || []), s]);
   const byDeparture = new Map<string, ManifestSchedule[]>();
   for (const s of schedules) {
     const key = departureKey(s.date, s.time, s.name);
@@ -43,7 +48,12 @@ export function buildExcursionManifest(
     if (!isConfirmedExcursion(order)) continue;
     let schedule: ManifestSchedule | undefined;
     if (text(order.scheduleId)) {
-      schedule = byId.get(text(order.scheduleId));
+      const bookedDate = text(order.date) || text(order.schedule?.date);
+      schedule = bookedDate ? byIdDate.get(JSON.stringify([bookedDate, text(order.scheduleId)])) : undefined;
+      if (!schedule) {
+        const idMatches = byId.get(text(order.scheduleId)) || [];
+        if (idMatches.length === 1) schedule = idMatches[0];
+      }
     } else {
       const stored = order.schedule || {};
       const matches = byDeparture.get(departureKey(stored.date || order.date, stored.time || order.time, order.name)) || [];
@@ -55,8 +65,13 @@ export function buildExcursionManifest(
       }
     }
     if (!schedule) continue;
-    if (boatIds.has(schedule.id) && !order.separateVessel) boatPax += count(order.quantity);
-    if (schedule.id === selected.id) {
+    const onSharedScheduledBoat = boatIds.has(schedule.id) && schedule.date === selected.date && !order.separateVessel;
+    if (onSharedScheduledBoat) {
+      boatPax += count(order.quantity);
+      bookings.push(toConfirmedExcursionBooking(order, stays.get(order.stayId), schedule, resources, isPaid(order)));
+    } else if (schedule.id === selected.id && schedule.date === selected.date && order.separateVessel) {
+      // Keep extra-vessel bookings for the selected excursion visible, while the scheduled
+      // boat passenger total stays aligned with the timetable occupancy.
       bookings.push(toConfirmedExcursionBooking(order, stays.get(order.stayId), schedule, resources, isPaid(order)));
     }
   }
