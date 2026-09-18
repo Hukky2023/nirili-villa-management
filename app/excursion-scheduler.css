@@ -118,3 +118,10 @@
  .excursion-menu-group-head{display:grid;gap:10px}
  .excursion-menu-group-head>span{justify-self:start}
 }
+
+
+/* Crew management states */
+.excursion-menu-card.crew-inactive{background:#f8fafb;border-color:#d9e2e7}
+.excursion-menu-card.crew-inactive h4,.excursion-menu-card.crew-inactive p{color:#718792}
+.excursion-price-pill.inactive{background:#f3eded;color:#8f3b3b}
+.excursion-crew-inactive-note{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#fff7e8;color:#77520b;font-size:13px;line-height:1.5}
