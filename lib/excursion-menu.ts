@@ -8,7 +8,9 @@ export function excursionCategoryFromGroup(group:any,name=''):ExcursionCategory{
  const value=String(group||'').trim().toLowerCase();
  const n=String(name||'').trim().toLowerCase();
  if(value.includes('special')||n.includes('special package'))return 'special';
- if(value.includes('combined')||n.includes('+'))return 'combined';
+ if(value.includes('combined'))return 'combined';
+ if(value.includes('single')||value==='excursions')return 'single';
+ if(n.includes('+'))return 'combined';
  return 'single';
 }
 export function categoryGroup(category:ExcursionCategory){
@@ -24,6 +26,7 @@ export function baseExcursionMenu(){
 }
 export async function loadExcursionMenu(){
  const base=baseExcursionMenu();
+ const retiredBaseIds=new Set(['snorkeling']);
  const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(PREFIX+'%').all<any>();
  const overrides=new Map<string,any>();
  for(const row of rows.results||[]){
@@ -37,6 +40,7 @@ export async function loadExcursionMenu(){
   return {...item,...override,kind:'excursion',category,group:categoryGroup(category),active:override.active!==false};
  });
  for(const item of overrides.values()){
+  if(retiredBaseIds.has(String(item.id)))continue;
   const category=excursionCategoryFromGroup(item.category||item.group,item.name);
   merged.push({...item,kind:'excursion',category,group:categoryGroup(category),active:item.active!==false});
  }
