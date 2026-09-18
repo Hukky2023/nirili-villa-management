@@ -6,6 +6,7 @@ import {excursionResources} from '../../../lib/excursion-workflow';
 import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requiredExcursionGuides} from '../../../lib/excursion-guides';
 import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
+import {clockMinutes,inferTripEndTime,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -15,6 +16,8 @@ const clean=async (x:any,state:any)=>{
  if(!x||!validDate(x.date)||!validTime(x.time))throw Error('Choose a valid date and departure time.');
  const name=String(x.name||'').trim().slice(0,180);
  if(!name)throw Error('Excursion name is required.');
+ const endTime=validTime(x.endTime)?String(x.endTime):inferTripEndTime(name,x.time);
+ if(!validTime(endTime)||clockMinutes(endTime)<=clockMinutes(x.time))throw Error('Choose an end time later than the departure time.');
  let capacity=Math.max(1,Math.min(100,Number(x.capacity)||1));
  const priceCents=Math.max(0,Math.min(1000000,Math.round(Number(x.priceCents)||0)));
  const vesselId=String(x.vesselId||'').slice(0,100);
@@ -30,7 +33,7 @@ const clean=async (x:any,state:any)=>{
   const vesselCapacity=Number(vessel?.capacity);
   if(Number.isSafeInteger(vesselCapacity)&&vesselCapacity>capacity)capacity=vesselCapacity;
  }
- return {date:x.date,time:x.time,name,capacity,priceCents,vesselId,crewIds,status,notes,sharedGroup};
+ return {date:x.date,time:x.time,endTime,name,capacity,priceCents,vesselId,crewIds,status,notes,sharedGroup};
 };
 function matches(o:any,s:any){
  if(o.kind!=='excursion'||o.status==='Cancelled'||o.approvalStatus==='Declined'||o.approvalStatus==='Cancelled')return false;
@@ -90,10 +93,13 @@ export async function POST(r:Request){
  try{
   const input=await r.json(),{state}=await loadStays();
   const body=await clean(input,state),crew=excursionResources(state).crew;
+  const daySchedules=await schedulesForDate(body.date);
+  const conflict=vesselConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,vesselId:body.vesselId,sharedGroup:body.sharedGroup});
+  if(conflict)throw Error('This vessel is already in use for '+conflict.name+' from '+conflict.time+' to '+(conflict.endTime||inferTripEndTime(conflict.name,conflict.time))+'. Choose another vessel or a non-overlapping time.');
   const guideIds=cleanGuideSelection(input.guideIds,body.crewIds,crew);
   const id=crypto.randomUUID();
   const record={id,...body,guideIds,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
-  if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,await schedulesForDate(body.date),state.orders||[],crew));
+  if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,daySchedules,state.orders||[],crew));
   const result=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(prefix+body.date+':'+id,JSON.stringify(record),user.userId).run();
   if(!result.meta.changes)throw Error('Could not create schedule.');
   return Response.json({schedule:{...record,revision:1}},{status:201});
@@ -122,8 +128,11 @@ export async function PUT(r:Request){
   const crewChanged=raw.crewIds!==undefined&&JSON.stringify([...(old.crewIds||[])].sort())!==JSON.stringify([...(body.crewIds||[])].sort());
   const record={...old,...body,guideIds,id,updatedAt:new Date().toISOString()};
   if(crewChanged){delete record.crewReplacementNeeded;delete record.lastCrewUnavailability;}
+  const daySchedules=await schedulesForDate(body.date);
+  const conflict=vesselConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,vesselId:body.vesselId,excludeId:id,sharedGroup:body.sharedGroup});
+  if(conflict)throw Error('This vessel is already in use for '+conflict.name+' from '+conflict.time+' to '+(conflict.endTime||inferTripEndTime(conflict.name,conflict.time))+'. A vessel becomes available only after its trip end time.');
   // Closing an unsafe/understaffed trip must remain possible; departure is guarded separately.
-  if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,await schedulesForDate(body.date),state.orders||[],crew,old));
+  if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,daySchedules,state.orders||[],crew,old));
   const result=await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision).run();
   if(!result.meta.changes)return Response.json({error:'Schedule changed elsewhere. Reload and try again.'},{status:409});
   return Response.json({schedule:{...record,revision:revision+1}});
