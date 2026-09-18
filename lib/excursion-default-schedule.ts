@@ -1,4 +1,7 @@
 import {authDb} from './auth';
+import {loadStays} from './stays';
+import {saveStayAccess} from './stay-login';
+import {needsExtraVesselTrip} from './excursion-extra-vessels';
 import {catalog,islandToday} from './guest-catalog';
 import {normalizeExcursionName,standardExcursionTrips} from './excursion-operations';
 
@@ -25,7 +28,7 @@ export const standardDailyExcursions=standardExcursionTrips.map(trip=>({
  priceCents:priceForTrip(trip.code)
 }));
 
-export async function ensureStandardDailyExcursions(date:string){
+async function seedStandardDailyExcursions(date:string){
  if(date<islandToday())return;
  const db=authDb(),markerKey=markerPrefix+date;
  const marker=await db.prepare('SELECT key FROM operation_records WHERE key=?').bind(markerKey).first<any>();
@@ -67,7 +70,7 @@ export async function ensureStandardDailyExcursions(date:string){
  const fresh=(freshRows.results||[]).map((row:any)=>{try{return {...JSON.parse(row.payload),_key:row.key,_revision:Number(row.revision)||1}}catch{return null}}).filter(Boolean);
 
  for(const trip of standardDailyExcursions){
-  const matching=fresh.find((row:any)=>row.time===trip.time&&(
+  const matching=fresh.find((row:any)=>!row.extraVesselTrip&&!row.privateTrip&&row.time===trip.time&&(
    normalizeExcursionName(row.name)===normalizeExcursionName(trip.name)||
    (trip.code==='trip1'&&/fish\s*tank/i.test(row.name)&&/sand\s*bank|sandbank/i.test(row.name))||
    (trip.code==='trip2'&&/turtle/i.test(row.name)&&/coral/i.test(row.name))||
@@ -87,4 +90,17 @@ export async function ensureStandardDailyExcursions(date:string){
   await db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(schedulePrefix+date+':'+id,JSON.stringify(record),'system:standard-daily-v3').run();
  }
  await db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(markerKey,JSON.stringify({date,version:3,createdAt:now}),'system:standard-daily-v3').run();
+}
+
+/** Also upgrade already-approved extra vessels, even when the daily seed marker
+ * exists. Deterministic trip IDs and the guarded save prevent duplicate rows. */
+export async function ensureStandardDailyExcursions(date:string){
+ await seedStandardDailyExcursions(date);
+ if(date<islandToday())return;
+ for(let attempt=0;attempt<3;attempt++){
+  const {state,revision}=await loadStays();
+  if(!(state.orders||[]).some((order:any)=>needsExtraVesselTrip(order,date)))return;
+  if(await saveStayAccess(state,revision,'system:extra-vessel-trips',null,[],[],[],{extraVesselsOnly:true}))return;
+ }
+ throw Error('Excursion bookings changed during refresh. Please try again.');
 }

@@ -1,6 +1,7 @@
 import {authDb,hashPassword,verifyPassword} from './auth';
 import {credentialStatement} from './credential-store';
 import {stayKey} from './stays';
+import {prepareExtraVesselTrips} from './excursion-extra-vessels';
 export async function prepareStayLogin(state:any,s:any){
  const db=authDb(),username=String(s.room);
  const existing=await db.prepare('SELECT id,role,password_hash,salt FROM accounts WHERE username=?').bind(username).first<any>();
@@ -12,11 +13,21 @@ export async function prepareStayLogin(state:any,s:any){
  if(!s.accountId&&s.legacyFolio!==false)s.legacyFolio=true;s.accountId=id;s.roomLogin=true;s.loginIssuedAt=new Date().toISOString();
  return {id,username,password,hash,name:s.guest,retire:[...retire]};
 }
-export async function saveStayAccess(state:any,revision:number,by:string,plan:any=null,revoke:string[]=[],documents:{id:string;payload:string}[]=[],removedDocuments:string[]=[]){
- const db=authDb(),payload=JSON.stringify(state),next=revision+1;
+export async function saveStayAccess(state:any,revision:number,by:string,plan:any=null,revoke:string[]=[],documents:{id:string;payload:string}[]=[],removedDocuments:string[]=[],options:{extraVesselsOnly?:boolean}={}){
+ const db=authDb(),extra=await prepareExtraVesselTrips(db,state);
+ if(options.extraVesselsOnly&&!extra.movedBookings)return true;
+ const payload=JSON.stringify(state),next=revision+1;
  const guard='EXISTS(SELECT 1 FROM operation_records WHERE key=? AND revision=? AND payload=?)';
  const args=[stayKey,next,payload];
- const writes:any[]=[revision===0?db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,payload,by):db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(payload,by,stayKey,revision)];
+ // If a referenced timetable row changes while preparing an extra trip, retry
+ // instead of moving the booking onto stale operational details.
+ const dayGuard=extra.scheduleDays.map(()=>" AND (SELECT COUNT(*) FROM operation_records WHERE key LIKE ?)=?").join('');
+ const scheduleGuard=dayGuard+extra.scheduleReads.map(()=>" AND EXISTS(SELECT 1 FROM operation_records WHERE key=? AND revision=?)").join('');
+ const scheduleArgs=[...extra.scheduleDays.flatMap(day=>[day.pattern,day.count]),...extra.scheduleReads.flatMap(row=>[row.key,row.revision])];
+ const writes:any[]=[revision===0?db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,payload,by):db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?'+scheduleGuard).bind(payload,by,stayKey,revision,...scheduleArgs)];
+ // D1 batches are transactional. The same CAS guard covers both records; a
+ // failed state save cannot leave a new, empty boat open for guest bookings.
+ for(const trip of extra.trips)writes.push(db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) SELECT ?,?,1,? WHERE '+guard).bind('excursion-schedule:'+trip.date+':'+trip.id,JSON.stringify(trip),by,...args));
  for(const id of new Set<string>([...(plan?.retire||[]),...revoke])){
   writes.push(db.prepare("UPDATE accounts SET active=0,username=CASE WHEN ?=1 THEN 'retired-'||id ELSE username END WHERE id=? AND role='guest' AND "+guard).bind(plan?.retire.includes(id)?1:0,id,...args));
   writes.push(db.prepare('DELETE FROM account_sessions WHERE account_id=? AND '+guard).bind(id,...args));
