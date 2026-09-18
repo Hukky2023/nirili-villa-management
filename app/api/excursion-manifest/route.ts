@@ -13,15 +13,17 @@ export async function GET(request: Request) {
     if (!hasPermission(user, 'edit_excursions')) {
       return Response.json({error: 'Excursion access is required.'}, {status: 403, headers});
     }
-    const scheduleId = new URL(request.url).searchParams.get('scheduleId')?.trim() || '';
-    if (!scheduleId || scheduleId.length > 160) {
-      return Response.json({error: 'Choose a scheduled excursion.'}, {status: 400, headers});
+    const url = new URL(request.url);
+    const scheduleId = url.searchParams.get('scheduleId')?.trim() || '';
+    const date = url.searchParams.get('date')?.trim() || '';
+    if (!scheduleId || scheduleId.length > 160 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return Response.json({error: 'Choose a scheduled excursion and date.'}, {status: 400, headers});
     }
     const {state} = await loadStays();
     const rows = await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?')
       .bind('excursion-schedule:%').all<{payload: string}>();
     const schedules: ManifestSchedule[] = (rows.results || []).map(row => JSON.parse(row.payload));
-    const selected = schedules.find(s => s.id === scheduleId);
+    const selected = schedules.find(s => s.id === scheduleId && s.date === date);
     if (!selected) {
       return Response.json({error: 'This scheduled excursion no longer exists. Refresh the schedule.'}, {status: 404, headers});
     }
