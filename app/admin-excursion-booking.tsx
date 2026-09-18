@@ -17,7 +17,7 @@ type Props={
 
 export default function AdminExcursionBooking({schedules,sharedBoatGroups,resources,stays,date,onSaved,onMessage}:Props){
  const [open,setOpen]=useState(false),[saving,setSaving]=useState(false);
- const [form,setForm]=useState<any>({scheduleId:'',guestType:'inhouse',stayId:'',guest:'',hotel:'',externalRoom:'',phone:'',quantity:1,adults:1,children:0,infants:0,notes:'',vesselId:''});
+ const [form,setForm]=useState<any>({scheduleId:'',guestType:'inhouse',stayId:'',guest:'',hotel:'',externalRoom:'',phone:'',quantity:1,adults:1,children:0,infants:0,notes:'',vesselId:'',buggyRequested:false});
  const bookableSchedules=useMemo(()=>schedules.filter((s:any)=>!excursionDeparturePassed(s.date,s.time)),[schedules]);
  const selected=useMemo(()=>bookableSchedules.find((s:any)=>s.id===form.scheduleId),[bookableSchedules,form.scheduleId]);
  const group=selected?.sharedBoatKey?sharedBoatGroups[selected.sharedBoatKey]:null;
@@ -27,7 +27,7 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
  const inHouse=(stays||[]).filter((s:any)=>s.status==='In House');
  const availableVessels=(resources?.vessels||[]).filter((v:any)=>(v.condition||'Available')==='Available'&&v.id!==selected?.vesselId);
  const money=(c:number)=>'$'+((Number(c)||0)/100).toFixed(2);
- function reset(){setForm({scheduleId:'',guestType:'inhouse',stayId:'',guest:'',hotel:'',externalRoom:'',phone:'',quantity:1,adults:1,children:0,infants:0,notes:'',vesselId:''});}
+ function reset(){setForm({scheduleId:'',guestType:'inhouse',stayId:'',guest:'',hotel:'',externalRoom:'',phone:'',quantity:1,adults:1,children:0,infants:0,notes:'',vesselId:'',buggyRequested:false});}
  function close(){if(saving)return;setOpen(false);reset();}
  async function submit(e:React.FormEvent){
   e.preventDefault();if(saving)return;
@@ -37,7 +37,7 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
   if(needsExtraVessel&&!form.vesselId){onMessage('This boat is at capacity. Assign a new vessel for this booking.');return;}
   setSaving(true);onMessage('');
   try{
-   const r=await fetch('/api/excursion-schedules',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'admin-booking',date,scheduleId:selected.id,guestType:form.guestType,stayId:form.stayId,guest:form.guest,hotel:form.hotel,externalRoom:form.externalRoom,phone:form.phone,quantity:Number(form.quantity),adults:Number(form.adults)||0,children:Number(form.children)||0,infants:Number(form.infants)||0,notes:form.notes,vesselId:form.vesselId})});
+   const r=await fetch('/api/excursion-schedules',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'admin-booking',date,scheduleId:selected.id,guestType:form.guestType,stayId:form.stayId,guest:form.guest,hotel:form.hotel,externalRoom:form.externalRoom,phone:form.phone,quantity:Number(form.quantity),adults:Number(form.adults)||0,children:Number(form.children)||0,infants:Number(form.infants)||0,notes:form.notes,vesselId:form.vesselId,buggyRequested:!!form.buggyRequested})});
    const d=await r.json();if(!r.ok)throw Error(d.error||'Could not save excursion booking.');
    onMessage(needsExtraVessel?'Excursion booking saved and assigned to a separate vessel.':'Excursion booking confirmed.');
    setOpen(false);reset();await onSaved();window.dispatchEvent(new Event('services-updated'));
@@ -56,6 +56,7 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
      <label>WhatsApp<input required placeholder="+960..." maxLength={30} value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label>
      <label>Hotel / accommodation<input required maxLength={150} value={form.hotel} onChange={e=>setForm({...form,hotel:e.target.value})}/></label>
      <label>Room number<input maxLength={50} value={form.externalRoom} onChange={e=>setForm({...form,externalRoom:e.target.value})}/></label>
+     <label className="full guest-buggy-request"><span><input type="checkbox" checked={!!form.buggyRequested} onChange={e=>setForm({...form,buggyRequested:e.target.checked})}/> Request buggy pickup</span><small>The guest should be ready outside the hotel or meeting location 15 minutes before departure.</small></label>
     </>}
     {selected&&<div className="full admin-booking-capacity"><span>Current capacity</span><strong>{booked} / {capacity} confirmed</strong><small>{selected.priceCents?money(excursionPriceCents(selected.priceCents,'guest',{adults:Number(form.adults)||0,children:Number(form.children)||0,infants:Number(form.infants)||0,total:Number(form.quantity)||0}))+' total · '+money(selected.priceCents)+' adult rate':'Price not set'} · {needsExtraVessel?'A separate vessel is required for this booking.':'Seats are available on the scheduled vessel.'}</small></div>}
     {needsExtraVessel&&<label className="full">New vessel<select required value={form.vesselId} onChange={e=>setForm({...form,vesselId:e.target.value})}><option value="">Assign separate vessel</option>{availableVessels.map((v:any)=><option key={v.id} value={v.id}>{v.name}</option>)}</select><small>This booking will not be counted against the already-full original vessel.</small></label>}
