@@ -37,3 +37,17 @@
 .pos-bank-transfer>strong{display:block;margin-bottom:8px;color:#8ee8cc}
 .pos-bank-transfer p{margin:5px 0}
 .pos-bank-transfer small{display:block;margin-top:8px;color:#9fb0bd}
+
+
+.restaurant-fx-status{
+ display:grid;
+ gap:5px;
+ margin:14px 0;
+ padding:12px 14px;
+ border:1px solid #51616e;
+ border-radius:12px;
+ background:#24313c;
+}
+.restaurant-fx-status strong{color:#8ee8cc}
+.restaurant-fx-status span{color:#a8bac6;font-size:12px;line-height:1.4}
+.restaurant-fx-status button{margin-top:5px}
