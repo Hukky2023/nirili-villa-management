@@ -42,7 +42,7 @@ export async function GET(){
  if(!user)return Response.json({error:'Login required.'},{status:401,headers});
  try{
   const schedules=await allSchedules(),requests=await allRequests();
-  if(user.role==='admin'||hasPermission(user,'edit_excursions')){
+  if(user.role==='admin'){
    const visible=requests.filter((request:any)=>request.status==='Pending'||Date.parse(request.createdAt||'')>Date.now()-30*86400000).sort((a:any,b:any)=>String(b.createdAt).localeCompare(String(a.createdAt)));
    return Response.json({mode:'admin',requests:visible.map((request:any)=>requestView(request,schedules)),pendingCount:visible.filter((request:any)=>request.status==='Pending').length},{headers});
   }
