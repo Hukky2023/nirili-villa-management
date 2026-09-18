@@ -26,7 +26,7 @@ export default function ExcursionGuidePicker({crew, crewIds, guideIds, confirmed
     <p>Select the crew, then tick <strong>Guide</strong> for each person working as a guide. Other crew do not count toward the guide minimum.</p>
     <p className={'excursion-guide-notice ' + (missing ? 'needs-guides' : '')} role="status">
       {confirmedPax} confirmed passengers · {required ? `${count} / ${required} guides assigned` : `${count} guides assigned`}
-      {missing > 0 && <strong>Assign {missing} more {missing === 1 ? 'guide' : 'guides'}.</strong>}
+      {missing > 0 && <><strong>Assign {missing} more {missing === 1 ? 'guide' : 'guides'}.</strong><small>Select the crew member first, then tick the Guide box on the right. Save assignment will explain anything still missing.</small></>}
       {required === 0 && <small>At 5 or more confirmed passengers, at least 3 guides are required.</small>}
     </p>
     {crew.length ? <div className="excursion-guide-options">{crew.map(member => {
