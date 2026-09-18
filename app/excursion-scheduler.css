@@ -354,3 +354,30 @@
     width:100%;
   }
 }
+
+
+.admin-child-policy{
+ padding:11px 13px;
+ border:1px solid #cfe1e9;
+ border-radius:10px;
+ background:#f8fcfd;
+ display:grid;
+ gap:4px;
+}
+.admin-child-policy strong{color:#174158}
+.admin-child-policy span{color:#6b8491;font-size:12px;line-height:1.45}
+.admin-booking-total-seats{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ padding:11px 13px;
+ border:1px solid #d8e5ec;
+ border-radius:10px;
+ background:#fff;
+ color:#607c8b;
+}
+.admin-booking-total-seats strong{
+ color:#087cad;
+ font-size:20px;
+}
