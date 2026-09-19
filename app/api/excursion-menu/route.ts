@@ -2,15 +2,23 @@ import {currentUser,hasPermission,sameOrigin,authDb} from '../../../lib/auth';
 import {loadExcursionMenu,excursionMenuKey,categoryGroup,type ExcursionCategory} from '../../../lib/excursion-menu';
 
 const validCategory=(v:any):v is ExcursionCategory=>['single','combined','special'].includes(String(v));
+const canonicalCombinedNames:Record<string,string>={
+ 'shark-turtle':'Shark Snorkeling (Nurse Shark) + Turtle Snorkeling',
+ 'coral-sandbank':'Coral Garden Snorkeling + Sandbank Trip',
+ 'dolphin-fishing-dinner':'Dolphin Watching + Fishing with Dinner',
+ 'fishtank-turtle':'Fish Tank Snorkeling + Turtle Snorkeling'
+};
 function clean(raw:any,id?:string){
- const name=String(raw?.name||'').trim().slice(0,180);
+ let name=String(raw?.name||'').trim().slice(0,180);
+ const recordId=id||String(raw?.id||'');
+ if(canonicalCombinedNames[recordId])name=canonicalCombinedNames[recordId];
  if(!name)throw Error('Excursion name is required.');
  const category=String(raw?.category||'single') as ExcursionCategory;
  if(!validCategory(category))throw Error('Choose Single, Combined or Special.');
  const cents=Math.max(0,Math.min(1000000,Math.round(Number(raw?.cents)||0)));
  const pricingUnit=raw?.pricingUnit==='couple'?'couple':'guest';
  const detail=String(raw?.detail||'').trim().slice(0,1000);
- return {id:id||String(raw?.id||''),kind:'excursion',name,cents,category,group:categoryGroup(category),pricingUnit,detail,active:raw?.active!==false,updatedAt:new Date().toISOString()};
+ return {id:recordId,kind:'excursion',name,cents,category,group:categoryGroup(category),pricingUnit,detail,active:raw?.active!==false,updatedAt:new Date().toISOString()};
 }
 function canEdit(user:any){return !!user&&user.role!=='guest'&&hasPermission(user,'edit_excursions');}
 
