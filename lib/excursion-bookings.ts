@@ -1,6 +1,6 @@
 /** Read-only projection used by the staff excursion Bookings tab. */
 export type ExcursionGuestPerson = {
-  id: string; slot: number; name: string; nameRecorded: boolean; footSize: number | null; boarded: boolean; boardedAt: string;
+  id: string; slot: number; name: string; nameRecorded: boolean; ageCategory: 'adult' | 'child' | 'infant' | ''; footSize: number | null; boarded: boolean; boardedAt: string;
 };
 export type ConfirmedExcursionBooking = {
   id: string; excursion: string; guest: string; phone: string;
@@ -55,8 +55,15 @@ export function toConfirmedExcursionBooking(
     const slot = index + 1, id = text(order.id) + ':' + slot;
     const saved = savedRoster.find((person: any) => Number(person?.slot) === slot || text(person?.id) === id);
     const name = text(saved?.name) || (slot === 1 ? guestName : '');
+    const fallbackCategories = Array.isArray(order.guestCategories) ? order.guestCategories : [];
+    let ageCategory = text(saved?.ageCategory) || text(fallbackCategories[index]);
+    if (!['adult','child','infant'].includes(ageCategory)) {
+      const adults = Math.max(0, Math.trunc(Number(order.adults) || 0));
+      const children = Math.max(0, Math.trunc(Number(order.children) || 0));
+      ageCategory = index < adults ? 'adult' : index < adults + children ? 'child' : 'infant';
+    }
     const footSizeRaw = Number(order.footSizes?.[index]);
-    return {id, slot, name, nameRecorded: !!name, footSize: Number.isInteger(footSizeRaw)&&footSizeRaw>=15&&footSizeRaw<=50?footSizeRaw:null, boarded: saved?.boarded === true, boardedAt: text(saved?.boardedAt)};
+    return {id, slot, name, nameRecorded: !!name, ageCategory: ageCategory as 'adult'|'child'|'infant', footSize: Number.isInteger(footSizeRaw)&&footSizeRaw>=15&&footSizeRaw<=50?footSizeRaw:null, boarded: saved?.boarded === true, boardedAt: text(saved?.boardedAt)};
   });
   return {
     id: text(order.id), excursion: text(order.name) || text(current?.name) || 'Excursion',
