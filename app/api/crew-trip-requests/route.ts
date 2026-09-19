@@ -23,6 +23,12 @@ function orderMatchesSchedule(order:any,schedule:any){
 function confirmedOrder(order:any){
  return order&&order.kind==='excursion'&&order.status!=='Cancelled'&&order.approvalStatus!=='Pending'&&order.approvalStatus!=='Declined'&&order.approvalStatus!=='Cancelled';
 }
+function combinedTripStatus(value:any){
+ const status=text(value,80);
+ if(status==='Guests boarded'||status==='Departed'||status==='Guests boarded & Departed')return 'Guests boarded & Departed';
+ if(status==='Arrived'||status==='Completed'||status==='Arrived & Completed')return 'Arrived & Completed';
+ return status||'Excursion scheduled';
+}
 async function allSchedules(){
  const rows=(await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(schedulePrefix+'%').all<any>()).results||[];
  return rows.map((row:any)=>{try{return {...JSON.parse(row.payload||'{}'),revision:Number(row.revision)||1,_key:row.key}}catch{return null}}).filter(Boolean);
@@ -59,12 +65,20 @@ export async function GET(){
   const savedState=await state(),resources=excursionResources(savedState),crew=resources.crew.find((member:any)=>!member.removed&&(member.accountId===user.userId||member.id===user.userId));
   if(!crew)return Response.json({error:'Your login is not linked to an excursion crew member.'},{status:409,headers});
   const today=islandToday();
-  const assigned=schedules.filter((schedule:any)=>schedule.status!=='Cancelled'&&schedule.date>=today&&Array.isArray(schedule.crewIds)&&schedule.crewIds.includes(crew.id)&&!excursionDeparturePassed(schedule.date,schedule.time));
+  const assigned=schedules.filter((schedule:any)=>{
+   if(schedule.status==='Cancelled'||schedule.date<today||!Array.isArray(schedule.crewIds)||!schedule.crewIds.includes(crew.id))return false;
+   // Keep today's active trip visible after departure so crew can still see its live status.
+   if(schedule.date===today&&combinedTripStatus(schedule.tripStatus)==='Arrived & Completed')return false;
+   return schedule.date>today||!excursionDeparturePassed(schedule.date,schedule.time)||combinedTripStatus(schedule.tripStatus)!=='Excursion scheduled';
+  });
   const groups=new Map<string,any>();
   for(const schedule of assigned){
-   const key=sharedKey(schedule),entry=groups.get(key)||{key,date:schedule.date,time:schedule.time,endTime:schedule.endTime||'',vesselId:schedule.vesselId||'',scheduleIds:[],tripNames:[],status:schedule.status,schedules:[]};
+   const key=sharedKey(schedule),entry=groups.get(key)||{key,date:schedule.date,time:schedule.time,endTime:schedule.endTime||'',vesselId:schedule.vesselId||'',scheduleIds:[],tripNames:[],status:schedule.status,tripStatus:combinedTripStatus(schedule.tripStatus),schedules:[]};
    entry.scheduleIds.push(schedule.id);entry.tripNames.push(schedule.name);entry.schedules.push(schedule);
    if(!entry.endTime&&schedule.endTime)entry.endTime=schedule.endTime;
+   const nextTripStatus=combinedTripStatus(schedule.tripStatus);
+   const rank=(value:string)=>['Excursion scheduled','Guests boarded & Departed','Arrived & Completed'].indexOf(value);
+   if(rank(nextTripStatus)>rank(entry.tripStatus))entry.tripStatus=nextTripStatus;
    groups.set(key,entry);
   }
   const orders=Array.isArray(savedState.orders)?savedState.orders:[];
