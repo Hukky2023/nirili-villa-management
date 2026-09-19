@@ -13,3 +13,105 @@
 .walk-lifecycle{padding:12px 14px;border-radius:11px;background:#fff8e9;color:#77520b;text-align:left}
 .walk-returning{margin-top:28px}
 @media(max-width:550px){.walk-credentials>div{grid-template-columns:1fr 42px}.walk-credentials span{grid-column:1/-1}}
+
+
+.walk-exc form>section{
+ margin:0 0 16px;
+ padding:16px;
+ border:1px solid #d8e7eb;
+ border-radius:14px;
+ background:#fbfdfe;
+}
+.walk-section-title{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:12px;
+ margin-bottom:12px;
+}
+.walk-section-title>div{
+ display:grid;
+ gap:2px;
+}
+.walk-section-title strong{color:#17384c;font-size:16px}
+.walk-section-title small{color:#6b8491;font-weight:500}
+.walk-section-title>button{
+ display:inline-flex;
+ align-items:center;
+ gap:6px;
+ min-height:38px;
+ padding:8px 11px;
+ background:#eef8fb;
+ color:#087d87;
+ border:1px solid #bcdbe4;
+}
+.walk-empty-companions{
+ margin:0;
+ padding:10px 12px;
+ border:1px dashed #c8dce4;
+ border-radius:10px;
+ color:#6b8491;
+ background:#fff;
+}
+.walk-companion-list{
+ display:grid;
+ gap:9px;
+}
+.walk-companion-row{
+ display:grid;
+ grid-template-columns:70px minmax(160px,1.35fr) minmax(140px,1fr) 42px;
+ gap:9px;
+ align-items:end;
+ padding:10px;
+ border:1px solid #dce8ed;
+ border-radius:11px;
+ background:#fff;
+}
+.walk-companion-row>span{
+ align-self:center;
+ color:#496a79;
+ font-size:12px;
+ font-weight:900;
+}
+.walk-companion-row label{
+ margin:0;
+ font-size:12px;
+}
+.walk-remove-person{
+ width:42px;
+ min-height:42px!important;
+ padding:0!important;
+ display:grid!important;
+ place-items:center;
+ background:#fff5f3!important;
+ color:#a52e27!important;
+ border:1px solid #efc8c3!important;
+}
+.walk-registration-summary{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ margin:4px 0 16px;
+ padding:12px 14px;
+ border-radius:12px;
+ background:#eaf7f5;
+ color:#245d5d;
+}
+.walk-registration-summary strong{font-size:18px}
+.walk-registration-summary span{font-size:12px;text-align:right}
+@media(max-width:680px){
+ .walk-companion-row{
+  grid-template-columns:52px minmax(0,1fr);
+ }
+ .walk-companion-row label{grid-column:2}
+ .walk-remove-person{grid-column:2;width:100%}
+ .walk-registration-summary{align-items:flex-start;flex-direction:column}
+ .walk-registration-summary span{text-align:left}
+}
+@media(max-width:480px){
+ .walk-section-title{flex-direction:column}
+ .walk-section-title>button{width:100%;justify-content:center}
+ .walk-companion-row{grid-template-columns:1fr}
+ .walk-companion-row>span,.walk-companion-row label,.walk-remove-person{grid-column:1}
+}
