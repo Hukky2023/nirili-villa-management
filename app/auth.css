@@ -2,3 +2,34 @@
 @media(max-width:900px){.nv-auth{padding:24px}.nv-auth-brand{padding:32px}.nv-auth-content{padding:36px 28px 25px}.nv-auth-shell{grid-template-columns:42% 58%;min-height:620px}.nv-brand-message h1{font-size:36px}.nv-portal{gap:12px;padding:18px 14px}.nv-portal-icon{flex-basis:43px;height:43px}}
 @media(max-width:650px){.nv-auth{padding:0;align-items:flex-start;background:white}.nv-auth-shell{display:block;min-height:100svh;border:0;border-radius:0;box-shadow:none}.nv-auth-brand{padding:25px 25px 27px;gap:20px}.nv-wordmark{font-size:25px}.nv-wordmark small{font-size:9px}.nv-brand-message{padding:0}.nv-brand-message .nv-eyebrow,.nv-brand-message p,.nv-location{display:none}.nv-brand-message h1{font-size:30px;margin:0;line-height:1.2}.nv-brand-message h1 br{display:none}.nv-brand-message h1 em{display:block}.nv-auth-content{padding:30px 24px 22px}.nv-auth-heading{margin-bottom:23px}.nv-auth-heading h2{font-size:28px}.nv-portal{padding:18px 15px}.nv-auth-footer{margin-top:26px}.nv-auth-content:has(.nv-login-form){padding-top:24px}.nv-role-tabs{margin-bottom:24px}.nv-back{margin-bottom:18px}}
 @media(prefers-reduced-motion:reduce){.nv-portal{transition:none}}
+
+
+/* Direct account login: the shared link already determines where the account lands. */
+.nv-direct-login-badge{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ margin:0 0 18px;
+ padding:11px 13px;
+ border:1px solid #d4e4e8;
+ border-radius:11px;
+ background:#f6fafb;
+ color:#174158;
+}
+.nv-direct-login-badge>svg{
+ flex:0 0 auto;
+ color:#087d89;
+}
+.nv-direct-login-badge>div{
+ display:grid;
+ gap:1px;
+}
+.nv-direct-login-badge small{
+ color:#70878f;
+ font-size:9px;
+ font-weight:900;
+ letter-spacing:.1em;
+}
+.nv-direct-login-badge strong{
+ font-size:14px;
+}
