@@ -128,11 +128,12 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
     }));
   }
 
-  async function saveAttendance() {
-    if (!manifest || savingAttendance || statusBusy) return;
+  async function persistAttendance(options: {showNotice?: boolean; manageBusy?: boolean} = {}) {
+    if (!manifest) return null;
     const missing = rosters.flatMap(roster => roster.people).find(person => !person.name.trim());
-    if (missing) {setError('Enter every guest name before saving the boarding list.'); return;}
-    setSavingAttendance(true); setError(''); setNotice('');
+    if (missing) throw new Error('Enter every guest name before saving the boarding list.');
+    const manageBusy = options.manageBusy !== false;
+    if (manageBusy) setSavingAttendance(true);
     try {
       const response = await fetch('/api/excursion-manifest', {
         method: 'PATCH', headers: {'Content-Type': 'application/json'},
@@ -142,20 +143,45 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
       if (!response.ok) throw new Error(result.error || 'Could not save the boarding list.');
       if (!result.manifest) throw new Error('The saved boarding list could not be read. Refresh and try again.');
       dirtyRef.current = false; setDirty(false); applyManifest(result.manifest, true);
-      setNotice('Guest names and boarding attendance saved.');
+      if (options.showNotice !== false) setNotice('Guest names and boarding attendance saved.');
       window.dispatchEvent(new Event('services-updated'));
+      return result.manifest as ExcursionManifest;
+    } finally {
+      if (manageBusy) setSavingAttendance(false);
+    }
+  }
+
+  async function saveAttendance() {
+    if (!manifest || savingAttendance || statusBusy) return;
+    setError(''); setNotice('');
+    try {
+      await persistAttendance({showNotice: true, manageBusy: true});
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not save the boarding list.');
-    } finally {setSavingAttendance(false);}
+    }
   }
 
   async function advanceStatus() {
     if (!manifest || statusBusy || savingAttendance) return;
-    if (dirtyRef.current) {setError('Save the boarding list before changing the excursion status.'); return;}
     const current = currentTripStatus(manifest), index = tripStatuses.indexOf(current), next = tripStatuses[index + 1];
     if (!next) return;
+
+    const currentPeople = rosters.flatMap(roster => roster.people);
+    const missing = currentPeople.some(person => !person.name.trim());
+    const boardedNow = currentPeople.filter(person => person.boarded).length;
+    if (next === 'Guests boarded') {
+      if (!currentPeople.length) {setError('There are no confirmed guests on this trip yet.'); return;}
+      if (missing) {setError('Enter every guest name before marking Guests boarded.'); return;}
+      if (!boardedNow) {setError('Tick at least one guest who actually boarded.'); return;}
+    }
+
     setStatusBusy(true); setError(''); setNotice('');
     try {
+      // Save the latest checklist automatically so status changes never get blocked by
+      // an unsaved boarding list. This is especially important for Guests boarded.
+      if (dirtyRef.current || next === 'Guests boarded') {
+        await persistAttendance({showNotice: false, manageBusy: false});
+      }
       const response = await fetch('/api/excursion-manifest', {
         method: 'PATCH', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action: 'trip-status', scheduleId, date, status: next}),
@@ -180,8 +206,8 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
   const notBoarded = Math.max(0, people.length - boarded);
   const missingNames = people.some(person => !person.name.trim());
   const attendanceSaved = !!manifest?.bookings.length && manifest.bookings.every(booking => !!booking.attendanceReviewedAt && booking.people.every(person => person.nameRecorded));
-  const canAdvance = !!nextStatus && !dirty && !savingAttendance && !statusBusy &&
-    (nextStatus !== 'Guests boarded' || (attendanceSaved && boarded > 0 && !missingNames));
+  const canAdvance = !!nextStatus && !savingAttendance && !statusBusy &&
+    (nextStatus !== 'Guests boarded' || (people.length > 0 && boarded > 0 && !missingNames));
 
   return <dialog ref={dialog} className="excursion-guest-dialog" aria-labelledby={headingId} aria-describedby={descriptionId}
     onCancel={event => {event.preventDefault(); onClose();}}>
@@ -204,8 +230,8 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
         <div className="excursion-status-action">
           <div><strong>Current status: {status}</strong><small>{status==='Completed'?'This excursion is completed.':nextStatus?'Next status: '+nextStatus:''}</small></div>
           {nextStatus && <button type="button" className="excursion-status-next" disabled={!canAdvance}
-            title={dirty?'Save the boarding list first.':nextStatus==='Guests boarded'&&!attendanceSaved?'Save the complete guest list first.':''}
-            onClick={advanceStatus}>{statusBusy?'Updating…':'Mark '+nextStatus}</button>}
+            title={nextStatus==='Guests boarded'&&missingNames?'Enter every guest name first.':nextStatus==='Guests boarded'&&!boarded?'Tick at least one boarded guest first.':''}
+            onClick={advanceStatus}>{statusBusy?'Updating…':nextStatus==='Guests boarded'&&(dirty||!attendanceSaved)?'Save & mark Guests boarded':'Mark '+nextStatus}</button>}
         </div>
       </section>}
 
@@ -238,7 +264,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
               </label>)}</div>
             </article>;
           })}</div>
-          <div className="excursion-boarding-save"><div><strong>{missingNames?'Guest names still missing':dirty?'Unsaved boarding changes':attendanceSaved?'Boarding list saved':'Review and save the boarding list'}</strong><small>Save before changing the trip status to Guests boarded.</small></div>
+          <div className="excursion-boarding-save"><div><strong>{missingNames?'Guest names still missing':dirty?'Unsaved boarding changes':attendanceSaved?'Boarding list saved':'Review the boarding list'}</strong><small>You can save manually, or the system will save this checklist automatically when you mark Guests boarded.</small></div>
             <button type="button" className="excursion-save-attendance" disabled={savingAttendance||statusBusy||missingNames||!dirty} onClick={saveAttendance}>{savingAttendance?'Saving…':'Save boarding list'}</button></div>
         </section> : <div className="excursion-guest-empty"><strong>No confirmed guests for this excursion yet.</strong><p>Pending, declined and cancelled bookings are not included.</p></div>}
 
