@@ -1,7 +1,7 @@
 import {restaurantOnly} from '../../../lib/pos-access';
 import {authDb,currentUser,hasPermission,sameOrigin} from "../../../lib/auth";
 import {operationSeeds} from "../../../lib/operations";
-export async function GET(r:Request){const u=await currentUser();if(!u||restaurantOnly(u)||u.role==="guest")return Response.json({error:"Staff login required"},{status:403});const category=new URL(r.url).searchParams.get("category")||"";if(!operationSeeds[category])return Response.json({error:"Not found"},{status:404});
+export async function GET(r:Request){const u=await currentUser();const category=new URL(r.url).searchParams.get("category")||"";if(!operationSeeds[category])return Response.json({error:"Not found"},{status:404});const permission=category==="Transfers"?"edit_transfers":"edit_excursions";if(!u||restaurantOnly(u)||u.role==="guest"||!hasPermission(u,permission))return Response.json({error:"This account does not have access to these operation records."},{status:403});
 try{const records=await Promise.all(operationSeeds[category].map(async seed=>{const row=await authDb().prepare("SELECT payload,revision FROM operation_records WHERE key=?").bind(category+":"+seed.id).first<any>();return row?{...JSON.parse(row.payload),revision:row.revision}:{...seed,revision:0};}));return Response.json({records},{headers:{"Cache-Control":"no-store"}});}catch{return Response.json({error:"Could not load records. Please retry."},{status:503});}}
 export async function PUT(r:Request){
 const u=await currentUser();if(!u||u.role==="guest"||!sameOrigin(r))return Response.json({error:"Not allowed"},{status:403});
