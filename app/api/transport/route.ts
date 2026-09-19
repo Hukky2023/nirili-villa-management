@@ -1,3 +1,4 @@
+import {toggleTransferPayment} from '../../../lib/transport-payment';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {canTransport,isTransportAgent,transportRole} from '../../../lib/transport-access';
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
@@ -39,7 +40,7 @@ export async function POST(r:Request){const u=await currentUser();if(!u||!canTra
  if(booking.stayId&&['cancel','paid'].includes(b.operation))throw Error('This ticket is charged to a room. Manage payment through the guest room bill; contact Admin for cancellation.');
  if(b.operation==='cancel'){booking.status='Cancelled';booking.checked=[];}
  else if(booking.status==='Cancelled')throw Error('This booking is cancelled.');
- else if(b.operation==='paid')booking.paid=!booking.paid;
+ else if(b.operation==='paid')toggleTransferPayment(booking,u.username);
  else if(b.operation==='checkin'&&booking.journeys.some(j=>j.scheduleId===b.scheduleId)){booking.checked=booking.checked.includes(b.scheduleId)?booking.checked.filter(x=>x!==b.scheduleId):[...booking.checked,b.scheduleId];}
  else throw Error('Invalid booking action.');
  }else throw Error('Unknown action.');
