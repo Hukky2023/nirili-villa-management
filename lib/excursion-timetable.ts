@@ -4,7 +4,7 @@ import type {ManifestSchedule} from './excursion-manifest';
 export type TimetableVessel = {vessel: string; crew: string[]; pax: number};
 export type TimetableTrip = {
   id: string; name: string; time: string; endTime: string; status: string;
-  confirmedPax: number; mainVesselPax: number; vessel: string; crew: string[];
+  confirmedPax: number; mainVesselPax: number; vessel: string; gopro: string; crew: string[];
   extraVessels: TimetableVessel[]; sharedTrips: number; sharedBoatPax: number; capacity: number;
 };
 export type ExcursionTimetable = {
@@ -21,7 +21,7 @@ export function isTimetableDate(value: string): boolean {
 /** Aggregate only: no guest identities, contacts, payments or booking notes leave this projection. */
 export function buildExcursionTimetable(
   date: string, schedules: ManifestSchedule[],
-  state: {orders?: any[]; stays?: any[]}, resources: {vessels: any[]; crew: any[]},
+  state: {orders?: any[]; stays?: any[]}, resources: {vessels: any[]; crew: any[]; gopros?: any[]},
   generatedAt = new Date().toISOString(),
 ): ExcursionTimetable {
   if (!isTimetableDate(date)) throw new Error('Choose a valid timetable date.');
@@ -44,7 +44,7 @@ export function buildExcursionTimetable(
     return {
       id: schedule.id, name: manifest.trip.name, time: manifest.trip.time, endTime: String((schedule as any).endTime||''), status: manifest.trip.status,
       confirmedPax: manifest.totals.pax, mainVesselPax: manifest.totals.mainVesselPax,
-      vessel: manifest.trip.vessel, crew: manifest.trip.crew,
+      vessel: manifest.trip.vessel, gopro: (resources.gopros||[]).find((item:any)=>item.id===(schedule as any).goproId)?.name||'', crew: manifest.trip.crew,
       extraVessels: [...extras.values()].sort((a, b) => a.vessel.localeCompare(b.vessel)),
       sharedTrips: manifest.totals.sharedTrips, sharedBoatPax: manifest.totals.boatPax,
       capacity: manifest.totals.capacity,
@@ -72,7 +72,7 @@ export function formatExcursionTimetable(data: ExcursionTimetable): string {
   const lines = ['NIRILI VILLA | EXCURSION TIMETABLE', timetableDateLabel(data.date), 'All departure times: Maldives time (UTC+5)', ''];
   for (const trip of data.trips) {
     lines.push(`${trip.time}${trip.endTime?'–'+trip.endTime:''} | ${inline(trip.name)}`, `Confirmed pax: ${trip.confirmedPax}`,
-      `Assigned vessel: ${inline(trip.vessel)}`, `Assigned crew: ${crewLabel(trip.crew)}`);
+      `Assigned vessel: ${inline(trip.vessel)}`, ...(trip.gopro?[`Assigned GoPro: ${inline(trip.gopro)}`]:[]), `Assigned crew: ${crewLabel(trip.crew)}`);
     if (trip.status !== 'Open') lines.push(`Booking status: ${inline(trip.status)}`);
     if (trip.sharedTrips > 1) lines.push(`Shared boat: ${trip.sharedBoatPax} / ${trip.capacity} pax across ${trip.sharedTrips} trips (combined, not extra pax).`);
     if (trip.extraVessels.length) {
