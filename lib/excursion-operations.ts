@@ -71,6 +71,18 @@ export function scheduleMatchRank(requestName:any,scheduleName:any){
  return Math.max(0,offered.length-wanted.length);
 }
 
+export function fridayExcursionBlackout(date:any,time:any,endTime:any){
+ if(typeof date!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date))return false;
+ const day=new Date(date+'T00:00:00Z');
+ if(Number.isNaN(day.getTime())||day.getUTCDay()!==5)return false;
+ if(!validClockTime(time)||!validClockTime(endTime))return false;
+ const start=clockMinutes(time),end=clockMinutes(endTime);
+ const blackoutStart=11*60,blackoutEnd=13*60+30;
+ return start<blackoutEnd&&end>blackoutStart;
+}
+
+export const fridayExcursionBlackoutMessage='Friday 11:00 AM–1:30 PM is blocked for excursion operations. Choose a trip that finishes by 11:00 AM or starts at/after 1:30 PM.';
+
 export function validClockTime(value:any){
  return typeof value==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
