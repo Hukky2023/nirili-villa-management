@@ -83,7 +83,7 @@ async function schedulesForDate(date:string){
 
 export async function GET(r:Request){
  const user=await currentUser();
- if(!user||user.role==='guest')return Response.json({error:'Staff login required.'},{status:403});
+ if(!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  const date=new URL(r.url).searchParams.get('date')||'';
  if(!validDate(date))return Response.json({error:'Valid schedule date required.'},{status:400});
  try{
