@@ -8,7 +8,7 @@ import './excursion-guest-list.css';
 const money = (cents: number) => '$' + (cents / 100).toFixed(2);
 const dateLabel = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.split('-').reverse().join('/') : 'Not recorded';
 const ageCategoryLabel=(value:string)=>value==='child'?'Child (3–11)':value==='infant'?'Under 3':'Adult (12+)';
-const tripStatuses = ['Excursion scheduled', 'Guests boarded', 'Departed', 'Arrived', 'Completed'] as const;
+const tripStatuses = ['Excursion scheduled', 'Guests boarded & Departed', 'Arrived & Completed'] as const;
 type TripStatus = typeof tripStatuses[number];
 type DraftPerson = {id: string; name: string; boarded: boolean};
 type DraftRoster = {bookingId: string; people: DraftPerson[]};
@@ -26,8 +26,10 @@ function rosterFrom(manifest: ExcursionManifest): DraftRoster[] {
   }));
 }
 function currentTripStatus(manifest: ExcursionManifest | null): TripStatus {
-  const value = manifest?.trip.tripStatus as TripStatus | undefined;
-  return value && tripStatuses.includes(value) ? value : 'Excursion scheduled';
+  const value = String(manifest?.trip.tripStatus || '');
+  if (value === 'Guests boarded' || value === 'Departed' || value === 'Guests boarded & Departed') return 'Guests boarded & Departed';
+  if (value === 'Arrived' || value === 'Completed' || value === 'Arrived & Completed') return 'Arrived & Completed';
+  return 'Excursion scheduled';
 }
 
 type Props = {scheduleId: string; tripName: string; date: string};
@@ -169,9 +171,9 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
     const currentPeople = rosters.flatMap(roster => roster.people);
     const missing = currentPeople.some(person => !person.name.trim());
     const boardedNow = currentPeople.filter(person => person.boarded).length;
-    if (next === 'Guests boarded') {
+    if (next === 'Guests boarded & Departed') {
       if (!currentPeople.length) {setError('There are no confirmed guests on this trip yet.'); return;}
-      if (missing) {setError('Enter every guest name before marking Guests boarded.'); return;}
+      if (missing) {setError('Enter every guest name before marking Guests boarded & Departed.'); return;}
       if (!boardedNow) {setError('Tick at least one guest who actually boarded.'); return;}
     }
 
@@ -179,7 +181,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
     try {
       // Save the latest checklist automatically so status changes never get blocked by
       // an unsaved boarding list. This is especially important for Guests boarded.
-      if (dirtyRef.current || next === 'Guests boarded') {
+      if (dirtyRef.current || next === 'Guests boarded & Departed') {
         await persistAttendance({showNotice: false, manageBusy: false});
       }
       const response = await fetch('/api/excursion-manifest', {
@@ -207,7 +209,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
   const missingNames = people.some(person => !person.name.trim());
   const attendanceSaved = !!manifest?.bookings.length && manifest.bookings.every(booking => !!booking.attendanceReviewedAt && booking.people.every(person => person.nameRecorded));
   const canAdvance = !!nextStatus && !savingAttendance && !statusBusy &&
-    (nextStatus !== 'Guests boarded' || (people.length > 0 && boarded > 0 && !missingNames));
+    (nextStatus !== 'Guests boarded & Departed' || (people.length > 0 && boarded > 0 && !missingNames));
 
   return <dialog ref={dialog} className="excursion-guest-dialog" aria-labelledby={headingId} aria-describedby={descriptionId}
     onCancel={event => {event.preventDefault(); onClose();}}>
@@ -228,10 +230,10 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
           <span>{index < statusIndex ? '✓' : index + 1}</span><strong>{step}</strong>
         </div>)}</div>
         <div className="excursion-status-action">
-          <div><strong>Current status: {status}</strong><small>{status==='Completed'?'This excursion is completed.':nextStatus?'Next status: '+nextStatus:''}</small></div>
+          <div><strong>Current status: {status}</strong><small>{status==='Arrived & Completed'?'This excursion is completed.':nextStatus?'Next status: '+nextStatus:''}</small></div>
           {nextStatus && <button type="button" className="excursion-status-next" disabled={!canAdvance}
-            title={nextStatus==='Guests boarded'&&missingNames?'Enter every guest name first.':nextStatus==='Guests boarded'&&!boarded?'Tick at least one boarded guest first.':''}
-            onClick={advanceStatus}>{statusBusy?'Updating…':nextStatus==='Guests boarded'&&(dirty||!attendanceSaved)?'Save & mark Guests boarded':'Mark '+nextStatus}</button>}
+            title={nextStatus==='Guests boarded & Departed'&&missingNames?'Enter every guest name first.':nextStatus==='Guests boarded & Departed'&&!boarded?'Tick at least one boarded guest first.':''}
+            onClick={advanceStatus}>{statusBusy?'Updating…':nextStatus==='Guests boarded & Departed'&&(dirty||!attendanceSaved)?'Save & mark Guests boarded & Departed':'Mark '+nextStatus}</button>}
         </div>
       </section>}
 
@@ -253,12 +255,12 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
             const allBoarded = rosterPeople.length > 0 && rosterPeople.every(person => person.boarded);
             return <article key={booking.id} className="excursion-boarding-booking">
               <header><div><strong>{booking.groupName||booking.guest}</strong>{booking.groupName&&<small>Lead guest: {booking.guest}</small>}<small>{booking.id} · {booking.guestType}{booking.room?' · Room '+booking.room:''}</small></div>
-                <div className="excursion-boarding-booking-actions"><span>{booking.guests} pax</span><button type="button" disabled={status==='Completed'||savingAttendance||statusBusy} onClick={()=>setBookingBoarded(booking.id,!allBoarded)}>{allBoarded?'Untick all':'Tick all'}</button></div></header>
+                <div className="excursion-boarding-booking-actions"><span>{booking.guests} pax</span><button type="button" disabled={status==='Arrived & Completed'||savingAttendance||statusBusy} onClick={()=>setBookingBoarded(booking.id,!allBoarded)}>{allBoarded?'Untick all':'Tick all'}</button></div></header>
               <div className="excursion-person-list">{rosterPeople.map((person, index) => <label key={person.id} className={'excursion-person '+(person.boarded?'boarded':'not-boarded')}>
-                <input className="excursion-person-check" type="checkbox" checked={person.boarded} disabled={status==='Completed'||savingAttendance||statusBusy}
+                <input className="excursion-person-check" type="checkbox" checked={person.boarded} disabled={status==='Arrived & Completed'||savingAttendance||statusBusy}
                   onChange={event=>changePerson(booking.id,person.id,{boarded:event.target.checked})}/>
                 <span className="excursion-person-number">{index+1}</span>
-                <span className="excursion-person-name"><span>Guest name</span><input required maxLength={100} value={person.name} disabled={status==='Completed'||savingAttendance||statusBusy}
+                <span className="excursion-person-name"><span>Guest name</span><input required maxLength={100} value={person.name} disabled={status==='Arrived & Completed'||savingAttendance||statusBusy}
                   placeholder={index===0?booking.guest:'Guest '+(index+1)+' full name'} onChange={event=>changePerson(booking.id,person.id,{name:event.target.value})}/><small className="excursion-age-category">{ageCategoryLabel(booking.people[index]?.ageCategory||'adult')}</small>{booking.people[index]?.footSize&&<small className="excursion-foot-size">Foot size: EU {booking.people[index].footSize}</small>}</span>
                 <strong className="excursion-person-state">{person.boarded?'Boarded':'Not boarded'}</strong>
               </label>)}</div>
