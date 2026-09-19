@@ -79,7 +79,18 @@ export async function roomLoginActive(id:string){
  const state=JSON.parse(r.payload);
  if(id.startsWith('walkin-exc-')){
   const profile=(state.walkinExcursionAccounts||[]).find((x:any)=>x.accountId===id);
-  if(!profile||profile.active!==true||(profile.expiresAt&&Date.parse(profile.expiresAt)<=Date.now()))return false;
+  const expired=!profile||profile.active!==true||(profile.expiresAt&&Date.parse(profile.expiresAt)<=Date.now());
+  if(expired){
+   try{
+    const db=authDb();
+    await db.batch([
+     db.prepare("UPDATE accounts SET active=0 WHERE id=? AND role='guest'").bind(id),
+     db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(id),
+     db.prepare('DELETE FROM operation_records WHERE key=?').bind('credential:'+id)
+    ]);
+   }catch{}
+   return false;
+  }
   return true;
  }
  return state.stays.some((s:any)=>s.accountId===id&&s.status==='In House');
