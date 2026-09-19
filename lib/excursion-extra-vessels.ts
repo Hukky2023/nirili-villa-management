@@ -129,8 +129,10 @@ export async function prepareExtraVesselTrips(db:any,state:any):Promise<ExtraVes
    const oldSchedule=order.schedule||{};
    order.scheduleHistory=[...(order.scheduleHistory||[]),{...oldSchedule,scheduleId:parent.id,migratedAt:now}];
    const crew=resources.crew.filter((member:any)=>(trip.crewIds||[]).includes(member.id));
-   order.schedule={...oldSchedule,date:trip.date,time:trip.time,endTime:trip.endTime,
+   const {goproId:_oldGoProId,gopro:_oldGoPro,...oldWithoutGoPro}=oldSchedule;
+   order.schedule={...oldWithoutGoPro,date:trip.date,time:trip.time,endTime:trip.endTime,
     vesselId:trip.vesselId,vessel:resources.vessels.find((row:any)=>row.id===trip.vesselId)?.name||vessel.name,
+    ...(trip.goproId?{goproId:trip.goproId,gopro:resources.gopros.find((row:any)=>row.id===trip.goproId)?.name||trip.goproId}:{}),
     crewIds:trip.crewIds||[],guideIds:trip.guideIds||[],crew:crew.map((member:any)=>member.name),
     extraVessel:false,extraVesselTrip:true,privateBoat:!!trip.privateTrip};
   }
