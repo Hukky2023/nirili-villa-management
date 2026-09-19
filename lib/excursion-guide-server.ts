@@ -1,7 +1,7 @@
 import {authDb} from './auth';
 import {excursionResources} from './excursion-workflow';
 import {assertGuideRule, cleanGuideSelection, guideRuleFor} from './excursion-guides';
-import {isSnorkelingTrip} from './excursion-operations';
+import {isDroneRequiredTrip,isSnorkelingTrip} from './excursion-operations';
 
 async function daySchedules(date: string): Promise<any[]> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw Error('A valid scheduled departure date is required.');
@@ -46,6 +46,12 @@ export async function validateExcursionGuideAction(state: any, action: any): Pro
     if (!gopro || gopro.condition !== 'Available') throw Error('Every snorkeling trip requires an available GoPro assigned to the vessel before departure.');
     order.schedule.goproId = gopro.id;
     order.schedule.gopro = gopro.name;
+  }
+  if (departing && isDroneRequiredTrip(schedule.name || order.name)) {
+    const drone = resources.drones.find((item: any) => item.id === schedule.droneId);
+    if (!drone || drone.condition !== 'Available') throw Error('Shark snorkeling and Sandbank trips require an available drone before departure.');
+    order.schedule.droneId = drone.id;
+    order.schedule.drone = drone.name;
   }
   if (departing) {
     // Freeze the guides actually checked for the departed booking's history.
