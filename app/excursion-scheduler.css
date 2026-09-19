@@ -1213,3 +1213,67 @@
   max-width:none;
  }
 }
+
+
+/* Crew leave approval requires an assigned replacement first. */
+.crew-trip-admin-actions{
+ align-items:flex-end;
+ min-width:min(100%,430px);
+}
+.crew-replacement-select{
+ display:grid;
+ gap:5px;
+ min-width:250px;
+ flex:1 1 280px;
+ color:#365c6f;
+ font-size:11px;
+ font-weight:800;
+}
+.crew-replacement-select>span{
+ color:#6b8491;
+ font-size:10px;
+ letter-spacing:.07em;
+ text-transform:uppercase;
+}
+.crew-replacement-select select{
+ width:100%;
+ min-height:42px;
+ padding:8px 10px;
+ border:1px solid #c4d9e3;
+ border-radius:9px;
+ background:#fff;
+ color:#17384c;
+ font:inherit;
+}
+.crew-replacement-select small{
+ color:#9b5e20;
+ font-weight:700;
+}
+.crew-trip-admin-action-buttons{
+ display:flex;
+ gap:8px;
+ flex-wrap:wrap;
+ justify-content:flex-end;
+}
+.crew-trip-admin-action-buttons button{
+ min-height:42px;
+}
+@media(max-width:720px){
+ .crew-trip-admin-actions{
+  min-width:0;
+  width:100%;
+ }
+ .crew-replacement-select{
+  min-width:0;
+  width:100%;
+ }
+ .crew-trip-admin-action-buttons{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  width:100%;
+ }
+ .crew-trip-admin-action-buttons button{width:100%}
+}
+@media(max-width:430px){
+ .crew-trip-admin-action-buttons{grid-template-columns:1fr}
+}
