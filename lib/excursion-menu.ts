@@ -38,10 +38,25 @@ export async function loadExcursionMenu(){
   overrides.delete(item.id);
   const category=(override.category||item.category) as ExcursionCategory;
   const mergedItem={...item,...override,kind:'excursion',minGuests:1,category,group:categoryGroup(category),active:override.active!==false};
-  if(item.id==='dolphin-fishing-dinner'){
-   mergedItem.name='Dolphin Watching + Fishing with Dinner';
-   mergedItem.detail='Dolphin watching and fishing with dinner included as part of the same excursion.';
-  }
+  const canonicalCombined:any={
+   'shark-turtle':{
+    name:'Shark Snorkeling (Nurse Shark) + Turtle Snorkeling',
+    detail:'Shark Snorkeling (Nurse Shark) and Turtle Snorkeling combined in one excursion.'
+   },
+   'coral-sandbank':{
+    name:'Coral Garden Snorkeling + Sandbank Trip',
+    detail:'Coral Garden Snorkeling and Sandbank Trip combined in one excursion.'
+   },
+   'dolphin-fishing-dinner':{
+    name:'Dolphin Watching + Fishing with Dinner',
+    detail:'Dolphin watching and fishing with dinner included as part of the same excursion.'
+   },
+   'fishtank-turtle':{
+    name:'Fish Tank Snorkeling + Turtle Snorkeling',
+    detail:'Fish Tank Snorkeling and Turtle Snorkeling combined in one excursion.'
+   }
+  };
+  if(canonicalCombined[item.id])Object.assign(mergedItem,canonicalCombined[item.id]);
   return mergedItem;
  });
  for(const item of overrides.values()){
