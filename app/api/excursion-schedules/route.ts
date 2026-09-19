@@ -85,10 +85,13 @@ export async function GET(r:Request){
    const guestNames=confirmedOrders.flatMap((o:any)=>{
     const quantity=Math.max(0,Number(o.quantity)||0);
     const roster=Array.isArray(o.excursionGuestRoster)?o.excursionGuestRoster:[];
-    const named=roster.map((person:any)=>String(person?.name||'').trim()).filter(Boolean);
-    if(named.length)return named.slice(0,quantity||named.length);
-    const lead=String(o.guest||'').trim()||'Guest';
-    return quantity>1?[lead+' (+'+(quantity-1)+' guest'+(quantity-1===1?'':'s')+')']:[lead];
+    const lead=String(o.guest||'').trim();
+    return Array.from({length:quantity},(_,index)=>{
+     const slot=index+1;
+     const saved=roster.find((person:any)=>Number(person?.slot)===slot)||roster[index];
+     const name=String(saved?.name||'').trim()||(slot===1?lead:'');
+     return name||('Guest '+slot+' · name not entered');
+    });
    });
    const pendingOrders=orders.filter((o:any)=>matches(o,s)&&isPending(o));
    const pendingPax=pendingOrders.reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
