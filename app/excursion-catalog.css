@@ -620,3 +620,31 @@
  .guest-passenger-row{grid-template-columns:1fr}
  .guest-passenger-row>span,.guest-passenger-row label,.guest-remove-passenger{grid-column:1}
 }
+
+
+.guest-group-name{
+ display:grid;
+ gap:6px;
+ padding:12px;
+ border:1px solid #dbe8ee;
+ border-radius:11px;
+ background:#fff;
+ color:#365c6f;
+ font-size:12px;
+ font-weight:800;
+}
+.guest-group-name input{
+ width:100%;
+ min-height:42px;
+ padding:8px 10px;
+ border:1px solid #b9ced8;
+ border-radius:9px;
+ background:#fff;
+ color:#14354a;
+ font:inherit;
+}
+.guest-group-name small{
+ color:#607c8b;
+ font-weight:500;
+ line-height:1.4;
+}
