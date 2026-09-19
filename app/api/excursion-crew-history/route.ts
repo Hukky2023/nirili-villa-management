@@ -7,6 +7,12 @@ const validId=(value:string)=>!!value&&value.length<=120;
 const text=(value:any)=>String(value||'').trim();
 const normal=(value:any)=>text(value).replace(/\s+/g,' ').toLowerCase();
 
+function combinedTripStatus(value:any){
+ const status=text(value);
+ if(status==='Guests boarded'||status==='Departed'||status==='Guests boarded & Departed')return 'Guests boarded & Departed';
+ if(status==='Arrived'||status==='Completed'||status==='Arrived & Completed')return 'Arrived & Completed';
+ return status||'Excursion scheduled';
+}
 function maldivesToday(){
  return new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 }
@@ -47,7 +53,7 @@ export async function GET(request:Request){
    const guideIds=Array.isArray(schedule.guideIds)?schedule.guideIds.map(String):[];
    return {
     id:text(schedule.id),date:text(schedule.date),time:text(schedule.time),endTime:text(schedule.endTime),
-    name:text(schedule.name)||'Excursion',tripStatus:text(schedule.tripStatus)||text(schedule.status)||'Scheduled',
+    name:text(schedule.name)||'Excursion',tripStatus:combinedTripStatus(schedule.tripStatus||schedule.status),
     bookingStatus:text(schedule.status)||'Open',
     vessel:text(vessel?.name)||text(schedule.vessel)||'Not recorded',
     role:guideIds.includes(crewId)?'Guide / Crew':'Crew',
@@ -58,7 +64,7 @@ export async function GET(request:Request){
   return Response.json({
    crew:{id:crew.id,name:crew.name},
    period:{from,to:today,months:3},
-   totals:{trips:history.length,completed:history.filter((trip:any)=>trip.tripStatus==='Completed').length},
+   totals:{trips:history.length,completed:history.filter((trip:any)=>trip.tripStatus==='Arrived & Completed').length},
    history
   },{headers});
  }catch{
