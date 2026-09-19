@@ -115,9 +115,10 @@ export function vesselConflict(
  if(!input.vesselId)return null;
  return schedules.find((other:any)=>{
   if(!other||other.id===input.excludeId||other.status==='Cancelled'||other.date!==input.date||other.vesselId!==input.vesselId)return false;
-  const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===(other.endTime||inferTripEndTime(other.name,other.time));
-  if(sameShared)return false;
   const otherEnd=other.endTime||inferTripEndTime(other.name,other.time);
+  const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===otherEnd;
+  const sameVesselDeparture=!!input.vesselId&&other.vesselId===input.vesselId&&input.time===other.time&&input.endTime===otherEnd;
+  if(sameShared||sameVesselDeparture)return false;
   return timeRangesOverlap(input.time,input.endTime,other.time,otherEnd);
  })||null;
 }
@@ -125,14 +126,15 @@ export function vesselConflict(
 
 export function goproConflict(
  schedules:any[],
- input:{date:string;time:string;endTime:string;goproId:string;excludeId?:string;sharedGroup?:string}
+ input:{date:string;time:string;endTime:string;goproId:string;vesselId?:string;excludeId?:string;sharedGroup?:string}
 ){
  if(!input.goproId)return null;
  return schedules.find((other:any)=>{
   if(!other||other.id===input.excludeId||other.status==='Cancelled'||other.date!==input.date||other.goproId!==input.goproId)return false;
-  const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===(other.endTime||inferTripEndTime(other.name,other.time));
-  if(sameShared)return false;
   const otherEnd=other.endTime||inferTripEndTime(other.name,other.time);
+  const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===otherEnd;
+  const sameVesselDeparture=!!input.vesselId&&other.vesselId===input.vesselId&&input.time===other.time&&input.endTime===otherEnd;
+  if(sameShared||sameVesselDeparture)return false;
   return timeRangesOverlap(input.time,input.endTime,other.time,otherEnd);
  })||null;
 }
@@ -140,7 +142,7 @@ export function goproConflict(
 
 export function droneConflict(
  schedules:any[],
- input:{date:string;time:string;endTime:string;droneId:string;excludeId?:string;sharedGroup?:string}
+ input:{date:string;time:string;endTime:string;droneId:string;vesselId?:string;excludeId?:string;sharedGroup?:string}
 ){
  if(!input.droneId)return null;
  return schedules.find((other:any)=>{
