@@ -80,13 +80,13 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
       if (result.manifest?.trip?.id !== scheduleId || !Array.isArray(result.manifest?.bookings) || !result.manifest?.totals) {
         throw new Error('The guest list could not be read. Please refresh.');
       }
-      applyManifest(result.manifest, !manifest); setError('');
+      applyManifest(result.manifest, !background); setError('');
     } catch (reason) {
       if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load the guest list.');
     } finally {
       if (request.current === controller) {request.current = null; setLoading(false);}
     }
-  }, [scheduleId, date, applyManifest, manifest]);
+  }, [scheduleId, date, applyManifest]);
 
   useEffect(() => {
     const element = dialog.current;
