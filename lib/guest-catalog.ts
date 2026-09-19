@@ -30,7 +30,7 @@ export const catalog=[
 {"id": "romantic-sandbank-dinner", "kind": "excursion", "name": "Romantic Sandbank Dinner", "cents": 15000, "group": "Excursions", "minGuests": 1, "pricingUnit": "guest", "detail": "Enjoy a magical dinner by the ocean with a private sandbank setting under the stars."},
 {"id": "shark-turtle", "kind": "excursion", "name": "Shark + Turtle Snorkeling", "cents": 11000, "group": "Combined packages", "minGuests": 1, "detail": "Shark snorkeling and turtle snorkeling in one package."},
 {"id": "coral-sandbank", "kind": "excursion", "name": "Coral Garden + Sandbank", "cents": 6000, "group": "Combined packages", "minGuests": 1, "detail": "Coral Garden snorkeling and a sandbank visit."},
-{"id": "dolphin-fishing-dinner", "kind": "excursion", "name": "Dolphin Watching + Fishing + Dinner", "cents": 5000, "group": "Combined packages", "minGuests": 1, "detail": "Dolphin watching, fishing and dinner."},
+{"id": "dolphin-fishing-dinner", "kind": "excursion", "name": "Dolphin Watching + Fishing with Dinner", "cents": 5000, "group": "Combined packages", "minGuests": 1, "detail": "Dolphin watching and fishing with dinner included as part of the same excursion."},
 {"id": "fishtank-turtle", "kind": "excursion", "name": "Fish Tank + Turtle Snorkeling", "cents": 8000, "group": "Combined packages", "minGuests": 1, "detail": "Fish Tank snorkeling and turtle snorkeling."},
 {"id": "special-package", "kind": "excursion", "name": "Special Package", "cents": 22000, "group": "Special package", "minGuests": 1, "detail": "Turtle Snorkeling + Shark Snorkeling + Sandbank + Coral Garden + Dolphin Watching + Fishing with Dinner."}
 ];
