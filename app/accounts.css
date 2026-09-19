@@ -469,3 +469,22 @@
  .walkin-qr-admin{grid-template-columns:1fr}
  .walkin-qr-image{justify-self:stretch}
 }
+
+
+.walkin-account-group{
+ display:grid;
+ gap:5px;
+ margin:10px 0;
+ padding:10px 11px;
+ border:1px solid #d9e7ec;
+ border-radius:10px;
+ background:#fbfdfe;
+}
+.walkin-account-group strong{
+ color:#17384c;
+ font-size:12px;
+}
+.walkin-account-group span{
+ color:#607c8b;
+ font-size:11px;
+}
