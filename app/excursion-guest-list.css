@@ -404,3 +404,17 @@ dialog.excursion-guest-dialog::backdrop {background: #04283c80;}
   justify-self:start;
  }
 }
+
+
+.excursion-foot-size{
+ display:inline-flex;
+ width:max-content;
+ max-width:100%;
+ margin-top:4px;
+ padding:3px 7px;
+ border-radius:999px;
+ background:#eef7fb;
+ color:#2b647d!important;
+ font-size:10px!important;
+ font-weight:800;
+}
