@@ -26,7 +26,7 @@ async function view(u:any){const {state,revision}=await loadStays();const excurs
  if(walkIn?.active){
   const ownOrders=orders.filter((o:any)=>o.accountId===u.userId&&o.kind==='excursion');
   const bill=walkInExcursionBill(state,u.userId);
-  return {catalog:currentCatalog,requests:[],stays:[],orders:ownOrders,walkInExcursion:{name:walkIn.name,phone:walkIn.phone,hotel:walkIn.hotel,room:walkIn.room,departureDate:walkIn.departureDate||'',createdAt:walkIn.createdAt,expiresAt:walkIn.expiresAt,bill}};
+  return {catalog:currentCatalog,requests:[],stays:[],orders:ownOrders,walkInExcursion:{name:walkIn.name,phone:walkIn.phone,hotel:walkIn.hotel,room:walkIn.room,departureDate:walkIn.departureDate||'',guests:walkIn.guests||[],createdAt:walkIn.createdAt,expiresAt:walkIn.expiresAt,bill}};
  }
  const stays=state.stays.filter((s:any)=>s.accountId===u.userId),ids=new Set(stays.map((s:any)=>s.id));
  const guestStays=await Promise.all(stays.map(async(s:any)=>{const f=await folioFor(s,state.orders);return {id:s.id,guest:s.guest,room:s.room,checkIn:s.checkIn,checkOut:s.checkOut,meal:s.meal,pax:s.pax,status:s.status,folio:{totalCents:f.totalCents,paidCents:f.paidCents,balanceCents:f.balanceCents,bills:f.bills.map((b:any)=>({id:b.id,department:b.department,items:b.items,status:b.status,totalCents:b.totalCents}))}}}));
