@@ -46,6 +46,13 @@ export function isDolphinOnly(value:any){
  return parts.length===1&&parts[0]==='dolphin';
 }
 
+const snorkelingComponents=new Set(['fish tank','turtle','coral garden','shark','manta','clown fish']);
+export function isSnorkelingTrip(value:any){
+ const source=normalizeExcursionName(value);
+ if(/\bsnorkel/.test(source))return true;
+ return excursionComponents(value).some(component=>snorkelingComponents.has(component));
+}
+
 export function scheduleCanServeRequest(requestName:any,scheduleName:any){
  const wanted=excursionComponents(requestName),offered=excursionComponents(scheduleName);
  if(!wanted.length)return false;
@@ -103,6 +110,21 @@ export function vesselConflict(
  if(!input.vesselId)return null;
  return schedules.find((other:any)=>{
   if(!other||other.id===input.excludeId||other.status==='Cancelled'||other.date!==input.date||other.vesselId!==input.vesselId)return false;
+  const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===(other.endTime||inferTripEndTime(other.name,other.time));
+  if(sameShared)return false;
+  const otherEnd=other.endTime||inferTripEndTime(other.name,other.time);
+  return timeRangesOverlap(input.time,input.endTime,other.time,otherEnd);
+ })||null;
+}
+
+
+export function goproConflict(
+ schedules:any[],
+ input:{date:string;time:string;endTime:string;goproId:string;excludeId?:string;sharedGroup?:string}
+){
+ if(!input.goproId)return null;
+ return schedules.find((other:any)=>{
+  if(!other||other.id===input.excludeId||other.status==='Cancelled'||other.date!==input.date||other.goproId!==input.goproId)return false;
   const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===(other.endTime||inferTripEndTime(other.name,other.time));
   if(sameShared)return false;
   const otherEnd=other.endTime||inferTripEndTime(other.name,other.time);
