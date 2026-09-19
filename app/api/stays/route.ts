@@ -7,7 +7,14 @@ import {billPaymentKey} from '../../../lib/bill-payment';
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {loadStays,stayView,stayKey,folioFor} from '../../../lib/stays';
 import {appendAccountHistory} from '../../../lib/account-history';
-export async function GET(){const u=await currentUser();if(!u||restaurantOnly(u)||u.role==='guest')return Response.json({error:'Staff login required'},{status:403});try{return Response.json(await stayView(),{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
+function canViewHotel(u:any){
+ if(!u)return false;
+ if(u.role==='admin')return true;
+ if(u.role!=='staff')return false;
+ if(u.permissions.length===0)return true;
+ return u.permissions.some((p:string)=>['edit_bills','edit_excursions','edit_transfers'].includes(p));
+}
+export async function GET(){const u=await currentUser();if(!canViewHotel(u)||restaurantOnly(u))return Response.json({error:'Hotel management access required'},{status:403});try{return Response.json(await stayView(),{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
 export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();if(!hasPermission(u,'edit_bills'))return Response.json({error:'Admin or bill editing permission is required.'},{status:403});const {state,revision}=await loadStays();
 if(b.action==='create'){
  if(restaurantOnly(u))return Response.json({error:'Hotel booking access required.'},{status:403});
