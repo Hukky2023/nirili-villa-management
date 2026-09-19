@@ -1,6 +1,6 @@
 /** Read-only projection used by the staff excursion Bookings tab. */
 export type ExcursionGuestPerson = {
-  id: string; slot: number; name: string; nameRecorded: boolean; boarded: boolean; boardedAt: string;
+  id: string; slot: number; name: string; nameRecorded: boolean; footSize: number | null; boarded: boolean; boardedAt: string;
 };
 export type ConfirmedExcursionBooking = {
   id: string; excursion: string; guest: string; phone: string;
@@ -9,7 +9,7 @@ export type ConfirmedExcursionBooking = {
   paymentStatus: 'Paid' | 'Unpaid'; tripStatus: string;
   vessel: string; crew: string[]; separateVessel: boolean; privateBoatRequested: boolean; privateBoatSurchargeCents: number; buggyRequested: boolean; buggyRoundTrip: boolean; serviceType: string;
   notes: string; source: string; createdAt: string; createdBy: string;
-  people: ExcursionGuestPerson[]; attendanceReviewedAt: string;
+  footSizes: number[]; people: ExcursionGuestPerson[]; attendanceReviewedAt: string;
 };
 
 const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
@@ -50,11 +50,13 @@ export function toConfirmedExcursionBooking(
   const guestName = text(order.guest) || text(stay?.guest);
   const guestCount = Number.isFinite(quantity) ? Math.max(0, Math.trunc(quantity)) : 0;
   const savedRoster = Array.isArray(order.excursionGuestRoster) ? order.excursionGuestRoster : [];
+  const footSizes = Array.isArray(order.footSizes) ? order.footSizes.slice(0,guestCount).map((value:any)=>Number(value)).filter((value:number)=>Number.isInteger(value)&&value>=15&&value<=50) : [];
   const people = Array.from({length: guestCount}, (_, index) => {
     const slot = index + 1, id = text(order.id) + ':' + slot;
     const saved = savedRoster.find((person: any) => Number(person?.slot) === slot || text(person?.id) === id);
     const name = text(saved?.name) || (slot === 1 ? guestName : '');
-    return {id, slot, name, nameRecorded: !!name, boarded: saved?.boarded === true, boardedAt: text(saved?.boardedAt)};
+    const footSizeRaw = Number(order.footSizes?.[index]);
+    return {id, slot, name, nameRecorded: !!name, footSize: Number.isInteger(footSizeRaw)&&footSizeRaw>=15&&footSizeRaw<=50?footSizeRaw:null, boarded: saved?.boarded === true, boardedAt: text(saved?.boardedAt)};
   });
   return {
     id: text(order.id), excursion: text(order.name) || text(current?.name) || 'Excursion',
@@ -79,6 +81,6 @@ export function toConfirmedExcursionBooking(
     crew: romanticDinner ? [] : crew, separateVessel: !!order.separateVessel, privateBoatRequested: !!order.privateBoatRequested, privateBoatSurchargeCents: Math.max(0,Number(order.privateBoatSurchargeCents)||0), buggyRequested: inhouse ? true : !!order.buggyRequested, buggyRoundTrip: !!order.buggyRoundTrip, serviceType: text(order.serviceType),
     notes: text(order.notes), source: text(order.source),
     createdAt: text(order.createdAt), createdBy: text(order.createdBy),
-    people, attendanceReviewedAt: text(order.attendanceReviewedAt),
+    footSizes, people, attendanceReviewedAt: text(order.attendanceReviewedAt),
   };
 }
