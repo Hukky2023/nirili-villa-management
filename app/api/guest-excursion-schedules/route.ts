@@ -136,7 +136,7 @@ export async function GET(r:Request){
   const eligibleStays=stays.map((s:any)=>({id:s.id,room:s.room,guest:s.guest,checkIn:s.checkIn,checkOut:s.checkOut,walkIn:false}));
   if(walkIn?.active){
    const checkIn=islandToday(),checkOut=String(walkIn.expiresAt||'').slice(0,10);
-   eligibleStays.push({id:'walkin:'+user.userId,room:walkIn.room||'',guest:walkIn.name,checkIn,checkOut:checkOut||'2099-12-31',walkIn:true,hotel:walkIn.hotel,phone:walkIn.phone} as any);
+   eligibleStays.push({id:'walkin:'+user.userId,room:walkIn.room||'',guest:walkIn.name,checkIn,checkOut:checkOut||'2099-12-31',walkIn:true,hotel:walkIn.hotel,phone:walkIn.phone,guestNames:(walkIn.guests||[]).map((guest:any)=>guest.name),guestCategories:(walkIn.guests||[]).map((guest:any)=>guest.ageCategory)} as any);
   }
   const raw=await schedulesForDate(date);
   const orders=Array.isArray(state.orders)?state.orders:[];
