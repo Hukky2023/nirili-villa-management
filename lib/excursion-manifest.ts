@@ -3,10 +3,10 @@ import type {ConfirmedExcursionBooking} from './excursion-bookings';
 
 export type ManifestSchedule = {
   id: string; name: string; date: string; time: string; endTime?: string; capacity: number;
-  status?: string; vesselId?: string; crewIds?: string[]; sharedGroup?: string; notes?: string;
+  status?: string; tripStatus?: string; vesselId?: string; crewIds?: string[]; sharedGroup?: string; notes?: string;
 };
 export type ExcursionManifest = {
-  trip: {id: string; name: string; date: string; time: string; endTime: string; status: string; vessel: string; crew: string[]; notes: string};
+  trip: {id: string; name: string; date: string; time: string; endTime: string; status: string; tripStatus: string; vessel: string; crew: string[]; notes: string};
   bookings: ConfirmedExcursionBooking[];
   totals: {bookings: number; pax: number; mainVesselPax: number; extraVesselPax: number; boatPax: number; capacity: number; sharedTrips: number};
 };
@@ -82,6 +82,7 @@ export function buildExcursionManifest(
     trip: {
       id: selected.id, name: selected.name, date: selected.date, time: selected.time, endTime: text(selected.endTime),
       status: text(selected.status) || 'Open',
+      tripStatus: text(selected.tripStatus) || 'Excursion scheduled',
       vessel: text(resources.vessels.find(v => v.id === selected.vesselId)?.name) || 'Not assigned',
       crew: (selected.crewIds || []).map(id => text(resources.crew.find(c => c.id === id)?.name) || 'Unknown crew member'),
       notes: text(selected.notes),
