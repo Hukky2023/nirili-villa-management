@@ -910,3 +910,11 @@
 @media(max-width:900px){
  .excursion-accessories-sections{grid-template-columns:1fr}
 }
+
+
+/* Operational lifecycle status: scheduled → boarded → departed → arrived → completed */
+.excursion-day-title .excursion-trip-status-badge{
+ background:#eaf4fb!important;
+ color:#145f86!important;
+ border:1px solid #cbe1ee;
+}
