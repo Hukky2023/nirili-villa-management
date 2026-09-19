@@ -115,10 +115,9 @@ export function vesselConflict(
  if(!input.vesselId)return null;
  return schedules.find((other:any)=>{
   if(!other||other.id===input.excludeId||other.status==='Cancelled'||other.date!==input.date||other.vesselId!==input.vesselId)return false;
+  const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===(other.endTime||inferTripEndTime(other.name,other.time));
+  if(sameShared)return false;
   const otherEnd=other.endTime||inferTripEndTime(other.name,other.time);
-  const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===otherEnd;
-  const sameVesselDeparture=!!input.vesselId&&other.vesselId===input.vesselId&&input.time===other.time&&input.endTime===otherEnd;
-  if(sameShared||sameVesselDeparture)return false;
   return timeRangesOverlap(input.time,input.endTime,other.time,otherEnd);
  })||null;
 }
@@ -147,9 +146,10 @@ export function droneConflict(
  if(!input.droneId)return null;
  return schedules.find((other:any)=>{
   if(!other||other.id===input.excludeId||other.status==='Cancelled'||other.date!==input.date||other.droneId!==input.droneId)return false;
-  const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===(other.endTime||inferTripEndTime(other.name,other.time));
-  if(sameShared)return false;
   const otherEnd=other.endTime||inferTripEndTime(other.name,other.time);
+  const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===otherEnd;
+  const sameVesselDeparture=!!input.vesselId&&other.vesselId===input.vesselId&&input.time===other.time&&input.endTime===otherEnd;
+  if(sameShared||sameVesselDeparture)return false;
   return timeRangesOverlap(input.time,input.endTime,other.time,otherEnd);
  })||null;
 }
