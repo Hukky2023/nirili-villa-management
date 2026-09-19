@@ -54,7 +54,7 @@ export async function GET(){
     ...u,
     stays:stayView.map(({history,...s}:any)=>s),
     guestType:u.role==='guest'?(walkIn?'walkin':currentInHouse?'inhouse':stayView.length?'inhouse':'guest'):'',
-    walkIn:walkIn?{hotel:walkIn.hotel,room:walkIn.room,phone:walkIn.phone,departureDate:walkIn.departureDate,expiresAt:walkIn.expiresAt,createdAt:walkIn.createdAt,endedAt:walkIn.endedAt||'',active:walkIn.active}:null,
+    walkIn:walkIn?{hotel:walkIn.hotel,room:walkIn.room,phone:walkIn.phone,departureDate:walkIn.departureDate,expiresAt:walkIn.expiresAt,guests:walkIn.guests||[],createdAt:walkIn.createdAt,endedAt:walkIn.endedAt||'',active:walkIn.active}:null,
     history:historyFor(u,state,stayView,walkIn,audit)
    };
   }));
