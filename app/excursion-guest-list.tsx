@@ -232,7 +232,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
                   onChange={event=>changePerson(booking.id,person.id,{boarded:event.target.checked})}/>
                 <span className="excursion-person-number">{index+1}</span>
                 <span className="excursion-person-name"><span>Guest name</span><input required maxLength={100} value={person.name} disabled={status==='Completed'||savingAttendance||statusBusy}
-                  placeholder={index===0?booking.guest:'Guest '+(index+1)+' full name'} onChange={event=>changePerson(booking.id,person.id,{name:event.target.value})}/></span>
+                  placeholder={index===0?booking.guest:'Guest '+(index+1)+' full name'} onChange={event=>changePerson(booking.id,person.id,{name:event.target.value})}/>{booking.people[index]?.footSize&&<small className="excursion-foot-size">Foot size: EU {booking.people[index].footSize}</small>}</span>
                 <strong className="excursion-person-state">{person.boarded?'Boarded':'Not boarded'}</strong>
               </label>)}</div>
             </article>;
@@ -261,7 +261,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
                 <div><dt>Trip date / time</dt><dd>{dateLabel(b.date)} · {b.time}{b.endTime?'–'+b.endTime:''} · Maldives time</dd></div>
                 <div><dt>Trip status</dt><dd>{b.tripStatus}</dd></div>
                 <div><dt>Assigned vessel</dt><dd>{b.vessel}</dd></div>
-                <div><dt>Assigned crew</dt><dd>{b.crew.join(', ') || 'Not assigned'}</dd></div>
+                <div><dt>Assigned crew</dt><dd>{b.crew.join(', ') || 'Not assigned'}</dd></div>{b.footSizes.length>0&&<div><dt>Snorkeling foot sizes</dt><dd>{b.footSizes.map((size,index)=>'Guest '+(index+1)+': EU '+size).join(' · ')}</dd></div>}
                 <div><dt>Booking source</dt><dd>{b.source || 'Not recorded'}</dd></div>
                 <div><dt>Booked by</dt><dd>{b.createdBy || 'Not recorded'}</dd></div>
                 <div><dt>Booking created</dt><dd>{createdLabel(b.createdAt)}{b.createdAt && <small>Maldives time</small>}</dd></div>
