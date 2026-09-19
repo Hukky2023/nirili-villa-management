@@ -1,6 +1,6 @@
 import {diningRoom,diningOrderRoom} from '../../../lib/dining-room';
 import {sessionCookieName} from '../../../lib/tab-session';
-import {mealItemIncluded} from '../../../lib/meal-access';
+import {mealItemIncluded,halfBoardFreeOrderAvailable} from '../../../lib/meal-access';
 import {cookies} from 'next/headers';
 import {currentUser,authDb,randomToken,digest,sameOrigin,limit} from '../../../lib/auth';
 import {loadStays,stayKey} from '../../../lib/stays';
@@ -39,7 +39,7 @@ async function view(id:any){
   profile=walkIn?{name:walkIn.name,hotel:walkIn.hotel,room:walkIn.room,departureDate:walkIn.departureDate}:null;
  }
  const assigned=id.mode==='inhouse'&&id.user?diningRoom(state.stays,id.user):null;
- const assignedRoom=assigned?{id:assigned.id,room:assigned.room,meal:assigned.meal,status:assigned.status}:null;
+ const assignedRoom=assigned?{id:assigned.id,room:assigned.room,meal:assigned.meal,status:assigned.status,halfBoardFreeOrderAvailable:halfBoardFreeOrderAvailable(state,assigned.id)}:null;
  const stays=assignedRoom?[assignedRoom]:[];
  return {
   visit:profile,
@@ -93,12 +93,13 @@ export async function POST(r:Request){
   if(!restaurantTables.includes(b.table)||!Array.isArray(b.items)||!b.items.length||b.items.length>40||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Select a table and menu items.');
   const s=who.mode==='inhouse'&&who.user?diningOrderRoom(state.stays,who.user,b.stayId):null;
   const menu=(await loadMenu()).items,seen=new Set();
+  const halfBoardAvailable=halfBoardFreeOrderAvailable(state,s?.id);
   const items=b.items.map((x:any)=>{
    const i=menu.find((i:any)=>i.id===x.id);
    if(!i||seen.has(x.id)||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>20)throw Error('Check the selected items and quantities.');
    if(x.cents!==i.cents)throw Error('A price changed. Refresh the menu before ordering.');
    seen.add(x.id);
-   const included=mealItemIncluded(s?.meal,i);
+   const included=mealItemIncluded(s?.meal,i,halfBoardAvailable);
    if(typeof x.included==='boolean'&&x.included!==included)throw Error('Meal plan availability changed. Refresh the menu and review the charges before ordering.');
    return {id:i.id,name:i.category+' · '+i.name+(included?' (meal plan included)':''),quantity:x.quantity,unitCents:included?0:i.cents,cents:included?0:i.cents*x.quantity,included,menuCents:i.cents};
   });
