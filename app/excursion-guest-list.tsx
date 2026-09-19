@@ -7,6 +7,7 @@ import './excursion-guest-list.css';
 
 const money = (cents: number) => '$' + (cents / 100).toFixed(2);
 const dateLabel = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.split('-').reverse().join('/') : 'Not recorded';
+const ageCategoryLabel=(value:string)=>value==='child'?'Child (3–11)':value==='infant'?'Under 3':'Adult (12+)';
 const tripStatuses = ['Excursion scheduled', 'Guests boarded', 'Departed', 'Arrived', 'Completed'] as const;
 type TripStatus = typeof tripStatuses[number];
 type DraftPerson = {id: string; name: string; boarded: boolean};
@@ -232,7 +233,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
                   onChange={event=>changePerson(booking.id,person.id,{boarded:event.target.checked})}/>
                 <span className="excursion-person-number">{index+1}</span>
                 <span className="excursion-person-name"><span>Guest name</span><input required maxLength={100} value={person.name} disabled={status==='Completed'||savingAttendance||statusBusy}
-                  placeholder={index===0?booking.guest:'Guest '+(index+1)+' full name'} onChange={event=>changePerson(booking.id,person.id,{name:event.target.value})}/>{booking.people[index]?.footSize&&<small className="excursion-foot-size">Foot size: EU {booking.people[index].footSize}</small>}</span>
+                  placeholder={index===0?booking.guest:'Guest '+(index+1)+' full name'} onChange={event=>changePerson(booking.id,person.id,{name:event.target.value})}/><small className="excursion-age-category">{ageCategoryLabel(booking.people[index]?.ageCategory||'adult')}</small>{booking.people[index]?.footSize&&<small className="excursion-foot-size">Foot size: EU {booking.people[index].footSize}</small>}</span>
                 <strong className="excursion-person-state">{person.boarded?'Boarded':'Not boarded'}</strong>
               </label>)}</div>
             </article>;
