@@ -842,3 +842,71 @@
  color:#873800;
  font-weight:800;
 }
+
+
+/* Combined excursion accessories management */
+.excursion-accessories-panel{
+ display:grid;
+ gap:16px;
+}
+.excursion-accessories-heading{
+ padding:18px 20px;
+ border:1px solid #d8e8ef;
+ border-radius:14px;
+ background:#fbfdff;
+}
+.excursion-accessories-heading small{
+ display:block;
+ color:#087cad;
+ font-size:11px;
+ font-weight:900;
+ letter-spacing:.08em;
+}
+.excursion-accessories-heading h3{
+ margin:4px 0 3px;
+ color:#14354a;
+ font-size:22px;
+}
+.excursion-accessories-heading p{
+ margin:0;
+ color:#607c8b;
+}
+.excursion-accessories-sections{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:16px;
+ align-items:start;
+}
+.excursion-accessories-sections>.excursion-panel{
+ margin:0;
+ min-width:0;
+}
+.excursion-accessories-block{
+ width:100%;
+ min-width:0;
+ display:grid;
+ gap:8px;
+ margin-top:6px;
+ padding-top:8px;
+ border-top:1px solid #dceaf0;
+}
+.excursion-accessories-label{
+ display:block;
+ color:#4e6f80;
+ font-size:10px;
+ font-weight:900;
+ letter-spacing:.08em;
+ text-transform:uppercase;
+}
+.excursion-accessory-item{
+ display:grid;
+ gap:6px;
+ min-width:0;
+}
+.excursion-accessory-item .excursion-gopro-status,
+.excursion-accessory-item .excursion-drone-status{
+ margin-top:0;
+}
+@media(max-width:900px){
+ .excursion-accessories-sections{grid-template-columns:1fr}
+}
