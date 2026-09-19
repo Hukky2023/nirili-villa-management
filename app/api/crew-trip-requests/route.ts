@@ -14,6 +14,15 @@ function sharedKey(schedule:any){
  if(schedule.vesselId)return schedule.date+'|'+schedule.time+'|vessel:'+schedule.vesselId;
  return schedule.date+'|'+schedule.time+'|schedule:'+schedule.id;
 }
+function orderMatchesSchedule(order:any,schedule:any){
+ if(!order||order.kind!=='excursion'||order.status==='Cancelled'||order.approvalStatus==='Declined'||order.approvalStatus==='Cancelled')return false;
+ if(order.scheduleId)return order.scheduleId===schedule.id&&(order.date||order.schedule?.date)===schedule.date;
+ const saved=order.schedule||{};
+ return (saved.date||order.date)===schedule.date&&saved.time===schedule.time&&(!schedule.vesselId||saved.vesselId===schedule.vesselId)&&normal(order.name)===normal(schedule.name);
+}
+function confirmedOrder(order:any){
+ return order&&order.kind==='excursion'&&order.status!=='Cancelled'&&order.approvalStatus!=='Pending'&&order.approvalStatus!=='Declined'&&order.approvalStatus!=='Cancelled';
+}
 async function allSchedules(){
  const rows=(await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(schedulePrefix+'%').all<any>()).results||[];
  return rows.map((row:any)=>{try{return {...JSON.parse(row.payload||'{}'),revision:Number(row.revision)||1,_key:row.key}}catch{return null}}).filter(Boolean);
@@ -47,19 +56,28 @@ export async function GET(){
    return Response.json({mode:'admin',requests:visible.map((request:any)=>requestView(request,schedules)),pendingCount:visible.filter((request:any)=>request.status==='Pending').length},{headers});
   }
   if(!hasPermission(user,'crew_location'))return Response.json({error:'Crew Member access required.'},{status:403,headers});
-  const savedState=await state(),crew=excursionResources(savedState).crew.find((member:any)=>!member.removed&&(member.accountId===user.userId||member.id===user.userId));
+  const savedState=await state(),resources=excursionResources(savedState),crew=resources.crew.find((member:any)=>!member.removed&&(member.accountId===user.userId||member.id===user.userId));
   if(!crew)return Response.json({error:'Your login is not linked to an excursion crew member.'},{status:409,headers});
   const today=islandToday();
   const assigned=schedules.filter((schedule:any)=>schedule.status!=='Cancelled'&&schedule.date>=today&&Array.isArray(schedule.crewIds)&&schedule.crewIds.includes(crew.id)&&!excursionDeparturePassed(schedule.date,schedule.time));
   const groups=new Map<string,any>();
   for(const schedule of assigned){
-   const key=sharedKey(schedule),entry=groups.get(key)||{key,date:schedule.date,time:schedule.time,vesselId:schedule.vesselId||'',scheduleIds:[],tripNames:[],status:schedule.status};
-   entry.scheduleIds.push(schedule.id);entry.tripNames.push(schedule.name);groups.set(key,entry);
+   const key=sharedKey(schedule),entry=groups.get(key)||{key,date:schedule.date,time:schedule.time,endTime:schedule.endTime||'',vesselId:schedule.vesselId||'',scheduleIds:[],tripNames:[],status:schedule.status,schedules:[]};
+   entry.scheduleIds.push(schedule.id);entry.tripNames.push(schedule.name);entry.schedules.push(schedule);
+   if(!entry.endTime&&schedule.endTime)entry.endTime=schedule.endTime;
+   groups.set(key,entry);
   }
+  const orders=Array.isArray(savedState.orders)?savedState.orders:[];
   const ownRequests=requests.filter((request:any)=>request.accountId===user.userId).sort((a:any,b:any)=>String(b.createdAt).localeCompare(String(a.createdAt)));
   const trips=[...groups.values()].sort((a:any,b:any)=>String(a.date+a.time).localeCompare(String(b.date+b.time))).map((trip:any)=>{
    const related=ownRequests.find((request:any)=>request.status==='Pending'&&request.date===trip.date&&trip.scheduleIds.includes(request.scheduleId));
-   return {...trip,request:related?requestView(related,schedules):null};
+   const tripOrders=orders.filter((order:any)=>confirmedOrder(order)&&trip.schedules.some((schedule:any)=>orderMatchesSchedule(order,schedule))&&!order.separateVessel);
+   const pax=tripOrders.reduce((sum:number,order:any)=>sum+Math.max(0,Number(order.quantity)||0),0);
+   const assignedCrewIds=[...new Set(trip.schedules.flatMap((schedule:any)=>Array.isArray(schedule.crewIds)?schedule.crewIds:[]).map(String))];
+   const otherCrew=assignedCrewIds.filter((id:string)=>id!==crew.id).map((id:string)=>text(resources.crew.find((member:any)=>member.id===id)?.name,100)||'Unknown crew member');
+   const vessel=text(resources.vessels.find((item:any)=>item.id===trip.vesselId)?.name,100)||text(trip.schedules.find((schedule:any)=>schedule.vessel)?.vessel,100)||'Not assigned';
+   const {schedules:groupSchedules,...view}=trip;
+   return {...view,vessel,pax,otherCrew,request:related?requestView(related,schedules):null};
   });
   return Response.json({mode:'crew',crew:{id:crew.id,name:crew.name,username:user.username},trips,requests:ownRequests.slice(0,30).map((request:any)=>requestView(request,schedules))},{headers});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not load crew trip requests.'},{status:503,headers});}
