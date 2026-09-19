@@ -5,7 +5,7 @@ import {prepareStayLogin,saveStayAccess} from '../../../lib/stay-login';
 import {mealItemIncluded} from '../../../lib/meal-access';
 import {restaurantOnly} from '../../../lib/pos-access';
 import {foodCatalog} from '../../../lib/menu-server';
-import {authDb,currentUser,hasPermission,sameOrigin,hashPassword} from '../../../lib/auth';
+import {authDb,currentUser,hasPermission,sameOrigin,hashPassword,validPassword} from '../../../lib/auth';
 import {credentialStatement} from '../../../lib/credential-store';
 import {appendAccountHistory} from '../../../lib/account-history';
 import {loadStays,stayKey,folioFor} from '../../../lib/stays';
@@ -14,25 +14,6 @@ import {loadExcursionMenu} from '../../../lib/excursion-menu';
 const MIN_EXCURSION_PAX=1;
 import {walkInExcursionBill,walkInExcursionProfile,syncWalkInExcursionAccess} from '../../../lib/walkin-excursion-access';
 
-const crewPasswordChars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-function randomCrewPassword(length=10){
- const bytes=crypto.getRandomValues(new Uint8Array(length));
- return Array.from(bytes,b=>crewPasswordChars[b%crewPasswordChars.length]).join('');
-}
-function crewSlug(name:string){
- const slug=name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,22);
- return slug||'crew';
-}
-async function uniqueCrewUsername(name:string){
- const db=authDb(),base='crew-'+crewSlug(name);
- for(let i=0;i<8;i++){
-  const suffix=crypto.randomUUID().replace(/-/g,'').slice(0,4);
-  const username=(base+'-'+suffix).slice(0,40);
-  const found=await db.prepare('SELECT id FROM accounts WHERE username=?').bind(username).first<any>();
-  if(!found)return username;
- }
- throw Error('Could not generate a unique crew username. Please try again.');
-}
 async function view(u:any){const {state,revision}=await loadStays();const excursionMenu=await loadExcursionMenu();const currentCatalog=[...await foodCatalog(),...catalog.filter(i=>i.kind!=='food'&&i.kind!=='excursion'),...excursionMenu];const orders=state.orders.map((o:any)=>{const s=state.stays.find((s:any)=>s.id===o.stayId);return {...o,guestNotified:o.guestNotified??(o.status==='Scheduled and informed'),status:o.kind==='excursion'?excursionStage(o):o.status,paymentStatus:o.status==='Cancelled'?'Cancelled':o.kind==='excursion'?(excursionPaid(o,state)?'Paid':'Unpaid'):s?.paidBills?.[(o.kind==='food'?'Restaurant:':o.kind==='transfer'?'Transfer:':'Excursions:')+o.id]===o.cents?'Paid':'Unpaid'};});if(u.role==='guest'){
  const walkIn=walkInExcursionProfile(state,u.userId);
  if(walkIn?.active){
@@ -57,15 +38,21 @@ else if(['schedule-excursion','excursion-create','excursion-resource','excursion
  if(b.revision!==revision)return Response.json({error:'Bookings changed. Refresh and try again.'},{status:409});
  if(b.action==='excursion-resource'&&b.resourceType==='crew'){
   const crewName=String(b.name||'').trim();
+  const username=String(b.username||'').trim().toLowerCase();
+  const password=typeof b.password==='string'?b.password:'';
   const existing=excursionResources(state).crew.some((member:any)=>!member.removed&&String(member.name||'').trim().toLowerCase()===crewName.toLowerCase());
   if(existing)throw Error('That name is already in the crew list.');
-  const accountId=crypto.randomUUID(),username=await uniqueCrewUsername(crewName),password=randomCrewPassword(10),hashed=await hashPassword(password);
+  if(!/^[a-z0-9._-]{3,40}$/.test(username))throw Error('Username must be 3–40 characters using letters, numbers, dots, underscores or hyphens.');
+  if(!validPassword(password))throw Error('Password must be 8–128 characters.');
   const db=authDb();
+  const taken=await db.prepare('SELECT id FROM accounts WHERE username=? OR email=?').bind(username,username).first<any>();
+  if(taken)throw Error('That username is already in use. Choose another username.');
+  const accountId=crypto.randomUUID(),hashed=await hashPassword(password);
   const results=await db.batch([
-   db.prepare("INSERT INTO accounts(id,username,email,name,password_hash,salt,role,permissions,active) VALUES(?,?,?,?,?,?,'staff',?,1)").bind(accountId,username,null,crewName,hashed.hash,hashed.salt,JSON.stringify(['crew_location'])),
+   db.prepare("INSERT OR IGNORE INTO accounts(id,username,email,name,password_hash,salt,role,permissions,active) VALUES(?,?,?,?,?,?,'staff',?,1)").bind(accountId,username,null,crewName,hashed.hash,hashed.salt,JSON.stringify(['crew_location'])),
    await credentialStatement(accountId,hashed.hash,password,u.userId)
   ]);
-  if(!results[0].meta.changes)throw Error('Could not create the crew login. Please try again.');
+  if(!results[0].meta.changes)throw Error('That username is already in use. Choose another username.');
   generatedCrewAccountId=accountId;
   generatedCrewLogin={accountId,username,password,name:crewName,role:'Crew Member'};
   b.resourceId=accountId;b.accountId=accountId;b.username=username;
@@ -101,7 +88,7 @@ if(!saved){
  return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
 }
 generatedCrewCommitted=true;
-if(generatedCrewLogin){try{await appendAccountHistory(generatedCrewLogin.accountId,{at:new Date().toISOString(),action:'Crew account created',by:u.username,detail:'Automatic Crew Member login generated from Excursions → Crew members.'});}catch{}}
+if(generatedCrewLogin){try{await appendAccountHistory(generatedCrewLogin.accountId,{at:new Date().toISOString(),action:'Crew account created',by:u.username,detail:'Crew Member login created from Excursions → Crew members using credentials chosen by Admin.'});}catch{}}
 if(b.action==='excursion-crew-update'){
  const member=excursionResources(state).crew.find((crew:any)=>crew.id===b.crewId);
  if(member?.accountId){
