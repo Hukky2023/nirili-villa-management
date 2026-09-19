@@ -819,3 +819,26 @@
  color:#873800;
  font-weight:800;
 }
+
+
+/* Drone assignment shown inside the vessel column for Shark/Sandbank trips. */
+.excursion-drone-status{
+ display:block;
+ width:100%;
+ max-width:100%;
+ box-sizing:border-box;
+ margin-top:4px;
+ padding:6px 8px;
+ border-radius:8px;
+ background:#eef5ff;
+ color:#244e78;
+ font-size:12px;
+ line-height:1.35;
+ overflow-wrap:anywhere;
+}
+.excursion-drone-status strong{color:inherit!important;font-size:inherit!important}
+.excursion-drone-status.missing{
+ background:#fff0e5;
+ color:#873800;
+ font-weight:800;
+}
