@@ -278,3 +278,52 @@
  .crew-request-dialog footer{display:grid}
  .crew-request-dialog footer button{width:100%}
 }
+
+
+/* Crew trip operational details */
+.crew-trip-operation-details{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;
+ margin:10px 0 12px;
+}
+.crew-trip-operation-details>div{
+ display:grid;
+ grid-template-columns:auto 1fr;
+ grid-template-areas:
+  "icon label"
+  "icon value";
+ gap:2px 7px;
+ align-items:start;
+ padding:9px 10px;
+ border:1px solid #dce8ed;
+ border-radius:10px;
+ background:#fff;
+}
+.crew-trip-operation-details svg{
+ grid-area:icon;
+ margin-top:2px;
+ color:#087cad;
+}
+.crew-trip-operation-details span{
+ grid-area:label;
+ color:#6b8491;
+ font-size:10px;
+ font-weight:900;
+ letter-spacing:.06em;
+ text-transform:uppercase;
+}
+.crew-trip-operation-details strong{
+ grid-area:value;
+ color:#173a4d;
+ font-size:12px;
+ line-height:1.35;
+ overflow-wrap:anywhere;
+}
+.crew-trip-operation-details .other-crew{
+ grid-column:1/-1;
+}
+@media(max-width:520px){
+ .crew-trip-operation-details{grid-template-columns:1fr}
+ .crew-trip-operation-details .other-crew{grid-column:auto}
+}
