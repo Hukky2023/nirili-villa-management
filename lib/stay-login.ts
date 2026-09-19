@@ -2,6 +2,7 @@ import {authDb,hashPassword,verifyPassword} from './auth';
 import {credentialStatement} from './credential-store';
 import {stayKey} from './stays';
 import {prepareExtraVesselTrips} from './excursion-extra-vessels';
+import {preserveAccountHistoryStatement} from './account-history';
 export async function prepareStayLogin(state:any,s:any){
  const db=authDb(),username=String(s.room);
  const existing=await db.prepare('SELECT id,role,password_hash,salt FROM accounts WHERE username=?').bind(username).first<any>();
@@ -16,7 +17,9 @@ export async function prepareStayLogin(state:any,s:any){
 export async function saveStayAccess(state:any,revision:number,by:string,plan:any=null,revoke:string[]=[],documents:{id:string;payload:string}[]=[],removedDocuments:string[]=[],options:{extraVesselsOnly?:boolean}={}){
  const db=authDb(),extra=await prepareExtraVesselTrips(db,state);
  if(options.extraVesselsOnly&&!extra.movedBookings)return true;
- const payload=JSON.stringify(state),next=revision+1;
+ // A unique write marker prevents a failed CAS from matching an identical
+ // payload already saved by another request.
+ const payload=JSON.stringify({...state,accessWriteId:crypto.randomUUID()}),next=revision+1;
  const guard='EXISTS(SELECT 1 FROM operation_records WHERE key=? AND revision=? AND payload=?)';
  const args=[stayKey,next,payload];
  // If a referenced timetable row changes while preparing an extra trip, retry
@@ -28,9 +31,14 @@ export async function saveStayAccess(state:any,revision:number,by:string,plan:an
  // D1 batches are transactional. The same CAS guard covers both records; a
  // failed state save cannot leave a new, empty boat open for guest bookings.
  for(const trip of extra.trips)writes.push(db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) SELECT ?,?,1,? WHERE '+guard).bind('excursion-schedule:'+trip.date+':'+trip.id,JSON.stringify(trip),by,...args));
- for(const id of new Set<string>([...(plan?.retire||[]),...revoke])){
+ const disabledIds=new Set<string>([...(plan?.retire||[]),...revoke]);
+ const actor=disabledIds.size?(await db.prepare('SELECT username FROM accounts WHERE id=?').bind(by).first<any>())?.username||by:by;
+ for(const id of disabledIds){
   writes.push(db.prepare("UPDATE accounts SET active=0,username=CASE WHEN ?=1 THEN 'retired-'||id ELSE username END WHERE id=? AND role='guest' AND "+guard).bind(plan?.retire.includes(id)?1:0,id,...args));
   writes.push(db.prepare('DELETE FROM account_sessions WHERE account_id=? AND '+guard).bind(id,...args));
+  // Capture both the old persisted links and the new checkout/expiry state.
+  // Preparing before batch execution preserves links replaced by a room move.
+  writes.push(await preserveAccountHistoryStatement(id,{at:new Date().toISOString(),action:'Account disabled',by:actor,detail:plan?.retire.includes(id)?'Previous room login retired. History retained for Admin only.':'Guest login ended. History retained for Admin only.'},{state,guard:guard+" AND EXISTS(SELECT 1 FROM accounts WHERE id=? AND active=0 AND role='guest')",args:[...args,id]}));
  }
  if(plan){writes.push(db.prepare("INSERT INTO accounts(id,username,name,password_hash,salt,role,permissions,active) SELECT ?,?,?,?,?,'guest','[]',1 WHERE "+guard).bind(plan.id,plan.username,plan.name,plan.hash.hash,plan.hash.salt,...args));writes.push(await credentialStatement(plan.id,plan.hash.hash,plan.password,by));}
  for(const doc of documents)writes.push(db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) SELECT ?,?,1,? WHERE '+guard).bind('passport:'+doc.id,doc.payload,by,...args));
