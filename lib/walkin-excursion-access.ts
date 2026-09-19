@@ -5,6 +5,7 @@ export type WalkInExcursionProfile={
  phone:string;
  hotel:string;
  room:string;
+ guests?:{name:string;ageCategory:'adult'|'child'|'infant'}[];
  active:boolean;
  createdAt:string;
  departureDate:string;
