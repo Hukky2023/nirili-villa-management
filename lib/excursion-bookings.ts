@@ -14,6 +14,12 @@ export type ConfirmedExcursionBooking = {
 
 const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
 const normal = (value: unknown) => text(value).toLowerCase();
+function combinedTripStatus(value: unknown) {
+  const status = text(value);
+  if (status === 'Guests boarded' || status === 'Departed' || status === 'Guests boarded & Departed') return 'Guests boarded & Departed';
+  if (status === 'Arrived' || status === 'Completed' || status === 'Arrived & Completed') return 'Arrived & Completed';
+  return status || 'Excursion scheduled';
+}
 const blocked = new Set(['pending', 'declined', 'cancelled', 'canceled', 'rejected', 'requested', 'awaiting approval', 'awaiting scheduling', 'over capacity request']);
 
 export function isConfirmedExcursion(order: any): boolean {
@@ -83,7 +89,7 @@ export function toConfirmedExcursionBooking(
     infants: Number.isFinite(Number(order.infants)) ? Math.max(0, Math.trunc(Number(order.infants))) : 0,
     totalCents: Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : 0,
     paymentStatus: paid ? 'Paid' : 'Unpaid',
-    tripStatus: romanticDinner ? 'Dinner confirmed' : text(liveSchedule?.tripStatus) || (historical ? (normal(order.status) === 'completed' ? 'Completed' : 'Departed') : 'Excursion scheduled'),
+    tripStatus: romanticDinner ? 'Dinner confirmed' : combinedTripStatus(text(liveSchedule?.tripStatus) || (historical ? (normal(order.status) === 'completed' ? 'Completed' : 'Departed') : 'Excursion scheduled')),
     vessel: romanticDinner ? 'Not required' : text(vessel?.name) || text(assignment.vessel) || 'Not assigned',
     crew: romanticDinner ? [] : crew, separateVessel: !!order.separateVessel, privateBoatRequested: !!order.privateBoatRequested, privateBoatSurchargeCents: Math.max(0,Number(order.privateBoatSurchargeCents)||0), buggyRequested: inhouse ? true : !!order.buggyRequested, buggyRoundTrip: !!order.buggyRoundTrip, serviceType: text(order.serviceType),
     notes: text(order.notes), source: text(order.source),
