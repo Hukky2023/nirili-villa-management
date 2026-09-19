@@ -1,0 +1,13 @@
+.half-board-choice{margin:16px 0;padding:18px;border:1px solid #c9d8d4;border-radius:14px;background:#f5faf8;color:#172f28;min-width:0}
+.half-board-choice-heading{display:flex;gap:16px;justify-content:space-between;align-items:flex-start}
+.half-board-choice-heading strong{font-size:17px}.half-board-choice-heading small{flex-shrink:0;text-align:right;font-size:12px}
+.half-board-choice p{font-size:13px;line-height:1.5;margin:6px 0 12px}
+.half-board-choice-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.half-board-choice-options button{display:flex;flex-direction:column;gap:7px;text-align:left;white-space:normal;border:2px solid #d5dedb;border-radius:10px;padding:14px;background:white;color:#172f28;min-height:132px;cursor:pointer;width:100%}
+.half-board-choice-options button b{font-size:17px}.half-board-choice-options button span,.half-board-choice-options button strong{font-size:12px;line-height:1.4}
+.half-board-choice-options button[aria-pressed=true]{border-color:#27765d;background:#e5f4ed}
+.half-board-choice-options button:focus-visible{outline:3px solid #27765d;outline-offset:3px}
+.half-board-choice-options button:disabled{cursor:default;opacity:.85}.half-board-choice-options button[aria-pressed=true]:disabled{opacity:1}
+.half-board-choice .half-board-choice-status{margin:12px 0 4px}.half-board-choice .half-board-choice-hours{margin-bottom:0}
+.half-board-choice-error{color:#a12121}
+@media(max-width:460px){.half-board-choice{padding:12px}.half-board-choice-heading{display:block}.half-board-choice-heading small{display:block;text-align:left;margin-bottom:10px}.half-board-choice-options{gap:8px}.half-board-choice-options button{padding:10px;min-height:155px}}

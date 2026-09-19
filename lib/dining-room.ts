@@ -10,7 +10,7 @@ export function diningRoom(stays:any[],user:{userId:string;username:string}){
 
 export function diningOrderRoom(stays:any[],user:{userId:string;username:string},expectedStay?:string){
  const stay=diningRoom(stays,user);
- if(!stay||!['Confirmed','In House'].includes(stay.status))throw Error('A confirmed room assignment is required to order. Please contact reception.');
+ if(!stay||stay.status!=='In House')throw Error('Please check in at reception before ordering. Your room menu is available to browse.');
  if(expectedStay!==undefined&&expectedStay!==stay.id)throw Error('Your room assignment changed. Refresh the menu before ordering.');
  return stay;
 }
