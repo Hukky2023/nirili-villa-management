@@ -1080,3 +1080,136 @@
   padding-top:12px;
   border-top:1px solid #e2ebef;
 }
+
+
+/* Admin crew history - past three months */
+.excursion-crew-manage-dialog{
+ width:min(760px,100%);
+ max-height:92dvh;
+ overflow:auto;
+}
+.excursion-crew-history{
+ display:grid;
+ gap:10px;
+ margin-top:16px;
+ padding-top:14px;
+ border-top:1px solid #e1ebef;
+}
+.excursion-crew-history>header{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:12px;
+}
+.excursion-crew-history>header small{
+ display:block;
+ color:#087cad;
+ font-size:10px;
+ font-weight:900;
+ letter-spacing:.09em;
+}
+.excursion-crew-history>header h4{
+ margin:3px 0 2px;
+ color:#17384c;
+ font-size:18px;
+}
+.excursion-crew-history>header p{
+ margin:0;
+ color:#6b8491;
+ font-size:11px;
+}
+.excursion-crew-history-totals{
+ display:flex;
+ gap:7px;
+ flex-wrap:wrap;
+ justify-content:flex-end;
+}
+.excursion-crew-history-totals span{
+ display:inline-flex;
+ align-items:center;
+ gap:4px;
+ padding:6px 8px;
+ border-radius:8px;
+ background:#eef6fa;
+ color:#476b7c;
+ font-size:11px;
+ white-space:nowrap;
+}
+.excursion-crew-history-totals strong{
+ color:#17384c;
+}
+.excursion-crew-history-list{
+ display:grid;
+ gap:8px;
+ max-height:330px;
+ overflow:auto;
+ padding-right:2px;
+}
+.excursion-crew-history-list article{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:12px;
+ padding:10px 11px;
+ border:1px solid #dce8ee;
+ border-radius:10px;
+ background:#fbfdfe;
+}
+.excursion-crew-history-list article>div:first-child{
+ display:grid;
+ gap:3px;
+ min-width:0;
+}
+.excursion-crew-history-list article>div:first-child strong{
+ color:#17384c;
+ font-size:13px;
+ line-height:1.35;
+ overflow-wrap:anywhere;
+}
+.excursion-crew-history-list article>div:first-child span{
+ color:#6b8491;
+ font-size:11px;
+}
+.excursion-crew-history-meta{
+ display:flex;
+ justify-content:flex-end;
+ gap:5px;
+ flex-wrap:wrap;
+ max-width:45%;
+}
+.excursion-crew-history-meta span,
+.excursion-crew-history-meta b{
+ display:inline-flex;
+ align-items:center;
+ padding:4px 6px;
+ border-radius:999px;
+ background:#edf4f7;
+ color:#4e6f80;
+ font-size:10px;
+ font-weight:800;
+}
+.excursion-crew-history-meta b{
+ background:#eaf7ef;
+ color:#246143;
+}
+.excursion-crew-history-empty{
+ margin:0;
+ padding:13px;
+ border:1px dashed #cbdde5;
+ border-radius:10px;
+ background:#fafcfd;
+ color:#6b8491;
+ text-align:center;
+ font-size:12px;
+}
+@media(max-width:640px){
+ .excursion-crew-history>header,
+ .excursion-crew-history-list article{
+  flex-direction:column;
+ }
+ .excursion-crew-history-totals,
+ .excursion-crew-history-meta{
+  justify-content:flex-start;
+  max-width:none;
+ }
+}
