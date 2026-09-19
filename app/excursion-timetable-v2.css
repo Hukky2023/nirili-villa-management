@@ -141,12 +141,33 @@
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:8px;
 }
-.excursion-trip-ops>div{
+.excursion-trip-ops>div,
+.excursion-trip-ops>.excursion-trip-op-button{
   min-width:0;
   padding:9px 10px;
   border:1px solid #dce9ef;
   border-radius:10px;
   background:#f8fbfd;
+}
+.excursion-trip-op-button{
+  width:100%;
+  display:block;
+  text-align:left;
+  color:inherit;
+  font:inherit;
+  cursor:pointer;
+}
+.excursion-trip-op-button:hover:not(:disabled){background:#eef8fc;border-color:#9ec9dc}
+.excursion-trip-op-button:focus-visible{outline:3px solid rgba(8,124,173,.22);outline-offset:2px}
+.excursion-trip-op-button:disabled{cursor:not-allowed;opacity:.65}
+.excursion-trip-op-hint{
+  display:block;
+  margin-top:6px;
+  color:#087cad;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.04em;
+  text-transform:uppercase;
 }
 .excursion-trip-ops small{
   display:block;
