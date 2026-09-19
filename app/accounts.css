@@ -239,3 +239,39 @@
  .account-section-tabs{width:100%}
  .account-section-tabs button{flex:1;justify-content:center}
 }
+
+
+/* Staff permissions are edited directly in the account card.
+   The duplicated staff editor below the directory has been removed. */
+.account-inline-permissions{
+ display:grid;
+ gap:8px;
+ margin:8px 0 12px;
+}
+.account-inline-permissions label{
+ display:flex;
+ align-items:flex-start;
+ gap:9px;
+ color:#294b5d;
+ font-size:13px;
+ line-height:1.4;
+}
+.account-inline-permissions input{
+ flex:0 0 auto;
+ margin-top:2px;
+ width:17px;
+ height:17px;
+}
+.account-save-permissions{
+ min-height:42px;
+ padding:8px 13px;
+ margin:2px 0 8px;
+ border:1px solid #9ecbdc;
+ border-radius:9px;
+ background:#eef8fc;
+ color:#087cad;
+ font:inherit;
+ font-weight:800;
+ cursor:pointer;
+}
+.account-save-permissions:disabled{opacity:.55;cursor:wait}
