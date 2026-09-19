@@ -1,3 +1,4 @@
+import {restoreHalfBoardSelections} from './meal-access';
 import {roomNumbers,roomDetails,updateRoomInventory} from './rooms';
 import {paidBillStatus} from './bill-payment';
 import {excursionFolioBill} from './excursion-billing';
@@ -50,7 +51,7 @@ function clearAllExcursionBookingsThrough20260919(state:any){
 function billableOrder(o:any,s:any){return o.stayId===s.id&&o.status!=='Cancelled'&&o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined';}
 export async function loadStays(){
  const row=await authDb().prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(stayKey).first<any>();
- const state=row?JSON.parse(row.payload):seedStays();state.requests??=[];state.orders??=[];
+ const state=row?JSON.parse(row.payload):seedStays();state.requests??=[];state.orders??=[];restoreHalfBoardSelections(state);
  let revision=row?.revision||0;
  const clearedOldExcursions=clearExistingExcursions(state),clearedSeatRequests=clearPreviousGuestExcursionRequests(state),clearedExcursions20260919=clearAllExcursionBookingsThrough20260919(state);
  if(clearedOldExcursions||clearedSeatRequests||clearedExcursions20260919){

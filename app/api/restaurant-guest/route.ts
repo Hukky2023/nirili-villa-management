@@ -1,6 +1,6 @@
 import {diningRoom,diningOrderRoom} from '../../../lib/dining-room';
 import {sessionCookieName} from '../../../lib/tab-session';
-import {mealItemIncluded} from '../../../lib/meal-access';
+import {mealItemIncluded,mealContext,assertMealChoice,lockHalfBoardMeal} from '../../../lib/meal-access';
 import {cookies} from 'next/headers';
 import {currentUser,authDb,randomToken,digest,sameOrigin,limit} from '../../../lib/auth';
 import {loadStays,stayKey} from '../../../lib/stays';
@@ -29,7 +29,7 @@ async function identity(r:Request,create=false){
 }
 
 async function view(id:any){
- const {state}=await loadStays();
+ const {state,revision}=await loadStays();
  let profile:any=null;
  if(id.mode==='walkin'){
   const visit=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind('dining-visit:'+id.key).first<any>();
@@ -39,9 +39,10 @@ async function view(id:any){
   profile=walkIn?{name:walkIn.name,hotel:walkIn.hotel,room:walkIn.room,departureDate:walkIn.departureDate}:null;
  }
  const assigned=id.mode==='inhouse'&&id.user?diningRoom(state.stays,id.user):null;
- const assignedRoom=assigned?{id:assigned.id,room:assigned.room,meal:assigned.meal,status:assigned.status}:null;
+ const assignedRoom=assigned?{id:assigned.id,room:assigned.room,meal:assigned.meal,status:assigned.status,mealAccess:mealContext(assigned)}:null;
  const stays=assignedRoom?[assignedRoom]:[];
  return {
+  revision,
   visit:profile,
   items:(await loadMenu()).items,
   tables:restaurantTables,
@@ -92,21 +93,24 @@ export async function POST(r:Request){
   if(state.posOrders.some((o:any)=>o.guestKey===who.key&&o.token===b.token))return Response.json(await view(who));
   if(!restaurantTables.includes(b.table)||!Array.isArray(b.items)||!b.items.length||b.items.length>40||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Select a table and menu items.');
   const s=who.mode==='inhouse'&&who.user?diningOrderRoom(state.stays,who.user,b.stayId):null;
+  const mealAt=new Date(),mealAccess=mealContext(s,mealAt);
   const menu=(await loadMenu()).items,seen=new Set();
+  assertMealChoice(s,b.items.map((x:any)=>menu.find(i=>i.id===x.id)||{}),mealAt);
   const items=b.items.map((x:any)=>{
    const i=menu.find((i:any)=>i.id===x.id);
    if(!i||seen.has(x.id)||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>20)throw Error('Check the selected items and quantities.');
    if(x.cents!==i.cents)throw Error('A price changed. Refresh the menu before ordering.');
    seen.add(x.id);
-   const included=mealItemIncluded(s?.meal,i);
+   const included=mealItemIncluded(s?.meal,i,mealAccess);
    if(typeof x.included==='boolean'&&x.included!==included)throw Error('Meal plan availability changed. Refresh the menu and review the charges before ordering.');
    return {id:i.id,name:i.category+' · '+i.name+(included?' (meal plan included)':''),quantity:x.quantity,unitCents:included?0:i.cents,cents:included?0:i.cents*x.quantity,included,menuCents:i.cents};
   });
-  const date=new Date().toISOString(),id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0);
+  const date=mealAt.toISOString(),id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0);
+  lockHalfBoardMeal(s,items,id,who.user?.username||who.mode,mealAt);
   state.posOrders.push({
    id,token:b.token,guestKey:who.key,by:who.key,
    createdBy:who.mode==='inhouse'?'In-house guest':who.mode==='account'?'Walk-in guest account':'Walk-in customer',
-   createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||who.user?.displayName||walkName,table:b.table,notes:b.notes.trim(),items,cents,
+   createdAt:date,mealDate:mealAccess.date,mealPeriod:mealAccess.period,mealPlan:s?.meal,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||who.user?.displayName||walkName,table:b.table,notes:b.notes.trim(),items,cents,
    kitchen:'Awaiting cashier',method:s?'Room':'',history:[{date,by:who.mode,detail:'Guest order sent to cashier'}]
   });
   if(s){
