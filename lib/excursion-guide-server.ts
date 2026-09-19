@@ -1,6 +1,7 @@
 import {authDb} from './auth';
 import {excursionResources} from './excursion-workflow';
 import {assertGuideRule, cleanGuideSelection, guideRuleFor} from './excursion-guides';
+import {isSnorkelingTrip} from './excursion-operations';
 
 async function daySchedules(date: string): Promise<any[]> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw Error('A valid scheduled departure date is required.');
@@ -40,6 +41,12 @@ export async function validateExcursionGuideAction(state: any, action: any): Pro
     }
   }
   assertGuideRule(guideRuleFor(schedule, rows, state.orders || [], resources.crew));
+  if (departing && isSnorkelingTrip(schedule.name || order.name)) {
+    const gopro = resources.gopros.find((item: any) => item.id === schedule.goproId);
+    if (!gopro || gopro.condition !== 'Available') throw Error('Every snorkeling trip requires an available GoPro assigned to the vessel before departure.');
+    order.schedule.goproId = gopro.id;
+    order.schedule.gopro = gopro.name;
+  }
   if (departing) {
     // Freeze the guides actually checked for the departed booking's history.
     order.schedule.guideIds = [...(schedule.guideIds || [])];
