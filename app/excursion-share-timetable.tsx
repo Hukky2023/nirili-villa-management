@@ -82,7 +82,7 @@ export default function ExcursionShareTimetable({date, disabled = false}: {date:
     <dialog ref={dialog} className="excursion-share-dialog" aria-labelledby={titleId} onCancel={() => setOpen(false)} onClose={() => setOpen(false)}>
       <header className="excursion-share-heading"><div><small>NIRILI VILLA · EXCURSIONS</small><h3 id={titleId}>Share timetable</h3><p>{timetableDateLabel(date)} · Maldives time (UTC+5)</p></div><button type="button" className="excursion-share-close" onClick={close} aria-label="Close timetable">×</button></header>
       <div className="excursion-share-body" aria-busy={loading}>
-        <p className="excursion-share-info">Share this day's trips, confirmed passenger counts, assigned vessels and crews. Guest names, phone numbers and payment details are not included.</p>
+        <p className="excursion-share-info">Share this day's trips, confirmed passenger counts, assigned vessels, GoPros and crews. Guest names, phone numbers and payment details are not included.</p>
         {loading && <p role="status">Loading the latest timetable…</p>}
         {error && <p className="excursion-share-error" role="alert">{error}</p>}
         {data && !loading && <>
@@ -92,7 +92,7 @@ export default function ExcursionShareTimetable({date, disabled = false}: {date:
               <td data-label="Time"><strong>{trip.time}</strong>{trip.endTime&&<small>Ends {trip.endTime}</small>}</td>
               <td data-label="Excursion / trip"><strong>{trip.name}</strong>{trip.status !== 'Open' && <small>Booking status: {trip.status}</small>}{trip.sharedTrips > 1 && <small>Shared boat: {trip.sharedBoatPax} / {trip.capacity} pax across {trip.sharedTrips} trips (combined).</small>}</td>
               <td data-label="Confirmed pax"><strong>{trip.confirmedPax}</strong>{trip.extraVessels.length > 0 && <small>{trip.mainVesselPax} on main vessel; {trip.confirmedPax - trip.mainVesselPax} on extra vessels.</small>}</td>
-              <td data-label="Assigned vessel">{trip.vessel}{trip.extraVessels.map((extra, index) => <small key={index}>Extra: {extra.vessel} · {extra.pax} pax</small>)}</td>
+              <td data-label="Assigned vessel">{trip.vessel}{trip.gopro&&<small>GoPro: {trip.gopro}</small>}{trip.extraVessels.map((extra, index) => <small key={index}>Extra: {extra.vessel} · {extra.pax} pax</small>)}</td>
               <td data-label="Assigned crew">{trip.crew.join(', ') || 'Not assigned'}{trip.extraVessels.map((extra, index) => <small key={index}>{extra.vessel}: {extra.crew.join(', ') || 'Not assigned'}</small>)}</td>
             </tr>)}
           </tbody></table></div>}
