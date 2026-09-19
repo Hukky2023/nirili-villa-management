@@ -12,6 +12,12 @@ export type ExcursionManifest = {
 };
 
 const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
+function combinedTripStatus(value:unknown){
+ const status=text(value);
+ if(status==='Guests boarded'||status==='Departed'||status==='Guests boarded & Departed')return 'Guests boarded & Departed';
+ if(status==='Arrived'||status==='Completed'||status==='Arrived & Completed')return 'Arrived & Completed';
+ return status||'Excursion scheduled';
+}
 const count = (value: unknown) => Number.isFinite(Number(value)) ? Math.max(0, Math.trunc(Number(value))) : 0;
 const departureKey = (date: unknown, time: unknown, name: unknown) => JSON.stringify([
   text(date), text(time), text(name).replace(/\s+/g, ' ').toLowerCase(),
@@ -82,7 +88,7 @@ export function buildExcursionManifest(
     trip: {
       id: selected.id, name: selected.name, date: selected.date, time: selected.time, endTime: text(selected.endTime),
       status: text(selected.status) || 'Open',
-      tripStatus: text(selected.tripStatus) || 'Excursion scheduled',
+      tripStatus: combinedTripStatus(selected.tripStatus),
       vessel: text(resources.vessels.find(v => v.id === selected.vesselId)?.name) || 'Not assigned',
       crew: (selected.crewIds || []).map(id => text(resources.crew.find(c => c.id === id)?.name) || 'Unknown crew member'),
       notes: text(selected.notes),
