@@ -20,7 +20,7 @@ import {isPrivateResortVisit,isRomanticBeachDinner} from '../lib/excursion-servi
 import {inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,suggestedTripWindow} from '../lib/excursion-operations';
 
 type ExcursionTab='Bookings'|'Schedule'|'Excursion menu'|'Crew members'|'Vessels'|'Accessories';
-const standardSuggestions=['Fish Tank Snorkeling + Sandbank Trip','Turtle Snorkeling + Coral Garden Snorkeling','Sandbank Trip + Turtle Snorkeling','Shark Snorkeling + Turtle Snorkeling','Clown Fish Snorkeling + Manta Snorkeling','Dolphin Watching + Fishing','Dolphin Watching only'];
+const standardSuggestions=['Fish Tank Snorkeling + Sandbank Trip','Turtle Snorkeling + Coral Garden Snorkeling','Sandbank Trip + Turtle Snorkeling','Shark Snorkeling + Turtle Snorkeling','Clown Fish Snorkeling + Manta Snorkeling','Dolphin Watching + Fishing with Dinner','Dolphin Watching only'];
 function maldivesToday(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=(type:string)=>parts.find(p=>p.type===type)?.value||'';return `${get('year')}-${get('month')}-${get('day')}`;}
 const shiftDate=(date:string,days:number)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 const displayDate=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)?value.split('-').reverse().join('-'):value;
