@@ -3,10 +3,10 @@ import {loadStays} from './stays';
 import {saveStayAccess} from './stay-login';
 import {needsExtraVesselTrip} from './excursion-extra-vessels';
 import {catalog,islandToday} from './guest-catalog';
-import {normalizeExcursionName,standardExcursionTrips} from './excursion-operations';
+import {fridayExcursionBlackout,normalizeExcursionName,standardExcursionTrips} from './excursion-operations';
 
 const schedulePrefix='excursion-schedule:';
-const markerPrefix='excursion-standard-day:v5:';
+const markerPrefix='excursion-standard-day:v6:';
 
 const slug=(v:string)=>v.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
 const catalogIdPrice=(id:string)=>catalog.find((x:any)=>x.kind==='excursion'&&x.id===id)?.cents||0;
@@ -59,7 +59,7 @@ async function seedStandardDailyExcursions(date:string){
   const linked=orders.some((order:any)=>order.kind==='excursion'&&order.status!=='Cancelled'&&order.scheduleId===old.id&&(order.date||order.schedule?.date)===date);
   if(linked){
    const preserved={...old,status:'Closed',legacyStandard:true,notes:[old.notes,'Legacy schedule retained for existing bookings.'].filter(Boolean).join(' '),updatedAt:now};
-   await db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=?').bind(JSON.stringify(preserved),'system:standard-daily-v5',old._key).run();
+   await db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=?').bind(JSON.stringify(preserved),'system:standard-daily-v6',old._key).run();
   }else{
    await db.prepare('DELETE FROM operation_records WHERE key=?').bind(old._key).run();
   }
@@ -69,7 +69,24 @@ async function seedStandardDailyExcursions(date:string){
  const freshRows=await db.prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(schedulePrefix+date+':%').all<any>();
  const fresh=(freshRows.results||[]).map((row:any)=>{try{return {...JSON.parse(row.payload),_key:row.key,_revision:Number(row.revision)||1}}catch{return null}}).filter(Boolean);
 
+ // Friday 11:00–13:30 is a hard no-excursion window. Remove unused
+ // auto-created rows that overlap it. If a legacy row already has a booking,
+ // preserve the record but close it so no new guests can be added.
+ if(new Date(date+'T00:00:00Z').getUTCDay()===5){
+  for(const row of fresh.filter((item:any)=>item.standardDaily===true&&fridayExcursionBlackout(date,item.time,item.endTime))){
+   const linked=orders.some((order:any)=>order.kind==='excursion'&&order.status!=='Cancelled'&&order.scheduleId===row.id&&(order.date||order.schedule?.date)===date);
+   if(linked){
+    const preserved={...row,status:'Closed',notes:[row.notes,'Friday 11:00–13:30 blackout: no new excursion bookings.'].filter(Boolean).join(' '),updatedAt:now};
+    delete preserved._key;delete preserved._revision;
+    await db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=?').bind(JSON.stringify(preserved),'system:standard-daily-v6',row._key).run();
+   }else{
+    await db.prepare('DELETE FROM operation_records WHERE key=?').bind(row._key).run();
+   }
+  }
+ }
+
  for(const trip of standardDailyExcursions){
+  if(fridayExcursionBlackout(date,trip.time,trip.endTime))continue;
   const matching=fresh.find((row:any)=>!row.extraVesselTrip&&!row.privateTrip&&row.time===trip.time&&(
    normalizeExcursionName(row.name)===normalizeExcursionName(trip.name)||
    (trip.code==='trip1'&&/fish\s*tank/i.test(row.name)&&/sand\s*bank|sandbank/i.test(row.name))||
@@ -80,16 +97,16 @@ async function seedStandardDailyExcursions(date:string){
    (trip.code==='trip6'&&/dolphin/i.test(row.name)&&/fishing/i.test(row.name))
   ));
   if(matching){
-   const updated={...matching,name:trip.name,endTime:trip.endTime,sharedGroup:'',priceCents:matching.priceCents||trip.priceCents,standardDaily:true,standardDailyVersion:5,tripCode:trip.code,updatedAt:now};
+   const updated={...matching,name:trip.name,endTime:trip.endTime,sharedGroup:'',priceCents:matching.priceCents||trip.priceCents,standardDaily:true,standardDailyVersion:6,tripCode:trip.code,updatedAt:now};
    delete updated._key;delete updated._revision;
-   await db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=?').bind(JSON.stringify(updated),'system:standard-daily-v5',matching._key).run();
+   await db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=?').bind(JSON.stringify(updated),'system:standard-daily-v6',matching._key).run();
    continue;
   }
-  const id='std-v5-'+trip.code+'-'+slug(trip.name);
-  const record={id,date,time:trip.time,endTime:trip.endTime,name:trip.name,capacity:6,priceCents:trip.priceCents,vesselId:'',crewIds:[],guideIds:[],status:'Open',notes:'',sharedGroup:'',standardDaily:true,standardDailyVersion:5,tripCode:trip.code,createdAt:now,updatedAt:now};
-  await db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(schedulePrefix+date+':'+id,JSON.stringify(record),'system:standard-daily-v5').run();
+  const id='std-v6-'+trip.code+'-'+slug(trip.name);
+  const record={id,date,time:trip.time,endTime:trip.endTime,name:trip.name,capacity:6,priceCents:trip.priceCents,vesselId:'',crewIds:[],guideIds:[],status:'Open',notes:'',sharedGroup:'',standardDaily:true,standardDailyVersion:6,tripCode:trip.code,createdAt:now,updatedAt:now};
+  await db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(schedulePrefix+date+':'+id,JSON.stringify(record),'system:standard-daily-v6').run();
  }
- await db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(markerKey,JSON.stringify({date,version:5,createdAt:now}),'system:standard-daily-v5').run();
+ await db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(markerKey,JSON.stringify({date,version:6,createdAt:now}),'system:standard-daily-v6').run();
 }
 
 /** Also upgrade already-approved extra vessels, even when the daily seed marker
