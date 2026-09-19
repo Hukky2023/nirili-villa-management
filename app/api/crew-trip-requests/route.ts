@@ -1,12 +1,14 @@
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {excursionDeparturePassed,islandToday} from '../../../lib/guest-catalog';
 import {excursionResources} from '../../../lib/excursion-workflow';
+import {inferTripEndTime,timeRangesOverlap} from '../../../lib/excursion-operations';
 
 const requestPrefix='crew-trip-request:';
 const schedulePrefix='excursion-schedule:';
 const headers={'Cache-Control':'private, no-store','Vary':'Cookie'};
 
 const text=(value:any,max=500)=>String(value||'').trim().slice(0,max);
+const normal=(value:any)=>text(value).replace(/\s+/g,' ').toLowerCase();
 const validDate=(value:any)=>/^\d{4}-\d{2}-\d{2}$/.test(String(value||''));
 
 function sharedKey(schedule:any){
@@ -43,12 +45,15 @@ async function state(){
 }
 function requestView(request:any,schedules:any[]){
  const schedule=schedules.find((item:any)=>item.id===request.scheduleId&&item.date===request.date);
+ const group=schedule?schedules.filter((item:any)=>item.status!=='Cancelled'&&sharedKey(item)===sharedKey(schedule)):[];
+ const assignedCrewIds=[...new Set(group.flatMap((item:any)=>Array.isArray(item.crewIds)?item.crewIds:[]).map(String))];
  return {
   id:request.id,status:request.status,crewId:request.crewId,crewName:request.crewName,crewUsername:request.crewUsername,
-  accountId:request.accountId,date:request.date,time:request.time,tripName:request.tripName,
+  accountId:request.accountId,date:request.date,time:request.time,endTime:schedule?.endTime||'',tripName:request.tripName,
   tripNames:request.tripNames||[request.tripName],scheduleId:request.scheduleId,reason:request.reason,
-  createdAt:request.createdAt,reviewedAt:request.reviewedAt||'',reviewedBy:request.reviewedBy||'',
-  decisionNote:request.decisionNote||'',stillAssigned:!!schedule?.crewIds?.includes(request.crewId)
+  assignedCrewIds,createdAt:request.createdAt,reviewedAt:request.reviewedAt||'',reviewedBy:request.reviewedBy||'',
+  decisionNote:request.decisionNote||'',replacementCrewId:request.replacementCrewId||'',replacementCrewName:request.replacementCrewName||'',
+  stillAssigned:!!schedule?.crewIds?.includes(request.crewId)
  };
 }
 
@@ -124,7 +129,7 @@ export async function PATCH(r:Request){
  const user=await currentUser();
  if(!user||user.role!=='admin'||!sameOrigin(r))return Response.json({error:'Admin access required.'},{status:403,headers});
  try{
-  const b=await r.json(),id=text(b.id,100),decision=text(b.decision,20),decisionNote=text(b.decisionNote,500);
+  const b=await r.json(),id=text(b.id,100),decision=text(b.decision,20),decisionNote=text(b.decisionNote,500),replacementCrewId=text(b.replacementCrewId,120);
   if(!id||!['Approved','Declined'].includes(decision))throw Error('Choose Approve or Decline.');
   const db=authDb(),key=requestPrefix+id,row=await db.prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(key).first<any>();
   if(!row)throw Error('Crew request not found.');
@@ -132,20 +137,43 @@ export async function PATCH(r:Request){
   if(request.status!=='Pending')throw Error('This crew request has already been reviewed.');
   const schedules=await allSchedules(),schedule=schedules.find((item:any)=>item.id===request.scheduleId&&item.date===request.date);
   const now=new Date().toISOString();
-  request.status=decision;request.reviewedAt=now;request.reviewedBy=user.username;request.decisionNote=decisionNote;
   const statements:any[]=[];
   if(decision==='Approved'){
    if(!schedule)throw Error('The scheduled excursion no longer exists.');
+   if(!replacementCrewId)throw Error('Assign a replacement crew member before approving this request.');
+   if(replacementCrewId===request.crewId)throw Error('Choose a different crew member as the replacement.');
+   const savedState=await state(),resources=excursionResources(savedState);
+   const replacement=resources.crew.find((member:any)=>member.id===replacementCrewId&&!member.removed&&member.active!==false&&member.active!==0);
+   if(!replacement)throw Error('Choose an active replacement crew member.');
+
    const targetKey=sharedKey(schedule),targets=schedules.filter((item:any)=>item.status!=='Cancelled'&&sharedKey(item)===targetKey&&item.crewIds?.includes(request.crewId));
    if(!targets.length)throw Error('The crew member is already unassigned from this trip.');
+   if(targets.some((target:any)=>(target.crewIds||[]).includes(replacementCrewId)))throw Error(replacement.name+' is already assigned to this trip. Choose another replacement.');
+
+   const targetIds=new Set(targets.map((target:any)=>target.id+'|'+target.date));
    for(const target of targets){
-    const updated={...target,crewIds:(target.crewIds||[]).filter((crewId:string)=>crewId!==request.crewId),guideIds:(target.guideIds||[]).filter((guideId:string)=>guideId!==request.crewId),updatedAt:now,crewReplacementNeeded:true,lastCrewUnavailability:{requestId:request.id,crewId:request.crewId,crewName:request.crewName,reason:request.reason,approvedAt:now,approvedBy:user.username}};
+    const start=text(target.time,10),end=text(target.endTime,10)||inferTripEndTime(target.name,start);
+    const clash=schedules.find((other:any)=>{
+     if(!other||other.status==='Cancelled'||other.date!==target.date||targetIds.has(other.id+'|'+other.date))return false;
+     if(!Array.isArray(other.crewIds)||!other.crewIds.includes(replacementCrewId))return false;
+     const otherEnd=text(other.endTime,10)||inferTripEndTime(other.name,other.time);
+     return timeRangesOverlap(start,end,other.time,otherEnd);
+    });
+    if(clash)throw Error(replacement.name+' is already assigned to '+clash.name+' from '+clash.time+' to '+(clash.endTime||inferTripEndTime(clash.name,clash.time))+'. Choose another replacement.');
+   }
+
+   for(const target of targets){
+    const nextCrewIds=[...new Set((target.crewIds||[]).map((crewId:string)=>crewId===request.crewId?replacementCrewId:crewId))];
+    const nextGuideIds=[...new Set((target.guideIds||[]).map((guideId:string)=>guideId===request.crewId?replacementCrewId:guideId))];
+    const updated={...target,crewIds:nextCrewIds,guideIds:nextGuideIds,updatedAt:now,crewReplacementNeeded:false,lastCrewUnavailability:{requestId:request.id,crewId:request.crewId,crewName:request.crewName,reason:request.reason,approvedAt:now,approvedBy:user.username,replacementCrewId,replacementCrewName:replacement.name}};
     statements.push(db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(updated),user.userId,target._key,target.revision));
    }
+   request.replacementCrewId=replacementCrewId;request.replacementCrewName=replacement.name;
   }
+  request.status=decision;request.reviewedAt=now;request.reviewedBy=user.username;request.decisionNote=decisionNote;
   statements.push(db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(request),user.userId,key,Number(row.revision)||1));
   const results=await db.batch(statements);
   if(results.some((result:any)=>!result.meta.changes))return Response.json({error:'The trip changed elsewhere. Reload and review the request again.'},{status:409,headers});
-  return Response.json({ok:true,status:decision,request:requestView(request,schedules),unassigned:decision==='Approved'},{headers});
+  return Response.json({ok:true,status:decision,request:requestView(request,schedules),replaced:decision==='Approved',replacementCrewId:request.replacementCrewId||'',replacementCrewName:request.replacementCrewName||''},{headers});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not review crew request.'},{status:400,headers});}
 }
