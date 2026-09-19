@@ -37,7 +37,12 @@ export async function loadExcursionMenu(){
   if(!override)return item;
   overrides.delete(item.id);
   const category=(override.category||item.category) as ExcursionCategory;
-  return {...item,...override,kind:'excursion',minGuests:1,category,group:categoryGroup(category),active:override.active!==false};
+  const mergedItem={...item,...override,kind:'excursion',minGuests:1,category,group:categoryGroup(category),active:override.active!==false};
+  if(item.id==='dolphin-fishing-dinner'){
+   mergedItem.name='Dolphin Watching + Fishing with Dinner';
+   mergedItem.detail='Dolphin watching and fishing with dinner included as part of the same excursion.';
+  }
+  return mergedItem;
  });
  for(const item of overrides.values()){
   const category=excursionCategoryFromGroup(item.category||item.group,item.name);
