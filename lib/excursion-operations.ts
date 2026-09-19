@@ -11,7 +11,7 @@ export const standardExcursionTrips:StandardExcursionTrip[]=[
  {code:'trip1',time:'07:00',endTime:'10:30',name:'Fish Tank Snorkeling + Sandbank Trip'},
  {code:'trip2',time:'08:00',endTime:'09:30',name:'Turtle Snorkeling + Coral Garden Snorkeling'},
  {code:'trip3',time:'10:30',endTime:'12:30',name:'Sandbank Trip + Turtle Snorkeling'},
- {code:'trip4',time:'11:00',endTime:'14:30',name:'Shark Snorkeling + Turtle Snorkeling'},
+ {code:'trip4',time:'11:00',endTime:'14:30',name:'Shark Snorkeling (Nurse Shark) + Turtle Snorkeling'},
  {code:'trip5',time:'13:00',endTime:'15:30',name:'Clown Fish Snorkeling + Manta Snorkeling'},
  {code:'trip6',time:'16:30',endTime:'19:30',name:'Dolphin Watching + Fishing with Dinner'}
 ];
