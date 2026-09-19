@@ -226,7 +226,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
             const rosterPeople = roster?.people || [];
             const allBoarded = rosterPeople.length > 0 && rosterPeople.every(person => person.boarded);
             return <article key={booking.id} className="excursion-boarding-booking">
-              <header><div><strong>{booking.guest}</strong><small>{booking.id} · {booking.guestType}{booking.room?' · Room '+booking.room:''}</small></div>
+              <header><div><strong>{booking.groupName||booking.guest}</strong>{booking.groupName&&<small>Lead guest: {booking.guest}</small>}<small>{booking.id} · {booking.guestType}{booking.room?' · Room '+booking.room:''}</small></div>
                 <div className="excursion-boarding-booking-actions"><span>{booking.guests} pax</span><button type="button" disabled={status==='Completed'||savingAttendance||statusBusy} onClick={()=>setBookingBoarded(booking.id,!allBoarded)}>{allBoarded?'Untick all':'Tick all'}</button></div></header>
               <div className="excursion-person-list">{rosterPeople.map((person, index) => <label key={person.id} className={'excursion-person '+(person.boarded?'boarded':'not-boarded')}>
                 <input className="excursion-person-check" type="checkbox" checked={person.boarded} disabled={status==='Completed'||savingAttendance||statusBusy}
@@ -247,13 +247,13 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
           <thead><tr><th scope="col">#</th><th scope="col">Lead guest</th><th scope="col">Booking type</th><th scope="col">Hotel</th><th scope="col">Room no.</th><th scope="col">Phone / WhatsApp</th><th scope="col">Pax</th><th scope="col">Payment</th><th scope="col">Details</th></tr></thead>
           <tbody>{manifest.bookings.map((b, index) => <tr key={b.id}>
             <td data-label="#">{index + 1}</td>
-            <td data-label="Lead guest"><div><strong>{b.guest}</strong><small className="excursion-guest-reference">{b.id}</small></div></td>
+            <td data-label="Lead guest"><div><strong>{b.guest}</strong>{b.groupName&&<small>{b.groupName}</small>}<small className="excursion-guest-reference">{b.id}</small></div></td>
             <td data-label="Booking type"><span className={'excursion-guest-badge ' + (b.guestType === 'In-house' ? 'inhouse' : 'walkin')}>{b.guestType}</span></td>
             <td data-label="Hotel">{b.hotel || 'Not recorded'}</td>
             <td data-label="Room no.">{b.room || 'Not recorded'}</td>
             <td data-label="Phone / WhatsApp">{b.phone || 'Not recorded'}</td>
             <td data-label="Pax"><strong>{b.guests}</strong></td>
-            <td data-label="Payment"><div><span className={'excursion-guest-badge ' + b.paymentStatus.toLowerCase()}>{b.paymentStatus}</span><small>{money(b.totalCents)} USD</small></div></td>
+            <td data-label="Payment"><div><span className={'excursion-guest-badge ' + b.paymentStatus.toLowerCase()}>{b.paymentStatus}</span><small>{money(b.totalCents)} USD · group total</small></div></td>
             <td data-label="Details"><div className="excursion-guest-notes"><p>{b.notes || 'No notes recorded'}</p>
               {b.separateVessel && <p><strong>Extra vessel: {b.vessel}</strong></p>}
               <details><summary>More details</summary><dl>
