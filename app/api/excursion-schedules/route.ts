@@ -2,12 +2,13 @@ import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {excursionGuestMix,excursionPriceCents} from '../../../lib/excursion-children';
+import {loadExcursionMenu} from '../../../lib/excursion-menu';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
 import {excursionResources} from '../../../lib/excursion-workflow';
 import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requiredExcursionGuides} from '../../../lib/excursion-guides';
 import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
-import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
+import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,scheduleCanServeRequest,scheduleMatchRank,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -299,6 +300,47 @@ export async function PATCH(r:Request){
     return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
    }
    return Response.json({ok:true,booking:{id:order.id,status:'Confirmed'},schedule:{...record,revision:1}},{status:201});
+  }
+
+  if(b.action==='admin-booking-auto'){
+   const date=String(b.date||''),menuItemId=String(b.menuItemId||'').slice(0,100),guestType=String(b.guestType||''),mix=excursionGuestMix(b,Number(b.quantity)||1,100),quantity=mix.total,notes=String(b.notes||'').trim().slice(0,1000);
+   if(!validDate(date)||!menuItemId||!['inhouse','walkin'].includes(guestType))throw Error('Check the excursion, date, guest type and number of guests.');
+   const {state,revision}=await loadStays();
+   await ensureStandardDailyExcursions(date);
+   const menu=await loadExcursionMenu(),item=menu.find((x:any)=>x.id===menuItemId&&x.kind==='excursion'&&x.active!==false);
+   if(!item)throw Error('This excursion is no longer available.');
+   const allSchedules=(await schedulesForDate(date)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
+   const candidates=allSchedules
+    .filter((schedule:any)=>scheduleCanServeRequest(item.name,schedule.name))
+    .map((schedule:any)=>{
+      const key=sharedKey(schedule),groupSchedules=key?allSchedules.filter((x:any)=>sharedKey(x)===key):[schedule],groupIds=new Set(groupSchedules.map((x:any)=>x.id));
+      const capacity=Math.min(...groupSchedules.map((x:any)=>Math.max(1,Number(x.capacity)||1)));
+      const confirmedPax=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&!o.separateVessel&&isConfirmed(o)&&(groupIds.has(o.scheduleId)||groupSchedules.some((x:any)=>matches(o,x)))).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
+      return {schedule,capacity,confirmedPax,remaining:Math.max(0,capacity-confirmedPax),rank:scheduleMatchRank(item.name,schedule.name)};
+    })
+    .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
+   const chosen=candidates.find((candidate:any)=>candidate.remaining>=quantity);
+   let stay:any=null,guest='',phone='',hotel='',room='',accountId:any=undefined,stayId:any=undefined;
+   if(guestType==='inhouse'){
+    stay=(state.stays||[]).find((x:any)=>x.id===String(b.stayId||'')&&x.status==='In House');
+    if(!stay)throw Error('Choose a valid in-house guest.');
+    guest=stay.guest;phone=stay.whatsapp||'';hotel='Nirili Villa';room=stay.room;accountId=stay.accountId;stayId=stay.id;
+   }else{
+    guest=String(b.guest||'').trim().slice(0,100);phone=String(b.phone||'').replace(/[ ()-]/g,'');hotel=String(b.hotel||'').trim().slice(0,150);room=String(b.externalRoom||'').trim().slice(0,50);
+    if(!guest||!hotel||!/^\+[1-9]\d{7,14}$/.test(phone))throw Error('Enter the walk-in guest name, hotel and WhatsApp number with country code.');
+   }
+   const unitPriceCents=Math.max(0,Number(item.cents)||0),pricingUnit=item.pricingUnit==='couple'?'couple':'guest',quotedCents=excursionPriceCents(unitPriceCents,pricingUnit,mix),id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
+   state.orders??=[];
+   if(chosen){
+    const schedule=chosen.schedule,resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId),crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id));
+    state.orders.push({id,kind:'excursion',menuItemId:item.id,name:item.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,cents:quotedCents,quotedCents,unitPriceCents,pricingUnit,guest,phone,hotel,room,externalRoom:guestType==='walkin'?room:undefined,stayId,accountId,buggyRequested:guestType==='inhouse'||b.buggyRequested===true,date,time:schedule.time,endTime:schedule.endTime||inferTripEndTime(schedule.name,schedule.time),notes,status:'Scheduled',approvalStatus:'Approved',seatRequest:false,unscheduledRequest:false,autoConfirmed:true,adminCreated:true,matchedFromMenu:true,matchedScheduleName:schedule.name,scheduleId:schedule.id,source:guestType==='inhouse'?'Admin · In-house':'Admin · Walk-in',schedule:{date:schedule.date,time:schedule.time,endTime:schedule.endTime||inferTripEndTime(schedule.name,schedule.time),...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId||'',vessel:vessel?.name||'',...(schedule.goproId?{goproId:schedule.goproId,gopro:resources.gopros.find((g:any)=>g.id===schedule.goproId)?.name||schedule.goproId}:{}),...(schedule.droneId?{droneId:schedule.droneId,drone:resources.drones.find((d:any)=>d.id===schedule.droneId)?.name||schedule.droneId}:{}),crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name)},guestNotified:false,createdBy:user.username,createdAt});
+   }else{
+    const fallback=suggestedTripWindow(item.name);
+    state.orders.push({id,kind:'excursion',menuItemId:item.id,name:item.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,cents:0,quotedCents,unitPriceCents,pricingUnit,guest,phone,hotel,room,externalRoom:guestType==='walkin'?room:undefined,stayId,accountId,buggyRequested:guestType==='inhouse'||b.buggyRequested===true,date,time:'',preferredTime:fallback.time,preferredEndTime:fallback.endTime,notes,status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:false,unscheduledRequest:true,autoConfirmed:false,adminCreated:true,requestedSchedule:true,guestNotified:false,source:guestType==='inhouse'?'Admin · In-house request':'Admin · Walk-in request',createdBy:user.username,createdAt});
+   }
+   const saved=await saveStayAccess(state,revision,user.userId);
+   if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
+   return Response.json({booking:{id,status:chosen?'Confirmed':'Pending',requiresScheduling:!chosen,matchedScheduleId:chosen?.schedule.id||'',matchedScheduleName:chosen?.schedule.name||'',time:chosen?.schedule.time||'',suggestedTime:chosen?'':suggestedTripWindow(item.name).time}},{status:201});
   }
 
   if(b.action==='admin-booking'){
