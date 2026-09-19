@@ -104,7 +104,7 @@ dialog.excursion-guest-dialog::backdrop {background: #04283c80;}
 }
 .excursion-status-steps{
  display:grid;
- grid-template-columns:repeat(5,minmax(0,1fr));
+ grid-template-columns:repeat(3,minmax(0,1fr));
  gap:8px;
 }
 .excursion-status-step{
@@ -372,18 +372,14 @@ dialog.excursion-guest-dialog::backdrop {background: #04283c80;}
 }
 
 .excursion-guest-badge.lifecycle-0{background:#edf3f7;color:#3f6175}
-.excursion-guest-badge.lifecycle-1{background:#fff0cf;color:#805a0a}
-.excursion-guest-badge.lifecycle-2{background:#e6f2ff;color:#145f90}
-.excursion-guest-badge.lifecycle-3{background:#e6f6ef;color:#246143}
-.excursion-guest-badge.lifecycle-4{background:#dff3e7;color:#15583a}
+.excursion-guest-badge.lifecycle-1{background:#e6f2ff;color:#145f90}
+.excursion-guest-badge.lifecycle-2{background:#dff3e7;color:#15583a}
 
 @media(max-width:900px){
- .excursion-status-steps{grid-template-columns:1fr 1fr}
- .excursion-status-step:last-child{grid-column:1/-1}
+ .excursion-status-steps{grid-template-columns:1fr}
 }
 @media(max-width:640px){
  .excursion-status-steps{grid-template-columns:1fr}
- .excursion-status-step:last-child{grid-column:auto}
  .excursion-status-action,
  .excursion-boarding-head,
  .excursion-boarding-save{
