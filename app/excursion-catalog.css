@@ -472,3 +472,46 @@
 @media(max-width:640px){
  .guest-foot-size-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* Every excursion passenger name is collected before booking. */
+.guest-name-section{
+ display:grid;
+ gap:10px;
+ padding:12px;
+ border:1px solid #cfe3ec;
+ border-radius:12px;
+ background:#fbfdff;
+}
+.guest-name-section>div:first-child{
+ display:grid;
+ gap:2px;
+}
+.guest-name-section>div:first-child strong{color:#174158}
+.guest-name-section>div:first-child small{color:#607c8b;line-height:1.4}
+.guest-name-grid{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:9px;
+}
+.guest-name-grid label{
+ display:grid;
+ gap:5px;
+ color:#365c6f;
+ font-size:12px;
+ font-weight:700;
+}
+.guest-name-grid input{
+ width:100%;
+ min-width:0;
+ min-height:42px;
+ padding:8px 10px;
+ border:1px solid #b9ced8;
+ border-radius:9px;
+ background:#fff;
+ color:#14354a;
+ font:inherit;
+}
+@media(max-width:640px){
+ .guest-name-grid{grid-template-columns:1fr}
+}
