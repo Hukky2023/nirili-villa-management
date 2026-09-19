@@ -180,7 +180,7 @@ export async function POST(r:Request){
   const buggyRequested=isWalkIn?buggyRequestedInput:true;
   if(date<islandToday())throw Error('Excursion bookings cannot be created for a past date.');
   if(stay&&date<islandToday())throw Error('Choose today or a future excursion date.');
-  if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(date<islandToday()||(expiryDate&&date>=expiryDate))throw Error('Choose a valid excursion date while your temporary login is active.');}
+  if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(date<islandToday()||(expiryDate&&date>expiryDate))throw Error('Choose a valid excursion date while your temporary login is active.');}
 
   if(menuItemId&&!scheduleId){
    const menu=await loadExcursionMenu();
@@ -207,7 +207,7 @@ export async function POST(r:Request){
     if(dates.length!==3||dates.some((value:string)=>!validDate(value)))throw Error('Choose a valid date for all three special package trips.');
     for(const value of dates){
      if(stay&&value<islandToday())throw Error('Choose today or a future date for every package trip.');
-     if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(value<islandToday()||(expiryDate&&value>=expiryDate))throw Error('Choose package trip dates while your temporary login is active.');}
+     if(isWalkIn){const expiryDate=String(walkIn?.expiresAt||'').slice(0,10);if(value<islandToday()||(expiryDate&&value>expiryDate))throw Error('Choose package trip dates while your temporary login is active.');}
     }
     const pricingUnit=item.pricingUnit==='couple'?'couple':'guest',unitPriceCents=Math.max(0,Number(item.cents)||0);
     const packageTotalCents=excursionPriceCents(unitPriceCents,pricingUnit,mix);
