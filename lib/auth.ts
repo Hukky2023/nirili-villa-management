@@ -6,6 +6,43 @@ export type Permission="waiter_pos"|"restaurant_pos"|"kitchen_pos"|"edit_bills"|
 export type Actor={userId:string;username:string;email:string;displayName:string;role:"admin"|"staff"|"guest";permissions:Permission[]};
 export function authDb(){if(!env.DB)throw new Error("Account service unavailable");return env.DB;}
 export const cookieName="nirili_session";
+const bookingResetMarker20260919='system-reset:2026-09-19-terminate-non-admin-sessions-clear-bookings-v1';
+
+async function applyBookingAndSessionResetOnce(){
+ const db=authDb();
+ const marker=await db.prepare('SELECT key FROM operation_records WHERE key=?').bind(bookingResetMarker20260919).first<any>();
+ if(marker)return;
+
+ const [hotelRow,transportRow]=await Promise.all([
+  db.prepare("SELECT payload FROM operation_records WHERE key='hotel-stays-v1'").first<any>(),
+  db.prepare("SELECT payload FROM operation_records WHERE key='transport-bookings-v1'").first<any>()
+ ]);
+ const statements:any[]=[
+  db.prepare("DELETE FROM account_sessions WHERE account_id IN (SELECT id FROM accounts WHERE role<>'admin')")
+ ];
+
+ if(hotelRow){
+  const state=JSON.parse(hotelRow.payload||'{}');
+  state.stays=[];
+  state.requests=[];
+  state.orders=[];
+  if(Array.isArray(state.rooms))for(const room of state.rooms)if(room.status==='Occupied')room.status='Available';
+  state.dataResets=[...new Set([...(Array.isArray(state.dataResets)?state.dataResets:[]),bookingResetMarker20260919])];
+  statements.push(db.prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key='hotel-stays-v1'")
+   .bind(JSON.stringify(state),'system:'+bookingResetMarker20260919));
+ }
+
+ if(transportRow){
+  const transport=JSON.parse(transportRow.payload||'{}');
+  transport.bookings=[];
+  statements.push(db.prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key='transport-bookings-v1'")
+   .bind(JSON.stringify(transport),'system:'+bookingResetMarker20260919));
+ }
+
+ statements.push(db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)')
+  .bind(bookingResetMarker20260919,JSON.stringify({at:new Date().toISOString(),terminated:'all non-admin sessions',cleared:['room bookings','guest/service bookings','excursion bookings','transfer bookings']}),'system-reset'));
+ await db.batch(statements);
+}
 export const hex=(b:ArrayBuffer|Uint8Array)=>Array.from(new Uint8Array(b as ArrayBuffer),x=>x.toString(16).padStart(2,"0")).join("");
 export const randomToken=()=>hex(crypto.getRandomValues(new Uint8Array(32)));
 export async function digest(s:string){return hex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)));}
@@ -15,6 +52,7 @@ const hash=hex(await crypto.subtle.deriveBits({name:"PBKDF2",salt:new TextEncode
 export async function verifyPassword(password:string,salt:string,expected:string){const {hash}=await hashPassword(password,salt);let d=hash.length^expected.length;for(let i=0;i<hash.length;i++)d|=hash.charCodeAt(i)^(expected.charCodeAt(i)||0);return d===0;}
 export function publicUser(row:any):Actor{return {userId:row.id,username:row.username,email:row.email||"",displayName:row.name,role:row.role,permissions:JSON.parse(row.permissions||"[]")};}
 export async function currentUser():Promise<Actor|null>{
+await applyBookingAndSessionResetOnce();
 const token=(await cookies()).get(await sessionCookieName())?.value;if(!token)return null;
 const row=await authDb().prepare("SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id=a.id WHERE s.token_hash=? AND s.expires_at>? AND a.active=1").bind(await digest(token),Date.now()).first();
 return row&&await roomLoginActive(row.id)?publicUser(row):null;}
@@ -28,6 +66,7 @@ const value=(env as unknown as Record<string,string>).NIRILI_BOOTSTRAP;
 if(!value)throw new Error("Initial accounts have not been configured");
 const seeds=JSON.parse(value);
 await authDb().batch(seeds.map((s:any)=>authDb().prepare("INSERT OR IGNORE INTO accounts(id,username,email,name,password_hash,salt,role,permissions,active) VALUES(?,?,?,?,?,?,?,?,1)").bind(s.id,s.username,s.email,s.name,s.hash,s.salt,s.role,"[]")));
+await applyBookingAndSessionResetOnce();
 }
 export async function limit(key:string,max:number,ms:number){const bucket=Math.floor(Date.now()/ms);const k=await digest(key)+":"+bucket;const r=await authDb().prepare("INSERT INTO account_limits(key,count) VALUES(?,1) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count").bind(k).first<{count:number}>();return !!r&&r.count<=max;}
 export function validPassword(p:unknown):p is string{return typeof p==="string"&&p.length>=8&&p.length<=128;}
