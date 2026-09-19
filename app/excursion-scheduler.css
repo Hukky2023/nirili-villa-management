@@ -796,3 +796,26 @@
  font-size:11px!important;
  font-weight:900!important;
 }
+
+
+/* GoPro assignment shown inside the vessel column. */
+.excursion-gopro-status{
+ display:block;
+ width:100%;
+ max-width:100%;
+ box-sizing:border-box;
+ margin-top:4px;
+ padding:6px 8px;
+ border-radius:8px;
+ background:#eaf7ef;
+ color:#256042;
+ font-size:12px;
+ line-height:1.35;
+ overflow-wrap:anywhere;
+}
+.excursion-gopro-status strong{color:inherit!important;font-size:inherit!important}
+.excursion-gopro-status.missing{
+ background:#fff0e5;
+ color:#873800;
+ font-weight:800;
+}
