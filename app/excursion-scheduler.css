@@ -690,13 +690,20 @@
 }
 .crew-replacement-needed{
  display:inline-flex;
- width:max-content;
+ width:auto;
+ max-width:100%;
+ min-width:0;
+ box-sizing:border-box;
  margin-top:5px;
  padding:5px 8px;
  border-radius:8px;
  background:#fff0ce;
  color:#8c5a00!important;
  font-weight:900!important;
+ line-height:1.35;
+ white-space:normal;
+ overflow-wrap:anywhere;
+ word-break:break-word;
 }
 @media(max-width:720px){
  .crew-trip-admin-head,.crew-trip-admin-list>article{display:grid}
