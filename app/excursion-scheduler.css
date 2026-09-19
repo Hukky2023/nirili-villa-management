@@ -918,3 +918,90 @@
  color:#145f86!important;
  border:1px solid #cbe1ee;
 }
+
+
+/* Compact row accessories: one button, no large "Not assigned" warnings. */
+.excursion-accessories-compact{
+  position:relative;
+  display:grid;
+  gap:7px;
+  width:100%;
+  min-width:0;
+  margin-top:7px;
+  padding-top:7px;
+  border-top:1px solid #dceaf0;
+}
+.excursion-accessory-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+}
+.excursion-accessory-chips span{
+  display:inline-flex;
+  align-items:center;
+  max-width:100%;
+  padding:4px 7px;
+  border-radius:999px;
+  background:#edf7f2;
+  color:#285f49;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.25;
+  overflow-wrap:anywhere;
+}
+.excursion-accessory-chips span.unavailable{
+  background:#fff0e5;
+  color:#873800;
+}
+.excursion-accessories-menu-wrap{
+  position:relative;
+  width:100%;
+}
+.excursion-accessories-btn{
+  width:100%;
+  min-height:36px;
+  padding:6px 10px;
+  border:1px solid #9acde1;
+  border-radius:9px;
+  background:#f3fbfe;
+  color:#087cad;
+  font:inherit;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.excursion-accessories-btn:hover,
+.excursion-accessories-btn[aria-expanded="true"]{
+  background:#e5f5fb;
+}
+.excursion-accessories-menu{
+  position:absolute;
+  z-index:20;
+  top:calc(100% + 6px);
+  left:0;
+  right:0;
+  display:grid;
+  gap:5px;
+  padding:7px;
+  border:1px solid #cfe0e8;
+  border-radius:10px;
+  background:#fff;
+  box-shadow:0 10px 30px #13394d22;
+}
+.excursion-accessories-menu button{
+  width:100%;
+  min-height:36px;
+  padding:7px 9px;
+  border:1px solid #d8e6ec;
+  border-radius:8px;
+  background:#fff;
+  color:#17384c;
+  font:inherit;
+  font-size:12px;
+  font-weight:800;
+  text-align:left;
+  cursor:pointer;
+}
+.excursion-accessories-menu button:hover{
+  background:#f2f8fb;
+}
