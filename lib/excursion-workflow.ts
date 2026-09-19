@@ -1,17 +1,18 @@
 import {catalog,validDate} from './guest-catalog';
 import {scheduleExcursion} from './excursion-schedule';
-import {inferTripEndTime,timeRangesOverlap} from './excursion-operations';
+import {inferTripEndTime,isSnorkelingTrip,timeRangesOverlap} from './excursion-operations';
 export const vesselConditions=['Available','Under maintenance','Out of service'];
+export const goproConditions=['Available','Charging','Under maintenance','Out of service'];
 const norm=(s:string)=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
 function validateVesselCapacity(value:any){
  // Undefined keeps older status-only clients compatible; null clears a recorded limit.
  if(value!==undefined&&value!==null&&(!Number.isSafeInteger(value)||value<1))throw Error('Enter a positive whole number for passenger capacity, or leave it blank.');
 }
 export function excursionResources(state:any){
- const saved=state.excursionResources||{vessels:[],crew:[]};const vessels=[...saved.vessels],crew=[...saved.crew];
+ const saved=state.excursionResources||{vessels:[],crew:[],gopros:[]};const vessels=[...(saved.vessels||[])],crew=[...(saved.crew||[])],gopros=[...(saved.gopros||[])];
  const add=(list:any[],name:string,prefix:string)=>{if(name&&!list.some(x=>norm(x.name)===norm(name)))list.push({id:prefix+norm(name),name:name.trim()});};
  for(const o of state.orders||[]){if(o.kind!=='excursion'||!o.schedule)continue;if(!vessels.some(v=>v.id===o.schedule.vesselId)&&!(state.excursionRemovedVessels||[]).includes(norm(o.schedule.vessel)))add(vessels,o.schedule.vessel,'v:');for(const name of o.schedule.crew||[])add(crew,name,'c:');}
- return {vessels:vessels.map(v=>({...v,condition:v.condition||'Available'})),crew:crew.map(c=>({...c,active:c.active!==false&&c.active!==0}))};
+ return {vessels:vessels.map(v=>({...v,condition:v.condition||'Available'})),crew:crew.map(c=>({...c,active:c.active!==false&&c.active!==0})),gopros:gopros.map(g=>({...g,condition:g.condition||'Available'}))};
 }
 export function excursionStage(o:any){if(['Completed','Cancelled','Departed'].includes(o.status))return o.status;return o.schedule||o.status==='Scheduled and informed'?'Scheduled':'Awaiting scheduling';}
 export function excursionPaid(o:any,state:any){const stay=state.stays.find((s:any)=>s.id===o.stayId);if(stay)return !stay.markedUnpaid&&stay.paidBills?.['Excursions:'+o.id]===o.cents;return (o.excursionPayments||[]).reduce((sum:number,p:any)=>sum+p.cents,0)>=o.cents&&!!o.excursionPayments?.length;}
@@ -25,8 +26,14 @@ export function changeExcursionStatus(o:any,status:string,state:any,by:string){
 }
 export function applyExcursionAction(state:any,b:any,today:string,by:string){
  if(b.action==='excursion-resource'){
- if(!['vessels','crew'].includes(b.resourceType)||typeof b.name!=='string'||!b.name.trim()||b.name.length>100)throw Error('Enter a vessel or crew member name.');
- const resources=excursionResources(state),list=resources[b.resourceType as 'vessels'|'crew'];if(list.some(x=>!x.removed&&norm(x.name)===norm(b.name)))throw Error('That name is already in the list.');if(b.resourceType==='vessels'&&b.condition!==undefined&&!vesselConditions.includes(b.condition))throw Error('Choose a valid vessel condition.');if(b.resourceType==='vessels')validateVesselCapacity(b.capacity);list.push({id:b.resourceId||crypto.randomUUID(),name:b.name.trim(),...(b.resourceType==='vessels'?{condition:b.condition||'Available',...(b.capacity!=null?{capacity:b.capacity}:{})}:{accountId:b.accountId||'',username:b.username||''})});state.excursionResources=resources;return;
+ if(!['vessels','crew','gopros'].includes(b.resourceType)||typeof b.name!=='string'||!b.name.trim()||b.name.length>100)throw Error('Enter a vessel, crew member or GoPro name.');
+ const resources=excursionResources(state),list=resources[b.resourceType as 'vessels'|'crew'|'gopros'];
+ if(list.some(x=>!x.removed&&norm(x.name)===norm(b.name)))throw Error('That name is already in the list.');
+ if(b.resourceType==='vessels'&&b.condition!==undefined&&!vesselConditions.includes(b.condition))throw Error('Choose a valid vessel condition.');
+ if(b.resourceType==='gopros'&&b.condition!==undefined&&!goproConditions.includes(b.condition))throw Error('Choose a valid GoPro status.');
+ if(b.resourceType==='vessels')validateVesselCapacity(b.capacity);
+ list.push({id:b.resourceId||crypto.randomUUID(),name:b.name.trim(),...(b.resourceType==='vessels'?{condition:b.condition||'Available',...(b.capacity!=null?{capacity:b.capacity}:{})}:b.resourceType==='gopros'?{condition:b.condition||'Available'}:{accountId:b.accountId||'',username:b.username||''})});
+ state.excursionResources=resources;return;
  }
  if(b.action==='excursion-crew-update'){
  const resources=excursionResources(state),member=resources.crew.find(c=>c.id===b.crewId&&!c.removed);if(!member)throw Error('Crew member not found.');
@@ -83,6 +90,19 @@ export function applyExcursionAction(state:any,b:any,today:string,by:string){
  }
  state.excursionResources=resources;return;
  }
+ if(['excursion-gopro-update','excursion-gopro-remove'].includes(b.action)){
+ const resources=excursionResources(state),gopro=resources.gopros.find((g:any)=>g.id===b.goproId);if(!gopro)throw Error('GoPro not found.');
+ if(b.action==='excursion-gopro-update'){
+  if(!goproConditions.includes(b.condition))throw Error('Choose a valid GoPro status.');
+  const name=b.name===undefined?gopro.name:b.name;
+  if(typeof name!=='string'||!name.trim()||name.length>100)throw Error('Enter a GoPro name of 1–100 characters.');
+  if(resources.gopros.some((g:any)=>g.id!==gopro.id&&norm(g.name)===norm(name)))throw Error('That name is already in the GoPro list.');
+  gopro.name=name.trim();gopro.condition=b.condition;gopro.updatedBy=by;gopro.updatedAt=new Date().toISOString();
+ }else{
+  resources.gopros=resources.gopros.filter((g:any)=>g.id!==gopro.id);
+ }
+ state.excursionResources=resources;return;
+ }
  if(b.action==='excursion-create'){
  if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token))throw Error('Reopen the booking form.');if(state.orders.some((o:any)=>o.manualToken===b.token))return;
  const item=catalog.find(i=>i.kind==='excursion'&&i.id===b.itemId);if(!item||!Number.isInteger(b.quantity)||b.quantity<1||b.quantity>100)throw Error('Select an excursion and 1–100 guests.');
@@ -95,17 +115,19 @@ export function applyExcursionAction(state:any,b:any,today:string,by:string){
  const o=state.orders.find((x:any)=>x.id===b.id&&x.kind==='excursion');if(!o)throw Error('Excursion booking not found.');
  if(b.action==='schedule-excursion'){
  if(excursionStage(o)==='Departed')throw Error('A departed trip cannot be rescheduled.');const resources=excursionResources(state);const vessel=resources.vessels.find(x=>x.id===b.vesselId);const crew=Array.isArray(b.crewIds)?b.crewIds.map((id:string)=>resources.crew.find(x=>x.id===id)):[];
+ const snorkeling=isSnorkelingTrip(o.name),gopro=snorkeling?resources.gopros.find((x:any)=>x.id===b.goproId):null;
  if(vessel&&vessel.condition!=='Available')throw Error('This vessel is unavailable. Choose an available vessel.');
+ if(snorkeling&&(!gopro||gopro.condition!=='Available'))throw Error('Every snorkeling trip requires an available GoPro. Choose a GoPro before scheduling.');
  if(!vessel||!crew.length||crew.some(x=>!x)||new Set(b.crewIds).size!==crew.length)throw Error('Select a vessel and different crew members from the lists.');
  const requestedEnd=b.endTime||inferTripEndTime(o.name,b.time);
  const clash=state.orders.find((x:any)=>{
   if(x.id===o.id||x.kind!=='excursion'||x.status==='Cancelled'||x.schedule?.date!==b.date)return false;
   const otherEnd=x.schedule?.endTime||inferTripEndTime(x.name,x.schedule?.time);
   if(!timeRangesOverlap(b.time,requestedEnd,x.schedule?.time,otherEnd))return false;
-  return norm(x.schedule.vessel)===norm(vessel.name)||x.schedule.crew.some((n:string)=>crew.some(c=>norm(c.name)===norm(n)));
+  return norm(x.schedule.vessel)===norm(vessel.name)||x.schedule.crew.some((n:string)=>crew.some(c=>norm(c.name)===norm(n)))||(snorkeling&&x.schedule?.goproId===gopro?.id);
  });
- if(clash)throw Error('Vessel or crew is already assigned to overlapping trip '+clash.id+'. Choose another boat, team or non-overlapping time.');
- scheduleExcursion(o,{...b,vessel:vessel.name,crew:crew.map(c=>c.name)},today,by);o.schedule.vesselId=vessel.id;o.schedule.crewIds=crew.map(c=>c.id);o.status='Scheduled';o.guestNotified=false;delete o.guestNotifiedAt;delete o.guestNotifiedBy;return;
+ if(clash)throw Error('Vessel, crew or GoPro is already assigned to overlapping trip '+clash.id+'. Choose another resource or non-overlapping time.');
+ scheduleExcursion(o,{...b,vessel:vessel.name,crew:crew.map(c=>c.name)},today,by);o.schedule.vesselId=vessel.id;o.schedule.crewIds=crew.map(c=>c.id);if(snorkeling){o.schedule.goproId=gopro.id;o.schedule.gopro=gopro.name;}else{delete o.schedule.goproId;delete o.schedule.gopro;}o.status='Scheduled';o.guestNotified=false;delete o.guestNotifiedAt;delete o.guestNotifiedBy;return;
  }
  if(b.action==='excursion-notified'){
  if(typeof b.notified!=='boolean')throw Error('Choose whether the guest has been notified.');
