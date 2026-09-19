@@ -53,6 +53,11 @@ export function isSnorkelingTrip(value:any){
  return excursionComponents(value).some(component=>snorkelingComponents.has(component));
 }
 
+export function isDroneRequiredTrip(value:any){
+ const components=excursionComponents(value);
+ return components.includes('shark')||components.includes('sandbank');
+}
+
 export function scheduleCanServeRequest(requestName:any,scheduleName:any){
  const wanted=excursionComponents(requestName),offered=excursionComponents(scheduleName);
  if(!wanted.length)return false;
@@ -125,6 +130,21 @@ export function goproConflict(
  if(!input.goproId)return null;
  return schedules.find((other:any)=>{
   if(!other||other.id===input.excludeId||other.status==='Cancelled'||other.date!==input.date||other.goproId!==input.goproId)return false;
+  const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===(other.endTime||inferTripEndTime(other.name,other.time));
+  if(sameShared)return false;
+  const otherEnd=other.endTime||inferTripEndTime(other.name,other.time);
+  return timeRangesOverlap(input.time,input.endTime,other.time,otherEnd);
+ })||null;
+}
+
+
+export function droneConflict(
+ schedules:any[],
+ input:{date:string;time:string;endTime:string;droneId:string;excludeId?:string;sharedGroup?:string}
+){
+ if(!input.droneId)return null;
+ return schedules.find((other:any)=>{
+  if(!other||other.id===input.excludeId||other.status==='Cancelled'||other.date!==input.date||other.droneId!==input.droneId)return false;
   const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===(other.endTime||inferTripEndTime(other.name,other.time));
   if(sameShared)return false;
   const otherEnd=other.endTime||inferTripEndTime(other.name,other.time);
