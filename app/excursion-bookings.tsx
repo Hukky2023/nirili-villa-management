@@ -4,6 +4,9 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {ConfirmedExcursionBooking} from '../lib/excursion-bookings';
 import './excursion-bookings.css';
 import DateFieldDMY from './date-field-dmy';
+import ExcursionBillingActions from './excursion-billing-actions';
+import type {ExcursionPricing} from '../lib/excursion-billing';
+type BillingBooking = ConfirmedExcursionBooking & {pricing?: ExcursionPricing; billingHistory?: any[]};
 
 const pageSize = 25;
 const money = (cents: number) => '$' + (cents / 100).toFixed(2);
@@ -20,11 +23,12 @@ function createdLabel(value: string) {
 }
 
 export default function ExcursionBookings() {
-  const [bookings, setBookings] = useState<ConfirmedExcursionBooking[]>([]);
+  const [bookings, setBookings] = useState<BillingBooking[]>([]);
   const [loading, setLoading] = useState(true), [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(''), [query, setQuery] = useState('');
   const [date, setDate] = useState(''), [payment, setPayment] = useState('');
   const [page, setPage] = useState(1);
+  const [canAdjustBilling, setCanAdjustBilling] = useState(false), [revision, setRevision] = useState(0);
   const request = useRef<AbortController | null>(null);
 
   const load = useCallback(async (background = false) => {
@@ -39,11 +43,11 @@ export default function ExcursionBookings() {
       const result = await response.json();
       if (controller.signal.aborted) return;
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {setBookings([]); setLoaded(false);}
+        if (response.status === 401 || response.status === 403) {setBookings([]); setLoaded(false); setCanAdjustBilling(false);}
         throw new Error(result.error || 'Could not load confirmed excursion bookings.');
       }
       if (!Array.isArray(result.bookings)) throw new Error('The booking list could not be read. Please refresh.');
-      if (!controller.signal.aborted) {setBookings(result.bookings); setLoaded(true); setError('');}
+      if (!controller.signal.aborted) {setBookings(result.bookings); setRevision(result.revision); setCanAdjustBilling(result.canAdjustBilling === true); setLoaded(true); setError('');}
     } catch (reason) {
       if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load bookings. Please try again.');
     } finally {
@@ -67,7 +71,7 @@ export default function ExcursionBookings() {
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return bookings.filter(b => (!date || b.date === date) && (!payment || b.paymentStatus === payment) && (!needle ||
+    return bookings.filter(b => (!date || b.date === date) && (!payment || (b.pricing?.complimentary ? 'Complimentary' : b.paymentStatus) === payment) && (!needle ||
       [b.id, b.guest, b.groupName, b.phone, b.excursion, b.hotel, b.room, b.vessel, ...b.crew].join(' ').toLowerCase().includes(needle)));
   }, [bookings, query, date, payment]);
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize)), currentPage = Math.min(page, pages);
@@ -85,7 +89,7 @@ export default function ExcursionBookings() {
     <div className="excursion-booking-filters">
       <label>Search bookings<input type="search" value={query} placeholder="Guest, room, booking reference or excursion" onChange={e => {setQuery(e.target.value); setPage(1);}}/></label>
       <label>Trip date<DateFieldDMY value={date} onChange={value => {setDate(value); setPage(1);}} ariaLabel="Trip date"/></label>
-      <label>Payment<select value={payment} onChange={e => {setPayment(e.target.value); setPage(1);}}><option value="">All payments</option><option value="Paid">Paid</option><option value="Unpaid">Unpaid</option></select></label>
+      <label>Payment<select value={payment} onChange={e => {setPayment(e.target.value); setPage(1);}}><option value="">All payments</option><option value="Paid">Paid</option><option value="Unpaid">Unpaid</option><option value="Complimentary">Complimentary / Free</option></select></label>
       <button type="button" className="excursion-secondary-btn" disabled={!hasFilters} onClick={clearFilters}>Clear filters</button>
     </div>
     {error && <div className="excursion-booking-error" role="alert"><strong>{error}</strong>{loaded && <p>The list below is the last successfully loaded data and may be out of date.</p>}</div>}
@@ -95,7 +99,7 @@ export default function ExcursionBookings() {
         <span><strong>{guests}</strong> guests</span><span><strong>{money(total)}</strong> total booking value (USD)</span>
       </div>
       {visible.length ? <div className="excursion-booking-list">{visible.map(b => <article className="excursion-confirmed-booking" key={b.id}>
-        <header className="excursion-booking-card-head"><div><small>{b.id}</small><h4>{b.excursion}</h4></div><div className="excursion-booking-badges"><span className="confirmed">Confirmed</span><span className={b.paymentStatus.toLowerCase()}>{b.paymentStatus}</span>{b.privateBoatRequested&&<span className="buggy">Private boat +$50</span>}{b.buggyRequested&&<span className="buggy">{b.guestType==='In-house'?'Buggy included':'Buggy requested'}</span>}</div></header>
+        <header className="excursion-booking-card-head"><div><small>{b.id}</small><h4>{b.excursion}</h4></div><div className="excursion-booking-badges"><span className="confirmed">Confirmed</span><span className={b.pricing?.complimentary ? 'confirmed' : b.paymentStatus.toLowerCase()}>{b.pricing?.complimentary ? 'Complimentary / Free' : b.paymentStatus}</span>{b.privateBoatRequested&&<span className="buggy">Private boat +$50</span>}{b.buggyRequested&&<span className="buggy">{b.guestType==='In-house'?'Buggy included':'Buggy requested'}</span>}</div></header>
         <dl className="excursion-booking-overview">
           <div><dt>Lead guest</dt><dd>{b.guest}<small>{b.guestType}</small>{b.groupName&&<small>Group: {b.groupName}</small>}</dd></div>
           <div><dt>Hotel / room</dt><dd>{b.hotel || 'Hotel not recorded'}<small>{b.room ? 'Room ' + b.room : 'Room not recorded'}</small></dd></div>
@@ -103,6 +107,7 @@ export default function ExcursionBookings() {
           <div><dt>Booking created</dt><dd>{createdLabel(b.createdAt)}<small>Maldives time</small></dd></div>
           <div><dt>Guests / total</dt><dd>{b.guests} {b.guests === 1 ? 'guest' : 'guests'}<small>{b.adults} adult{b.adults===1?'':'s'} · {b.children} child{b.children===1?'':'ren'} · {b.infants} under 3</small><small>{money(b.totalCents)} USD</small></dd></div>
         </dl>
+        <ExcursionBillingActions booking={b} canAdjust={canAdjustBilling} revision={revision} onUpdated={() => load()}/>
         <details className="excursion-booking-details"><summary>View details<span className="excursion-booking-sr-only"> for {b.guest}, booking {b.id}</span></summary>
           <dl>
             {b.groupName&&<div><dt>Family / group</dt><dd>{b.groupName}<small>{b.guests} guests under one booking</small></dd></div>}<div><dt>Phone / WhatsApp</dt><dd>{b.phone || 'Not recorded'}</dd></div>
@@ -110,7 +115,7 @@ export default function ExcursionBookings() {
             <div><dt>Assigned crew</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.crew.length ? b.crew.join(', ') : 'Not assigned'}</dd></div>
             <div><dt>Trip status</dt><dd>{b.tripStatus}{b.endTime&&<small>Trip end: {b.endTime} · Maldives time</small>}{b.returnTime&&<small>Return pickup: {b.returnTime} · Maldives time</small>}{b.privateBoatRequested&&<small>Private boat surcharge: {money(b.privateBoatSurchargeCents)}</small>}</dd></div>
             <div><dt>Buggy pickup</dt><dd>{b.serviceType==='romantic-beach-dinner'?(b.buggyRequested?'Round trip to dinner location and back':'Not requested'):(b.guestType==='In-house' ? 'Included automatically' : (b.buggyRequested ? 'Requested' : 'Not requested'))}</dd></div>
-            <div><dt>Children policy</dt><dd>Under 3 free<small>Ages 3–11: 50% · Ages 12+: full price</small></dd></div><div><dt>Payment status</dt><dd>{b.paymentStatus} · {money(b.totalCents)} USD<small>One combined payment for all guests in this booking</small></dd></div>
+            <div><dt>Children policy</dt><dd>Under 3 free<small>Ages 3–11: 50% · Ages 12+: full price</small></dd></div><div><dt>Payment status</dt><dd>{b.pricing?.complimentary ? 'Complimentary / Free' : b.paymentStatus} · {money(b.totalCents)} USD<small>One combined payment for all guests in this booking</small></dd></div>
             <div><dt>Booking source</dt><dd>{b.source || 'Not recorded'}</dd></div>
             <div><dt>Booked by</dt><dd>{b.createdBy || 'Not recorded'}</dd></div>
             <div><dt>Booking created</dt><dd>{createdLabel(b.createdAt)}{b.createdAt && <small>Maldives time</small>}</dd></div>

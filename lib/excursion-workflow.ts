@@ -1,3 +1,4 @@
+import {excursionPricing} from './excursion-billing';
 import {catalog,validDate} from './guest-catalog';
 import {scheduleExcursion} from './excursion-schedule';
 import {inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,timeRangesOverlap} from './excursion-operations';
@@ -16,7 +17,7 @@ export function excursionResources(state:any){
  return {vessels:vessels.map(v=>({...v,condition:v.condition||'Available'})),crew:crew.map(c=>({...c,active:c.active!==false&&c.active!==0})),gopros:gopros.map(g=>({...g,condition:g.condition||'Available'})),drones:drones.map(d=>({...d,condition:d.condition||'Available'}))};
 }
 export function excursionStage(o:any){if(['Completed','Cancelled','Departed'].includes(o.status))return o.status;return o.schedule||o.status==='Scheduled and informed'?'Scheduled':'Awaiting scheduling';}
-export function excursionPaid(o:any,state:any){const stay=state.stays.find((s:any)=>s.id===o.stayId);if(stay)return !stay.markedUnpaid&&stay.paidBills?.['Excursions:'+o.id]===o.cents;return (o.excursionPayments||[]).reduce((sum:number,p:any)=>sum+p.cents,0)>=o.cents&&!!o.excursionPayments?.length;}
+export function excursionPaid(o:any,state:any){if(excursionPricing(o).complimentary)return true;const stay=state.stays.find((s:any)=>s.id===o.stayId);if(stay)return !stay.markedUnpaid&&stay.paidBills?.['Excursions:'+o.id]===o.cents;return (o.excursionPayments||[]).reduce((sum:number,p:any)=>sum+p.cents,0)>=o.cents&&!!o.excursionPayments?.length;}
 export function changeExcursionStatus(o:any,status:string,state:any,by:string){
  const stage=excursionStage(o);if(['Completed','Cancelled'].includes(stage))throw Error('This booking is closed.');
  const allowed:Record<string,string[]>={'Awaiting scheduling':['Cancelled'],'Scheduled':['Departed','Cancelled'],'Departed':['Completed']};
