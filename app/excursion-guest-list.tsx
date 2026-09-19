@@ -266,7 +266,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
               </label>)}</div>
             </article>;
           })}</div>
-          <div className="excursion-boarding-save"><div><strong>{missingNames?'Guest names still missing':dirty?'Unsaved boarding changes':attendanceSaved?'Boarding list saved':'Review the boarding list'}</strong><small>You can save manually, or the system will save this checklist automatically when you mark Guests boarded.</small></div>
+          <div className="excursion-boarding-save"><div><strong>{missingNames?'Guest names still missing':dirty?'Unsaved boarding changes':attendanceSaved?'Boarding list saved':'Review the boarding list'}</strong><small>You can save manually, or the system will save this checklist automatically when you mark Guests boarded & Departed.</small></div>
             <button type="button" className="excursion-save-attendance" disabled={savingAttendance||statusBusy||missingNames||!dirty} onClick={saveAttendance}>{savingAttendance?'Saving…':'Save boarding list'}</button></div>
         </section> : <div className="excursion-guest-empty"><strong>No confirmed guests for this excursion yet.</strong><p>Pending, declined and cancelled bookings are not included.</p></div>}
 
