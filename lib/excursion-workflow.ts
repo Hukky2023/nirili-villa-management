@@ -140,7 +140,8 @@ export function applyExcursionAction(state:any,b:any,today:string,by:string){
   if(x.id===o.id||x.kind!=='excursion'||x.status==='Cancelled'||x.schedule?.date!==b.date)return false;
   const otherEnd=x.schedule?.endTime||inferTripEndTime(x.name,x.schedule?.time);
   if(!timeRangesOverlap(b.time,requestedEnd,x.schedule?.time,otherEnd))return false;
-  return norm(x.schedule.vessel)===norm(vessel.name)||x.schedule.crew.some((n:string)=>crew.some(c=>norm(c.name)===norm(n)))||(snorkeling&&x.schedule?.goproId===gopro?.id)||(needsDrone&&x.schedule?.droneId===drone?.id);
+  const sameVessel=norm(x.schedule.vessel)===norm(vessel.name);
+  return sameVessel||x.schedule.crew.some((n:string)=>crew.some(c=>norm(c.name)===norm(n)))||(snorkeling&&x.schedule?.goproId===gopro?.id&&!sameVessel)||(needsDrone&&x.schedule?.droneId===drone?.id&&!sameVessel);
  });
  if(clash)throw Error('Vessel, crew, GoPro or drone is already assigned to overlapping trip '+clash.id+'. Choose another resource or non-overlapping time.');
  scheduleExcursion(o,{...b,vessel:vessel.name,crew:crew.map(c=>c.name)},today,by);o.schedule.vesselId=vessel.id;o.schedule.crewIds=crew.map(c=>c.id);if(snorkeling){o.schedule.goproId=gopro.id;o.schedule.gopro=gopro.name;}else{delete o.schedule.goproId;delete o.schedule.gopro;}if(needsDrone){o.schedule.droneId=drone.id;o.schedule.drone=drone.name;}else{delete o.schedule.droneId;delete o.schedule.drone;}o.status='Scheduled';o.guestNotified=false;delete o.guestNotifiedAt;delete o.guestNotifiedBy;return;
