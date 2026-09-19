@@ -7,7 +7,7 @@ import {excursionResources} from '../../../lib/excursion-workflow';
 import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requiredExcursionGuides} from '../../../lib/excursion-guides';
 import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
-import {clockMinutes,inferTripEndTime,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
+import {clockMinutes,goproConflict,inferTripEndTime,isSnorkelingTrip,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -26,15 +26,22 @@ const clean=async (x:any,state:any)=>{
  const status=x.status==='Closed'?'Closed':'Open';
  const notes=String(x.notes||'').trim().slice(0,1000);
  const sharedGroup=String(x.sharedGroup||'').trim().slice(0,80);
+ const resources=excursionResources(state);
+ const snorkeling=isSnorkelingTrip(name);
+ let goproId=String(x.goproId||'').slice(0,100);
+ if(snorkeling&&status!=='Closed'){
+  const gopro=resources.gopros.find((item:any)=>item.id===goproId);
+  if(!gopro||gopro.condition!=='Available')throw Error('Every snorkeling trip requires an available GoPro. Assign a GoPro to the vessel before saving.');
+ }else if(!snorkeling)goproId='';
  // Read the saved vessel, not a capacity supplied by the browser. This runs
  // for both Create/Edit and each row in the shared-departure assignment flow.
  // Only raise the scheduled limit; do not change bookings or the vessel record.
  if(vesselId){
-  const vessel=excursionResources(state).vessels.find((v:any)=>v.id===vesselId);
+  const vessel=resources.vessels.find((v:any)=>v.id===vesselId);
   const vesselCapacity=Number(vessel?.capacity);
   if(Number.isSafeInteger(vesselCapacity)&&vesselCapacity>capacity)capacity=vesselCapacity;
  }
- return {date:x.date,time:x.time,endTime,name,capacity,priceCents,vesselId,crewIds,status,notes,sharedGroup};
+ return {date:x.date,time:x.time,endTime,name,capacity,priceCents,vesselId,goproId,crewIds,status,notes,sharedGroup};
 };
 function matches(o:any,s:any){
  if(o.kind!=='excursion'||o.status==='Cancelled'||o.approvalStatus==='Declined'||o.approvalStatus==='Cancelled')return false;
@@ -105,6 +112,8 @@ export async function POST(r:Request){
   const daySchedules=await schedulesForDate(body.date);
   const conflict=vesselConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,vesselId:body.vesselId,sharedGroup:body.sharedGroup});
   if(conflict)throw Error('This vessel is already in use for '+conflict.name+' from '+conflict.time+' to '+(conflict.endTime||inferTripEndTime(conflict.name,conflict.time))+'. Choose another vessel or a non-overlapping time.');
+  const cameraConflict=goproConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,goproId:body.goproId,sharedGroup:body.sharedGroup});
+  if(cameraConflict)throw Error('This GoPro is already assigned to '+cameraConflict.name+' from '+cameraConflict.time+' to '+(cameraConflict.endTime||inferTripEndTime(cameraConflict.name,cameraConflict.time))+'. Choose another GoPro or a non-overlapping time.');
   const guideIds=cleanGuideSelection(input.guideIds,body.crewIds,crew);
   const id=crypto.randomUUID();
   const record={id,...body,guideIds,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
@@ -140,6 +149,8 @@ export async function PUT(r:Request){
   const daySchedules=await schedulesForDate(body.date);
   const conflict=vesselConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,vesselId:body.vesselId,excludeId:id,sharedGroup:body.sharedGroup});
   if(conflict)throw Error('This vessel is already in use for '+conflict.name+' from '+conflict.time+' to '+(conflict.endTime||inferTripEndTime(conflict.name,conflict.time))+'. A vessel becomes available only after its trip end time.');
+  const cameraConflict=goproConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,goproId:body.goproId,excludeId:id,sharedGroup:body.sharedGroup});
+  if(cameraConflict)throw Error('This GoPro is already assigned to '+cameraConflict.name+' from '+cameraConflict.time+' to '+(cameraConflict.endTime||inferTripEndTime(cameraConflict.name,cameraConflict.time))+'. Choose another GoPro or wait until that trip ends.');
   // Closing an unsafe/understaffed trip must remain possible; departure is guarded separately.
   if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,daySchedules,state.orders||[],crew,old));
   const result=await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision).run();
@@ -208,7 +219,7 @@ export async function PATCH(r:Request){
   }
 
   if(b.action==='schedule-request'){
-   const requestId=String(b.requestId||'').slice(0,100),time=String(b.time||''),requestedEndTime=String(b.endTime||''),returnTime=String(b.returnTime||''),vesselId=String(b.vesselId||'').slice(0,100);
+   const requestId=String(b.requestId||'').slice(0,100),time=String(b.time||''),requestedEndTime=String(b.endTime||''),returnTime=String(b.returnTime||''),vesselId=String(b.vesselId||'').slice(0,100),goproId=String(b.goproId||'').slice(0,100);
    const capacity=Math.max(1,Math.min(100,Math.round(Number(b.capacity)||1)));
    const crewIds=Array.isArray(b.crewIds)?b.crewIds:[],guideIdsInput=Array.isArray(b.guideIds)?b.guideIds:[];
    if(!requestId||!validTime(time)||!vesselId)throw Error('Choose a departure time and vessel.');
@@ -225,10 +236,12 @@ export async function PATCH(r:Request){
    const resources=excursionResources(state),vessel=resources.vessels.find((v:any)=>v.id===vesselId);
    if(!vessel||vessel.condition!=='Available')throw Error('Choose an available vessel.');
    const priceCents=Math.max(0,Number(order.operationalPriceCents)||Number(order.unitPriceCents)||Math.round((Number(order.quotedCents)||0)/Math.max(1,Number(order.quantity)||1)));
-   const body=await clean({date:order.date,time,endTime,name:order.name,capacity,priceCents,vesselId,crewIds,status:'Open',notes:'Created from booking request '+order.id,sharedGroup:''},state);
+   const body=await clean({date:order.date,time,endTime,name:order.name,capacity,priceCents,vesselId,goproId,crewIds,status:'Open',notes:'Created from booking request '+order.id,sharedGroup:''},state);
    const daySchedules=await schedulesForDate(body.date);
    const conflict=vesselConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,vesselId:body.vesselId});
    if(conflict)throw Error('This vessel is already in use for '+conflict.name+' from '+conflict.time+' to '+(conflict.endTime||inferTripEndTime(conflict.name,conflict.time))+'. Choose another vessel or a non-overlapping time.');
+   const cameraConflict=goproConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,goproId:body.goproId});
+   if(cameraConflict)throw Error('This GoPro is already assigned to '+cameraConflict.name+' during this time. Choose another GoPro.');
    if(excursionDeparturePassed(body.date,body.time))throw Error('This departure time is already in the past. Choose a future departure time.');
    if(body.capacity<Math.max(1,Number(order.quantity)||1))throw Error('Boat capacity must cover all guests in this booking.');
    const guides=cleanGuideSelection(guideIdsInput,body.crewIds,resources.crew);
@@ -244,7 +257,7 @@ export async function PATCH(r:Request){
    order.scheduleId=scheduleId;order.time=body.time;order.endTime=body.endTime;if(resortVisit){order.returnTime=returnTime;order.serviceType=RESORT_VISIT_SERVICE;}order.approvalStatus='Approved';order.status='Scheduled';order.cents=Math.max(0,Number(order.quotedCents)||0);
    order.seatRequest=false;order.unscheduledRequest=false;order.autoConfirmed=false;order.adminScheduled=true;order.requestedOverCapacity=false;
    order.reviewedAt=now;order.reviewedBy=user.username;order.guestNotified=false;
-   order.schedule={date:body.date,time:body.time,endTime:body.endTime,...(resortVisit?{returnTime}:{}),vesselId:body.vesselId,vessel:vessel.name,crewIds:body.crewIds,guideIds:guides,crew:crew.map((c:any)=>c.name),privateBoat:!!order.privateBoatRequested};
+   order.schedule={date:body.date,time:body.time,endTime:body.endTime,...(resortVisit?{returnTime}:{}),vesselId:body.vesselId,vessel:vessel.name,...(body.goproId?{goproId:body.goproId,gopro:resources.gopros.find((g:any)=>g.id===body.goproId)?.name||body.goproId}:{}),crewIds:body.crewIds,guideIds:guides,crew:crew.map((c:any)=>c.name),privateBoat:!!order.privateBoatRequested};
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved){
     await authDb().prepare('DELETE FROM operation_records WHERE key=?').bind(key).run();
@@ -291,7 +304,7 @@ export async function PATCH(r:Request){
    }
    const crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id)),unitPriceCents=Math.max(0,Number(schedule.priceCents)||0),cents=excursionPriceCents(unitPriceCents,'guest',mix),id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
    state.orders??=[];
-   state.orders.push({id,kind:'excursion',scheduleId:schedule.id,name:schedule.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,cents,unitPriceCents,quotedCents:cents,guest,phone,hotel,room,externalRoom:guestType==='walkin'?room:undefined,stayId,accountId,buggyRequested:guestType==='inhouse'||b.buggyRequested===true,date:schedule.date,time:schedule.time,endTime:schedule.endTime||inferTripEndTime(schedule.name,schedule.time),returnTime:schedule.returnTime||'',notes,status:'Scheduled',approvalStatus:'Approved',seatRequest:false,autoConfirmed:true,adminCreated:true,separateVessel:needsExtraVessel,overflowVesselId:needsExtraVessel?vessel?.id:undefined,source:guestType==='inhouse'?'Admin · In-house':'Admin · Walk-in',schedule:{date:schedule.date,time:schedule.time,endTime:schedule.endTime||inferTripEndTime(schedule.name,schedule.time),...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:vessel?.id||schedule.vesselId||'',vessel:vessel?.name||'',crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name),extraVessel:needsExtraVessel},guestNotified:false,createdBy:user.username,createdAt});
+   state.orders.push({id,kind:'excursion',scheduleId:schedule.id,name:schedule.name,quantity,adults:mix.adults,children:mix.children,infants:mix.infants,cents,unitPriceCents,quotedCents:cents,guest,phone,hotel,room,externalRoom:guestType==='walkin'?room:undefined,stayId,accountId,buggyRequested:guestType==='inhouse'||b.buggyRequested===true,date:schedule.date,time:schedule.time,endTime:schedule.endTime||inferTripEndTime(schedule.name,schedule.time),returnTime:schedule.returnTime||'',notes,status:'Scheduled',approvalStatus:'Approved',seatRequest:false,autoConfirmed:true,adminCreated:true,separateVessel:needsExtraVessel,overflowVesselId:needsExtraVessel?vessel?.id:undefined,source:guestType==='inhouse'?'Admin · In-house':'Admin · Walk-in',schedule:{date:schedule.date,time:schedule.time,endTime:schedule.endTime||inferTripEndTime(schedule.name,schedule.time),...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:vessel?.id||schedule.vesselId||'',vessel:vessel?.name||'',...(schedule.goproId&&!needsExtraVessel?{goproId:schedule.goproId,gopro:resources.gopros.find((g:any)=>g.id===schedule.goproId)?.name||schedule.goproId}:{}),crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:crew.map((c:any)=>c.name),extraVessel:needsExtraVessel},guestNotified:false,createdBy:user.username,createdAt});
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please try again.'},{status:409});
    const savedBooking=state.orders.find((order:any)=>order.id===id);
