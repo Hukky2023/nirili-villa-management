@@ -100,7 +100,9 @@ export async function PATCH(request: Request) {
           if (String(person?.id || '') !== id || typeof person?.boarded !== 'boolean') throw Error('The boarding list changed. Refresh and try again.');
           const before = previous.find((item: any) => Number(item?.slot) === slot || String(item?.id || '') === id);
           return {
-            id, slot, name, boarded: person.boarded,
+            id, slot, name,
+            ageCategory: String(before?.ageCategory || booking.people[index]?.ageCategory || ''),
+            boarded: person.boarded,
             boardedAt: person.boarded ? (before?.boarded === true && before?.boardedAt ? before.boardedAt : now) : '',
             updatedAt: now, updatedBy: user!.username,
           };
