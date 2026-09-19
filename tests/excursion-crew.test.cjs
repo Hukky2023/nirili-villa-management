@@ -47,7 +47,12 @@ const text = node => Array.isArray(node) ? node.map(text).join('') : node && typ
 const find = (h, predicate) => all(h.tree).find(predicate);
 const button = (h, label) => find(h, n => n.type === 'button' && text(n) === label);
 const submit = h => find(h, n => n.type === 'form').props.onSubmit({preventDefault() {}});
-function name(h, value) {find(h, n => n.type === 'input').props.onChange({target: {value}}); h.render();}
+const inputs = h => all(h.tree).filter(n => n.type === 'input');
+function setInput(h, index, value) {inputs(h)[index].props.onChange({target: {value, checked: !!value}}); h.render();}
+function name(h, value) {setInput(h, 0, value);}
+function username(h, value) {setInput(h, 1, value);}
+function password(h, value) {setInput(h, 2, value); setInput(h, 3, value);}
+function credentials(h, user = 'new.crew', pass = 'crewpass123') {username(h, user); password(h, pass);}
 function form(overrides = {}) {
  const calls = [], closed = [];
  const props = {crew: [{id: 'crew-1', name: 'Existing Crew'}], canManage: true, onSave: async n => {calls.push(n);}, onClose: () => closed.push(true), ...overrides};
@@ -69,20 +74,30 @@ test('existing crew names are matched without case or whitespace differences', a
  const {h, calls} = form(); name(h, '  EXISTING   crew  '); await submit(h); h.render();
  assert.equal(calls.length, 0); assert.match(text(h.tree), /already in the crew list/);
 });
-test('valid name is trimmed and sent once', async () => {
- const {h, calls} = form(); name(h, '  New Crew  '); await submit(h);
- assert.deepEqual(calls, ['New Crew']);
+test('valid admin-chosen username and password are sent once', async () => {
+ const {h, calls} = form(); name(h, '  New Crew  '); credentials(h); await submit(h);
+ assert.deepEqual(calls, [{name: 'New Crew', username: 'new.crew', password: 'crewpass123'}]);
+});
+test('invalid username is rejected', async () => {
+ const {h, calls} = form(); name(h, 'New Crew'); credentials(h, 'bad username'); await submit(h); h.render();
+ assert.equal(calls.length, 0); assert.match(text(h.tree), /Username must be 3–40 characters/);
+});
+test('short or mismatched password is rejected', async () => {
+ const {h, calls} = form(); name(h, 'New Crew'); username(h, 'new.crew'); setInput(h, 2, 'short'); setInput(h, 3, 'short'); await submit(h); h.render();
+ assert.equal(calls.length, 0); assert.match(text(h.tree), /8–128 characters/);
+ setInput(h, 2, 'crewpass123'); setInput(h, 3, 'different123'); await submit(h); h.render();
+ assert.equal(calls.length, 0); assert.match(text(h.tree), /do not match/);
 });
 test('non-admin saves are blocked even when the handler is invoked directly', async () => {
- const {h, calls} = form({canManage: false}); name(h, 'New Crew'); await submit(h); h.render();
- assert.equal(calls.length, 0); assert.equal(button(h, 'Add crew member').props.disabled, true);
+ const {h, calls} = form({canManage: false}); name(h, 'New Crew'); credentials(h); await submit(h); h.render();
+ assert.equal(calls.length, 0); assert.equal(button(h, 'Create crew login').props.disabled, true);
  assert.match(text(h.tree), /Only Admin/);
 });
 test('an in-flight save blocks double submission and cancellation', async () => {
  let done; const calls = [];
  const {h, closed} = form({onSave: n => {calls.push(n); return new Promise(resolve => {done = resolve;});}});
- name(h, 'New Crew'); const pending = submit(h); h.render();
- assert.equal(button(h, 'Saving…').props.disabled, true);
+ name(h, 'New Crew'); credentials(h); const pending = submit(h); h.render();
+ assert.equal(button(h, 'Creating…').props.disabled, true);
  await submit(h); button(h, 'Cancel').props.onClick();
  assert.equal(calls.length, 1); assert.equal(closed.length, 0);
  done(); await pending;
@@ -94,23 +109,23 @@ test('cancel closes without a write', () => {
 test('server conflict preserves the name and refreshes without retrying the write', async () => {
  let attempts = 0;
  const {h} = form({onSave: async () => {attempts++; throw new Error('Bookings changed. Refresh and try again.');}});
- name(h, 'New Crew'); await submit(h); h.render();
- assert.match(text(h.tree), /Bookings changed/); assert.equal(find(h, n => n.type === 'input').props.value, 'New Crew');
+ name(h, 'New Crew'); credentials(h); await submit(h); h.render();
+ assert.match(text(h.tree), /Bookings changed/); assert.equal(inputs(h)[0].props.value, 'New Crew');
  assert.deepEqual(h.events, ['services-updated']); assert.equal(attempts, 1);
- assert.equal(button(h, 'Add crew member').props.disabled, false);
+ assert.equal(button(h, 'Create crew login').props.disabled, false);
 });
 test('a retry uses the new callback after refreshed data', async () => {
  const fixture = form({onSave: async () => {throw new Error('Refresh and try again.');}});
- name(fixture.h, 'New Crew'); await submit(fixture.h);
- const calls = []; fixture.h.render({...fixture.props, onSave: async n => {calls.push(n);}});
- await submit(fixture.h); assert.deepEqual(calls, ['New Crew']);
+ name(fixture.h, 'New Crew'); credentials(fixture.h); await submit(fixture.h);
+ const calls = []; fixture.h.render({...fixture.props, onSave: async input => {calls.push(input);}});
+ await submit(fixture.h); assert.deepEqual(calls, [{name: 'New Crew', username: 'new.crew', password: 'crewpass123'}]);
 });
 test('keyboard focus is restored after closing and Escape cancels', () => {
  const {h, closed} = form(); let focused = '', listener;
  const previous = {isConnected: true, focus() {focused = 'previous';}};
  const input = {focus() {focused = 'input';}};
  h.context.document = {activeElement: previous, body: {style: {overflow: 'auto'}}, addEventListener(_, fn) {listener = fn;}, removeEventListener() {}};
- h.slots[4].current = {querySelector: () => input};
+ h.slots[8].current = {querySelector: () => input};
  const cleanup = h.effects[0](); assert.equal(focused, 'input'); assert.equal(h.context.document.body.style.overflow, 'hidden');
  listener({key: 'Escape', preventDefault() {}}); assert.equal(closed.length, 1);
  cleanup(); assert.equal(focused, 'previous'); assert.equal(h.context.document.body.style.overflow, 'auto');
@@ -125,9 +140,10 @@ test('scheduler opens the form, sends the existing crew action and exposes saved
  assert.equal(button(h, '+ Add crew member').props.disabled, false);
  button(h, '+ Add crew member').props.onClick(); h.render();
  const editor = find(h, n => n.type === './excursion-crew-form'); assert.ok(editor);
- await editor.props.onSave('New Crew'); h.render(props);
+ await editor.props.onSave({name: 'New Crew', username: 'new.crew', password: 'crewpass123'}); h.render(props);
  assert.equal(calls.length, 1); assert.equal(calls[0].action, 'excursion-resource');
  assert.equal(calls[0].resourceType, 'crew'); assert.equal(calls[0].name, 'New Crew');
+ assert.equal(calls[0].username, 'new.crew'); assert.equal(calls[0].password, 'crewpass123');
  assert.equal(find(h, n => n.type === './excursion-crew-form'), undefined);
  assert.match(text(h.tree), /New Crew added to the crew list/);
  button(h, 'Schedule').props.onClick(); h.render(); button(h, '+ Create schedule').props.onClick(); h.render();
