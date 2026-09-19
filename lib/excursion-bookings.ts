@@ -3,7 +3,7 @@ export type ExcursionGuestPerson = {
   id: string; slot: number; name: string; nameRecorded: boolean; ageCategory: 'adult' | 'child' | 'infant' | ''; footSize: number | null; boarded: boolean; boardedAt: string;
 };
 export type ConfirmedExcursionBooking = {
-  id: string; excursion: string; guest: string; phone: string;
+  id: string; excursion: string; guest: string; groupName: string; phone: string;
   guestType: 'In-house' | 'Walk-in'; hotel: string; room: string;
   date: string; time: string; endTime: string; returnTime: string; guests: number; adults: number; children: number; infants: number; totalCents: number;
   paymentStatus: 'Paid' | 'Unpaid'; tripStatus: string;
@@ -67,7 +67,7 @@ export function toConfirmedExcursionBooking(
   });
   return {
     id: text(order.id), excursion: text(order.name) || text(current?.name) || 'Excursion',
-    guest: guestName || 'Guest name not recorded',
+    guest: guestName || 'Guest name not recorded', groupName: text(order.groupName),
     phone: text(order.phone) || text(stay?.whatsapp),
     guestType: inhouse ? 'In-house' : 'Walk-in',
     hotel: inhouse ? 'Nirili Villa' : text(order.hotel),
