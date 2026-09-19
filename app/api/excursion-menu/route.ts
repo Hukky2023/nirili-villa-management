@@ -24,7 +24,7 @@ function canEdit(user:any){return !!user&&user.role!=='guest'&&hasPermission(use
 
 export async function GET(){
  const user=await currentUser();
- if(!user)return Response.json({error:'Login required.'},{status:401});
+ if(!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{return Response.json({items:await loadExcursionMenu()},{headers:{'Cache-Control':'no-store'}})}
  catch{return Response.json({error:'Could not load excursion menu.'},{status:503})}
 }
