@@ -10,11 +10,16 @@ import type {ManifestSchedule} from '../../../lib/excursion-manifest';
 const headers = {'Cache-Control': 'private, no-store', 'Vary': 'Cookie'};
 const prefix = 'excursion-schedule:';
 const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
-const tripStatuses = ['Excursion scheduled', 'Guests boarded', 'Departed', 'Arrived', 'Completed'] as const;
+const tripStatuses = ['Excursion scheduled', 'Guests boarded & Departed', 'Arrived & Completed'] as const;
 type TripStatus = typeof tripStatuses[number];
 const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
 const cleanName = (value: unknown) => text(value).replace(/\s+/g, ' ').slice(0, 100);
-const tripStatusOf = (schedule: any): TripStatus => tripStatuses.includes(schedule?.tripStatus) ? schedule.tripStatus : 'Excursion scheduled';
+const tripStatusOf = (schedule: any): TripStatus => {
+ const value=String(schedule?.tripStatus||'');
+ if(value==='Guests boarded'||value==='Departed'||value==='Guests boarded & Departed')return 'Guests boarded & Departed';
+ if(value==='Arrived'||value==='Completed'||value==='Arrived & Completed')return 'Arrived & Completed';
+ return 'Excursion scheduled';
+};
 const departureKey = (schedule: any) => schedule.sharedGroup
   ? JSON.stringify([schedule.date, schedule.time, 'group', schedule.sharedGroup])
   : schedule.vesselId ? JSON.stringify([schedule.date, schedule.time, 'vessel', schedule.vesselId])
@@ -121,9 +126,9 @@ export async function PATCH(request: Request) {
       if (!tripStatuses.includes(nextStatus)) throw Error('Choose a valid excursion status.');
       const currentStatus = tripStatusOf(selectedRow);
       const currentIndex = tripStatuses.indexOf(currentStatus), nextIndex = tripStatuses.indexOf(nextStatus);
-      if (nextIndex !== currentIndex + 1) throw Error('Follow the trip sequence: Excursion scheduled → Guests boarded → Departed → Arrived → Completed.');
+      if (nextIndex !== currentIndex + 1) throw Error('Follow the trip sequence: Excursion scheduled → Guests boarded & Departed → Arrived & Completed.');
 
-      if (nextStatus === 'Guests boarded') {
+      if (nextStatus === 'Guests boarded & Departed') {
         if (!currentManifest.bookings.length) throw Error('There are no confirmed guests to board.');
         if (currentManifest.bookings.some(booking => !booking.attendanceReviewedAt || booking.people.some(person => !person.nameRecorded))) {
           throw Error('Save the complete guest-name and boarding checklist before marking Guests boarded.');
@@ -132,7 +137,7 @@ export async function PATCH(request: Request) {
         if (!boarded) throw Error('Tick at least one guest as boarded before continuing.');
       }
 
-      if (nextStatus === 'Departed') {
+      if (nextStatus === 'Guests boarded & Departed') {
         const resources = excursionResources(state);
         const targetsForChecks = rows.filter(row => departureKey(row) === departureKey(selectedRow) && row.status !== 'Cancelled');
         assertGuideRule(guideRuleFor(selectedRow, schedules, state.orders || [], resources.crew));
@@ -152,18 +157,20 @@ export async function PATCH(request: Request) {
 
       const key = departureKey(selectedRow), now = new Date().toISOString();
       const targets = rows.filter(row => departureKey(row) === key && row.status !== 'Cancelled');
-      const field = nextStatus === 'Guests boarded' ? 'boardingStartedAt'
-        : nextStatus === 'Departed' ? 'departedAt'
-          : nextStatus === 'Arrived' ? 'arrivedAt' : nextStatus === 'Completed' ? 'completedAt' : '';
+      const lifecycleTimes = nextStatus === 'Guests boarded & Departed'
+        ? {boardingStartedAt: now, departedAt: now}
+        : nextStatus === 'Arrived & Completed'
+          ? {arrivedAt: now, completedAt: now}
+          : {};
       const db = authDb();
       const writes = targets.map(row => {
         const {_key, _revision, ...plain} = row;
         const updated = {
           ...plain,
-          status: nextStatus === 'Guests boarded' || currentStatus !== 'Excursion scheduled' ? 'Closed' : plain.status,
+          status: nextStatus !== 'Excursion scheduled' ? 'Closed' : plain.status,
           tripStatus: nextStatus,
           tripStatusHistory: [...(Array.isArray(plain.tripStatusHistory) ? plain.tripStatusHistory : []), {from: tripStatusOf(plain), to: nextStatus, at: now, by: user!.username}],
-          ...(field ? {[field]: now} : {}),
+          ...lifecycleTimes,
           updatedAt: now,
         };
         return {row, updated, statement: db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?')
