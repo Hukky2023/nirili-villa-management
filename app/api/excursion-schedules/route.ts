@@ -80,11 +80,20 @@ export async function GET(r:Request){
   const raw=await schedulesForDate(date);
   const {state}=await loadStays(),orders=Array.isArray(state.orders)?state.orders:[];
   const schedules=raw.map((s:any)=>{
-   const bookedPax=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)&&!o.separateVessel).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
+   const confirmedOrders=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)&&!o.separateVessel);
+   const bookedPax=confirmedOrders.reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
+   const guestNames=confirmedOrders.flatMap((o:any)=>{
+    const quantity=Math.max(0,Number(o.quantity)||0);
+    const roster=Array.isArray(o.excursionGuestRoster)?o.excursionGuestRoster:[];
+    const named=roster.map((person:any)=>String(person?.name||'').trim()).filter(Boolean);
+    if(named.length)return named.slice(0,quantity||named.length);
+    const lead=String(o.guest||'').trim()||'Guest';
+    return quantity>1?[lead+' (+'+(quantity-1)+' guest'+(quantity-1===1?'':'s')+')']:[lead];
+   });
    const pendingOrders=orders.filter((o:any)=>matches(o,s)&&isPending(o));
    const pendingPax=pendingOrders.reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const extraVesselBookings=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)&&o.separateVessel).map((o:any)=>({id:o.id,guest:o.guest,room:o.room||o.externalRoom||'',quantity:o.quantity,vesselId:o.overflowVesselId||o.schedule?.vesselId||'',vessel:o.schedule?.vessel||'',createdAt:o.reviewedAt||o.createdAt}));
-   return {...s,priceCents:Number(s.priceCents)||0,bookedPax,pendingPax,sharedBoatKey:sharedKey(s),pendingOrders,extraVesselBookings};
+   return {...s,priceCents:Number(s.priceCents)||0,bookedPax,guestNames,pendingPax,sharedBoatKey:sharedKey(s),pendingOrders,extraVesselBookings};
   });
   const groups:Record<string,{scheduleIds:string[],bookedPax:number,pendingPax:number,capacity:number}>={};
   for(const s of schedules){
