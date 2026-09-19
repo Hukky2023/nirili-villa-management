@@ -1005,3 +1005,21 @@
 .excursion-accessories-menu button:hover{
   background:#f2f8fb;
 }
+
+
+/* Accessories now has its own timetable column (replacing Price). */
+.excursion-accessories-cell{
+  position:relative;
+  overflow:visible;
+}
+.excursion-accessories-cell .excursion-accessories-compact{
+  margin-top:0;
+  padding-top:0;
+  border-top:0;
+}
+.excursion-accessories-na{
+  display:block;
+  padding-top:2px;
+  font-size:11px;
+  font-weight:700;
+}
