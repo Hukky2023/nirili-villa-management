@@ -7,7 +7,7 @@ import {excursionResources} from '../../../lib/excursion-workflow';
 import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requiredExcursionGuides} from '../../../lib/excursion-guides';
 import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
-import {clockMinutes,droneConflict,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
+import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -19,6 +19,7 @@ const clean=async (x:any,state:any)=>{
  if(!name)throw Error('Excursion name is required.');
  const endTime=validTime(x.endTime)?String(x.endTime):inferTripEndTime(name,x.time);
  if(!validTime(endTime)||clockMinutes(endTime)<=clockMinutes(x.time))throw Error('Choose an end time later than the departure time.');
+ if(fridayExcursionBlackout(x.date,x.time,endTime))throw Error(fridayExcursionBlackoutMessage);
  let capacity=Math.max(1,Math.min(100,Number(x.capacity)||1));
  const priceCents=Math.max(0,Math.min(1000000,Math.round(Number(x.priceCents)||0)));
  const vesselId=String(x.vesselId||'').slice(0,100);
