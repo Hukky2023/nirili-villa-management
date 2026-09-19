@@ -65,6 +65,17 @@ function separateVesselConflict(orders:any[],vesselId:string,date:string,time:st
  })||null;
 }
 
+const requestScheduleCleanupMarker='excursion-request-created-schedules-cleared-2026-09-19';
+async function clearExistingRequestCreatedSchedulesOnce(){
+ const db=authDb();
+ const marker=await db.prepare('SELECT key FROM operation_records WHERE key=?').bind(requestScheduleCleanupMarker).first<any>();
+ if(marker)return;
+ await db.batch([
+  db.prepare("DELETE FROM operation_records WHERE key LIKE ? AND (json_extract(payload,'$.createdFromRequest') IS NOT NULL OR json_extract(payload,'$.id') LIKE 'req-%')").bind(prefix+'%'),
+  db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)')
+   .bind(requestScheduleCleanupMarker,JSON.stringify({at:new Date().toISOString(),action:'Removed booking-request-created schedules; kept regular schedule only.'}),'system:'+requestScheduleCleanupMarker)
+ ]);
+}
 async function schedulesForDate(date:string){
  const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(prefix+date+':%').all<any>();
  return (rows.results||[]).map((row:any)=>({...JSON.parse(row.payload),revision:row.revision})).sort((a:any,b:any)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
@@ -76,6 +87,7 @@ export async function GET(r:Request){
  const date=new URL(r.url).searchParams.get('date')||'';
  if(!validDate(date))return Response.json({error:'Valid schedule date required.'},{status:400});
  try{
+  await clearExistingRequestCreatedSchedulesOnce();
   await ensureStandardDailyExcursions(date);
   const raw=await schedulesForDate(date);
   const {state}=await loadStays(),orders=Array.isArray(state.orders)?state.orders:[];
