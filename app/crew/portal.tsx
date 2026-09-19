@@ -5,12 +5,6 @@ import {CalendarDays,Clock3,MapPin,Navigation,RefreshCw,ShieldCheck,StopCircle,T
 import SessionButton from '../session-button';
 import './style.css';
 
-function timeLabel(value:string){
- if(!value)return 'Not shared yet';
- const d=new Date(value);if(Number.isNaN(d.getTime()))return value;
- return new Intl.DateTimeFormat('en-GB',{timeZone:'Indian/Maldives',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(d).replace(',','')+' Maldives time';
-}
-
 export default function CrewLocationPortal(){
  const [profile,setProfile]=useState<any>(null),[location,setLocation]=useState<any>(null),[sharing,setSharing]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[trips,setTrips]=useState<any[]>([]),[requests,setRequests]=useState<any[]>([]),[unavailableTrip,setUnavailableTrip]=useState<any>(null),[reason,setReason]=useState(''),[requestBusy,setRequestBusy]=useState(false);
  const watchRef=useRef<number|null>(null),lastSent=useRef(0),lastPosition=useRef<GeolocationPosition|null>(null),heartbeatRef=useRef<ReturnType<typeof setInterval>|null>(null);
@@ -81,11 +75,6 @@ export default function CrewLocationPortal(){
     {!sharing?<button type="button" className="primary" disabled={busy} onClick={startSharing}><MapPin size={18}/>{busy?'Getting location…':'Start sharing live location'}</button>:<button type="button" className="danger" disabled={busy} onClick={stopSharing}><StopCircle size={18}/>Stop sharing</button>}
     <button type="button" disabled={busy} onClick={load}><RefreshCw size={17}/>Refresh</button>
    </div>
-  </section>
-  <section className="crew-location-status">
-   <article><span>Status</span><strong>{sharing?'Sharing now':location?.sharing?'Last shared location saved':'Not sharing'}</strong></article>
-   <article><span>Last update</span><strong>{timeLabel(location?.updatedAt||'')}</strong></article>
-   <article><span>Accuracy</span><strong>{location?.accuracy?('± '+Math.round(location.accuracy)+' m'):'—'}</strong></article>
   </section>
   <section className="crew-trip-section">
    <header><div><small>MY ASSIGNED TRIPS</small><h2>Upcoming excursion assignments</h2><p>If you cannot attend an assigned trip, send a reason to Admin. You remain assigned until Admin approves the request.</p></div><button type="button" onClick={load}><RefreshCw size={16}/>Refresh trips</button></header>
