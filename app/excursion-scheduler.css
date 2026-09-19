@@ -1053,3 +1053,30 @@
   color:#6b8491;
   font-size:11px;
 }
+
+
+/* Consolidated Edit Trip sections */
+.excursion-edit-section-title{
+  display:grid;
+  gap:2px;
+  margin-top:4px;
+  padding:10px 12px;
+  border:1px solid #dce9ef;
+  border-radius:10px;
+  background:#f6fafc;
+}
+.excursion-edit-section-title strong{
+  color:#17384c;
+  font-size:13px;
+}
+.excursion-edit-section-title small{
+  color:#607c8b;
+  font-size:11px;
+}
+.excursion-edit-crew-section{
+  display:grid;
+  gap:10px;
+  margin-top:14px;
+  padding-top:12px;
+  border-top:1px solid #e2ebef;
+}
