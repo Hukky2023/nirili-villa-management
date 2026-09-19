@@ -77,7 +77,17 @@ export default function Home({role,email,permissions}:{role:"admin"|"staff"|"gue
 const mobileMenuButton=useRef<HTMLButtonElement>(null);
 const [module,setModule]=useState<Module>("Dashboard"),[side,setSide]=useState(false),[modal,setModal]=useState<string|null>(null);
 useEffect(()=>{if(!side)return;const close=(e:KeyboardEvent)=>{if(e.key==="Escape"){setSide(false);mobileMenuButton.current?.focus()}};window.addEventListener("keydown",close);return()=>window.removeEventListener("keydown",close)},[side]);
-const allowed=(m:Module)=>role==="admin"||["Dashboard","Bookings","Rooms","Guests","Transfers","Excursions","POS"].includes(m);
+const staffHas=(permission:string)=>role==="staff"&&permissions.includes(permission);
+const coreHotelAccess=role==="admin"||(role==="staff"&&(permissions.length===0||permissions.some(permission=>["edit_bills","edit_excursions","edit_transfers"].includes(permission))));
+const allowed=(m:Module)=>{
+ if(role==="admin")return true;
+ if(role!=="staff")return false;
+ if(["Dashboard","Bookings","Rooms","Guests"].includes(m))return coreHotelAccess;
+ if(m==="Transfers")return staffHas("edit_transfers");
+ if(m==="Excursions")return staffHas("edit_excursions");
+ if(m==="POS")return permissions.some(permission=>["waiter_pos","restaurant_pos","kitchen_pos","edit_bills"].includes(permission));
+ return false;
+};
 const open=(m:Module)=>{if(allowed(m))setModule(m);setSide(false)};
 useEffect(()=>{if(role!=="guest"&&new URLSearchParams(window.location.search).has("room"))setModule("Rooms")},[role]);
 return <DiscountAccess.Provider value={role==="admin"}><BillAccess.Provider value={role==="admin"||(role==="staff"&&permissions.includes("edit_bills"))}><div>
