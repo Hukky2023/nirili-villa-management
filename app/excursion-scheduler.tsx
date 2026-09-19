@@ -41,7 +41,7 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
  const availableGoPros=(resources.gopros||[]).filter((g:any)=>(g.condition||'Available')==='Available');
  const availableDrones=(resources.drones||[]).filter((d:any)=>(d.condition||'Available')==='Available');
  async function shareCrewLogin(login:any){
-  const text='Nirili Villa Crew login\nName: '+login.name+'\nUsername: '+login.username+'\nPassword: '+login.password+'\nLogin: '+window.location.origin+'/login?portal=staff';
+  const text='Nirili Villa Crew login\nName: '+login.name+'\nUsername: '+login.username+'\nPassword: '+login.password+'\nLogin: '+window.location.origin+'/login?portal=direct&username='+encodeURIComponent(login.username)+'\n\nOpen the link and sign in. You will be taken directly to the Crew portal.';
   try{if(navigator.share)await navigator.share({title:'Nirili Villa Crew login',text});else{await navigator.clipboard.writeText(text);setMessage('Crew login details copied.');}}catch(e){if((e as Error).name!=='AbortError')setMessage('Sharing unavailable. Copy the username and password manually.');}
  }
  async function removeCrewMember(crew:any){
