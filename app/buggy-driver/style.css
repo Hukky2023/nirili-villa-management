@@ -22,3 +22,116 @@
  border-color:#bcdccc;
  background:#fbfffd;
 }
+
+
+.buggy-booking-overlay{
+ position:fixed;
+ inset:0;
+ z-index:1000;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ padding:20px;
+ background:rgba(12,34,45,.48);
+ backdrop-filter:blur(2px);
+}
+.buggy-booking-dialog{
+ width:min(760px,100%);
+ max-height:90vh;
+ overflow:auto;
+ background:#fff;
+ border:1px solid #d5e4ea;
+ border-radius:18px;
+ box-shadow:0 24px 70px rgba(0,0,0,.24);
+ padding:20px;
+}
+.buggy-booking-dialog header{
+ display:flex;
+ justify-content:space-between;
+ align-items:flex-start;
+ gap:16px;
+ margin-bottom:18px;
+}
+.buggy-booking-dialog header small{
+ color:#087cad;
+ font-size:11px;
+ font-weight:800;
+ letter-spacing:.1em;
+}
+.buggy-booking-dialog header h2{
+ margin:4px 0;
+ color:#14394d;
+}
+.buggy-booking-dialog header p{
+ margin:0;
+ color:#607c8b;
+}
+.buggy-booking-dialog header>button{
+ border:0;
+ background:#eef5f8;
+ width:38px;
+ height:38px;
+ border-radius:50%;
+ font-size:24px;
+ color:#14394d;
+ cursor:pointer;
+}
+.buggy-booking-grid{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:14px;
+}
+.buggy-booking-grid label{
+ display:grid;
+ gap:6px;
+ color:#365c6f;
+ font-size:13px;
+ font-weight:800;
+}
+.buggy-booking-grid input,
+.buggy-booking-grid textarea{
+ width:100%;
+ min-height:44px;
+ border:1px solid #c8dce5;
+ border-radius:10px;
+ padding:10px 12px;
+ background:#fff;
+ color:#14394d;
+ font:inherit;
+}
+.buggy-booking-grid textarea{
+ min-height:90px;
+ resize:vertical;
+}
+.buggy-booking-grid .full{
+ grid-column:1/-1;
+}
+.buggy-booking-dialog footer{
+ display:flex;
+ justify-content:flex-end;
+ gap:10px;
+ margin-top:18px;
+}
+.buggy-booking-dialog footer button{
+ min-height:44px;
+ border:1px solid #c8dce5;
+ border-radius:10px;
+ padding:10px 16px;
+ background:#fff;
+ color:#174158;
+ font-weight:800;
+ cursor:pointer;
+}
+.buggy-booking-dialog footer .boarded{
+ border-color:#087cad;
+ background:#087cad;
+ color:#fff;
+}
+@media(max-width:620px){
+ .buggy-booking-overlay{padding:10px}
+ .buggy-booking-dialog{padding:16px;max-height:94vh}
+ .buggy-booking-grid{grid-template-columns:1fr}
+ .buggy-booking-grid .full{grid-column:auto}
+ .buggy-booking-dialog footer{flex-direction:column-reverse}
+ .buggy-booking-dialog footer button{width:100%}
+}
