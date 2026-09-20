@@ -5598,5 +5598,320 @@
     "Traslado de salida en lancha rápida compartida, por persona. Incluye la hora de tu vuelo para que recepción pueda ayudarte a organizar una lancha adecuada.",
     "শেয়ার্ড স্পিডবোটে প্রস্থানের ট্রান্সফার, প্রতি ব্যক্তি। ফ্লাইটের সময় দিন যাতে রিসেপশন উপযুক্ত বোটের ব্যবস্থা করতে পারে।",
     "Трансфер при выезде на общем скоростном катере, цена за человека. Укажите время рейса, чтобы ресепшен помог подобрать подходящий катер."
+  ],
+  "WEATHER & TIDES": [
+    "天气与潮汐",
+    "METEO E MAREE",
+    "CLIMA Y MAREAS",
+    "আবহাওয়া ও জোয়ার",
+    "ПОГОДА И ПРИЛИВЫ"
+  ],
+  "Sea conditions for excursion operations": [
+    "游览运营海况",
+    "Condizioni del mare per le escursioni",
+    "Condiciones del mar para las excursiones",
+    "ভ্রমণ পরিচালনার জন্য সমুদ্রের অবস্থা",
+    "Морские условия для экскурсий"
+  ],
+  "Updated automatically every 15 minutes.": [
+    "每15分钟自动更新。",
+    "Aggiornato automaticamente ogni 15 minuti.",
+    "Se actualiza automáticamente cada 15 minutos.",
+    "প্রতি ১৫ মিনিটে স্বয়ংক্রিয়ভাবে আপডেট হয়।",
+    "Автоматическое обновление каждые 15 минут."
+  ],
+  "Next day": [
+    "次日",
+    "Giorno successivo",
+    "Día siguiente",
+    "পরের দিন",
+    "Следующий день"
+  ],
+  "Updating…": [
+    "正在更新…",
+    "Aggiornamento…",
+    "Actualizando…",
+    "আপডেট হচ্ছে…",
+    "Обновление…"
+  ],
+  "Loading Dhiffushi weather and tide forecast…": [
+    "正在加载 Dhiffushi 天气和潮汐预报…",
+    "Caricamento meteo e maree di Dhiffushi…",
+    "Cargando el pronóstico del tiempo y mareas de Dhiffushi…",
+    "Dhiffushi আবহাওয়া ও জোয়ারের পূর্বাভাস লোড হচ্ছে…",
+    "Загрузка прогноза погоды и приливов для Dhiffushi…"
+  ],
+  "Rain chance": [
+    "降雨概率",
+    "Probabilità di pioggia",
+    "Probabilidad de lluvia",
+    "বৃষ্টির সম্ভাবনা",
+    "Вероятность дождя"
+  ],
+  "Wind": [
+    "风速",
+    "Vento",
+    "Viento",
+    "বাতাস",
+    "Ветер"
+  ],
+  "Gusts": [
+    "阵风",
+    "Raffiche",
+    "Ráfagas",
+    "দমকা বাতাস",
+    "Порывы"
+  ],
+  "Wave height": [
+    "浪高",
+    "Altezza onde",
+    "Altura de olas",
+    "ঢেউয়ের উচ্চতা",
+    "Высота волн"
+  ],
+  "Ocean current now": [
+    "当前洋流",
+    "Corrente marina attuale",
+    "Corriente oceánica actual",
+    "বর্তমান সমুদ্র স্রোত",
+    "Текущее морское течение"
+  ],
+  "Today’s tides": [
+    "今日潮汐",
+    "Maree di oggi",
+    "Mareas de hoy",
+    "আজকের জোয়ার",
+    "Приливы сегодня"
+  ],
+  "Next day tides": [
+    "次日潮汐",
+    "Maree del giorno successivo",
+    "Mareas del día siguiente",
+    "পরের দিনের জোয়ার",
+    "Приливы на следующий день"
+  ],
+  "No tide extrema available": [
+    "暂无潮汐极值数据",
+    "Nessun estremo di marea disponibile",
+    "No hay extremos de marea disponibles",
+    "জোয়ারের চরম মান উপলভ্য নয়",
+    "Нет данных об экстремумах прилива"
+  ],
+  "Tide heights are modelled sea-level estimates for the Dhiffushi area, not a harbor gauge. Use weather, waves and tides together when planning excursions.": [
+    "潮高为 Dhiffushi 区域的模型海平面估算值，并非港口实测。规划游览时请综合考虑天气、海浪和潮汐。",
+    "Le altezze di marea sono stime modellate del livello del mare per l'area di Dhiffushi, non misure portuali. Considera insieme meteo, onde e maree quando pianifichi le escursioni.",
+    "Las alturas de marea son estimaciones modeladas del nivel del mar para la zona de Dhiffushi, no mediciones del puerto. Usa conjuntamente clima, oleaje y mareas al planificar excursiones.",
+    "জোয়ারের উচ্চতা Dhiffushi এলাকার মডেলভিত্তিক সমুদ্রপৃষ্ঠের অনুমান, বন্দর গেজ নয়। ভ্রমণ পরিকল্পনার সময় আবহাওয়া, ঢেউ ও জোয়ার একসাথে বিবেচনা করুন।",
+    "Высота прилива — модельная оценка уровня моря для района Dhiffushi, а не показания портового датчика. При планировании экскурсий учитывайте погоду, волны и приливы вместе."
+  ],
+  "Feels": [
+    "体感",
+    "Percepiti",
+    "Sensación",
+    "অনুভূত",
+    "Ощущается"
+  ],
+  "Forecast high / low": [
+    "预报最高 / 最低",
+    "Massima / minima prevista",
+    "Máxima / mínima prevista",
+    "পূর্বাভাস সর্বোচ্চ / সর্বনিম্ন",
+    "Прогноз макс. / мин."
+  ],
+  "High": [
+    "高潮",
+    "Alta",
+    "Pleamar",
+    "উচ্চ জোয়ার",
+    "Прилив"
+  ],
+  "Low": [
+    "低潮",
+    "Bassa",
+    "Bajamar",
+    "নিম্ন জোয়ার",
+    "Отлив"
+  ],
+  "Overcast": [
+    "阴天",
+    "Coperto",
+    "Cubierto",
+    "মেঘাচ্ছন্ন",
+    "Пасмурно"
+  ],
+  "Showing excursions for": [
+    "显示以下日期的游览",
+    "Escursioni per",
+    "Mostrando excursiones para",
+    "এই তারিখের ভ্রমণ দেখানো হচ্ছে",
+    "Экскурсии на"
+  ],
+  "Excursion bookings are available after check-in.": [
+    "入住后可预订游览。",
+    "Le escursioni possono essere prenotate dopo il check-in.",
+    "Las excursiones están disponibles después del check-in.",
+    "চেক-ইনের পরে ভ্রমণ বুক করা যাবে।",
+    "Экскурсии доступны для бронирования после заселения."
+  ],
+  "Loading schedule…": [
+    "正在加载行程…",
+    "Caricamento programma…",
+    "Cargando horario…",
+    "সময়সূচি লোড হচ্ছে…",
+    "Загрузка расписания…"
+  ],
+  "No excursions scheduled for this date.": [
+    "该日期暂无游览安排。",
+    "Nessuna escursione programmata per questa data.",
+    "No hay excursiones programadas para esta fecha.",
+    "এই তারিখে কোনো ভ্রমণ নির্ধারিত নেই।",
+    "На эту дату экскурсии не запланированы."
+  ],
+  "Please choose another day.": [
+    "请选择其他日期。",
+    "Scegli un altro giorno.",
+    "Elige otro día.",
+    "অন্য একটি দিন বেছে নিন।",
+    "Выберите другой день."
+  ],
+  "to": [
+    "至",
+    "a",
+    "a",
+    "থেকে",
+    "до"
+  ],
+  "Departure passed": [
+    "已过出发时间",
+    "Partenza già trascorsa",
+    "Salida ya pasada",
+    "যাত্রার সময় পেরিয়েছে",
+    "Время отправления прошло"
+  ],
+  "Closed": [
+    "已关闭",
+    "Chiuso",
+    "Cerrado",
+    "বন্ধ",
+    "Закрыто"
+  ],
+  "At capacity": [
+    "已满员",
+    "Al completo",
+    "Sin plazas",
+    "পূর্ণ",
+    "Мест нет"
+  ],
+  "Open": [
+    "开放",
+    "Aperto",
+    "Abierto",
+    "খোলা",
+    "Открыто"
+  ],
+  "Same boat": [
+    "同一艘船",
+    "Stessa barca",
+    "Misma lancha",
+    "একই বোট",
+    "Тот же катер"
+  ],
+  "confirmed": [
+    "已确认",
+    "confermati",
+    "confirmados",
+    "নিশ্চিত",
+    "подтверждено"
+  ],
+  "seat available": [
+    "个座位可用",
+    "posto disponibile",
+    "asiento disponible",
+    "টি আসন উপলভ্য",
+    "место доступно"
+  ],
+  "seats available": [
+    "个座位可用",
+    "posti disponibili",
+    "asientos disponibles",
+    "টি আসন উপলভ্য",
+    "мест доступно"
+  ],
+  "Extra-seat requests accepted": [
+    "可提交额外座位请求",
+    "Richieste di posti extra accettate",
+    "Se aceptan solicitudes de plazas extra",
+    "অতিরিক্ত আসনের অনুরোধ গ্রহণ করা হয়",
+    "Можно запросить дополнительные места"
+  ],
+  "pax awaiting Admin": [
+    "人等待管理员处理",
+    "pax in attesa dell'Admin",
+    "pax en espera del administrador",
+    "জন অ্যাডমিনের অপেক্ষায়",
+    "пасс. ожидают администратора"
+  ],
+  "Return pickup:": [
+    "返程接送：",
+    "Rientro:",
+    "Recogida de regreso:",
+    "ফেরার পিকআপ:",
+    "Обратный трансфер:"
+  ],
+  "Cancellation reason:": [
+    "取消原因：",
+    "Motivo annullamento:",
+    "Motivo de cancelación:",
+    "বাতিলের কারণ:",
+    "Причина отмены:"
+  ],
+  "Your latest booking:": [
+    "您最近的预订：",
+    "La tua ultima prenotazione:",
+    "Tu última reserva:",
+    "আপনার সর্বশেষ বুকিং:",
+    "Ваше последнее бронирование:"
+  ],
+  "seat": [
+    "座位",
+    "posto",
+    "asiento",
+    "আসন",
+    "место"
+  ],
+  "seats": [
+    "座位",
+    "posti",
+    "asientos",
+    "আসন",
+    "места"
+  ],
+  "Booking closed": [
+    "预订已关闭",
+    "Prenotazione chiusa",
+    "Reserva cerrada",
+    "বুকিং বন্ধ",
+    "Бронирование закрыто"
+  ],
+  "Request pending": [
+    "请求待处理",
+    "Richiesta in attesa",
+    "Solicitud pendiente",
+    "অনুরোধ অপেক্ষমাণ",
+    "Запрос ожидает"
+  ],
+  "Request seats": [
+    "申请座位",
+    "Richiedi posti",
+    "Solicitar plazas",
+    "আসন অনুরোধ করুন",
+    "Запросить места"
+  ],
+  "Book seats": [
+    "预订座位",
+    "Prenota posti",
+    "Reservar plazas",
+    "আসন বুক করুন",
+    "Забронировать места"
   ]
 }
