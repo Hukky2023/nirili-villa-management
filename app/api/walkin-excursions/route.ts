@@ -50,7 +50,7 @@ export async function POST(r:Request){
   const hotel=String(b.hotel||'').trim().replace(/\s+/g,' ').slice(0,150);
   const room=String(b.room||'').trim().slice(0,50),departureDate=String(b.departureDate||'');
   const guests=cleanGuests(b.guests,name);
-  if(!name||guests[0]?.name!==name||(phone&&!/^\+[1-9]\d{7,14}$/.test(phone))||!hotel||!validDate(departureDate)||departureDate<islandToday())throw Error('Enter your name, every guest age category, where you are staying, and the date you are leaving Dhiffushi.');
+  if(!name||guests[0]?.name!==name||!/^\+[1-9]\d{7,14}$/.test(phone)||!hotel||!validDate(departureDate)||departureDate<islandToday())throw Error('Enter your name, every guest age category, a valid WhatsApp / contact number with country code, where you are staying, and the date you are leaving Dhiffushi.');
   const ip=r.headers.get('cf-connecting-ip')||'unknown';
   if(!await limit('walkin-guest-account-ip:'+ip,8,3600000))throw Error('Too many temporary account requests. Please contact reception.');
   const {state,revision}=await loadStays();
