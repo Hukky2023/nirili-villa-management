@@ -135,7 +135,7 @@ export async function GET(){
    const vessel=text(resources.vessels.find((item:any)=>item.id===trip.vesselId)?.name,100)||text(trip.schedules.find((schedule:any)=>schedule.vessel)?.vessel,100)||'Not assigned';
    const {schedules:groupSchedules,...view}=trip;
    return {...view,vessel,pax,otherCrew,request:related?requestView(related,schedules):null};
-  });
+  }).filter((trip:any)=>Number(trip.pax)>0);
   return Response.json({mode:'crew',crew:{id:crew.id,name:crew.name,username:user.username},trips,requests:ownRequests.slice(0,30).map((request:any)=>requestView(request,schedules))},{headers});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not load crew trip requests.'},{status:503,headers});}
 }
