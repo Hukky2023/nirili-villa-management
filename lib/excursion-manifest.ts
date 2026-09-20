@@ -73,8 +73,13 @@ export function buildExcursionManifest(
     if (!schedule) continue;
     const onSharedScheduledBoat = boatIds.has(schedule.id) && schedule.date === selected.date && !order.separateVessel;
     if (onSharedScheduledBoat) {
+      // Shared departures use one physical boat, so occupancy must include passengers from
+      // every excursion on that boat. The guest-list dialog, however, belongs to one
+      // schedule only and must never show passengers booked on a sibling excursion.
       boatPax += count(order.quantity);
-      bookings.push(toConfirmedExcursionBooking(order, stays.get(order.stayId), schedule, resources, isPaid(order)));
+      if (schedule.id === selected.id) {
+        bookings.push(toConfirmedExcursionBooking(order, stays.get(order.stayId), schedule, resources, isPaid(order)));
+      }
     } else if (schedule.id === selected.id && schedule.date === selected.date && order.separateVessel) {
       // Keep extra-vessel bookings for the selected excursion visible, while the scheduled
       // boat passenger total stays aligned with the timetable occupancy.
