@@ -86,7 +86,7 @@ export async function POST(r:Request){
  if(!hasPermission(user,'buggy_driver')||!sameOrigin(r))return Response.json({error:'Buggy Driver access required.'},{status:403});
  try{
   const b=await r.json(),guest=String(b.guest||'').trim().slice(0,100),phone=String(b.phone||'').trim().slice(0,30),date=String(b.date||''),pickupTime=String(b.pickupTime||''),location=String(b.location||'').trim().slice(0,150),destination=String(b.destination||'').trim().slice(0,150),quantity=Math.max(1,Math.min(20,Number(b.quantity)||1)),notes=String(b.notes||'').trim().slice(0,500);
-  if(!guest||!validDate(date)||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(pickupTime)||!location||!destination)throw Error('Enter guest name, date, buggy time, pickup point and drop-off point.');
+  if(!guest||!validDate(date)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(pickupTime)||!location||!destination)throw Error('Enter guest name, date, buggy time, pickup point and drop-off point.');
   const {state,revision}=await loadStays();state.buggyBookings??=[];
   const item={id:'buggy-'+crypto.randomUUID(),guest,phone,date,pickupTime,location,destination,quantity,notes,createdAt:new Date().toISOString(),createdBy:user?.username||user?.displayName||'buggy-driver'};
   state.buggyBookings.push(item);
