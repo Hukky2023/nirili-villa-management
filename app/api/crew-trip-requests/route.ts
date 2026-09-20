@@ -9,6 +9,16 @@ const headers={'Cache-Control':'private, no-store','Vary':'Cookie'};
 
 const text=(value:any,max=500)=>String(value||'').trim().slice(0,max);
 const normal=(value:any)=>text(value).replace(/\s+/g,' ').toLowerCase();
+function linkedCrew(resources:any,user:any){
+ const crew=(resources?.crew||[]).filter((member:any)=>!member.removed);
+ const direct=crew.find((member:any)=>member.accountId===user.userId||member.id===user.userId);
+ if(direct)return direct;
+ const username=normal(user.username),displayName=normal(user.displayName);
+ const byUsername=username?crew.filter((member:any)=>normal(member.username)===username):[];
+ if(byUsername.length===1)return byUsername[0];
+ const byName=displayName?crew.filter((member:any)=>normal(member.name)===displayName):[];
+ return byName.length===1?byName[0]:null;
+}
 const validDate=(value:any)=>/^\d{4}-\d{2}-\d{2}$/.test(String(value||''));
 
 function sharedKey(schedule:any){
@@ -67,7 +77,7 @@ export async function GET(){
    return Response.json({mode:'admin',requests:visible.map((request:any)=>requestView(request,schedules)),pendingCount:visible.filter((request:any)=>request.status==='Pending').length},{headers});
   }
   if(!hasPermission(user,'crew_location'))return Response.json({error:'Crew Member access required.'},{status:403,headers});
-  const savedState=await state(),resources=excursionResources(savedState),crew=resources.crew.find((member:any)=>!member.removed&&(member.accountId===user.userId||member.id===user.userId));
+  const savedState=await state(),resources=excursionResources(savedState),crew=linkedCrew(resources,user);
   if(!crew)return Response.json({error:'Your login is not linked to an excursion crew member.'},{status:409,headers});
   const today=islandToday();
   const assigned=schedules.filter((schedule:any)=>{
@@ -109,7 +119,7 @@ export async function POST(r:Request){
   const b=await r.json(),scheduleId=text(b.scheduleId,100),date=text(b.date,10),reason=text(b.reason,500);
   if(!scheduleId||!validDate(date)||!reason)throw Error('Choose an assigned trip and enter a reason.');
   if(reason.length<3)throw Error('Enter a little more detail about why you cannot go on this trip.');
-  const savedState=await state(),crew=excursionResources(savedState).crew.find((member:any)=>!member.removed&&(member.accountId===user.userId||member.id===user.userId));
+  const savedState=await state(),crew=linkedCrew(excursionResources(savedState),user);
   if(!crew)throw Error('Your login is not linked to an excursion crew member.');
   const schedules=await allSchedules(),schedule=schedules.find((item:any)=>item.id===scheduleId&&item.date===date);
   if(!schedule||schedule.status==='Cancelled')throw Error('This assigned trip is no longer available.');
