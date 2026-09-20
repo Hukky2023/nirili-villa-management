@@ -12,6 +12,68 @@ const guestExcursionRequestResetMarker='guest-excursion-seat-requests-cleared-20
 const guestExcursionRequestResetCutoff='2026-09-17T19:59:00.000Z';
 const excursionResetMarker20260919='excursion-bookings-cleared-2026-09-19-063749z';
 const excursionResetCutoff20260919='2026-09-19T06:37:49.000Z';
+const crewCleanupMarker='excursion-crew-cleanup-2026-09-20-dhaain-sifaah-v1';
+const normalizeCrew=(value:any)=>String(value||'').trim().replace(/\s+/g,' ').toLowerCase();
+function maldivesToday(){
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const get=(type:string)=>parts.find((part:any)=>part.type===type)?.value||'';
+ return get('year')+'-'+get('month')+'-'+get('day');
+}
+async function keepOnlyDhaainAndSifaahCrew(state:any,revision:number){
+ state.dataResets??=[];
+ if(state.dataResets.includes(crewCleanupMarker))return revision;
+ const allowed=new Set(['dhaain','sifaah']);
+ const resources=state.excursionResources||{vessels:[],crew:[],gopros:[],drones:[]};
+ const allCrew=Array.isArray(resources.crew)?resources.crew:[];
+ const keepCrew=allCrew.filter((member:any)=>allowed.has(normalizeCrew(member.username))||allowed.has(normalizeCrew(member.name)));
+ const keepIds=new Set(keepCrew.map((member:any)=>String(member.id)));
+ const keepNames=new Set(keepCrew.map((member:any)=>normalizeCrew(member.name)).filter(Boolean));
+ resources.crew=keepCrew.map((member:any)=>({...member,active:true,removed:false}));
+ state.excursionResources=resources;
+
+ const today=maldivesToday();
+ for(const order of state.orders||[]){
+  if(order?.kind!=='excursion')continue;
+  const orderDate=String(order.schedule?.date||order.date||'');
+  if(!orderDate||orderDate<today||!order.schedule)continue;
+  if(Array.isArray(order.schedule.crewIds))order.schedule.crewIds=order.schedule.crewIds.map(String).filter((id:string)=>keepIds.has(id));
+  if(Array.isArray(order.schedule.guideIds))order.schedule.guideIds=order.schedule.guideIds.map(String).filter((id:string)=>keepIds.has(id));
+  if(Array.isArray(order.schedule.crew))order.schedule.crew=order.schedule.crew.filter((name:any)=>keepNames.has(normalizeCrew(name)));
+ }
+
+ const db=authDb();
+ const scheduleRows=(await db.prepare("SELECT key,payload,revision FROM operation_records WHERE key LIKE 'excursion-schedule:%'").all<any>()).results||[];
+ const writes:any[]=[];
+ for(const row of scheduleRows){
+  let schedule:any;try{schedule=JSON.parse(row.payload||'{}')}catch{continue}
+  if(!schedule?.date||String(schedule.date)<today)continue;
+  const before=JSON.stringify(schedule);
+  if(Array.isArray(schedule.crewIds))schedule.crewIds=schedule.crewIds.map(String).filter((id:string)=>keepIds.has(id));
+  if(Array.isArray(schedule.guideIds))schedule.guideIds=schedule.guideIds.map(String).filter((id:string)=>keepIds.has(id));
+  if(Array.isArray(schedule.crew))schedule.crew=schedule.crew.filter((name:any)=>keepNames.has(normalizeCrew(name)));
+  if(JSON.stringify(schedule)!==before){
+   schedule.updatedAt=new Date().toISOString();
+   schedule.crewCleanupApplied=true;
+   writes.push(db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(schedule),'system:'+crewCleanupMarker,row.key,Number(row.revision)||1));
+  }
+ }
+
+ const staff=(await db.prepare("SELECT id,username,permissions FROM accounts WHERE role='staff'").all<any>()).results||[];
+ for(const account of staff){
+  let permissions:string[]=[];try{permissions=JSON.parse(account.permissions||'[]')}catch{}
+  const isKept=allowed.has(normalizeCrew(account.username));
+  const next=isKept?[...new Set([...permissions,'crew_location'])]:permissions.filter((permission:string)=>permission!=='crew_location');
+  if(JSON.stringify(next)!==JSON.stringify(permissions))writes.push(db.prepare("UPDATE accounts SET permissions=? WHERE id=? AND role='staff'").bind(JSON.stringify(next),account.id));
+ }
+
+ state.dataResets.push(crewCleanupMarker);
+ const payload=JSON.stringify(state);
+ const stateWrite=revision===0
+  ?db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,payload,'system:'+crewCleanupMarker)
+  :db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(payload,'system:'+crewCleanupMarker,stayKey,revision);
+ const results=await db.batch([stateWrite,...writes]);
+ return results[0]?.meta?.changes?revision+1:revision;
+}
 export function seedStays(){return {rooms:roomNumbers.map((number,i)=>({number,...roomDetails,status:i===5?'Cleaning':i===9?'Maintenance':i<4?'Occupied':'Available',note:''})),stays:['Qiao Mingzhi','Liu Yutong','Marco Rossi','Victoria Chen'].map((guest,i)=>({id:'NV-'+(1260+i),guest,room:String(101+i),billRoom:String(101+i),checkIn:'2026-09-'+(12+i),checkOut:'2026-09-'+(15+i),meal:i===2?'Full Board':i===3?'Half Board':'Bed & Breakfast',source:'Direct',pax:2,status:'In House',base:[18000,24000,40000,32000][i],initialPaid:[18000,10000,40000,0][i],extensions:[] as any[],payments:[] as any[],history:[] as any[]}))};}
 function removeOrderRefs(state:any,removedIds:Set<string>){
  for(const stay of state.stays||[]){
@@ -59,6 +121,7 @@ export async function loadStays(){
    :await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(payload,'system:'+marker,stayKey,revision).run();
   if(saved.meta.changes)revision+=1;
  }
+ revision=await keepOnlyDhaainAndSifaahCrew(state,revision);
  updateRoomInventory(state);return {state,revision};
 }
 export async function folioFor(s:any,orders?:any[]){if(s.legacyFolio===false||(s.accountId&&!s.legacyFolio)){const all=orders??(await loadStays()).state.orders;const bills=[...(s.posBills||[]),{department:'Accommodation',id:s.id,items:[[s.meal+' · '+s.checkIn+' to '+s.checkOut,1,s.base/100,0]],status:'Posted',totalCents:s.base},...all.filter((o:any)=>billableOrder(o,s)).map((o:any)=>o.kind==='excursion'?excursionFolioBill(o):({department:o.kind==='food'?'Restaurant':'Transfer',id:o.id,items:[[o.name,o.quantity,o.cents/100,0]],status:o.status,totalCents:o.cents})),...s.extensions.map((e:any)=>({department:'Accommodation',id:e.id,items:[['Stay extension · '+e.from+' to '+e.to,e.nights,e.cents/100,0]],status:'Posted',totalCents:e.cents}))];const totalCents=bills.reduce((n:number,b:any)=>n+b.totalCents,0),paidCents=s.initialPaid+s.payments.reduce((n:number,p:any)=>n+p.cents,0);return {bills:bills.map((b:any)=>paidBillStatus(s,b)),totalCents,paidCents,balanceCents:totalCents-paidCents};}const rows=await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?').bind('folio:'+s.billRoom+':%').all<any>();const overrides=rows.results.map((x:any)=>JSON.parse(x.payload));
