@@ -5,6 +5,7 @@ import {excursionGuestMix,excursionPriceCents} from '../../../lib/excursion-chil
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
 import {excursionResources} from '../../../lib/excursion-workflow';
+import {buildExcursionManifest} from '../../../lib/excursion-manifest';
 import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requiredExcursionGuides} from '../../../lib/excursion-guides';
 import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
@@ -95,24 +96,24 @@ export async function GET(r:Request){
   // Cancelled trips remain stored for history/audit, but are removed from the live admin schedule screen.
   const raw=rawAll.filter((schedule:any)=>schedule.status!=='Cancelled');
   const {state}=await loadStays(),orders=Array.isArray(state.orders)?state.orders:[];
+  const resources=excursionResources(state);
   const schedules=raw.map((s:any)=>{
-   const confirmedOrders=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)&&!o.separateVessel);
-   const bookedPax=confirmedOrders.reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
-   const guestNames=confirmedOrders.flatMap((o:any)=>{
-    const quantity=Math.max(0,Number(o.quantity)||0);
-    const roster=Array.isArray(o.excursionGuestRoster)?o.excursionGuestRoster:[];
-    const lead=String(o.guest||'').trim();
-    return Array.from({length:quantity},(_,index)=>{
-     const slot=index+1;
-     const saved=roster.find((person:any)=>Number(person?.slot)===slot)||roster[index];
-     const name=String(saved?.name||'').trim()||(slot===1?lead:'');
-     return name||('Guest '+slot+' · name not entered');
-    });
-   });
+   // Use the same manifest resolver as View Guests and Share Timetable so schedule
+   // occupancy, guest names and shared timetable can never disagree for the same trip.
+   const manifest=buildExcursionManifest(s,raw,state,resources,()=>false);
+   const mainBookings=manifest.bookings.filter((booking:any)=>!booking.separateVessel);
+   const bookedPax=manifest.totals.mainVesselPax;
+   const confirmedPax=manifest.totals.pax;
+   const guestNames=mainBookings.flatMap((booking:any)=>
+    (booking.people||[]).map((person:any)=>String(person?.name||'').trim()||('Guest '+person.slot+' · name not entered'))
+   );
    const pendingOrders=orders.filter((o:any)=>matches(o,s)&&isPending(o));
    const pendingPax=pendingOrders.reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
-   const extraVesselBookings=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)&&o.separateVessel).map((o:any)=>({id:o.id,guest:o.guest,room:o.room||o.externalRoom||'',quantity:o.quantity,vesselId:o.overflowVesselId||o.schedule?.vesselId||'',vessel:o.schedule?.vessel||'',createdAt:o.reviewedAt||o.createdAt}));
-   return {...s,priceCents:Number(s.priceCents)||0,bookedPax,guestNames,pendingPax,sharedBoatKey:sharedKey(s),pendingOrders,extraVesselBookings};
+   const extraVesselBookings=manifest.bookings.filter((booking:any)=>booking.separateVessel).map((booking:any)=>({
+    id:booking.id,guest:booking.guest,room:booking.room||'',quantity:booking.guests,
+    vessel:booking.vessel||'',createdAt:booking.createdAt||''
+   }));
+   return {...s,priceCents:Number(s.priceCents)||0,bookedPax,confirmedPax,guestNames,pendingPax,sharedBoatKey:sharedKey(s),pendingOrders,extraVesselBookings};
   });
   const groups:Record<string,{scheduleIds:string[],bookedPax:number,pendingPax:number,capacity:number}>={};
   for(const s of schedules){
@@ -124,7 +125,7 @@ export async function GET(r:Request){
    const g=s.sharedBoatKey?groups[s.sharedBoatKey]:null,capacity=g?.capacity??s.capacity;
    const requests=s.pendingOrders.map((o:any)=>({id:o.id,guest:o.guest,room:o.room||o.externalRoom||'',inHouse:!!o.stayId,quantity:o.quantity,adults:Number(o.adults??o.quantity)||0,children:Number(o.children)||0,infants:Number(o.infants)||0,name:o.name||s.name,matchedScheduleName:o.matchedScheduleName||s.name,buggyRequested:!!o.buggyRequested,notes:o.notes||'',createdAt:o.createdAt,overCapacity:true}));
    const {pendingOrders,...rest}=s;
-   return {...rest,requests,capacity,remainingSeats:Math.max(0,capacity-(g?.bookedPax??s.bookedPax)),isFull:(g?.bookedPax??s.bookedPax)>=capacity,guideRule:guideRuleFor(s,raw,orders,excursionResources(state).crew)};
+   return {...rest,requests,capacity,remainingSeats:Math.max(0,capacity-(g?.bookedPax??s.bookedPax)),isFull:(g?.bookedPax??s.bookedPax)>=capacity,guideRule:guideRuleFor(s,raw,orders,resources.crew)};
   });
   const unscheduledRequests=orders.filter((o:any)=>o.kind==='excursion'&&o.date===date&&o.unscheduledRequest===true&&o.approvalStatus==='Pending'&&o.status!=='Cancelled').map((o:any)=>({
    id:o.id,name:o.name,guest:o.guest||'Guest',phone:o.phone||'',hotel:o.hotel||'',room:o.room||o.externalRoom||'',inHouse:!!o.stayId,quantity:Number(o.quantity)||0,adults:Number(o.adults??o.quantity)||0,children:Number(o.children)||0,infants:Number(o.infants)||0,date:o.date,
