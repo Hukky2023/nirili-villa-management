@@ -446,16 +446,3 @@
  .crew-history-button{width:42px;height:42px;padding:0;justify-content:center}
  .crew-history-button span{display:none}
 }
-
-
-/* Compact one-line trip history rows */
-.crew-history-dialog .crew-future-trip-list{gap:8px}
-.crew-history-row{display:grid!important;grid-template-columns:auto auto minmax(170px,1.7fr) minmax(120px,1fr) auto auto;align-items:center;gap:10px;padding:10px 12px!important}
-.crew-history-row>span,.crew-history-row>strong{min-width:0;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.crew-history-row svg{flex:0 0 auto;color:#087cad}
-.crew-history-name{color:#173a4d}
-.crew-history-status{justify-self:end;padding:4px 8px;border-radius:999px;background:#edf4f7;color:#496b7a;font-size:11px;font-weight:800}
-@media(max-width:760px){
- .crew-history-dialog .crew-future-trip-list{overflow-x:auto}
- .crew-history-row{min-width:760px}
-}
