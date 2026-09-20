@@ -227,7 +227,7 @@ export async function POST(r:Request){
       .filter((s:any)=>scheduleCanServe(spec.matchName,s.name))
       .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,orders),rank:scheduleRank(spec.matchName,s)}))
       .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
-     const chosen=candidates[0],id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
+     const chosen=candidates.find((candidate:any)=>candidate.remaining>=quantity),id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
      const operationalPriceCents=operationalPrices[index]||0;
      const quotedCents=index===specialPackageSegments.length-1?packageTotalCents-allocatedSoFar:Math.round(packageTotalCents*(operationalPriceCents||1)/operationalTotal);
      allocatedSoFar+=quotedCents;
@@ -257,7 +257,7 @@ export async function POST(r:Request){
     .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,orders),rank:scheduleRank(item.name,s)}))
     .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
 
-   const chosen=candidates[0],fallback=suggestedTripWindow(item.name);
+   const chosen=candidates.find((candidate:any)=>candidate.remaining>=quantity),fallback=suggestedTripWindow(item.name);
    const unitPriceCents=Math.max(0,Number(item.cents)||0),pricingUnit=item.pricingUnit==='couple'?'couple':'guest';
    const baseQuotedCents=excursionPriceCents(unitPriceCents,pricingUnit,mix),privateBoatSurchargeCents=privateBoatRequested?PRIVATE_BOAT_SURCHARGE_CENTS:0,quotedCents=baseQuotedCents+privateBoatSurchargeCents,id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
    state.orders??=[];
@@ -400,7 +400,7 @@ export async function PATCH(r:Request){
    .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,availabilityOrders),rank:scheduleRank(requestedName,s)}))
    .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
 
-  const chosen=candidates[0],resources=excursionResources(state),fallback=suggestedTripWindow(requestedName);
+  const chosen=candidates.find((candidate:any)=>candidate.remaining>=quantity),resources=excursionResources(state),fallback=suggestedTripWindow(requestedName);
   order.date=newDate;order.separateVessel=false;
   delete order.overflowVesselId;delete order.originalScheduleId;
 
