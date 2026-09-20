@@ -29,18 +29,20 @@ test('selects confirmed bookings by exact schedule ID, not excursion name', () =
   assert.deepEqual(result.bookings.map(b => b.id), ['booking-1']);
   assert.equal(result.totals.pax, 2);
 });
-test('shared boat seats and extra vessel passengers are counted separately', () => {
+test('shared boat occupancy includes sibling trips but the manifest guest list stays on the selected trip', () => {
   const sibling = {...selected, id: 'trip-b', name: 'Coral Garden only'};
   const result = manifest([order(), order({id: 'sibling', scheduleId: sibling.id, quantity: 3}), order({id: 'extra', quantity: 4, separateVessel: true, overflowVesselId: 'boat-2'})], [selected, sibling]);
-  assert.deepEqual(result.totals, {bookings: 3, pax: 9, mainVesselPax: 5, extraVesselPax: 4, boatPax: 5, capacity: 6, sharedTrips: 2});
+  assert.deepEqual(result.totals, {bookings: 2, pax: 6, mainVesselPax: 2, extraVesselPax: 4, boatPax: 5, capacity: 6, sharedTrips: 2});
   assert.equal(result.bookings.find(b => b.id === 'extra').vessel, 'Extra boat');
-  assert.equal(result.bookings.some(b => b.id === 'sibling'), true);
+  assert.deepEqual(result.bookings.map(b => b.id).sort(), ['booking-1', 'extra']);
+  assert.equal(result.bookings.some(b => b.id === 'sibling'), false);
 });
 test('same-boat groups work before a vessel is assigned', () => {
   const a = {...selected, vesselId: '', sharedGroup: 'morning'};
   const b = {...a, id: 'trip-b', capacity: 5};
   const result = buildExcursionManifest(a, [a, b], {orders: [order(), order({id: 'b', scheduleId: b.id})]}, resources, () => false);
   assert.equal(result.totals.boatPax, 4); assert.equal(result.totals.capacity, 5);
+  assert.deepEqual(result.bookings.map(booking => booking.id), ['booking-1']);
   assert.equal(result.trip.vessel, 'Not assigned');
 });
 test('unique legacy matching normalizes whitespace and case but not date or time', () => {
