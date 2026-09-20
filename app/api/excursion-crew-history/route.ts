@@ -1,4 +1,4 @@
-import {authDb,currentUser} from '../../../lib/auth';
+import {authDb,currentUser,hasPermission} from '../../../lib/auth';
 import {loadStays} from '../../../lib/stays';
 import {excursionResources} from '../../../lib/excursion-workflow';
 
@@ -27,13 +27,23 @@ function subtractMonths(date:string,months:number){
 
 export async function GET(request:Request){
  const user=await currentUser();
- if(user?.role!=='admin')return Response.json({error:'Admin access required.'},{status:403,headers});
- const crewId=new URL(request.url).searchParams.get('crewId')?.trim()||'';
- if(!validId(crewId))return Response.json({error:'Choose a crew member.'},{status:400,headers});
+ if(!user)return Response.json({error:'Login required.'},{status:401,headers});
  try{
   const {state}=await loadStays();
   const resources=excursionResources(state);
-  const crew=resources.crew.find((member:any)=>member.id===crewId);
+  let crewId=new URL(request.url).searchParams.get('crewId')?.trim()||'';
+  let crew:any=null;
+  if(user.role==='admin'){
+   if(!validId(crewId))return Response.json({error:'Choose a crew member.'},{status:400,headers});
+   crew=resources.crew.find((member:any)=>member.id===crewId);
+  }else{
+   if(!hasPermission(user,'crew_location'))return Response.json({error:'Crew Member access required.'},{status:403,headers});
+   const username=normal(user.username),displayName=normal(user.displayName);
+   crew=resources.crew.find((member:any)=>!member.removed&&(member.accountId===user.userId||member.id===user.userId))
+    ||resources.crew.find((member:any)=>!member.removed&&username&&normal(member.username)===username)
+    ||resources.crew.find((member:any)=>!member.removed&&displayName&&normal(member.name)===displayName);
+   crewId=crew?.id||'';
+  }
   if(!crew)return Response.json({error:'Crew member not found.'},{status:404,headers});
 
   const today=maldivesToday(),from=subtractMonths(today,3);
