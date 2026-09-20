@@ -5248,5 +5248,306 @@
     "Subiendo foto…",
     "ছবি আপলোড হচ্ছে…",
     "Загрузка фото…"
+  ],
+  "Schedule": [
+    "行程",
+    "Programma",
+    "Horario",
+    "সময়সূচি",
+    "Расписание"
+  ],
+  "Single Excursions": [
+    "单项游览",
+    "Escursioni singole",
+    "Excursiones individuales",
+    "একক ভ্রমণ",
+    "Отдельные экскурсии"
+  ],
+  "Combined Excursions": [
+    "组合游览",
+    "Escursioni combinate",
+    "Excursiones combinadas",
+    "সমন্বিত ভ্রমণ",
+    "Комбинированные экскурсии"
+  ],
+  "Special Packages": [
+    "特别套餐",
+    "Pacchetti speciali",
+    "Paquetes especiales",
+    "বিশেষ প্যাকেজ",
+    "Специальные пакеты"
+  ],
+  "SINGLE EXCURSION": [
+    "单项游览",
+    "ESCURSIONE SINGOLA",
+    "EXCURSIÓN INDIVIDUAL",
+    "একক ভ্রমণ",
+    "ОТДЕЛЬНАЯ ЭКСКУРСИЯ"
+  ],
+  "COMBINED EXCURSION": [
+    "组合游览",
+    "ESCURSIONE COMBINATA",
+    "EXCURSIÓN COMBINADA",
+    "সমন্বিত ভ্রমণ",
+    "КОМБИНИРОВАННАЯ ЭКСКУРСИЯ"
+  ],
+  "SPECIAL PACKAGE": [
+    "特别套餐",
+    "PACCHETTO SPECIALE",
+    "PAQUETE ESPECIAL",
+    "বিশেষ প্যাকেজ",
+    "СПЕЦИАЛЬНЫЙ ПАКЕТ"
+  ],
+  "Available after check-in": [
+    "入住后可预订",
+    "Disponibile dopo il check-in",
+    "Disponible después del check-in",
+    "চেক-ইনের পরে উপলভ্য",
+    "Доступно после заселения"
+  ],
+  "Price on request": [
+    "价格请咨询",
+    "Prezzo su richiesta",
+    "Precio bajo petición",
+    "অনুরোধে মূল্য",
+    "Цена по запросу"
+  ],
+  "guest": [
+    "客人",
+    "ospite",
+    "huésped",
+    "অতিথি",
+    "гость"
+  ],
+  "couple": [
+    "情侣",
+    "coppia",
+    "pareja",
+    "দম্পতি",
+    "пара"
+  ],
+  "Available from the Nirili Tours excursion menu.": [
+    "可从 Nirili Tours 游览菜单预订。",
+    "Disponibile dal menu escursioni di Nirili Tours.",
+    "Disponible en el menú de excursiones de Nirili Tours.",
+    "Nirili Tours ভ্রমণ মেনু থেকে উপলভ্য।",
+    "Доступно в меню экскурсий Nirili Tours."
+  ],
+  "No single excursions in the excursion menu.": [
+    "游览菜单中暂无单项游览。",
+    "Nessuna escursione singola nel menu.",
+    "No hay excursiones individuales en el menú.",
+    "ভ্রমণ মেনুতে কোনো একক ভ্রমণ নেই।",
+    "В меню нет отдельных экскурсий."
+  ],
+  "No combined excursions in the excursion menu.": [
+    "游览菜单中暂无组合游览。",
+    "Nessuna escursione combinata nel menu.",
+    "No hay excursiones combinadas en el menú.",
+    "ভ্রমণ মেনুতে কোনো সমন্বিত ভ্রমণ নেই।",
+    "В меню нет комбинированных экскурсий."
+  ],
+  "No special packages in the excursion menu.": [
+    "游览菜单中暂无特别套餐。",
+    "Nessun pacchetto speciale nel menu.",
+    "No hay paquetes especiales en el menú.",
+    "ভ্রমণ মেনুতে কোনো বিশেষ প্যাকেজ নেই।",
+    "В меню нет специальных пакетов."
+  ],
+  "Admin can add or recategorize excursions from the Excursion menu.": [
+    "管理员可在游览菜单中添加或重新分类项目。",
+    "L'Admin può aggiungere o ricategorizzare le escursioni dal menu Escursioni.",
+    "El administrador puede añadir o recategorizar excursiones desde el menú Excursiones.",
+    "অ্যাডমিন ভ্রমণ মেনু থেকে ভ্রমণ যোগ বা পুনর্বিন্যাস করতে পারেন।",
+    "Администратор может добавлять и менять категории экскурсий в меню «Экскурсии»."
+  ],
+  "Clown Fish Snorkeling": [
+    "小丑鱼浮潜",
+    "Snorkeling con pesci pagliaccio",
+    "Snorkel con peces payaso",
+    "ক্লাউন ফিশ স্নরকেলিং",
+    "Снорклинг с рыбами-клоунами"
+  ],
+  "Manta Snorkeling": [
+    "蝠鲼浮潜",
+    "Snorkeling con mante",
+    "Snorkel con mantarrayas",
+    "মান্টা স্নরকেলিং",
+    "Снорклинг с мантами"
+  ],
+  "Morning Fishing + Lunch": [
+    "晨钓 + 午餐",
+    "Pesca mattutina + pranzo",
+    "Pesca matutina + almuerzo",
+    "সকালের মাছ ধরা + দুপুরের খাবার",
+    "Утренняя рыбалка + обед"
+  ],
+  "Night Fishing + Dinner": [
+    "夜钓 + 晚餐",
+    "Pesca notturna + cena",
+    "Pesca nocturna + cena",
+    "রাতের মাছ ধরা + রাতের খাবার",
+    "Ночная рыбалка + ужин"
+  ],
+  "Private Resort Visit - Adaaran Hudhuranfushi": [
+    "私人度假村之旅 - Adaaran Hudhuranfushi",
+    "Visita privata al resort - Adaaran Hudhuranfushi",
+    "Visita privada al resort - Adaaran Hudhuranfushi",
+    "প্রাইভেট রিসোর্ট ভিজিট - Adaaran Hudhuranfushi",
+    "Частный визит на курорт - Adaaran Hudhuranfushi"
+  ],
+  "Private Resort Visit - Club Med Kani Resort": [
+    "私人度假村之旅 - Club Med Kani Resort",
+    "Visita privata al resort - Club Med Kani",
+    "Visita privada al resort - Club Med Kani",
+    "প্রাইভেট রিসোর্ট ভিজিট - Club Med Kani",
+    "Частный визит на курорт - Club Med Kani"
+  ],
+  "Renewal of Vows Dinner": [
+    "誓言更新晚宴",
+    "Cena per rinnovo dei voti",
+    "Cena de renovación de votos",
+    "শপথ নবায়ন ডিনার",
+    "Ужин с обновлением свадебных клятв"
+  ],
+  "Romantic Beach Dinner": [
+    "浪漫海滩晚餐",
+    "Cena romantica sulla spiaggia",
+    "Cena romántica en la playa",
+    "রোমান্টিক বিচ ডিনার",
+    "Романтический ужин на пляже"
+  ],
+  "Romantic Sandbank Dinner": [
+    "浪漫沙洲晚餐",
+    "Cena romantica sul banco di sabbia",
+    "Cena romántica en el banco de arena",
+    "রোমান্টিক স্যান্ডব্যাংক ডিনার",
+    "Романтический ужин на песчаной отмели"
+  ],
+  "A seafood dinner by the beach.": [
+    "海滩边的海鲜晚餐。",
+    "Una cena di pesce sulla spiaggia.",
+    "Una cena de mariscos junto a la playa.",
+    "সমুদ্র সৈকতের পাশে সিফুড ডিনার।",
+    "Ужин из морепродуктов на пляже."
+  ],
+  "Snorkel among colorful clown fish and reef life. Price can be set by Admin from the Excursion menu.": [
+    "在五彩斑斓的小丑鱼和珊瑚礁生物之间浮潜。管理员可在游览菜单中设置价格。",
+    "Fai snorkeling tra colorati pesci pagliaccio e vita della barriera. Il prezzo può essere impostato dall'Admin nel menu Escursioni.",
+    "Haz snorkel entre coloridos peces payaso y vida del arrecife. El administrador puede fijar el precio desde el menú Excursiones.",
+    "রঙিন ক্লাউন ফিশ ও রিফ জীবনের মাঝে স্নরকেলিং করুন। অ্যাডমিন ভ্রমণ মেনু থেকে মূল্য নির্ধারণ করতে পারেন।",
+    "Снорклинг среди ярких рыб-клоунов и рифовой жизни. Администратор может установить цену в меню экскурсий."
+  ],
+  "Swim among vibrant coral reefs teeming with marine life and colorful clownfish.": [
+    "在充满海洋生物和彩色小丑鱼的绚丽珊瑚礁间畅游。",
+    "Nuota tra vivaci barriere coralline ricche di vita marina e colorati pesci pagliaccio.",
+    "Nada entre vibrantes arrecifes de coral llenos de vida marina y coloridos peces payaso.",
+    "রঙিন ক্লাউন ফিশ ও সামুদ্রিক জীবনে ভরা প্রবালপ্রাচীরের মাঝে সাঁতার কাটুন।",
+    "Плавайте среди ярких коралловых рифов, богатых морской жизнью и разноцветными рыбами-клоунами."
+  ],
+  "Experience the magic of the ocean on an unforgettable dolphin-watching trip.": [
+    "在难忘的海豚观赏之旅中感受海洋的魅力。",
+    "Vivi la magia dell'oceano con un'indimenticabile escursione di avvistamento dei delfini.",
+    "Vive la magia del océano en una inolvidable excursión para ver delfines.",
+    "অবিস্মরণীয় ডলফিন দেখার ভ্রমণে সাগরের জাদু উপভোগ করুন।",
+    "Почувствуйте магию океана во время незабываемой поездки для наблюдения за дельфинами."
+  ],
+  "Visit a famous snorkeling spot with crystal-clear water and incredible marine life, including stingrays.": [
+    "前往著名浮潜点，体验清澈海水和包括黄貂鱼在内的丰富海洋生物。",
+    "Visita un famoso punto per lo snorkeling con acqua cristallina e straordinaria vita marina, incluse le razze.",
+    "Visita un famoso lugar de snorkel con agua cristalina e increíble vida marina, incluidas rayas.",
+    "স্বচ্ছ পানি ও স্টিংরে-সহ অসাধারণ সামুদ্রিক জীবনের জন্য বিখ্যাত স্নরকেলিং স্পট ভিজিট করুন।",
+    "Посетите известное место для снорклинга с кристально чистой водой и удивительной морской жизнью, включая скатов."
+  ],
+  "Enjoy a fishing trip with Nirili Tours.": [
+    "与 Nirili Tours 一起享受钓鱼之旅。",
+    "Goditi una battuta di pesca con Nirili Tours.",
+    "Disfruta de una excursión de pesca con Nirili Tours.",
+    "Nirili Tours-এর সাথে মাছ ধরার ভ্রমণ উপভোগ করুন।",
+    "Насладитесь рыбалкой с Nirili Tours."
+  ],
+  "Get close to graceful manta rays in their natural habitat for an unforgettable Maldives experience.": [
+    "近距离欣赏自然栖息地中的优雅蝠鲼，留下难忘的马尔代夫体验。",
+    "Avvicinati alle eleganti mante nel loro habitat naturale per un'indimenticabile esperienza alle Maldive.",
+    "Acércate a elegantes mantarrayas en su hábitat natural para una experiencia inolvidable en Maldivas.",
+    "প্রাকৃতিক পরিবেশে মনোমুগ্ধকর মান্টা রের কাছাকাছি গিয়ে অবিস্মরণীয় মালদ্বীপ অভিজ্ঞতা নিন।",
+    "Приблизьтесь к грациозным мантам в их естественной среде и получите незабываемые впечатления на Мальдивах."
+  ],
+  "Start the day with a tuna trolling adventure, followed by a fresh catch lunch.": [
+    "以金枪鱼拖钓开启一天，随后享用新鲜渔获午餐。",
+    "Inizia la giornata con una pesca alla traina del tonno, seguita da un pranzo con il pescato fresco.",
+    "Empieza el día con pesca al curricán de atún, seguida de un almuerzo con la pesca fresca.",
+    "টুনা ট্রলিং অ্যাডভেঞ্চার দিয়ে দিন শুরু করুন, এরপর তাজা ধরা মাছের দুপুরের খাবার।",
+    "Начните день с троллинга тунца, а затем пообедайте свежим уловом."
+  ],
+  "Traditional night fishing under the stars with a freshly prepared dinner from the catch.": [
+    "在星空下体验传统夜钓，并用当天渔获制作新鲜晚餐。",
+    "Pesca notturna tradizionale sotto le stelle con una cena preparata al momento con il pescato.",
+    "Pesca nocturna tradicional bajo las estrellas con una cena recién preparada con la pesca.",
+    "তারার নিচে ঐতিহ্যবাহী রাতের মাছ ধরা, এরপর ধরা মাছ দিয়ে তাজা ডিনার।",
+    "Традиционная ночная рыбалка под звёздами с ужином, свежеприготовленным из улова."
+  ],
+  "Enjoy a luxury day trip to Adaaran Hudhuranfushi with relaxation and resort experiences.": [
+    "享受 Adaaran Hudhuranfushi 豪华一日游，体验休闲与度假村设施。",
+    "Goditi una lussuosa gita di un giorno ad Adaaran Hudhuranfushi con relax ed esperienze del resort.",
+    "Disfruta de una lujosa excursión de un día a Adaaran Hudhuranfushi con relajación y experiencias del resort.",
+    "Adaaran Hudhuranfushi-তে বিলাসবহুল ডে ট্রিপ, বিশ্রাম ও রিসোর্ট অভিজ্ঞতা উপভোগ করুন।",
+    "Насладитесь роскошной однодневной поездкой в Adaaran Hudhuranfushi с отдыхом и курортными развлечениями."
+  ],
+  "Experience Club Med Kani with sandy beaches, crystal-clear lagoons, resort dining and activities.": [
+    "体验 Club Med Kani 的沙滩、清澈泻湖、度假村餐饮和活动。",
+    "Scopri Club Med Kani con spiagge sabbiose, lagune cristalline, ristorazione e attività del resort.",
+    "Disfruta de Club Med Kani con playas de arena, lagunas cristalinas, gastronomía y actividades del resort.",
+    "বালুকাময় সৈকত, স্বচ্ছ লেগুন, রিসোর্ট ডাইনিং ও কার্যক্রমসহ Club Med Kani উপভোগ করুন।",
+    "Откройте для себя Club Med Kani: песчаные пляжи, прозрачные лагуны, питание и развлечения курорта."
+  ],
+  "Celebrate your love again with a private beach setup, sunset views and special photo moments.": [
+    "在私人海滩布置、日落美景和特别拍照时刻中再次庆祝爱情。",
+    "Celebra di nuovo il vostro amore con un allestimento privato sulla spiaggia, vista sul tramonto e momenti fotografici speciali.",
+    "Celebra de nuevo vuestro amor con una preparación privada en la playa, vistas al atardecer y momentos especiales para fotos.",
+    "প্রাইভেট বিচ সেটআপ, সূর্যাস্তের দৃশ্য ও বিশেষ ছবির মুহূর্তে আবারও ভালোবাসা উদযাপন করুন।",
+    "Снова отпразднуйте вашу любовь: приватное оформление на пляже, закат и особенные моменты для фотографий."
+  ],
+  "A private beach setup under the stars with fresh grilled lobster and a seafood platter.": [
+    "星空下的私人海滩布置，配新鲜烤龙虾和海鲜拼盘。",
+    "Un allestimento privato sulla spiaggia sotto le stelle con aragosta fresca alla griglia e un piatto di frutti di mare.",
+    "Una preparación privada en la playa bajo las estrellas con langosta fresca a la parrilla y un plato de mariscos.",
+    "তারার নিচে প্রাইভেট বিচ সেটআপ, তাজা গ্রিলড লবস্টার ও সিফুড প্ল্যাটারসহ।",
+    "Приватная сервировка на пляже под звёздами со свежим лобстером на гриле и морепродуктами."
+  ],
+  "Enjoy a magical dinner by the ocean with a private sandbank setting under the stars.": [
+    "在星空下的私人沙洲布置中享受海边梦幻晚餐。",
+    "Goditi una cena magica sull'oceano con un allestimento privato sul banco di sabbia sotto le stelle.",
+    "Disfruta de una cena mágica junto al océano con una preparación privada en un banco de arena bajo las estrellas.",
+    "তারার নিচে প্রাইভেট স্যান্ডব্যাংক সেটআপে সাগরের পাশে জাদুময় ডিনার উপভোগ করুন।",
+    "Насладитесь волшебным ужином у океана в приватной обстановке на песчаной отмели под звёздами."
+  ],
+  "Enjoy dinner on a sandbank.": [
+    "在沙洲上享用晚餐。",
+    "Goditi una cena su un banco di sabbia.",
+    "Disfruta de una cena en un banco de arena.",
+    "স্যান্ডব্যাংকে ডিনার উপভোগ করুন।",
+    "Насладитесь ужином на песчаной отмели."
+  ],
+  "Escape to a private sandbank in the middle of the ocean with crystal-clear water and pure serenity.": [
+    "前往海中央的私人沙洲，享受清澈海水与宁静时光。",
+    "Fuggi su un banco di sabbia privato in mezzo all'oceano, con acqua cristallina e pura tranquillità.",
+    "Escápate a un banco de arena privado en medio del océano, con agua cristalina y total tranquilidad.",
+    "সমুদ্রের মাঝে প্রাইভেট স্যান্ডব্যাংকে যান, স্বচ্ছ পানি ও নির্মল প্রশান্তি উপভোগ করুন।",
+    "Отправьтесь на уединённую песчаную отмель посреди океана с кристально чистой водой и абсолютным спокойствием."
+  ],
+  "Discover nurse sharks on a guided snorkeling excursion.": [
+    "在有导游带领的浮潜之旅中探索护士鲨。",
+    "Scopri gli squali nutrice durante un'escursione guidata di snorkeling.",
+    "Descubre tiburones nodriza en una excursión guiada de snorkel.",
+    "গাইডেড স্নরকেলিং ভ্রমণে নার্স শার্ক দেখুন।",
+    "Познакомьтесь с акулами-няньками во время снорклинга с гидом."
+  ],
+  "Explore the underwater world around Dhiffushi.": [
+    "探索 Dhiffushi 周边的海底世界。",
+    "Esplora il mondo sottomarino intorno a Dhiffushi.",
+    "Explora el mundo submarino alrededor de Dhiffushi.",
+    "Dhiffushi-এর চারপাশের পানির নিচের জগৎ ঘুরে দেখুন।",
+    "Исследуйте подводный мир вокруг Dhiffushi."
   ]
 }
