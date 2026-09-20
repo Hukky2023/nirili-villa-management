@@ -18,6 +18,8 @@ function confirmed(order:any){
   &&order.approvalStatus!=='Cancelled'
   &&(!!(order.time||order.schedule?.time)||isRomanticBeachDinner(order));
 }
+function manualPickupFor(item:any){return {...item,manual:true,excursion:item.excursion||'Manual buggy booking',excursionTime:item.pickupTime||'',pickupTimingNote:'Manual booking',inHouse:false,hotel:'',room:'',buggyRequested:true,roundTrip:false,romanticDinner:false,status:item.buggyBoardedAt?'Boarded':item.buggyArrivedAt?'Arrived':'Pending pickup',arrivedAt:item.buggyArrivedAt||'',arrivedBy:item.buggyArrivedBy||'',boardedAt:item.buggyBoardedAt||'',boardedBy:item.buggyBoardedBy||''};}
+
 function pickupFor(order:any,state:any){
  const stay=order.stayId?(state.stays||[]).find((s:any)=>s.id===order.stayId):null;
  const inHouse=!!stay||!!order.stayId;
@@ -71,12 +73,27 @@ export async function GET(r:Request){
  if(!validDate(date))return Response.json({error:'Choose a valid pickup date.'},{status:400});
  try{
   const {state}=await loadStays();
-  const pickups=(state.orders||[])
+  const pickups=[...(state.orders||[])
    .filter((o:any)=>confirmed(o)&&(o.date||o.schedule?.date)===date&&(!!o.stayId||o.buggyRequested===true))
-   .map((o:any)=>pickupFor(o,state))
+   .map((o:any)=>pickupFor(o,state)),...((state.buggyBookings||[]).filter((b:any)=>b.date===date&&b.cancelled!==true).map(manualPickupFor))]
    .sort((a:any,b:any)=>(a.pickupTime||a.excursionTime).localeCompare(b.pickupTime||b.excursionTime)||a.guest.localeCompare(b.guest));
   return Response.json({date,driver:user?.displayName||user?.username||'Buggy Driver',pickups},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load buggy pickups.'},{status:503});}
+}
+
+export async function POST(r:Request){
+ const user=await currentUser();
+ if(!hasPermission(user,'buggy_driver')||!sameOrigin(r))return Response.json({error:'Buggy Driver access required.'},{status:403});
+ try{
+  const b=await r.json(),guest=String(b.guest||'').trim().slice(0,100),phone=String(b.phone||'').trim().slice(0,30),date=String(b.date||''),pickupTime=String(b.pickupTime||''),location=String(b.location||'').trim().slice(0,150),destination=String(b.destination||'').trim().slice(0,150),quantity=Math.max(1,Math.min(20,Number(b.quantity)||1)),notes=String(b.notes||'').trim().slice(0,500);
+  if(!guest||!validDate(date)||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(pickupTime)||!location||!destination)throw Error('Enter guest name, date, buggy time, pickup point and drop-off point.');
+  const {state,revision}=await loadStays();state.buggyBookings??=[];
+  const item={id:'buggy-'+crypto.randomUUID(),guest,phone,date,pickupTime,location,destination,quantity,notes,createdAt:new Date().toISOString(),createdBy:user?.username||user?.displayName||'buggy-driver'};
+  state.buggyBookings.push(item);
+  const saved=await saveStayAccess(state,revision,user?.userId||'buggy-driver');
+  if(!saved)return Response.json({error:'Another update was saved. Please try again.'},{status:409});
+  return Response.json({ok:true,pickup:manualPickupFor(item)},{status:201,headers:{'Cache-Control':'no-store'}});
+ }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not book buggy.'},{status:400});}
 }
 
 export async function PATCH(r:Request){
@@ -86,10 +103,11 @@ export async function PATCH(r:Request){
   const b=await r.json(),id=String(b.id||'').slice(0,120),action=String(b.action||'');
   if(!id||!['arrived','boarded','dinner-dropoff','return-arrived','return-boarded','return-complete'].includes(action))throw Error('Choose a valid pickup action.');
   const {state,revision}=await loadStays();
-  const order=(state.orders||[]).find((o:any)=>o.id===id&&confirmed(o)&&(!!o.stayId||o.buggyRequested===true));
+  const manual=(state.buggyBookings||[]).find((o:any)=>o.id===id&&o.cancelled!==true);
+  const order=manual||(state.orders||[]).find((o:any)=>o.id===id&&confirmed(o)&&(!!o.stayId||o.buggyRequested===true));
   if(!order)throw Error('Pickup booking not found or no longer active.');
   const now=new Date().toISOString();
-  const roundTrip=isRomanticBeachDinner(order)&&!!order.buggyRoundTrip;
+  const roundTrip=!manual&&isRomanticBeachDinner(order)&&!!order.buggyRoundTrip;
   if(action==='arrived'){
    if(!order.buggyArrivedAt){
     order.buggyArrivedAt=now;
@@ -120,6 +138,6 @@ export async function PATCH(r:Request){
   }
   const saved=await saveStayAccess(state,revision,user?.userId||'buggy-driver');
   if(!saved)return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
-  return Response.json({ok:true,pickup:pickupFor(order,state)},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({ok:true,pickup:manual?manualPickupFor(order):pickupFor(order,state)},{headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not update pickup.'},{status:400});}
 }
