@@ -28,13 +28,9 @@ export function buildExcursionTimetable(
   const day = schedules.filter(s => s.date === date)
     .sort((a, b) => a.time.localeCompare(b.time) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   let bookings = 0;
-  const trips = day.flatMap(schedule => {
+  const trips = day.map(schedule => {
     // Reuse View/Guest list's confirmation and legacy-record matching rules.
     const manifest = buildExcursionManifest(schedule, day, state, resources, () => false);
-
-    // Shared timetable must only include trips that have at least one confirmed guest.
-    if (manifest.totals.pax < 1) return [];
-
     bookings += manifest.totals.bookings;
     const extras = new Map<string, TimetableVessel>();
     for (const booking of manifest.bookings) {
@@ -45,14 +41,14 @@ export function buildExcursionTimetable(
       group.pax += booking.guests;
       extras.set(key, group);
     }
-    return [{
+    return {
       id: schedule.id, name: manifest.trip.name, time: manifest.trip.time, endTime: String((schedule as any).endTime||''), status: manifest.trip.status,
       confirmedPax: manifest.totals.pax, mainVesselPax: manifest.totals.mainVesselPax,
       vessel: manifest.trip.vessel, gopro: (resources.gopros||[]).find((item:any)=>item.id===(schedule as any).goproId)?.name||'', drone: (resources.drones||[]).find((item:any)=>item.id===(schedule as any).droneId)?.name||'', crew: manifest.trip.crew,
       extraVessels: [...extras.values()].sort((a, b) => a.vessel.localeCompare(b.vessel)),
       sharedTrips: manifest.totals.sharedTrips, sharedBoatPax: manifest.totals.boatPax,
       capacity: manifest.totals.capacity,
-    }];
+    };
   });
   return {date, generatedAt, trips, totals: {trips: trips.length, bookings, pax: trips.reduce((sum, trip) => sum + trip.confirmedPax, 0)}};
 }
@@ -85,7 +81,7 @@ export function formatExcursionTimetable(data: ExcursionTimetable): string {
     }
     lines.push('');
   }
-  if (!data.trips.length) lines.push('No trips with confirmed guests for this date.', '');
+  if (!data.trips.length) lines.push('No scheduled trips for this date.', '');
   lines.push(`Scheduled trips: ${data.totals.trips}`, `Total confirmed passenger places: ${data.totals.pax}`,
     'Totals count passenger places across trips, not unique people. Extra-vessel pax are included; pending and cancelled bookings are excluded.',
     `Snapshot: ${timetableSnapshotLabel(data.generatedAt)} Maldives time. Assignments may change.`);
