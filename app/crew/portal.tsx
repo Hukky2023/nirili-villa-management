@@ -18,7 +18,7 @@ export default function CrewLocationPortal(){
    if(!locationResponse.ok)throw Error(locationData.error||'Could not load crew location.');
    if(locationData.mode==='admin'){window.location.href='/?portal=admin';return;}
    if(!tripsResponse.ok)throw Error(tripData.error||'Could not load assigned trips.');
-   setProfile(locationData.profile);setLocation(locationData.location||null);setSharing(watchRef.current!==null);setTrips(tripData.trips||[]);setRequests(tripData.requests||[]);if(!selectedDate)setSelectedDate(maldivesToday());
+   setProfile(locationData.profile);setLocation(locationData.location||null);setSharing(watchRef.current!==null);setTrips(tripData.trips||[]);setRequests(tripData.requests||[]);
   }catch(e){setError(e instanceof Error?e.message:'Could not load crew portal.');}
  }
  useEffect(()=>{void load();const onRefresh=()=>void load();window.addEventListener('nirili:auto-refresh',onRefresh);window.addEventListener('focus',onRefresh);return()=>{window.removeEventListener('nirili:auto-refresh',onRefresh);window.removeEventListener('focus',onRefresh);if(watchRef.current!==null)navigator.geolocation?.clearWatch(watchRef.current);if(heartbeatRef.current)clearInterval(heartbeatRef.current)}},[]);
