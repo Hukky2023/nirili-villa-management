@@ -19,6 +19,35 @@ function linkedCrew(resources:any,user:any){
  const byName=displayName?crew.filter((member:any)=>normal(member.name)===displayName):[];
  return byName.length===1?byName[0]:null;
 }
+async function ensureLinkedCrew(savedState:any,user:any){
+ const resources=excursionResources(savedState);
+ const existing=linkedCrew(resources,user);
+ if(existing){
+  // Repair older crew records that matched by name/username but never stored the account link.
+  if(existing.accountId!==user.userId||existing.username!==user.username){
+   existing.accountId=user.userId;existing.username=user.username;existing.active=true;
+   savedState.excursionResources=resources;
+   const db=authDb(),row=await db.prepare("SELECT revision FROM operation_records WHERE key='hotel-stays-v1'").first<any>();
+   if(row)await db.prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key='hotel-stays-v1' AND revision=?").bind(JSON.stringify(savedState),user.userId,Number(row.revision)||1).run();
+  }
+  return existing;
+ }
+ // A staff login with Crew Member access must always have a corresponding excursion crew resource.
+ const created={id:'crew:'+user.userId,accountId:user.userId,username:user.username,name:text(user.displayName||user.username,100)||user.username,active:true};
+ resources.crew.push(created);savedState.excursionResources=resources;
+ const db=authDb(),row=await db.prepare("SELECT revision FROM operation_records WHERE key='hotel-stays-v1'").first<any>();
+ if(row){
+  const result=await db.prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key='hotel-stays-v1' AND revision=?").bind(JSON.stringify(savedState),user.userId,Number(row.revision)||1).run();
+  if(!result.meta.changes){
+   const fresh=await db.prepare("SELECT payload FROM operation_records WHERE key='hotel-stays-v1'").first<any>();
+   if(fresh){const nextState=JSON.parse(fresh.payload||'{}'),next=linkedCrew(excursionResources(nextState),user);if(next)return next;}
+   throw Error('Crew profile changed elsewhere. Refresh and try again.');
+  }
+ }else{
+  await db.prepare("INSERT INTO operation_records(key,payload,revision,updated_by) VALUES('hotel-stays-v1',?,1,?)").bind(JSON.stringify(savedState),user.userId).run();
+ }
+ return created;
+}
 const validDate=(value:any)=>/^\d{4}-\d{2}-\d{2}$/.test(String(value||''));
 
 function sharedKey(schedule:any){
@@ -77,8 +106,7 @@ export async function GET(){
    return Response.json({mode:'admin',requests:visible.map((request:any)=>requestView(request,schedules)),pendingCount:visible.filter((request:any)=>request.status==='Pending').length},{headers});
   }
   if(!hasPermission(user,'crew_location'))return Response.json({error:'Crew Member access required.'},{status:403,headers});
-  const savedState=await state(),resources=excursionResources(savedState),crew=linkedCrew(resources,user);
-  if(!crew)return Response.json({error:'Your login is not linked to an excursion crew member.'},{status:409,headers});
+  const savedState=await state(),crew=await ensureLinkedCrew(savedState,user),resources=excursionResources(savedState);
   const today=islandToday();
   const assigned=schedules.filter((schedule:any)=>{
    if(schedule.status==='Cancelled'||schedule.date<today||!Array.isArray(schedule.crewIds)||!schedule.crewIds.includes(crew.id))return false;
@@ -119,8 +147,7 @@ export async function POST(r:Request){
   const b=await r.json(),scheduleId=text(b.scheduleId,100),date=text(b.date,10),reason=text(b.reason,500);
   if(!scheduleId||!validDate(date)||!reason)throw Error('Choose an assigned trip and enter a reason.');
   if(reason.length<3)throw Error('Enter a little more detail about why you cannot go on this trip.');
-  const savedState=await state(),crew=linkedCrew(excursionResources(savedState),user);
-  if(!crew)throw Error('Your login is not linked to an excursion crew member.');
+  const savedState=await state(),crew=await ensureLinkedCrew(savedState,user);
   const schedules=await allSchedules(),schedule=schedules.find((item:any)=>item.id===scheduleId&&item.date===date);
   if(!schedule||schedule.status==='Cancelled')throw Error('This assigned trip is no longer available.');
   if(!schedule.crewIds?.includes(crew.id))throw Error('You are no longer assigned to this trip.');
