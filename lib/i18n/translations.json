@@ -3504,1749 +3504,1749 @@
     "Arrivi",
     "Entradas",
     "চেক-ইন",
-    "Check-ins"
+    "Заезды"
   ],
   "Check-outs": [
     "退房",
     "Partenze",
     "Salidas",
     "চেক-আউট",
-    "Check-outs"
+    "Выезды"
   ],
   "Arrivals today": [
     "今日抵达",
     "Arrivi di oggi",
     "Llegadas de hoy",
     "আজকের আগমন",
-    "Arrivals today"
+    "Прибытия сегодня"
   ],
   "Departures today": [
     "今日离店",
     "Partenze di oggi",
     "Salidas de hoy",
     "আজকের প্রস্থান",
-    "Departures today"
+    "Выезды сегодня"
   ],
   "Today’s Transfers": [
     "今日接送",
     "Trasferimenti di oggi",
     "Traslados de hoy",
     "আজকের ট্রান্সফার",
-    "Today’s Transfers"
+    "Трансферы сегодня"
   ],
   "Today’s Excursions": [
     "今日游览",
     "Escursioni di oggi",
     "Excursiones de hoy",
     "আজকের ভ্রমণ",
-    "Today’s Excursions"
+    "Экскурсии сегодня"
   ],
   "Housekeeping": [
     "客房清洁",
     "Pulizie",
     "Limpieza de habitaciones",
     "হাউসকিপিং",
-    "Housekeeping"
+    "Уборка"
   ],
   "Guide": [
     "导游",
     "Guida",
     "Guía",
     "গাইড",
-    "Guide"
+    "Гид"
   ],
   "Source": [
     "来源",
     "Origine",
     "Origen",
     "উৎস",
-    "Source"
+    "Источник"
   ],
   "Direct": [
     "直接预订",
     "Diretta",
     "Directa",
     "সরাসরি",
-    "Direct"
+    "Прямое бронирование"
   ],
   "Reservation List": [
     "预订列表",
     "Elenco prenotazioni",
     "Lista de reservas",
     "বুকিং তালিকা",
-    "Reservation List"
+    "Список бронирований"
   ],
   "Stay Calendar": [
     "住宿日历",
     "Calendario soggiorni",
     "Calendario de estancias",
     "থাকার ক্যালেন্ডার",
-    "Stay Calendar"
+    "Календарь проживания"
   ],
   "New reservation": [
     "新预订",
     "Nuova prenotazione",
     "Nueva reserva",
     "নতুন রিজার্ভেশন",
-    "New reservation"
+    "Новое бронирование"
   ],
   "Booking details updated.": [
     "预订详情已更新。",
     "Dettagli prenotazione aggiornati.",
     "Detalles de reserva actualizados.",
     "বুকিংয়ের বিবরণ আপডেট হয়েছে।",
-    "Booking details updated."
+    "Данные бронирования обновлены."
   ],
   "Changes saved.": [
     "更改已保存。",
     "Modifiche salvate.",
     "Cambios guardados.",
     "পরিবর্তন সংরক্ষিত হয়েছে।",
-    "Changes saved."
+    "Изменения сохранены."
   ],
   "Booking deleted.": [
     "预订已删除。",
     "Prenotazione eliminata.",
     "Reserva eliminada.",
     "বুকিং মুছে ফেলা হয়েছে।",
-    "Booking deleted."
+    "Бронирование удалено."
   ],
   "User deleted. Booking and bill history retained.": [
     "用户已删除，预订和账单记录已保留。",
     "Utente eliminato. Storico prenotazioni e conti conservato.",
     "Usuario eliminado. Se conserva el historial de reservas y facturas.",
     "ব্যবহারকারী মুছে ফেলা হয়েছে। বুকিং ও বিলের ইতিহাস রাখা হয়েছে।",
-    "User deleted. Booking and bill history retained."
+    "Пользователь удалён. История бронирований и счетов сохранена."
   ],
   "Bill not found.": [
     "找不到账单。",
     "Conto non trovato.",
     "Factura no encontrada.",
     "বিল পাওয়া যায়নি।",
-    "Bill not found."
+    "Счёт не найден."
   ],
   "No transport bookings yet.": [
     "暂无接送预订。",
     "Nessuna prenotazione trasporto.",
     "Todavía no hay reservas de traslado.",
     "এখনও ট্রান্সফার বুকিং নেই।",
-    "No transport bookings yet."
+    "Бронирований транспорта пока нет."
   ],
   "No guest orders yet.": [
     "暂无客人订单。",
     "Nessun ordine ospite.",
     "Todavía no hay pedidos de huéspedes.",
     "এখনও অতিথির অর্ডার নেই।",
-    "No guest orders yet."
+    "Заказов гостей пока нет."
   ],
   "No matching menu items.": [
     "没有匹配的菜单项目。",
     "Nessuna voce di menu corrispondente.",
     "No hay artículos coincidentes.",
     "কোনো মিল পাওয়া মেনু আইটেম নেই।",
-    "No matching menu items."
+    "Подходящих позиций меню не найдено."
   ],
   "Loading menu…": [
     "正在加载菜单…",
     "Caricamento menu…",
     "Cargando menú…",
     "মেনু লোড হচ্ছে…",
-    "Loading menu…"
+    "Загрузка меню…"
   ],
   "Loading transfers…": [
     "正在加载接送…",
     "Caricamento trasferimenti…",
     "Cargando traslados…",
     "ট্রান্সফার লোড হচ্ছে…",
-    "Loading transfers…"
+    "Загрузка трансферов…"
   ],
   "Loading bookings…": [
     "正在加载预订…",
     "Caricamento prenotazioni…",
     "Cargando reservas…",
     "বুকিং লোড হচ্ছে…",
-    "Loading bookings…"
+    "Загрузка бронирований…"
   ],
   "Loading… Please wait.": [
     "正在加载，请稍候。",
     "Caricamento… Attendi.",
     "Cargando… Espera.",
     "লোড হচ্ছে… অপেক্ষা করুন।",
-    "Loading… Please wait."
+    "Загрузка… Пожалуйста, подождите."
   ],
   "A warm welcome.": [
     "热情欢迎。",
     "Un caloroso benvenuto.",
     "Una cálida bienvenida.",
     "উষ্ণ স্বাগতম।",
-    "A warm welcome."
+    "Тёплый приём."
   ],
   "Every time.": [
     "每一次。",
     "Ogni volta.",
     "Siempre.",
     "প্রতিবার।",
-    "Every time."
+    "Каждый раз."
   ],
   "Arrive as a guest, leave as a friend.": [
     "宾至如归，友谊长存。",
     "Arrivi come ospite, parti come amico.",
     "Llegas como huésped, te vas como amigo.",
     "অতিথি হয়ে আসুন, বন্ধু হয়ে ফিরুন।",
-    "Arrive as a guest, leave as a friend."
+    "Приезжайте гостем — уезжайте другом."
   ],
   "Arrive as a guest,": [
     "以客人身份到来，",
     "Arrivi come ospite,",
     "Llegas como huésped,",
     "অতিথি হয়ে আসুন,",
-    "Arrive as a guest,"
+    "Приезжайте гостем,"
   ],
   "leave as a friend.": [
     "以朋友身份离开。",
     "parti come amico.",
     "te vas como amigo.",
     "বন্ধু হয়ে ফিরুন।",
-    "leave as a friend."
+    "уезжайте другом."
   ],
   "YOUR ISLAND CONNECTION": [
     "连接您的海岛之旅",
     "IL TUO LEGAME CON L’ISOLA",
     "TU CONEXIÓN CON LA ISLA",
     "দ্বীপের সঙ্গে আপনার সংযোগ",
-    "YOUR ISLAND CONNECTION"
+    "ВАША СВЯЗЬ С ОСТРОВОМ"
   ],
   "FRESH FLAVOURS · ISLAND HOSPITALITY": [
     "新鲜风味 · 海岛热情",
     "SAPORI FRESCHI · OSPITALITÀ ISOLANA",
     "SABORES FRESCOS · HOSPITALIDAD ISLEÑA",
     "তাজা স্বাদ · দ্বীপের আতিথেয়তা",
-    "FRESH FLAVOURS · ISLAND HOSPITALITY"
+    "СВЕЖИЕ ВКУСЫ · ОСТРОВНОЕ ГОСТЕПРИИМСТВО"
   ],
   "MADE FRESH FOR YOU": [
     "为您新鲜制作",
     "PREPARATO FRESCO PER TE",
     "RECIÉN HECHO PARA TI",
     "আপনার জন্য তাজা তৈরি",
-    "MADE FRESH FOR YOU"
+    "СВЕЖЕПРИГОТОВЛЕНО ДЛЯ ВАС"
   ],
   "Add your favourites from the menu.": [
     "从菜单中添加您喜欢的菜品。",
     "Aggiungi i tuoi preferiti dal menu.",
     "Añade tus favoritos del menú.",
     "মেনু থেকে পছন্দের খাবার যোগ করুন।",
-    "Add your favourites from the menu."
+    "Добавьте любимые блюда из меню."
   ],
   "Select a table and guest room, add menu items and send the order to the cashier.": [
     "选择餐桌和客房，添加菜品并将订单发送给收银员。",
     "Seleziona tavolo e camera, aggiungi i piatti e invia l’ordine al cassiere.",
     "Selecciona mesa y habitación, añade platos y envía el pedido a caja.",
     "টেবিল ও কক্ষ বেছে নিন, খাবার যোগ করে ক্যাশিয়ারকে অর্ডার পাঠান।",
-    "Select a table and guest room, add menu items and send the order to the cashier."
+    "Выберите стол и номер гостя, добавьте позиции меню и отправьте заказ кассиру."
   ],
   "Select your table, add your favourites and send your order. Charges go to your assigned room.": [
     "选择餐桌、添加菜品并提交订单。费用计入您的指定房间。",
     "Scegli il tavolo, aggiungi i piatti e invia l’ordine. I costi vanno alla camera assegnata.",
     "Elige mesa, añade platos y envía el pedido. Los cargos van a tu habitación asignada.",
     "টেবিল বেছে খাবার যোগ করে অর্ডার পাঠান। খরচ আপনার নির্ধারিত কক্ষের বিলে যোগ হবে।",
-    "Select your table, add your favourites and send your order. Charges go to your assigned room."
+    "Выберите стол, добавьте любимые блюда и отправьте заказ. Сумма будет добавлена к вашему номеру."
   ],
   "Items marked Included are free with this meal plan. Other items are charged to the room bill.": [
     "标为已包含的菜品由餐食计划免费提供。其他菜品计入房账。",
     "I piatti indicati come inclusi sono gratuiti nel piano pasti. Gli altri sono addebitati alla camera.",
     "Los platos marcados como incluidos son gratis con este plan. Los demás se cargan a la habitación.",
     "অন্তর্ভুক্ত লেখা খাবার এই পরিকল্পনায় বিনামূল্যে। অন্য খাবার কক্ষের বিলে যোগ হবে।",
-    "Items marked Included are free with this meal plan. Other items are charged to the room bill."
+    "Позиции с пометкой «Включено» бесплатны по вашему плану питания. Остальные добавляются в счёт номера."
   ],
   "Meal plan menu · Approved meals are included. Other items are paid extras added to your room bill.": [
     "餐食计划菜单：指定餐食已包含，其他菜品额外计入房账。",
     "Menu del piano pasti: piatti approvati inclusi, altri extra addebitati alla camera.",
     "Menú del plan: comidas autorizadas incluidas; el resto se carga como extra a la habitación.",
     "খাবারের পরিকল্পনায় অনুমোদিত খাবার অন্তর্ভুক্ত। অন্য খাবারের খরচ কক্ষের বিলে যোগ হবে।",
-    "Meal plan menu · Approved meals are included. Other items are paid extras added to your room bill."
+    "Меню плана питания · Одобренные блюда включены. Остальные позиции оплачиваются дополнительно и добавляются в счёт номера."
   ],
   "Approved meals included · Other items charged to room": [
     "指定餐食已包含 · 其他菜品计入房账",
     "Pasti approvati inclusi · Altri articoli addebitati alla camera",
     "Comidas autorizadas incluidas · Otros artículos a la habitación",
     "অনুমোদিত খাবার অন্তর্ভুক্ত · অন্য খাবার কক্ষের বিলে",
-    "Approved meals included · Other items charged to room"
+    "Одобренные блюда включены · Остальные позиции добавляются в счёт номера"
   ],
   "Assigned to your guest login. Contact reception for room changes.": [
     "房间与您的登录关联。更换房间请联系前台。",
     "Camera associata al tuo accesso. Per cambiarla contatta la reception.",
     "Habitación vinculada a tu acceso. Contacta con recepción para cambiarla.",
     "আপনার লগইনের নির্ধারিত কক্ষ। কক্ষ বদলাতে রিসেপশনে যোগাযোগ করুন।",
-    "Assigned to your guest login. Contact reception for room changes."
+    "Привязано к вашему гостевому аккаунту. Для смены номера обратитесь на ресепшен."
   ],
   "Select a table to prepare the bill and send the order to the cashier.": [
     "请选择餐桌，以创建账单并发送订单至收银员。",
     "Seleziona un tavolo per preparare il conto e inviare l’ordine al cassiere.",
     "Selecciona una mesa para preparar la factura y enviar el pedido a caja.",
     "বিল তৈরি ও ক্যাশিয়ারকে অর্ডার পাঠাতে টেবিল বেছে নিন।",
-    "Select a table to prepare the bill and send the order to the cashier."
+    "Выберите стол, чтобы сформировать счёт и отправить заказ кассиру."
   ],
   "Enter your name and table number to start ordering.": [
     "输入姓名和桌号开始点餐。",
     "Inserisci nome e tavolo per ordinare.",
     "Introduce tu nombre y mesa para pedir.",
     "অর্ডার করতে নাম ও টেবিল নম্বর দিন।",
-    "Enter your name and table number to start ordering."
+    "Введите имя и номер стола, чтобы начать заказ."
   ],
   "Order from the regular menu at listed prices. No account or password needed.": [
     "按菜单标价点餐，无需账户或密码。",
     "Ordina dal menu ai prezzi indicati. Non servono account o password.",
     "Pide del menú a los precios indicados. Sin cuenta ni contraseña.",
     "মেনুর নির্ধারিত দামে অর্ডার করুন। অ্যাকাউন্ট বা পাসওয়ার্ড লাগবে না।",
-    "Order from the regular menu at listed prices. No account or password needed."
+    "Заказывайте из обычного меню по указанным ценам. Аккаунт и пароль не нужны."
   ],
   "Explore the regular menu and order at listed prices. Your name and table are sent to the cashier.": [
     "浏览菜单并按标价点餐。您的姓名和桌号将发送给收银员。",
     "Sfoglia il menu e ordina ai prezzi indicati. Nome e tavolo sono inviati al cassiere.",
     "Consulta el menú y pide al precio indicado. Tu nombre y mesa se envían a caja.",
     "মেনু দেখুন ও নির্ধারিত দামে অর্ডার করুন। নাম ও টেবিল ক্যাশিয়ারকে পাঠানো হবে।",
-    "Explore the regular menu and order at listed prices. Your name and table are sent to the cashier."
+    "Просмотрите обычное меню и закажите по указанным ценам. Ваше имя и номер стола будут отправлены кассиру."
   ],
   "The cashier will review and send your orders to the kitchen.": [
     "收银员审核后将订单发送至厨房。",
     "Il cassiere controllerà e invierà gli ordini in cucina.",
     "El cajero revisará y enviará tus pedidos a cocina.",
     "ক্যাশিয়ার যাচাই করে অর্ডার রান্নাঘরে পাঠাবেন।",
-    "The cashier will review and send your orders to the kitchen."
+    "Кассир проверит заказ и отправит его на кухню."
   ],
   "Every order, from first bite to final payment.": [
     "管理每笔订单，从用餐到付款。",
     "Ogni ordine, dal primo boccone al pagamento.",
     "Cada pedido, del primer bocado al pago final.",
     "প্রথম খাবার থেকে শেষ পেমেন্ট পর্যন্ত প্রতিটি অর্ডার।",
-    "Every order, from first bite to final payment."
+    "Каждый заказ — от первого блюда до окончательной оплаты."
   ],
   "Tap a product to start a sale": [
     "点击商品开始点单",
     "Tocca un prodotto per iniziare",
     "Toca un producto para empezar",
     "অর্ডার শুরু করতে পণ্যে চাপুন",
-    "Tap a product to start a sale"
+    "Нажмите на товар, чтобы начать продажу"
   ],
   "No restaurant bills yet. Select menu items and send an order to the cashier.": [
     "暂无餐厅账单。请选择菜品并发送给收银员。",
     "Nessun conto. Seleziona piatti e invia un ordine al cassiere.",
     "No hay facturas. Selecciona platos y envía el pedido a caja.",
     "এখনও বিল নেই। খাবার বেছে ক্যাশিয়ারকে অর্ডার পাঠান।",
-    "No restaurant bills yet. Select menu items and send an order to the cashier."
+    "Счетов ресторана пока нет. Выберите позиции меню и отправьте заказ кассиру."
   ],
   "No matching products.": [
     "没有匹配商品。",
     "Nessun prodotto corrispondente.",
     "No hay productos coincidentes.",
     "মিল পাওয়া পণ্য নেই।",
-    "No matching products."
+    "Подходящих товаров не найдено."
   ],
   "No items in this bill. Tap Add Item to begin.": [
     "账单为空。点击添加商品开始。",
     "Conto vuoto. Tocca Aggiungi articolo.",
     "Factura vacía. Pulsa Añadir artículo.",
     "বিলে আইটেম নেই। শুরু করতে আইটেম যোগ করুন।",
-    "No items in this bill. Tap Add Item to begin."
+    "В этом счёте нет позиций. Нажмите «Добавить позицию»."
   ],
   "No items. Add an item or save an empty bill.": [
     "暂无项目。添加项目或保存空账单。",
     "Nessun articolo. Aggiungine uno o salva un conto vuoto.",
     "Sin artículos. Añade uno o guarda la factura vacía.",
     "আইটেম নেই। আইটেম যোগ করুন বা খালি বিল সংরক্ষণ করুন।",
-    "No items. Add an item or save an empty bill."
+    "Нет позиций. Добавьте позицию или сохраните пустой счёт."
   ],
   "Across the blue": [
     "畅游蔚蓝",
     "Attraverso il blu",
     "Por el mar azul",
     "নীল সমুদ্র পেরিয়ে",
-    "Across the blue"
+    "Через голубую лагуну"
   ],
   "Speedboat bookings and passenger journeys.": [
     "快艇预订与乘客行程。",
     "Prenotazioni motoscafi e viaggi passeggeri.",
     "Reservas de lanchas y viajes de pasajeros.",
     "স্পিডবোট বুকিং ও যাত্রীর ভ্রমণ।",
-    "Speedboat bookings and passenger journeys."
+    "Бронирование катеров и поездки пассажиров."
   ],
   "Choose a departure, passengers and seats. Reserve now and pay at reception.": [
     "选择班次、乘客和座位。现在预订，在前台付款。",
     "Scegli partenza, passeggeri e posti. Prenota ora e paga alla reception.",
     "Elige salida, pasajeros y asientos. Reserva ahora y paga en recepción.",
     "যাত্রা, যাত্রী ও আসন বেছে নিন। এখন বুক করুন, রিসেপশনে পেমেন্ট করুন।",
-    "Choose a departure, passengers and seats. Reserve now and pay at reception."
+    "Выберите отправление, пассажиров и места. Забронируйте сейчас и оплатите на ресепшене."
   ],
   "Children: half fare. Infants: free. Prices are in MVR, payable at reception.": [
     "儿童半价，婴儿免费。价格以MVR计，在前台付款。",
     "Bambini metà prezzo, neonati gratis. Prezzi in MVR, pagamento alla reception.",
     "Niños a mitad de precio, bebés gratis. Precios en MVR, pago en recepción.",
     "শিশুদের অর্ধেক ভাড়া, ২ বছরের নিচে বিনামূল্যে। মূল্য MVR-এ, রিসেপশনে পেমেন্ট।",
-    "Children: half fare. Infants: free. Prices are in MVR, payable at reception."
+    "Дети: половина тарифа. Младенцы: бесплатно. Цены указаны в MVR, оплата на ресепшене."
   ],
   "No scheduled departures for this route and date. Ask reception about a private transfer.": [
     "该路线及日期暂无班次。私人接送请咨询前台。",
     "Nessuna partenza per questa tratta e data. Chiedi alla reception un trasferimento privato.",
     "No hay salidas para esta ruta y fecha. Consulta en recepción un traslado privado.",
     "এই রুট ও তারিখে যাত্রা নেই। ব্যক্তিগত ট্রান্সফারের জন্য রিসেপশনে জিজ্ঞাসা করুন।",
-    "No scheduled departures for this route and date. Ask reception about a private transfer."
+    "На этот маршрут и дату нет запланированных отправлений. Уточните на ресепшене возможность частного трансфера."
   ],
   "No passengers for this selection.": [
     "此选择暂无乘客。",
     "Nessun passeggero per questa selezione.",
     "No hay pasajeros para esta selección.",
     "এই নির্বাচনে যাত্রী নেই।",
-    "No passengers for this selection."
+    "Для выбранного варианта нет пассажиров."
   ],
   "Review the reference fares and routes, then activate each departure before accepting bookings. Schedules repeat daily.": [
     "请核对参考票价和路线，启用班次后才接受预订。班次每天重复。",
     "Controlla tariffe e tratte, poi attiva le partenze. Gli orari si ripetono ogni giorno.",
     "Revisa tarifas y rutas, y activa cada salida antes de aceptar reservas. Los horarios se repiten a diario.",
     "ভাড়া ও রুট যাচাই করে বুকিংয়ের আগে যাত্রা সক্রিয় করুন। সময়সূচি প্রতিদিন পুনরাবৃত্তি হয়।",
-    "Review the reference fares and routes, then activate each departure before accepting bookings. Schedules repeat daily."
+    "Проверьте тарифы и маршруты, затем активируйте каждое отправление перед приёмом бронирований. Расписание повторяется ежедневно."
   ],
   "Confirming adds this amount to your linked room bill.": [
     "确认后此金额将计入关联房间的账单。",
     "La conferma aggiunge l’importo al conto della camera collegata.",
     "Al confirmar se añade este importe a la factura de tu habitación.",
     "নিশ্চিত করলে এই টাকা আপনার যুক্ত কক্ষের বিলে যোগ হবে।",
-    "Confirming adds this amount to your linked room bill."
+    "После подтверждения эта сумма будет добавлена в счёт привязанного номера."
   ],
   "Reception has not set a USD room fare for this journey yet.": [
     "前台尚未设置此行程的美元房账票价。",
     "La reception non ha ancora impostato la tariffa camera in USD per questo viaggio.",
     "Recepción aún no ha establecido la tarifa en USD para cargar este viaje a la habitación.",
     "রিসেপশন এই যাত্রার জন্য USD কক্ষভাড়া এখনও নির্ধারণ করেনি।",
-    "Reception has not set a USD room fare for this journey yet."
+    "Ресепшен ещё не установил тариф в USD для этого маршрута."
   ],
   "Room charging requires one eligible stay linked to your guest login.": [
     "计入房账需要您的登录关联一个符合条件的住宿。",
     "Per addebitare alla camera serve un soggiorno idoneo collegato al tuo accesso.",
     "Para cargar a la habitación necesitas una estancia válida vinculada a tu acceso.",
     "কক্ষের বিলে যোগ করতে আপনার লগইনে একটি যোগ্য থাকা যুক্ত থাকতে হবে।",
-    "Room charging requires one eligible stay linked to your guest login."
+    "Для списания на номер к вашему гостевому аккаунту должно быть привязано подходящее проживание."
   ],
   "Agents can book tickets and view their own bookings. They cannot charge a room, edit schedules or access the passenger manifest.": [
     "代理可预订和查看自己的票务，但不能计入房账、修改班次或查看乘客名单。",
     "Gli agenti possono prenotare e vedere le proprie prenotazioni, ma non addebitare camere, modificare orari o vedere il manifesto.",
     "Los agentes pueden reservar y ver sus reservas, pero no cargar a habitaciones, editar horarios ni acceder a la lista de pasajeros.",
     "এজেন্টরা টিকিট বুক ও নিজের বুকিং দেখতে পারেন। কক্ষের বিলে যোগ, সময়সূচি সম্পাদনা বা যাত্রী তালিকা দেখতে পারেন না।",
-    "Agents can book tickets and view their own bookings. They cannot charge a room, edit schedules or access the passenger manifest."
+    "Агенты могут бронировать билеты и просматривать свои бронирования. Они не могут списывать на номер, изменять расписание или открывать пассажирский манифест."
   ],
   "Visiting for the day or staying at another hotel? Join us on the water.": [
     "一日游或住在其他酒店？欢迎一起出海。",
     "In visita per un giorno o in un altro hotel? Vieni in mare con noi.",
     "¿Vienes por el día o te alojas en otro hotel? Acompáñanos al mar.",
     "দিনের ভ্রমণে বা অন্য হোটেলে আছেন? আমাদের সঙ্গে সমুদ্রে চলুন।",
-    "Visiting for the day or staying at another hotel? Join us on the water."
+    "Приехали на день или живёте в другом отеле? Присоединяйтесь к нашим морским поездкам."
   ],
   "Reserve now, pay later. Our team will confirm your trip and departure time by WhatsApp. Minimum 2 guests.": [
     "现在预订，稍后付款。我们将通过WhatsApp确认行程和出发时间。至少2人。",
     "Prenota ora, paga dopo. Confermeremo viaggio e orario via WhatsApp. Minimo 2 ospiti.",
     "Reserva ahora y paga después. Confirmaremos viaje y hora por WhatsApp. Mínimo 2 personas.",
     "এখন বুক করুন, পরে পেমেন্ট। WhatsApp-এ ভ্রমণ ও সময় নিশ্চিত করা হবে। কমপক্ষে ২ জন।",
-    "Reserve now, pay later. Our team will confirm your trip and departure time by WhatsApp. Minimum 2 guests."
+    "Бронируйте сейчас, платите позже. Наша команда подтвердит поездку и время отправления по WhatsApp. Минимум 2 гостя."
   ],
   "Your request is awaiting confirmation from our team.": [
     "您的申请正等待团队确认。",
     "La richiesta è in attesa di conferma dal nostro team.",
     "Tu solicitud espera la confirmación de nuestro equipo.",
     "আপনার অনুরোধ আমাদের দলের নিশ্চিতকরণের অপেক্ষায়।",
-    "Your request is awaiting confirmation from our team."
+    "Ваш запрос ожидает подтверждения нашей команды."
   ],
   "Book an excursion with your name and contact number. No room login or restaurant table needed.": [
     "填写姓名和联系电话即可预订游览，无需房间登录或餐桌。",
     "Prenota con nome e telefono. Non servono accesso camera o tavolo.",
     "Reserva con nombre y teléfono. No necesitas acceso de habitación ni mesa.",
     "নাম ও যোগাযোগ নম্বর দিয়ে ভ্রমণ বুক করুন। কক্ষের লগইন বা টেবিল লাগবে না।",
-    "Book an excursion with your name and contact number. No room login or restaurant table needed."
+    "Забронируйте экскурсию, указав имя и контактный номер. Вход по номеру комнаты или стол ресторана не нужны."
   ],
   "Explore the ocean, discover sandbanks and enjoy dinner by the sea.": [
     "探索海洋与沙洲，享受海边晚餐。",
     "Esplora l’oceano, scopri banchi di sabbia e cena sul mare.",
     "Explora el océano, descubre bancos de arena y cena junto al mar.",
     "সমুদ্র ও বালুচর ঘুরে দেখুন, সাগরপাড়ে নৈশভোজ করুন।",
-    "Explore the ocean, discover sandbanks and enjoy dinner by the sea."
+    "Исследуйте океан, посетите песчаные косы и насладитесь ужином у моря."
   ],
   "Free underwater videos included with every snorkeling trip.": [
     "每次浮潜均包含免费水下视频。",
     "Video subacquei gratuiti in ogni escursione di snorkeling.",
     "Vídeos submarinos gratis en cada excursión de esnórquel.",
     "প্রতিটি স্নরকেলিং ভ্রমণে বিনামূল্যে পানির নিচের ভিডিও।",
-    "Free underwater videos included with every snorkeling trip."
+    "Бесплатные подводные видео включены в каждую снорклинг-экскурсию."
   ],
   "Small groups · Local guide · Equipment included": [
     "小团体 · 当地导游 · 包含装备",
     "Piccoli gruppi · Guida locale · Attrezzatura inclusa",
     "Grupos pequeños · Guía local · Equipo incluido",
     "ছোট দল · স্থানীয় গাইড · সরঞ্জাম অন্তর্ভুক্ত",
-    "Small groups · Local guide · Equipment included"
+    "Небольшие группы · Местный гид · Снаряжение включено"
   ],
   "Our team will confirm your request shortly.": [
     "团队将尽快确认您的申请。",
     "Il nostro team confermerà presto la richiesta.",
     "Nuestro equipo confirmará tu solicitud pronto.",
     "আমাদের দল শীঘ্রই আপনার অনুরোধ নিশ্চিত করবে।",
-    "Our team will confirm your request shortly."
+    "Наша команда скоро подтвердит ваш запрос."
   ],
   "Our island team is ready to help.": [
     "我们的海岛团队随时为您服务。",
     "Il nostro team sull’isola è pronto ad aiutarti.",
     "Nuestro equipo en la isla está listo para ayudarte.",
     "আমাদের দ্বীপের দল সাহায্য করতে প্রস্তুত।",
-    "Our island team is ready to help."
+    "Наша островная команда готова помочь."
   ],
   "Your room, dining and island experiences.": [
     "您的客房、餐饮与海岛体验。",
     "La tua camera, i pasti e le esperienze sull’isola.",
     "Tu habitación, comidas y experiencias en la isla.",
     "আপনার কক্ষ, খাবার ও দ্বীপের অভিজ্ঞতা।",
-    "Your room, dining and island experiences."
+    "Ваш номер, питание и островные впечатления."
   ],
   "No bookings are linked to your account yet. Contact reception to link your stay.": [
     "账户尚未关联预订，请联系前台。",
     "Nessuna prenotazione collegata. Contatta la reception.",
     "No hay reservas vinculadas. Contacta con recepción.",
     "আপনার অ্যাকাউন্টে বুকিং যুক্ত নেই। রিসেপশনে যোগাযোগ করুন।",
-    "No bookings are linked to your account yet. Contact reception to link your stay."
+    "К вашему аккаунту пока не привязаны бронирования. Обратитесь на ресепшен, чтобы привязать проживание."
   ],
   "No stay linked to your account yet. Please contact reception.": [
     "账户尚未关联住宿，请联系前台。",
     "Nessun soggiorno collegato. Contatta la reception.",
     "No hay estancia vinculada. Contacta con recepción.",
     "অ্যাকাউন্টে থাকা যুক্ত নেই। রিসেপশনে যোগাযোগ করুন।",
-    "No stay linked to your account yet. Please contact reception."
+    "К вашему аккаунту пока не привязано проживание. Пожалуйста, обратитесь на ресепшен."
   ],
   "No bills linked to this guest and room.": [
     "该客人和房间暂无账单。",
     "Nessun conto collegato a questo ospite e camera.",
     "No hay facturas vinculadas a este huésped y habitación.",
     "এই অতিথি ও কক্ষে কোনো বিল যুক্ত নেই।",
-    "No bills linked to this guest and room."
+    "К этому гостю и номеру не привязаны счета."
   ],
   "No linked room booking.": [
     "没有关联的客房预订。",
     "Nessuna prenotazione camera collegata.",
     "No hay reserva de habitación vinculada.",
     "যুক্ত কক্ষ বুকিং নেই।",
-    "No linked room booking."
+    "Нет привязанного бронирования номера."
   ],
   "No service requests for this stay.": [
     "该住宿暂无服务申请。",
     "Nessuna richiesta servizi per questo soggiorno.",
     "No hay solicitudes de servicios para esta estancia.",
     "এই থাকার জন্য সেবার অনুরোধ নেই।",
-    "No service requests for this stay."
+    "Для этого проживания нет запросов на услуги."
   ],
   "In-house guest: use your room number and the password provided at check-in.": [
     "住店客人：请使用房号和入住时提供的密码。",
     "Ospiti dell’hotel: usate numero camera e password ricevuta al check-in.",
     "Huéspedes alojados: usad la habitación y la contraseña recibida al entrar.",
     "হোটেলের অতিথি: চেক-ইনের সময় দেওয়া কক্ষ নম্বর ও পাসওয়ার্ড ব্যবহার করুন।",
-    "In-house guest: use your room number and the password provided at check-in."
+    "Гость отеля: используйте номер комнаты и пароль, выданный при заселении."
   ],
   "Use your Admin-created account. Your assigned permissions determine your access.": [
     "请使用管理员创建的账户，访问范围由所分配权限决定。",
     "Usa l’account creato dall’Admin. L’accesso dipende dai permessi assegnati.",
     "Usa la cuenta creada por el administrador. El acceso depende de tus permisos.",
     "অ্যাডমিনের তৈরি অ্যাকাউন্ট ব্যবহার করুন। নির্ধারিত অনুমতি অনুযায়ী প্রবেশাধিকার পাবেন।",
-    "Use your Admin-created account. Your assigned permissions determine your access."
+    "Используйте аккаунт, созданный администратором. Доступ определяется назначенными правами."
   ],
   "Use the same username and password provided for your stay. Eligible room charges are available after signing in.": [
     "使用住宿提供的用户名和密码。登录后可将符合条件的费用计入房账。",
     "Usa le credenziali del soggiorno. Dopo l’accesso puoi addebitare costi idonei alla camera.",
     "Usa las credenciales de tu estancia. Tras entrar podrás cargar gastos permitidos a la habitación.",
     "থাকার জন্য দেওয়া একই লগইন ব্যবহার করুন। লগইনের পর যোগ্য খরচ কক্ষের বিলে যোগ করা যাবে।",
-    "Use the same username and password provided for your stay. Eligible room charges are available after signing in."
+    "Используйте логин и пароль, выданные для проживания. После входа доступно списание подходящих расходов на номер."
   ],
   "Use your management staff account with transport editing permission.": [
     "使用具备交通编辑权限的员工账户。",
     "Usa l’account staff con permesso di modifica trasporti.",
     "Usa tu cuenta de personal con permiso para editar transportes.",
     "পরিবহন সম্পাদনার অনুমতিসহ কর্মীর অ্যাকাউন্ট ব্যবহার করুন।",
-    "Use your management staff account with transport editing permission."
+    "Используйте аккаунт сотрудника с правом редактирования транспорта."
   ],
   "Choose your access and sign in.": [
     "选择访问角色并登录。",
     "Scegli il tuo accesso ed entra.",
     "Elige tu acceso e inicia sesión.",
     "প্রবেশের ধরন বেছে লগইন করুন।",
-    "Choose your access and sign in."
+    "Выберите тип доступа и войдите."
   ],
   "Your account cannot open this portal.": [
     "您的账户无法访问此入口。",
     "Il tuo account non può accedere a questo portale.",
     "Tu cuenta no puede acceder a este portal.",
     "আপনার অ্যাকাউন্ট এই পোর্টালে প্রবেশ করতে পারে না।",
-    "Your account cannot open this portal."
+    "Ваш аккаунт не может открыть этот портал."
   ],
   "Ask Admin to enable Restaurant POS in your staff permissions.": [
     "请管理员为您的员工账户启用餐厅收银权限。",
     "Chiedi all’Admin di abilitare il POS ristorante per il tuo account.",
     "Pide al administrador que active el TPV restaurante en tus permisos.",
     "আপনার অ্যাকাউন্টে রেস্তোরাঁ পিওএস চালু করতে অ্যাডমিনকে বলুন।",
-    "Ask Admin to enable Restaurant POS in your staff permissions."
+    "Попросите администратора включить Restaurant POS в правах вашего аккаунта."
   ],
   "Ask Admin to enable transport access for your account.": [
     "请管理员为您的账户启用交通访问权限。",
     "Chiedi all’Admin di abilitare l’accesso trasporti.",
     "Pide al administrador que active tu acceso a transportes.",
     "পরিবহনের অনুমতির জন্য অ্যাডমিনকে বলুন।",
-    "Ask Admin to enable transport access for your account."
+    "Попросите администратора включить доступ к транспорту для вашего аккаунта."
   ],
   "Please ask reception to link a confirmed room to your login before ordering.": [
     "点餐前请前台将已确认客房关联到您的登录。",
     "Prima di ordinare chiedi alla reception di collegare una camera confermata.",
     "Antes de pedir, solicita a recepción que vincule una habitación confirmada.",
     "অর্ডারের আগে রিসেপশনকে নিশ্চিত কক্ষ আপনার লগইনে যুক্ত করতে বলুন।",
-    "Please ask reception to link a confirmed room to your login before ordering."
+    "Попросите ресепшен привязать подтверждённый номер к вашему аккаунту перед заказом."
   ],
   "Only Admin can create staff or change access. Permission changes apply to their next request.": [
     "仅管理员可创建员工或修改权限。更改在下次请求时生效。",
     "Solo l’Admin può creare staff o cambiare accessi. I permessi valgono dalla richiesta successiva.",
     "Solo el administrador puede crear personal o cambiar accesos. Los permisos se aplican a la próxima solicitud.",
     "শুধু অ্যাডমিন কর্মী তৈরি বা অনুমতি বদলাতে পারেন। পরবর্তী অনুরোধ থেকে অনুমতি কার্যকর হবে।",
-    "Only Admin can create staff or change access. Permission changes apply to their next request."
+    "Только администратор может создавать сотрудников и менять доступ. Изменения прав применяются со следующего запроса."
   ],
   "This replaces the password and signs this account out of other devices.": [
     "此操作替换密码，并将该账户从其他设备退出。",
     "Sostituisce la password e disconnette l’account dagli altri dispositivi.",
     "Sustituye la contraseña y cierra la sesión en otros dispositivos.",
     "এতে পাসওয়ার্ড বদলাবে এবং অন্য ডিভাইস থেকে অ্যাকাউন্ট লগআউট হবে।",
-    "This replaces the password and signs this account out of other devices."
+    "Это заменит пароль и выполнит выход из аккаунта на других устройствах."
   ],
   "This room login is disabled at checkout. A new password is issued at the next check-in.": [
     "此房间登录将在退房时停用，下次入住会生成新密码。",
     "L’accesso camera scade al check-out. Una nuova password viene emessa al prossimo check-in.",
     "El acceso de habitación se desactiva al salir. Se emite otra contraseña en la próxima entrada.",
     "চেক-আউটে কক্ষের লগইন বন্ধ হবে। পরের চেক-ইনে নতুন পাসওয়ার্ড দেওয়া হবে।",
-    "This room login is disabled at checkout. A new password is issued at the next check-in."
+    "Вход для номера отключается при выезде. Новый пароль выдаётся при следующем заселении."
   ],
   "All created logins and their current permissions.": [
     "所有已创建的登录及当前权限。",
     "Tutti gli accessi creati e i permessi attuali.",
     "Todos los accesos creados y sus permisos actuales.",
     "তৈরি করা সব লগইন ও বর্তমান অনুমতি।",
-    "All created logins and their current permissions."
+    "Все созданные аккаунты и их текущие права."
   ],
   "Login disabled.": [
     "登录已停用。",
     "Accesso disabilitato.",
     "Acceso desactivado.",
     "লগইন বন্ধ।",
-    "Login disabled."
+    "Вход отключён."
   ],
   "Login disabled. Saved credentials will be removed when this user is deleted.": [
     "登录已停用。删除用户时将移除保存的凭据。",
     "Accesso disabilitato. Le credenziali salvate saranno rimosse eliminando l’utente.",
     "Acceso desactivado. Las credenciales guardadas se eliminarán al borrar al usuario.",
     "লগইন বন্ধ। ব্যবহারকারী মুছলে সংরক্ষিত লগইন তথ্যও মুছবে।",
-    "Login disabled. Saved credentials will be removed when this user is deleted."
+    "Вход отключён. Сохранённые данные доступа будут удалены при удалении пользователя."
   ],
   "Own bookings and bills only. Food and excursion ordering after check-in.": [
     "仅可查看自己的预订和账单，入住后可订餐及预订游览。",
     "Solo prenotazioni e conti propri. Ordini cibo ed escursioni dopo il check-in.",
     "Solo reservas y facturas propias. Comida y excursiones después de la entrada.",
     "শুধু নিজের বুকিং ও বিল। চেক-ইনের পর খাবার ও ভ্রমণ অর্ডার।",
-    "Own bookings and bills only. Food and excursion ordering after check-in."
+    "Только собственные бронирования и счета. Заказ еды и экскурсий доступен после заселения."
   ],
   "No work areas assigned.": [
     "未分配工作区域。",
     "Nessuna area di lavoro assegnata.",
     "Sin áreas de trabajo asignadas.",
     "কোনো কাজের বিভাগ নির্ধারিত নেই।",
-    "No work areas assigned."
+    "Рабочие разделы не назначены."
   ],
   "No guests match your search.": [
     "没有匹配的客人。",
     "Nessun ospite corrisponde alla ricerca.",
     "No hay huéspedes que coincidan.",
     "খোঁজ অনুযায়ী অতিথি পাওয়া যায়নি।",
-    "No guests match your search."
+    "Гости по вашему запросу не найдены."
   ],
   "No rooms available for these dates and guest count.": [
     "这些日期和人数暂无空房。",
     "Nessuna camera disponibile per queste date e ospiti.",
     "No hay habitaciones para estas fechas y número de huéspedes.",
     "এই তারিখ ও অতিথিসংখ্যায় কক্ষ খালি নেই।",
-    "No rooms available for these dates and guest count."
+    "Нет свободных номеров на эти даты и количество гостей."
   ],
   "No guest is currently assigned to this room.": [
     "此房间目前未分配客人。",
     "Nessun ospite assegnato a questa camera.",
     "No hay huésped asignado a esta habitación.",
     "এই কক্ষে এখন কোনো অতিথি নেই।",
-    "No guest is currently assigned to this room."
+    "Сейчас к этому номеру не привязан гость."
   ],
   "No changes recorded yet.": [
     "暂无更改记录。",
     "Nessuna modifica registrata.",
     "Todavía no hay cambios registrados.",
     "এখনও পরিবর্তনের রেকর্ড নেই।",
-    "No changes recorded yet."
+    "Изменения пока не зафиксированы."
   ],
   "No pending requests.": [
     "暂无待处理申请。",
     "Nessuna richiesta in attesa.",
     "No hay solicitudes pendientes.",
     "অপেক্ষমাণ অনুরোধ নেই।",
-    "No pending requests."
+    "Нет ожидающих запросов."
   ],
   "New requests appear here automatically while the application is open.": [
     "应用打开时，新申请会自动显示在这里。",
     "Le nuove richieste appaiono qui automaticamente mentre l’app è aperta.",
     "Las nuevas solicitudes aparecen aquí mientras la aplicación está abierta.",
     "অ্যাপ খোলা থাকলে নতুন অনুরোধ স্বয়ংক্রিয়ভাবে এখানে দেখা যাবে।",
-    "New requests appear here automatically while the application is open."
+    "Новые запросы появляются здесь автоматически, пока приложение открыто."
   ],
   "Record money already received. This does not charge a card.": [
     "记录已收到的款项。此操作不会从银行卡扣款。",
     "Registra denaro già ricevuto. Non addebita una carta.",
     "Registra dinero ya recibido. No cobra a una tarjeta.",
     "ইতোমধ্যে পাওয়া টাকা রেকর্ড করুন। এতে কার্ড থেকে টাকা কাটবে না।",
-    "Record money already received. This does not charge a card."
+    "Запишите уже полученные деньги. Это не списывает средства с карты."
   ],
   "Bills and payments stay linked to this booking. The previous room will be marked Cleaning.": [
     "账单和付款仍关联该预订。原房间将标记为清洁中。",
     "Conti e pagamenti restano collegati. La camera precedente passa a Pulizia.",
     "Las facturas y pagos siguen vinculados. La habitación anterior se marca en limpieza.",
     "বিল ও পেমেন্ট বুকিংয়ের সঙ্গে যুক্ত থাকবে। আগের কক্ষ পরিষ্কার চলছে চিহ্নিত হবে।",
-    "Bills and payments stay linked to this booking. The previous room will be marked Cleaning."
+    "Счета и платежи остаются привязанными к бронированию. Предыдущий номер будет отмечен как «Уборка»."
   ],
   "Create or confirm the room booking first. Rooms with an existing guest login are not listed.": [
     "请先创建或确认客房预订。已有客人登录的房间不在列表中。",
     "Crea o conferma prima la prenotazione. Le camere con accesso ospite esistente non sono elencate.",
     "Crea o confirma primero la reserva. No aparecen habitaciones con acceso de huésped existente.",
     "আগে কক্ষ বুকিং তৈরি বা নিশ্চিত করুন। অতিথির লগইন থাকা কক্ষ দেখানো হয় না।",
-    "Create or confirm the room booking first. Rooms with an existing guest login are not listed."
+    "Сначала создайте или подтвердите бронирование номера. Номера с существующим гостевым аккаунтом не отображаются."
   ],
   "Here’s what’s happening at Nirili Villa today.": [
     "以下是 Nirili Villa 今日情况。",
     "Ecco cosa succede oggi a Nirili Villa.",
     "Esto es lo que pasa hoy en Nirili Villa.",
     "আজ Nirili Villa-তে যা ঘটছে।",
-    "Here’s what’s happening at Nirili Villa today."
+    "Вот что происходит сегодня в Nirili Villa."
   ],
   "Good morning from Dhiffushi": [
     "来自 Dhiffushi 的早安",
     "Buongiorno da Dhiffushi",
     "Buenos días desde Dhiffushi",
     "Dhiffushi থেকে সুপ্রভাত",
-    "Good morning from Dhiffushi"
+    "Доброе утро с Диффуши"
   ],
   "Thank you for choosing Nirili Villa.": [
     "感谢选择 Nirili Villa。",
     "Grazie per aver scelto Nirili Villa.",
     "Gracias por elegir Nirili Villa.",
     "Nirili Villa বেছে নেওয়ার জন্য ধন্যবাদ।",
-    "Thank you for choosing Nirili Villa."
+    "Спасибо, что выбрали Nirili Villa."
   ],
   "Thank you for dining with us.": [
     "感谢光临用餐。",
     "Grazie per aver cenato con noi.",
     "Gracias por comer con nosotros.",
     "আমাদের সঙ্গে খাবার খাওয়ার জন্য ধন্যবাদ।",
-    "Thank you for dining with us."
+    "Спасибо, что поужинали у нас."
   ],
   "Messages refresh automatically": [
     "消息自动刷新",
     "I messaggi si aggiornano automaticamente",
     "Los mensajes se actualizan automáticamente",
     "বার্তা স্বয়ংক্রিয়ভাবে রিফ্রেশ হয়",
-    "Messages refresh automatically"
+    "Сообщения обновляются автоматически"
   ],
   "Announcement to guests currently checked in with an active login.": [
     "向当前已入住且登录有效的客人发送公告。",
     "Annuncio agli ospiti presenti con accesso attivo.",
     "Anuncio a huéspedes alojados con acceso activo.",
     "সক্রিয় লগইনসহ বর্তমানে থাকা অতিথিদের ঘোষণা।",
-    "Announcement to guests currently checked in with an active login."
+    "Объявление для заселённых гостей с активным аккаунтом."
   ],
   "This account is archived. Conversation is read-only.": [
     "此账户已归档，对话只可查看。",
     "Account archiviato. Conversazione in sola lettura.",
     "Cuenta archivada. Conversación de solo lectura.",
     "অ্যাকাউন্ট আর্কাইভ করা হয়েছে। কথোপকথন শুধু পড়া যাবে।",
-    "This account is archived. Conversation is read-only."
+    "Этот аккаунт архивирован. Переписка доступна только для чтения."
   ],
   "Open / Print PDF": [
     "打开／打印PDF",
     "Apri / stampa PDF",
     "Abrir / imprimir PDF",
     "PDF খুলুন / প্রিন্ট করুন",
-    "Open / Print PDF"
+    "Открыть / распечатать PDF"
   ],
   "Return to application": [
     "返回应用",
     "Torna all’applicazione",
     "Volver a la aplicación",
     "অ্যাপে ফিরুন",
-    "Return to application"
+    "Вернуться в приложение"
   ],
   "Return to login": [
     "返回登录",
     "Torna all’accesso",
     "Volver al inicio de sesión",
     "লগইনে ফিরুন",
-    "Return to login"
+    "Вернуться ко входу"
   ],
   "Restaurant access required": [
     "需要餐厅访问权限",
     "Accesso ristorante richiesto",
     "Se requiere acceso al restaurante",
     "রেস্তোরাঁর অনুমতি প্রয়োজন",
-    "Restaurant access required"
+    "Требуется доступ к ресторану"
   ],
   "Transport access required": [
     "需要交通访问权限",
     "Accesso trasporti richiesto",
     "Se requiere acceso a transporte",
     "পরিবহনের অনুমতি প্রয়োজন",
-    "Transport access required"
+    "Требуется доступ к транспорту"
   ],
   "Admin access required": [
     "需要管理员权限",
     "Accesso Admin richiesto",
     "Se requiere acceso de administrador",
     "অ্যাডমিনের অনুমতি প্রয়োজন",
-    "Admin access required"
+    "Требуется доступ администратора"
   ],
   "Staff login is required to view this bill.": [
     "查看此账单需要员工登录。",
     "Serve l’accesso staff per vedere questo conto.",
     "Se requiere acceso de personal para ver esta factura.",
     "এই বিল দেখতে কর্মীর লগইন প্রয়োজন।",
-    "Staff login is required to view this bill."
+    "Для просмотра этого счёта требуется вход сотрудника."
   ],
   "Bill editing permission is required.": [
     "需要账单编辑权限。",
     "Serve il permesso di modifica conti.",
     "Se requiere permiso para editar facturas.",
     "বিল সম্পাদনার অনুমতি প্রয়োজন।",
-    "Bill editing permission is required."
+    "Требуется разрешение на редактирование счетов."
   ],
   "The page could not finish loading. Try again or return to restaurant login.": [
     "页面未能加载完成。请重试或返回餐厅登录。",
     "Caricamento incompleto. Riprova o torna all’accesso ristorante.",
     "La página no terminó de cargar. Reintenta o vuelve al acceso del restaurante.",
     "পৃষ্ঠা লোড শেষ হয়নি। আবার চেষ্টা করুন বা রেস্তোরাঁ লগইনে ফিরুন।",
-    "The page could not finish loading. Try again or return to restaurant login."
+    "Страница не загрузилась полностью. Попробуйте снова или вернитесь ко входу в ресторан."
   ],
   "Restaurant bills are temporarily unavailable. Please reload to retry.": [
     "餐厅账单暂时不可用，请重新加载。",
     "Conti temporaneamente non disponibili. Ricarica per riprovare.",
     "Facturas temporalmente no disponibles. Recarga para reintentar.",
     "রেস্তোরাঁর বিল সাময়িকভাবে পাওয়া যাচ্ছে না। আবার লোড করুন।",
-    "Restaurant bills are temporarily unavailable. Please reload to retry."
+    "Счета ресторана временно недоступны. Перезагрузите страницу и попробуйте снова."
   ],
   "Could not load your bill. Please reload to retry.": [
     "无法加载账单，请重新加载。",
     "Impossibile caricare il conto. Ricarica per riprovare.",
     "No se pudo cargar la factura. Recarga para reintentar.",
     "বিল লোড করা যায়নি। আবার লোড করুন।",
-    "Could not load your bill. Please reload to retry."
+    "Не удалось загрузить ваш счёт. Перезагрузите страницу и попробуйте снова."
   ],
   "Page": [
     "页",
     "Pagina",
     "Página",
     "পৃষ্ঠা",
-    "Page"
+    "Страница"
   ],
   "items": [
     "项",
     "articoli",
     "artículos",
     "আইটেম",
-    "items"
+    "позиции"
   ],
   "products": [
     "商品",
     "prodotti",
     "productos",
     "পণ্য",
-    "products"
+    "товары"
   ],
   "passengers": [
     "乘客",
     "passeggeri",
     "pasajeros",
     "যাত্রী",
-    "passengers"
+    "пассажиры"
   ],
   "nights": [
     "晚",
     "notti",
     "noches",
     "রাত",
-    "nights"
+    "ночи"
   ],
   "infant": [
     "婴儿",
     "neonato",
     "bebé",
     "শিশু",
-    "infant"
+    "младенец"
   ],
   "child": [
     "儿童",
     "bambino",
     "niño",
     "শিশু",
-    "child"
+    "ребёнок"
   ],
   "of": [
     "共",
     "di",
     "de",
     "এর",
-    "of"
+    "из"
   ],
   "Each": [
     "每个",
     "Ciascuno",
     "Cada uno",
     "প্রতিটি",
-    "Each"
+    "Каждый"
   ],
   "Load excursions": [
     "加载游览",
     "Carica escursioni",
     "Cargar excursiones",
     "ভ্রমণ লোড করুন",
-    "Load excursions"
+    "Загрузить экскурсии"
   ],
   "Loading your stay…": [
     "正在加载住宿…",
     "Caricamento soggiorno…",
     "Cargando estancia…",
     "থাকার তথ্য লোড হচ্ছে…",
-    "Loading your stay…"
+    "Загрузка вашего проживания…"
   ],
   "Meal type": [
     "餐食类型",
     "Tipo di pasto",
     "Tipo de comida",
     "খাবারের ধরন",
-    "Meal type"
+    "Тип питания"
   ],
   "New total": [
     "新总额",
     "Nuovo totale",
     "Nuevo total",
     "নতুন মোট",
-    "New total"
+    "Новый итог"
   ],
   "Updated bill total": [
     "更新后账单总额",
     "Totale conto aggiornato",
     "Total de factura actualizado",
     "আপডেট করা বিলের মোট",
-    "Updated bill total"
+    "Обновлённая сумма счёта"
   ],
   "Updated by": [
     "更新人",
     "Aggiornato da",
     "Actualizado por",
     "আপডেট করেছেন",
-    "Updated by"
+    "Обновлено пользователем"
   ],
   "Updated total": [
     "更新后总额",
     "Totale aggiornato",
     "Total actualizado",
     "আপডেট করা মোট",
-    "Updated total"
+    "Обновлённый итог"
   ],
   "No": [
     "否",
     "No",
     "No",
     "না",
-    "No"
+    "Нет"
   ],
   "Posted": [
     "已入账",
     "Registrato",
     "Registrado",
     "নথিভুক্ত",
-    "Posted"
+    "Проведено"
   ],
   "Pending balance": [
     "待付余额",
     "Saldo in sospeso",
     "Saldo pendiente",
     "অপেক্ষমাণ বকেয়া",
-    "Pending balance"
+    "Ожидающий баланс"
   ],
   "Price (USD)": [
     "价格（美元）",
     "Prezzo (USD)",
     "Precio (USD)",
     "মূল্য (USD)",
-    "Price (USD)"
+    "Цена (USD)"
   ],
   "Prices in USD per person": [
     "价格以美元／人计",
     "Prezzi in USD a persona",
     "Precios en USD por persona",
     "প্রতি ব্যক্তির মূল্য USD-এ",
-    "Prices in USD per person"
+    "Цены в USD за человека"
   ],
   "Preferred departure time (Maldives)": [
     "首选出发时间（马尔代夫时间）",
     "Orario preferito (Maldive)",
     "Hora preferida (Maldivas)",
     "পছন্দের যাত্রার সময় (মালদ্বীপ)",
-    "Preferred departure time (Maldives)"
+    "Предпочтительное время отправления (Мальдивы)"
   ],
   "Preparing passport photo…": [
     "正在处理护照照片…",
     "Preparazione foto passaporto…",
     "Preparando foto del pasaporte…",
     "পাসপোর্টের ছবি প্রস্তুত হচ্ছে…",
-    "Preparing passport photo…"
+    "Подготовка фото паспорта…"
   ],
   "Passport photo (optional)": [
     "护照照片（选填）",
     "Foto passaporto (facoltativa)",
     "Foto del pasaporte (opcional)",
     "পাসপোর্টের ছবি (ঐচ্ছিক)",
-    "Passport photo (optional)"
+    "Фото паспорта (необязательно)"
   ],
   "Booking agents": [
     "预订代理",
     "Agenti di prenotazione",
     "Agentes de reservas",
     "বুকিং এজেন্ট",
-    "Booking agents"
+    "Агенты бронирования"
   ],
   "Choose trip": [
     "选择行程",
     "Scegli viaggio",
     "Elegir viaje",
     "ভ্রমণ বেছে নিন",
-    "Choose trip"
+    "Выберите поездку"
   ],
   "Choose an item…": [
     "选择项目…",
     "Scegli un articolo…",
     "Elige un artículo…",
     "আইটেম বেছে নিন…",
-    "Choose an item…"
+    "Выберите позицию…"
   ],
   "Change login": [
     "更换登录",
     "Cambia accesso",
     "Cambiar acceso",
     "লগইন বদলান",
-    "Change login"
+    "Сменить аккаунт"
   ],
   "Login details": [
     "登录信息",
     "Credenziali di accesso",
     "Datos de acceso",
     "লগইন তথ্য",
-    "Login details"
+    "Данные входа"
   ],
   "Management login": [
     "管理登录",
     "Accesso gestione",
     "Acceso de gestión",
     "পরিচালনা লগইন",
-    "Management login"
+    "Вход в управление"
   ],
   "Restaurant login": [
     "餐厅登录",
     "Accesso ristorante",
     "Acceso al restaurante",
     "রেস্তোরাঁ লগইন",
-    "Restaurant login"
+    "Вход в ресторан"
   ],
   "Go to restaurant login": [
     "前往餐厅登录",
     "Vai all’accesso ristorante",
     "Ir al acceso del restaurante",
     "রেস্তোরাঁ লগইনে যান",
-    "Go to restaurant login"
+    "Перейти ко входу в ресторан"
   ],
   "Refresh menu": [
     "刷新菜单",
     "Aggiorna menu",
     "Actualizar menú",
     "মেনু রিফ্রেশ",
-    "Refresh menu"
+    "Обновить меню"
   ],
   "Refresh stay": [
     "刷新住宿",
     "Aggiorna soggiorno",
     "Actualizar estancia",
     "থাকার তথ্য রিফ্রেশ",
-    "Refresh stay"
+    "Обновить проживание"
   ],
   "Refresh users": [
     "刷新用户",
     "Aggiorna utenti",
     "Actualizar usuarios",
     "ব্যবহারকারী রিফ্রেশ",
-    "Refresh users"
+    "Обновить пользователей"
   ],
   "Remove item": [
     "移除项目",
     "Rimuovi articolo",
     "Quitar artículo",
     "আইটেম সরান",
-    "Remove item"
+    "Удалить позицию"
   ],
   "Remove one": [
     "移除一个",
     "Rimuovi uno",
     "Quitar uno",
     "একটি সরান",
-    "Remove one"
+    "Удалить одну"
   ],
   "Request change": [
     "申请更改",
     "Richiedi modifica",
     "Solicitar cambio",
     "পরিবর্তনের অনুরোধ",
-    "Request change"
+    "Запросить изменение"
   ],
   "Request received": [
     "已收到申请",
     "Richiesta ricevuta",
     "Solicitud recibida",
     "অনুরোধ পাওয়া গেছে",
-    "Request received"
+    "Запрос получен"
   ],
   "Retry": [
     "重试",
     "Riprova",
     "Reintentar",
     "আবার চেষ্টা করুন",
-    "Retry"
+    "Повторить"
   ],
   "Review & allocate": [
     "审核并分配",
     "Controlla e assegna",
     "Revisar y asignar",
     "যাচাই ও বরাদ্দ",
-    "Review & allocate"
+    "Проверить и назначить"
   ],
   "Save Note": [
     "保存备注",
     "Salva nota",
     "Guardar nota",
     "নোট সংরক্ষণ",
-    "Save Note"
+    "Сохранить примечание"
   ],
   "Save permissions": [
     "保存权限",
     "Salva permessi",
     "Guardar permisos",
     "অনুমতি সংরক্ষণ",
-    "Save permissions"
+    "Сохранить права"
   ],
   "Save invoice PDF": [
     "保存账单PDF",
     "Salva fattura PDF",
     "Guardar factura PDF",
     "ইনভয়েস PDF সংরক্ষণ",
-    "Save invoice PDF"
+    "Сохранить счёт PDF"
   ],
   "Save PDF invoice": [
     "保存PDF账单",
     "Salva fattura PDF",
     "Guardar factura PDF",
     "PDF ইনভয়েস সংরক্ষণ",
-    "Save PDF invoice"
+    "Сохранить PDF-счёт"
   ],
   "Save voucher PDF": [
     "保存凭证PDF",
     "Salva voucher PDF",
     "Guardar comprobante PDF",
     "ভাউচার PDF সংরক্ষণ",
-    "Save voucher PDF"
+    "Сохранить ваучер PDF"
   ],
   "Set a new password": [
     "设置新密码",
     "Imposta nuova password",
     "Establecer nueva contraseña",
     "নতুন পাসওয়ার্ড দিন",
-    "Set a new password"
+    "Установить новый пароль"
   ],
   "Verify and save current password": [
     "验证并保存当前密码",
     "Verifica e salva password attuale",
     "Verificar y guardar contraseña actual",
     "বর্তমান পাসওয়ার্ড যাচাই ও সংরক্ষণ",
-    "Verify and save current password"
+    "Проверить и сохранить текущий пароль"
   ],
   "Current Admin password": [
     "当前管理员密码",
     "Password Admin attuale",
     "Contraseña actual de administrador",
     "বর্তমান অ্যাডমিন পাসওয়ার্ড",
-    "Current Admin password"
+    "Текущий пароль администратора"
   ],
   "Share booking voucher": [
     "分享预订凭证",
     "Condividi voucher prenotazione",
     "Compartir comprobante de reserva",
     "বুকিং ভাউচার শেয়ার",
-    "Share booking voucher"
+    "Поделиться ваучером бронирования"
   ],
   "Share PDF to apps": [
     "分享PDF到应用",
     "Condividi PDF nelle app",
     "Compartir PDF en aplicaciones",
     "অ্যাপে PDF শেয়ার",
-    "Share PDF to apps"
+    "Поделиться PDF в приложениях"
   ],
   "Share the PDF attachment": [
     "分享PDF附件",
     "Condividi allegato PDF",
     "Compartir el PDF adjunto",
     "PDF সংযুক্তি শেয়ার",
-    "Share the PDF attachment"
+    "Поделиться PDF-вложением"
   ],
   "Scheduled arrivals": [
     "计划抵达",
     "Arrivi programmati",
     "Llegadas programadas",
     "নির্ধারিত আগমন",
-    "Scheduled arrivals"
+    "Запланированные прибытия"
   ],
   "Scheduled departures": [
     "计划出发",
     "Partenze programmate",
     "Salidas programadas",
     "নির্ধারিত যাত্রা",
-    "Scheduled departures"
+    "Запланированные отправления"
   ],
   "Service or item": [
     "服务或项目",
     "Servizio o articolo",
     "Servicio o artículo",
     "সেবা বা আইটেম",
-    "Service or item"
+    "Услуга или позиция"
   ],
   "Update status": [
     "更新状态",
     "Aggiorna stato",
     "Actualizar estado",
     "অবস্থা আপডেট",
-    "Update status"
+    "Обновить статус"
   ],
   "Users & access": [
     "用户与权限",
     "Utenti e accessi",
     "Usuarios y accesos",
     "ব্যবহারকারী ও অনুমতি",
-    "Users & access"
+    "Пользователи и доступ"
   ],
   "Back to guest options": [
     "返回客人选项",
     "Torna alle opzioni ospite",
     "Volver a opciones de huésped",
     "অতিথির বিকল্পে ফিরুন",
-    "Back to guest options"
+    "Назад к опциям гостя"
   ],
   "Back to management": [
     "返回管理",
     "Torna alla gestione",
     "Volver a gestión",
     "ব্যবস্থাপনায় ফিরুন",
-    "Back to management"
+    "Назад к управлению"
   ],
   "Back to room": [
     "返回房间",
     "Torna alla camera",
     "Volver a habitación",
     "রুমে ফিরুন",
-    "Back to room"
+    "Назад к номеру"
   ],
   "Back to Room": [
     "返回客房",
     "Torna alla camera",
     "Volver a la habitación",
     "কক্ষে ফিরুন",
-    "Back to Room"
+    "Назад к номеру"
   ],
   "View order": [
     "查看订单",
     "Vedi ordine",
     "Ver pedido",
     "অর্ডার দেখুন",
-    "View order"
+    "Просмотреть заказ"
   ],
   "Clear sale": [
     "清空销售",
     "Cancella vendita",
     "Borrar venta",
     "বিক্রয় মুছুন",
-    "Clear sale"
+    "Очистить продажу"
   ],
   "Connected to hotel": [
     "已连接酒店",
     "Collegato all’hotel",
     "Conectado al hotel",
     "হোটেলের সাথে সংযুক্ত",
-    "Connected to hotel"
+    "Подключено к отелю"
   ],
   "Add Charge": [
     "添加费用",
     "Aggiungi addebito",
     "Añadir cargo",
     "চার্জ যোগ করুন",
-    "Add Charge"
+    "Добавить начисление"
   ],
   "Add new": [
     "新增",
     "Aggiungi nuovo",
     "Añadir nuevo",
     "নতুন যোগ করুন",
-    "Add new"
+    "Добавить новое"
   ],
   "Book": [
     "预订",
     "Prenota",
     "Reservar",
     "বুক করুন",
-    "Book"
+    "Забронировать"
   ],
   "Book now": [
     "立即预订",
     "Prenota ora",
     "Reservar ahora",
     "এখন বুক করুন",
-    "Book now"
+    "Забронировать сейчас"
   ],
   "First": [
     "第一",
     "Primo",
     "Primero",
     "প্রথম",
-    "First"
+    "Первый"
   ],
   "Mark": [
     "标记",
     "Segna",
     "Marcar",
     "চিহ্নিত করুন",
-    "Mark"
+    "Отметить"
   ],
   "Charge": [
     "收费",
     "Addebito",
     "Cargo",
     "খরচ",
-    "Charge"
+    "Начислить"
   ],
   "Delete Bill": [
     "删除账单",
     "Elimina conto",
     "Eliminar factura",
     "বিল মুছুন",
-    "Delete Bill"
+    "Удалить счёт"
   ],
   "Bill / Item": [
     "账单／项目",
     "Conto / articolo",
     "Factura / artículo",
     "বিল / আইটেম",
-    "Bill / Item"
+    "Счёт / позиция"
   ],
   "Bill Items": [
     "账单项目",
     "Articoli del conto",
     "Artículos de la factura",
     "বিলের আইটেম",
-    "Bill Items"
+    "Позиции счёта"
   ],
   "Description / included sides": [
     "描述／包含配菜",
     "Descrizione / contorni inclusi",
     "Descripción / acompañamientos incluidos",
     "বিবরণ / অন্তর্ভুক্ত সাইড",
-    "Description / included sides"
+    "Описание / включённые гарниры"
   ],
   "Restaurant invoice PDF": [
     "餐厅账单PDF",
     "Fattura ristorante PDF",
     "Factura del restaurante PDF",
     "রেস্তোরাঁর ইনভয়েস PDF",
-    "Restaurant invoice PDF"
+    "PDF-счёт ресторана"
   ],
   "Open the invoice in your PDF viewer": [
     "在PDF阅读器中打开账单",
     "Apri fattura nel lettore PDF",
     "Abrir factura en tu lector PDF",
     "PDF ভিউয়ারে ইনভয়েস খুলুন",
-    "Open the invoice in your PDF viewer"
+    "Открыть счёт в PDF-просмотрщике"
   ],
   "Open the voucher in your PDF viewer": [
     "在PDF阅读器中打开凭证",
     "Apri voucher nel lettore PDF",
     "Abrir comprobante en tu lector PDF",
     "PDF ভিউয়ারে ভাউচার খুলুন",
-    "Open the voucher in your PDF viewer"
+    "Открыть ваучер в PDF-просмотрщике"
   ],
   "Print / Save as PDF": [
     "打印／保存为PDF",
     "Stampa / salva come PDF",
     "Imprimir / guardar como PDF",
     "প্রিন্ট / PDF হিসেবে সংরক্ষণ",
-    "Print / Save as PDF"
+    "Печать / сохранить как PDF"
   ],
   "Download to this device": [
     "下载到此设备",
     "Scarica su questo dispositivo",
     "Descargar en este dispositivo",
     "এই ডিভাইসে ডাউনলোড",
-    "Download to this device"
+    "Скачать на это устройство"
   ],
   "Issued": [
     "开具日期",
     "Emesso",
     "Emitido",
     "ইস্যু হয়েছে",
-    "Issued"
+    "Выдано"
   ],
   "RESTAURANT INVOICE": [
     "餐厅账单",
     "FATTURA RISTORANTE",
     "FACTURA DEL RESTAURANTE",
     "রেস্তোরাঁর ইনভয়েস",
-    "RESTAURANT INVOICE"
+    "СЧЁТ РЕСТОРАНА"
   ],
   "RESTAURANT WORKSPACE": [
     "餐厅工作区",
     "AREA RISTORANTE",
     "ÁREA DEL RESTAURANTE",
     "রেস্তোরাঁর কর্মক্ষেত্র",
-    "RESTAURANT WORKSPACE"
+    "РАБОЧАЯ ЗОНА РЕСТОРАНА"
   ],
   "RESTAURANT POS": [
     "餐厅收银",
     "POS RISTORANTE",
     "TPV RESTAURANTE",
     "রেস্তোরাঁ পিওএস",
-    "RESTAURANT POS"
+    "POS РЕСТОРАНА"
   ],
   "Reservation": [
     "预订",
     "Prenotazione",
     "Reserva",
     "রিজার্ভেশন",
-    "Reservation"
+    "Бронирование"
   ],
   "NEW REQUEST": [
     "新申请",
     "NUOVA RICHIESTA",
     "NUEVA SOLICITUD",
     "নতুন অনুরোধ",
-    "NEW REQUEST"
+    "НОВЫЙ ЗАПРОС"
   ],
   "WELCOME TO PARADISE": [
     "欢迎来到天堂",
     "BENVENUTI IN PARADISO",
     "BIENVENIDO AL PARAÍSO",
     "স্বর্গে স্বাগতম",
-    "WELCOME TO PARADISE"
+    "ДОБРО ПОЖАЛОВАТЬ В РАЙ"
   ],
   "WELCOME BACK, ADMIN": [
     "欢迎回来，管理员",
     "BENTORNATO, ADMIN",
     "BIENVENIDO, ADMINISTRADOR",
     "স্বাগতম, অ্যাডমিন",
-    "WELCOME BACK, ADMIN"
+    "С ВОЗВРАЩЕНИЕМ, АДМИНИСТРАТОР"
   ],
   "YOUR JOURNEY": [
     "您的旅程",
     "IL TUO VIAGGIO",
     "TU VIAJE",
     "আপনার যাত্রা",
-    "YOUR JOURNEY"
+    "ВАШЕ ПУТЕШЕСТВИЕ"
   ],
   "DISCOVER DHIFFUSHI": [
     "探索 DHIFFUSHI",
     "SCOPRI DHIFFUSHI",
     "DESCUBRE DHIFFUSHI",
     "DHIFFUSHI আবিষ্কার করুন",
-    "DISCOVER DHIFFUSHI"
+    "ОТКРОЙТЕ ДИФФУШИ"
   ],
   "OCEAN EXPERIENCES": [
     "海洋体验",
     "ESPERIENZE OCEANICHE",
     "EXPERIENCIAS EN EL OCÉANO",
     "সমুদ্রের অভিজ্ঞতা",
-    "OCEAN EXPERIENCES"
+    "ОКЕАНСКИЕ ВПЕЧАТЛЕНИЯ"
   ],
   "SEAMLESS ARRIVALS": [
     "轻松抵达",
     "ARRIVI SENZA PENSIERI",
     "LLEGADAS SIN COMPLICACIONES",
     "সহজ আগমন",
-    "SEAMLESS ARRIVALS"
+    "КОМФОРТНОЕ ПРИБЫТИЕ"
   ],
   "TRAVEL EASY": [
     "轻松出行",
     "VIAGGIA SERENO",
     "VIAJA FÁCIL",
     "সহজে ভ্রমণ করুন",
-    "TRAVEL EASY"
+    "ПУТЕШЕСТВУЙТЕ ЛЕГКО"
   ],
   "Experience our island": [
     "体验我们的海岛",
     "Vivi la nostra isola",
     "Vive nuestra isla",
     "আমাদের দ্বীপ উপভোগ করুন",
-    "Experience our island"
+    "Откройте наш остров"
   ],
   "Explore the Maldives with us": [
     "与我们探索马尔代夫",
     "Esplora le Maldive con noi",
     "Explora Maldivas con nosotros",
     "আমাদের সঙ্গে মালদ্বীপ ঘুরে দেখুন",
-    "Explore the Maldives with us"
+    "Исследуйте Мальдивы вместе с нами"
   ],
   "Your Dhiffushi adventure starts here.": [
     "您的 Dhiffushi 探险从这里开始。",
     "La tua avventura a Dhiffushi inizia qui.",
     "Tu aventura en Dhiffushi empieza aquí.",
     "আপনার Dhiffushi অভিযান এখানেই শুরু।",
-    "Your Dhiffushi adventure starts here."
+    "Ваше приключение на Диффуши начинается здесь."
   ],
   "Plan your stay, book ocean experiences and arrange transfers with Nirili Villa.": [
     "与 Nirili Villa 规划住宿、海洋体验和接送。",
     "Pianifica soggiorno, esperienze in mare e trasferimenti con Nirili Villa.",
     "Planifica estancia, experiencias en el mar y traslados con Nirili Villa.",
     "Nirili Villa-র সঙ্গে থাকা, সমুদ্রভ্রমণ ও ট্রান্সফার পরিকল্পনা করুন।",
-    "Plan your stay, book ocean experiences and arrange transfers with Nirili Villa."
+    "Планируйте проживание, бронируйте морские впечатления и организуйте трансферы с Nirili Villa."
   ],
   "More services": [
     "更多服务",
     "Altri servizi",
     "Más servicios",
     "আরও সেবা",
-    "More services"
+    "Больше услуг"
   ],
   "Popular experiences": [
     "热门体验",
     "Esperienze popolari",
     "Experiencias populares",
     "জনপ্রিয় অভিজ্ঞতা",
-    "Popular experiences"
+    "Популярные впечатления"
   ],
   "Admin discount": [
     "管理员折扣",
     "Sconto amministratore",
     "Descuento de administrador",
     "অ্যাডমিন ছাড়",
-    "Admin discount"
+    "Скидка администратора"
   ],
   "Admin only": [
     "仅管理员",
     "Solo amministratore",
     "Solo administrador",
     "শুধু অ্যাডমিন",
-    "Admin only"
+    "Только администратор"
   ],
   "Allocate room": [
     "分配房间",
     "Assegna camera",
     "Asignar habitación",
     "রুম বরাদ্দ করুন",
-    "Allocate room"
+    "Назначить номер"
   ],
   "Assigned room": [
     "已分配房间",
     "Camera assegnata",
     "Habitación asignada",
     "বরাদ্দকৃত রুম",
-    "Assigned room"
+    "Назначенный номер"
   ],
   "Bills for": [
     "账单",
     "Conti per",
     "Cuentas de",
     "বিল যার জন্য",
-    "Bills for"
+    "Счета для"
   ],
   "Booking recipient": [
     "预订接收人",
     "Destinatario prenotazione",
     "Destinatario de reserva",
     "বুকিং প্রাপক",
-    "Booking recipient"
+    "Получатель бронирования"
   ],
   "Cancel changes": [
     "取消更改",
     "Annulla modifiche",
     "Cancelar cambios",
     "পরিবর্তন বাতিল করুন",
-    "Cancel changes"
+    "Отменить изменения"
   ],
   "Choose another booked room": [
     "选择其他已预订房间",
     "Scegli un’altra camera prenotata",
     "Elegir otra habitación reservada",
     "অন্য বুক করা রুম বেছে নিন",
-    "Choose another booked room"
+    "Выберите другой забронированный номер"
   ],
   "Choose Walk-in Guest": [
     "选择散客",
     "Scegli cliente esterno",
     "Elegir visitante",
     "ওয়াক-ইন অতিথি বেছে নিন",
-    "Choose Walk-in Guest"
+    "Выберите гостя без проживания"
   ],
   "Create in-house guest account": [
     "创建住店客人账户",
     "Crea account ospite",
     "Crear cuenta de huésped",
     "আবাসিক অতিথির অ্যাকাউন্ট তৈরি করুন",
-    "Create in-house guest account"
+    "Создать аккаунт гостя отеля"
   ],
   "Current method": [
     "当前方式",
     "Metodo attuale",
     "Método actual",
     "বর্তমান পদ্ধতি",
-    "Current method"
+    "Текущий способ"
   ],
   "Decline request": [
     "拒绝请求",
     "Rifiuta richiesta",
     "Rechazar solicitud",
     "অনুরোধ প্রত্যাখ্যান করুন",
-    "Decline request"
+    "Отклонить запрос"
   ],
   "Hotel & room": [
     "酒店和房间",
     "Hotel e camera",
     "Hotel y habitación",
     "হোটেল ও রুম",
-    "Hotel & room"
+    "Отель и номер"
   ],
   "In-house guest account": [
     "住店客人账户",
     "Account ospite",
     "Cuenta de huésped",
     "আবাসিক অতিথির অ্যাকাউন্ট",
-    "In-house guest account"
+    "Аккаунт гостя отеля"
   ],
   "Item / quantity": [
     "项目／数量",
     "Articolo / quantità",
     "Artículo / cantidad",
     "আইটেম / পরিমাণ",
-    "Item / quantity"
+    "Позиция / количество"
   ],
   "Opening your restaurant…": [
     "正在打开餐厅…",
     "Apertura ristorante…",
     "Abriendo restaurante…",
     "রেস্তোরাঁ খোলা হচ্ছে…",
-    "Opening your restaurant…"
+    "Открываем ресторан…"
   ],
   "Reference": [
     "编号",
     "Riferimento",
     "Referencia",
     "রেফারেন্স",
-    "Reference"
+    "Ссылка"
   ],
   "Restaurant access required.": [
     "需要餐厅访问权限。",
     "Accesso ristorante richiesto.",
     "Se requiere acceso al restaurante.",
     "রেস্তোরাঁয় প্রবেশের অনুমতি প্রয়োজন।",
-    "Restaurant access required."
+    "Требуется доступ к ресторану."
   ],
   "Retry loading rooms": [
     "重新加载房间",
     "Riprova a caricare le camere",
     "Reintentar cargar habitaciones",
     "রুম আবার লোড করুন",
-    "Retry loading rooms"
+    "Повторить загрузку номеров"
   ],
   "Select table": [
     "选择餐桌",
     "Seleziona tavolo",
     "Seleccionar mesa",
     "টেবিল বেছে নিন",
-    "Select table"
+    "Выберите стол"
   ],
   "View past stay": [
     "查看历史住宿",
     "Vedi soggiorno passato",
     "Ver estancia anterior",
     "আগের অবস্থান দেখুন",
-    "View past stay"
+    "Просмотреть прошлое проживание"
   ],
   "Return airport transfer": [
     "返程机场接送",
     "Transfer aeroporto di ritorno",
     "Traslado de regreso al aeropuerto",
     "ফেরার বিমানবন্দর ট্রান্সফার",
-    "Return airport transfer"
+    "Обратный трансфер в аэропорт"
   ],
   "Estimated": [
     "预计",
     "Stimato",
     "Estimado",
     "আনুমানিক",
-    "Estimated"
+    "Ориентировочно"
   ],
   "Review revised items": [
     "审核修改项目",
     "Rivedi articoli modificati",
     "Revisar artículos modificados",
     "সংশোধিত আইটেম দেখুন",
-    "Review revised items"
+    "Проверить изменённые позиции"
   ],
   "Tap to view": [
     "点击查看",
     "Tocca per vedere",
     "Toca para ver",
     "দেখতে চাপুন",
-    "Tap to view"
+    "Нажмите для просмотра"
   ],
   "places available": [
     "个空位",
     "posti disponibili",
     "plazas disponibles",
     "আসন খালি",
-    "places available"
+    "мест доступно"
   ],
   "All in-house guests": [
     "所有住店客人",
     "Tutti gli ospiti",
     "Todos los huéspedes",
     "সকল আবাসিক অতিথি",
-    "All in-house guests"
+    "Все гости отеля"
   ],
   "Available on Full Board / Half Board menu": [
     "全膳／半膳菜单包含",
     "Incluso nel menu pensione completa / mezza pensione",
     "Incluido en pensión completa / media pensión",
     "ফুল বোর্ড / হাফ বোর্ড মেনুতে অন্তর্ভুক্ত",
-    "Available on Full Board / Half Board menu"
+    "Доступно в меню Full Board / Half Board"
   ],
   "Menu photo": [
     "菜单照片",
     "Foto del piatto",
     "Foto del plato",
     "খাবারের ছবি",
-    "Menu photo"
+    "Фото меню"
   ],
   "Uploading photo…": [
     "正在上传照片…",
     "Caricamento foto…",
     "Subiendo foto…",
     "ছবি আপলোড হচ্ছে…",
-    "Uploading photo…"
+    "Загрузка фото…"
   ]
 }
