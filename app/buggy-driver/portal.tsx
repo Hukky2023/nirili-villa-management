@@ -1,7 +1,7 @@
 'use client';
 
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {BellRing,CheckCircle2,Clock3,MapPin,Phone,RefreshCw,Users} from 'lucide-react';
+import {BellRing,CheckCircle2,Clock3,MapPin,Phone,Plus,Users} from 'lucide-react';
 import {startLiveRefresh} from '../../lib/live-refresh';
 import DateFieldDMY from '../date-field-dmy';
 import SessionButton from '../session-button';
@@ -17,6 +17,7 @@ const displayDate=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)?value.split(
 
 export default function BuggyDriverPortal(){
  const [date,setDate]=useState(maldivesToday()),[pickups,setPickups]=useState<any[]>([]),[driver,setDriver]=useState(''),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState('');
+ const [booking,setBooking]=useState<any>(null);
  const request=useRef<AbortController|null>(null);
 
  const load=useCallback(async(selected=date,background=false)=>{
@@ -33,6 +34,17 @@ export default function BuggyDriverPortal(){
  },[date]);
 
  useEffect(()=>{void load(date);const stop=startLiveRefresh(()=>load(date,true));window.addEventListener('focus',()=>load(date,true));return()=>{stop();request.current?.abort();}},[date,load]);
+
+ async function createBuggyBooking(e:React.FormEvent){
+  e.preventDefault();if(!booking||busy)return;setBusy('new');setError('');
+  try{
+   const r=await fetch('/api/buggy-driver',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(booking)}),d=await r.json();
+   if(!r.ok)throw Error(d.error||'Could not book buggy.');
+   setBooking(null);setDate(d.pickup.date);await load(d.pickup.date);
+   window.dispatchEvent(new Event('services-updated'));
+  }catch(e){setError(e instanceof Error?e.message:'Could not book buggy.');}
+  finally{setBusy('');}
+ }
 
  async function update(id:string,action:'arrived'|'boarded'|'dinner-dropoff'|'return-arrived'|'return-boarded'|'return-complete'){
   if(busy)return;setBusy(id+action);setError('');
@@ -54,7 +66,7 @@ export default function BuggyDriverPortal(){
    <button type="button" onClick={()=>setDate(shift(date,-1))}>← Previous</button>
    <label>Pickup date<DateFieldDMY value={date} onChange={setDate} ariaLabel="Buggy pickup date"/></label>
    <button type="button" onClick={()=>setDate(shift(date,1))}>Next →</button>
-   <button type="button" className="buggy-refresh" disabled={loading} onClick={()=>load(date)}><RefreshCw size={17}/>{loading?'Loading…':'Refresh'}</button>
+   <button type="button" className="buggy-refresh" onClick={()=>setBooking({guest:'',phone:'',date,pickupTime:'',location:'',destination:'',quantity:1,notes:''})}><Plus size={17}/>Book buggy</button>
   </section>
 
   <section className="buggy-driver-stats">
@@ -65,6 +77,8 @@ export default function BuggyDriverPortal(){
   </section>
 
   {error&&<p className="buggy-error" role="alert">{error}</p>}
+
+  {booking&&<div className="buggy-booking-overlay" role="presentation"><form className="buggy-booking-dialog" onSubmit={createBuggyBooking}><header><div><small>BUGGY BOOKING</small><h2>Book buggy</h2><p>Add a manual buggy pickup.</p></div><button type="button" onClick={()=>setBooking(null)} aria-label="Close">×</button></header><div className="buggy-booking-grid"><label>Guest name<input required maxLength={100} value={booking.guest} onChange={e=>setBooking({...booking,guest:e.target.value})}/></label><label>Phone number<input type="tel" maxLength={30} value={booking.phone} onChange={e=>setBooking({...booking,phone:e.target.value})}/></label><label>Date<DateFieldDMY required value={booking.date} onChange={value=>setBooking({...booking,date:value})} ariaLabel="Buggy booking date"/></label><label>Pickup time<input required type="time" value={booking.pickupTime} onChange={e=>setBooking({...booking,pickupTime:e.target.value})}/></label><label>Pickup point<input required maxLength={150} value={booking.location} onChange={e=>setBooking({...booking,location:e.target.value})} placeholder="Pickup location"/></label><label>Drop-off point<input required maxLength={150} value={booking.destination} onChange={e=>setBooking({...booking,destination:e.target.value})} placeholder="Drop-off location"/></label><label>Guests<input required type="number" min={1} max={20} value={booking.quantity} onChange={e=>setBooking({...booking,quantity:Number(e.target.value)})}/></label><label className="full">Notes<textarea rows={3} maxLength={500} value={booking.notes} onChange={e=>setBooking({...booking,notes:e.target.value})}/></label></div><footer><button type="button" onClick={()=>setBooking(null)}>Cancel</button><button type="submit" className="boarded" disabled={busy==='new'}>{busy==='new'?'Booking…':'Add buggy booking'}</button></footer></form></div>}
 
   <section className="buggy-pickup-panel">
    <div className="buggy-panel-title"><div><small>{displayDate(date)}</small><h2>Guest pickups</h2></div><span>{pickups.length} pickup{pickups.length===1?'':'s'}</span></div>
