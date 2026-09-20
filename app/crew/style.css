@@ -422,3 +422,19 @@
  .crew-trip-operation-details{grid-template-columns:1fr}
  .crew-trip-operation-details .other-crew{grid-column:auto}
 }
+
+
+/* Compact live-location control */
+.crew-top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.crew-location-toggle{display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:8px 11px;border-radius:999px;border:1px solid transparent;font-weight:800;cursor:pointer}
+.crew-location-toggle.not-sharing{background:#fff0ee;border-color:#efb8b2;color:#a52d24}
+.crew-location-toggle.sharing{background:#eaf7ef;border-color:#a9d8ba;color:#176742}
+.crew-location-toggle:disabled{opacity:.65;cursor:wait}
+.crew-location-toggle span{font-size:12px}
+.crew-location-card{display:none!important}
+@media(max-width:520px){
+ .crew-location-top{align-items:center}
+ .crew-top-actions{gap:7px}
+ .crew-location-toggle{width:42px;height:42px;padding:0;justify-content:center}
+ .crew-location-toggle span{display:none}
+}
