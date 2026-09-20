@@ -1544,1176 +1544,1176 @@
     "Segna come pagato",
     "Marcar como pagado",
     "পরিশোধিত চিহ্নিত করুন",
-    "Mark as Paid"
+    "Отметить как оплачено"
   ],
   "Mark as Unpaid": [
     "标记为未付款",
     "Segna come non pagato",
     "Marcar como no pagado",
     "অপরিশোধিত চিহ্নিত করুন",
-    "Mark as Unpaid"
+    "Отметить как не оплачено"
   ],
   "Mark as paid": [
     "标记为已付款",
     "Segna come pagato",
     "Marcar como pagado",
     "পরিশোধিত চিহ্নিত করুন",
-    "Mark as paid"
+    "Отметить как оплачено"
   ],
   "Mark as unpaid": [
     "标记为未付款",
     "Segna come non pagato",
     "Marcar como no pagado",
     "অপরিশোধিত চিহ্নিত করুন",
-    "Mark as unpaid"
+    "Отметить как не оплачено"
   ],
   "Mark as free": [
     "设为免费",
     "Rendi gratuito",
     "Marcar como gratuito",
     "বিনামূল্যে করুন",
-    "Mark as free"
+    "Отметить как бесплатно"
   ],
   "Complimentary": [
     "免费赠送",
     "Omaggio",
     "Cortesía",
     "সৌজন্যমূলক",
-    "Complimentary"
+    "Бесплатно"
   ],
   "Discount": [
     "折扣",
     "Sconto",
     "Descuento",
     "ছাড়",
-    "Discount"
+    "Скидка"
   ],
   "Discount %": [
     "折扣百分比",
     "Sconto %",
     "Descuento %",
     "ছাড় %",
-    "Discount %"
+    "Скидка %"
   ],
   "Discount percentage": [
     "折扣百分比",
     "Percentuale sconto",
     "Porcentaje de descuento",
     "ছাড়ের শতাংশ",
-    "Discount percentage"
+    "Процент скидки"
   ],
   "Apply discount": [
     "应用折扣",
     "Applica sconto",
     "Aplicar descuento",
     "ছাড় প্রয়োগ করুন",
-    "Apply discount"
+    "Применить скидку"
   ],
   "Edit Bill": [
     "编辑账单",
     "Modifica conto",
     "Editar factura",
     "বিল সম্পাদনা",
-    "Edit Bill"
+    "Изменить счёт"
   ],
   "Print Bill": [
     "打印账单",
     "Stampa conto",
     "Imprimir factura",
     "বিল প্রিন্ট করুন",
-    "Print Bill"
+    "Печать счёта"
   ],
   "Print bill": [
     "打印账单",
     "Stampa conto",
     "Imprimir factura",
     "বিল প্রিন্ট করুন",
-    "Print bill"
+    "Печать счёта"
   ],
   "Send Bill": [
     "发送账单",
     "Invia conto",
     "Enviar factura",
     "বিল পাঠান",
-    "Send Bill"
+    "Отправить счёт"
   ],
   "View Bills": [
     "查看账单",
     "Vedi conti",
     "Ver facturas",
     "বিল দেখুন",
-    "View Bills"
+    "Просмотреть счета"
   ],
   "Hide Bills": [
     "隐藏账单",
     "Nascondi conti",
     "Ocultar facturas",
     "বিল লুকান",
-    "Hide Bills"
+    "Скрыть счета"
   ],
   "Print voucher": [
     "打印凭证",
     "Stampa voucher",
     "Imprimir comprobante",
     "ভাউচার প্রিন্ট করুন",
-    "Print voucher"
+    "Печать ваучера"
   ],
   "Print Voucher": [
     "打印凭证",
     "Stampa voucher",
     "Imprimir comprobante",
     "ভাউচার প্রিন্ট করুন",
-    "Print Voucher"
+    "Печать ваучера"
   ],
   "View voucher": [
     "查看凭证",
     "Vedi voucher",
     "Ver comprobante",
     "ভাউচার দেখুন",
-    "View voucher"
+    "Просмотреть ваучер"
   ],
   "Share PDF": [
     "分享 PDF",
     "Condividi PDF",
     "Compartir PDF",
     "PDF শেয়ার করুন",
-    "Share PDF"
+    "Поделиться PDF"
   ],
   "Download PDF": [
     "下载 PDF",
     "Scarica PDF",
     "Descargar PDF",
     "PDF ডাউনলোড করুন",
-    "Download PDF"
+    "Скачать PDF"
   ],
   "Share invoice": [
     "分享发票",
     "Condividi fattura",
     "Compartir factura",
     "ইনভয়েস শেয়ার করুন",
-    "Share invoice"
+    "Поделиться счётом"
   ],
   "Save PDF": [
     "保存 PDF",
     "Salva PDF",
     "Guardar PDF",
     "PDF সংরক্ষণ করুন",
-    "Save PDF"
+    "Сохранить PDF"
   ],
   "Share PDF file": [
     "分享 PDF 文件",
     "Condividi file PDF",
     "Compartir archivo PDF",
     "PDF ফাইল শেয়ার করুন",
-    "Share PDF file"
+    "Поделиться PDF-файлом"
   ],
   "Your table": [
     "您的餐桌",
     "Il tuo tavolo",
     "Tu mesa",
     "আপনার টেবিল",
-    "Your table"
+    "Ваш стол"
   ],
   "Table": [
     "餐桌",
     "Tavolo",
     "Mesa",
     "টেবিল",
-    "Table"
+    "Стол"
   ],
   "Table number": [
     "桌号",
     "Numero tavolo",
     "Número de mesa",
     "টেবিল নম্বর",
-    "Table number"
+    "Номер стола"
   ],
   "Table number (required)": [
     "桌号（必填）",
     "Numero tavolo (obbligatorio)",
     "Número de mesa (obligatorio)",
     "টেবিল নম্বর (আবশ্যক)",
-    "Table number (required)"
+    "Номер стола (обязательно)"
   ],
   "Select table to start": [
     "选择餐桌开始",
     "Seleziona tavolo per iniziare",
     "Selecciona mesa para empezar",
     "শুরু করতে টেবিল বেছে নিন",
-    "Select table to start"
+    "Выберите стол, чтобы начать"
   ],
   "Select your table first": [
     "请先选择餐桌",
     "Seleziona prima il tavolo",
     "Selecciona primero tu mesa",
     "আগে টেবিল বেছে নিন",
-    "Select your table first"
+    "Сначала выберите свой стол"
   ],
   "Select your table": [
     "选择您的餐桌",
     "Seleziona il tuo tavolo",
     "Selecciona tu mesa",
     "আপনার টেবিল বেছে নিন",
-    "Select your table"
+    "Выберите свой стол"
   ],
   "Select a table": [
     "选择餐桌",
     "Seleziona un tavolo",
     "Selecciona una mesa",
     "একটি টেবিল বেছে নিন",
-    "Select a table"
+    "Выберите стол"
   ],
   "Customer": [
     "顾客",
     "Cliente",
     "Cliente",
     "গ্রাহক",
-    "Customer"
+    "Клиент"
   ],
   "Customer name": [
     "顾客姓名",
     "Nome cliente",
     "Nombre del cliente",
     "গ্রাহকের নাম",
-    "Customer name"
+    "Имя клиента"
   ],
   "Customer room": [
     "顾客房间",
     "Camera cliente",
     "Habitación del cliente",
     "গ্রাহকের কক্ষ",
-    "Customer room"
+    "Номер клиента"
   ],
   "Customer / room": [
     "顾客／房间",
     "Cliente / camera",
     "Cliente / habitación",
     "গ্রাহক / কক্ষ",
-    "Customer / room"
+    "Клиент / номер"
   ],
   "Restaurant orders": [
     "餐厅订单",
     "Ordini ristorante",
     "Pedidos del restaurante",
     "রেস্তোরাঁর অর্ডার",
-    "Restaurant orders"
+    "Заказы ресторана"
   ],
   "Your order": [
     "您的订单",
     "Il tuo ordine",
     "Tu pedido",
     "আপনার অর্ডার",
-    "Your order"
+    "Ваш заказ"
   ],
   "Your orders": [
     "您的订单",
     "I tuoi ordini",
     "Tus pedidos",
     "আপনার অর্ডারগুলো",
-    "Your orders"
+    "Ваши заказы"
   ],
   "Order": [
     "订单",
     "Ordine",
     "Pedido",
     "অর্ডার",
-    "Order"
+    "Заказ"
   ],
   "Orders": [
     "订单",
     "Ordini",
     "Pedidos",
     "অর্ডার",
-    "Orders"
+    "Заказы"
   ],
   "Send Order": [
     "提交订单",
     "Invia ordine",
     "Enviar pedido",
     "অর্ডার পাঠান",
-    "Send Order"
+    "Отправить заказ"
   ],
   "Send to Kitchen": [
     "发送至厨房",
     "Invia in cucina",
     "Enviar a cocina",
     "রান্নাঘরে পাঠান",
-    "Send to Kitchen"
+    "Отправить на кухню"
   ],
   "Kitchen": [
     "厨房",
     "Cucina",
     "Cocina",
     "রান্নাঘর",
-    "Kitchen"
+    "Кухня"
   ],
   "Kitchen notes": [
     "厨房备注",
     "Note cucina",
     "Notas de cocina",
     "রান্নাঘরের নোট",
-    "Kitchen notes"
+    "Примечания для кухни"
   ],
   "Notes for the kitchen": [
     "厨房备注",
     "Note per la cucina",
     "Notas para la cocina",
     "রান্নাঘরের জন্য নোট",
-    "Notes for the kitchen"
+    "Примечания для кухни"
   ],
   "Allergies or special requests": [
     "过敏或特殊要求",
     "Allergie o richieste speciali",
     "Alergias o peticiones especiales",
     "অ্যালার্জি বা বিশেষ অনুরোধ",
-    "Allergies or special requests"
+    "Аллергии или особые пожелания"
   ],
   "Included": [
     "已包含",
     "Incluso",
     "Incluido",
     "অন্তর্ভুক্ত",
-    "Included"
+    "Включено"
   ],
   "Included · Free": [
     "已包含 · 免费",
     "Incluso · Gratuito",
     "Incluido · Gratis",
     "অন্তর্ভুক্ত · বিনামূল্যে",
-    "Included · Free"
+    "Включено · Бесплатно"
   ],
   "Extra": [
     "额外收费",
     "Extra",
     "Extra",
     "অতিরিক্ত",
-    "Extra"
+    "Дополнительно"
   ],
   "Extra charges": [
     "额外费用",
     "Costi extra",
     "Cargos extra",
     "অতিরিক্ত খরচ",
-    "Extra charges"
+    "Дополнительные расходы"
   ],
   "Search food or drinks": [
     "搜索食物或饮品",
     "Cerca cibi o bevande",
     "Buscar comida o bebida",
     "খাবার বা পানীয় খুঁজুন",
-    "Search food or drinks"
+    "Поиск еды или напитков"
   ],
   "Search menu": [
     "搜索菜单",
     "Cerca nel menu",
     "Buscar en el menú",
     "মেনুতে খুঁজুন",
-    "Search menu"
+    "Поиск по меню"
   ],
   "Category": [
     "类别",
     "Categoria",
     "Categoría",
     "বিভাগ",
-    "Category"
+    "Категория"
   ],
   "All products": [
     "所有商品",
     "Tutti i prodotti",
     "Todos los productos",
     "সব পণ্য",
-    "All products"
+    "Все товары"
   ],
   "Item": [
     "项目",
     "Articolo",
     "Artículo",
     "আইটেম",
-    "Item"
+    "Позиция"
   ],
   "Item name": [
     "品名",
     "Nome articolo",
     "Nombre del artículo",
     "আইটেমের নাম",
-    "Item name"
+    "Название позиции"
   ],
   "Quantity": [
     "数量",
     "Quantità",
     "Cantidad",
     "পরিমাণ",
-    "Quantity"
+    "Количество"
   ],
   "Qty": [
     "数量",
     "Qtà",
     "Cant.",
     "পরিমাণ",
-    "Qty"
+    "Кол-во"
   ],
   "Price": [
     "价格",
     "Prezzo",
     "Precio",
     "দাম",
-    "Price"
+    "Цена"
   ],
   "Unit price USD": [
     "单价（美元）",
     "Prezzo unitario USD",
     "Precio unitario USD",
     "একক মূল্য USD",
-    "Unit price USD"
+    "Цена за единицу USD"
   ],
   "Current sale": [
     "当前订单",
     "Vendita attuale",
     "Venta actual",
     "বর্তমান অর্ডার",
-    "Current sale"
+    "Текущая продажа"
   ],
   "No items": [
     "暂无商品",
     "Nessun articolo",
     "Sin artículos",
     "কোনো আইটেম নেই",
-    "No items"
+    "Нет позиций"
   ],
   "Add item": [
     "添加项目",
     "Aggiungi voce",
     "Añadir artículo",
     "আইটেম যোগ করুন",
-    "Add item"
+    "Добавить позицию"
   ],
   "Add Item": [
     "添加商品",
     "Aggiungi articolo",
     "Añadir artículo",
     "আইটেম যোগ করুন",
-    "Add Item"
+    "Добавить позицию"
   ],
   "Add menu item": [
     "添加菜单商品",
     "Aggiungi voce menu",
     "Añadir al menú",
     "মেনু আইটেম যোগ করুন",
-    "Add menu item"
+    "Добавить позицию меню"
   ],
   "Manage menu": [
     "管理菜单",
     "Gestisci menu",
     "Gestionar menú",
     "মেনু পরিচালনা",
-    "Manage menu"
+    "Управление меню"
   ],
   "Done editing": [
     "完成编辑",
     "Fine modifica",
     "Terminar edición",
     "সম্পাদনা শেষ",
-    "Done editing"
+    "Завершить редактирование"
   ],
   "Edit menu item": [
     "编辑菜单商品",
     "Modifica voce menu",
     "Editar artículo del menú",
     "মেনু আইটেম সম্পাদনা",
-    "Edit menu item"
+    "Изменить позицию меню"
   ],
   "Delete item": [
     "删除商品",
     "Elimina articolo",
     "Eliminar artículo",
     "আইটেম মুছুন",
-    "Delete item"
+    "Удалить позицию"
   ],
   "Bills & kitchen": [
     "账单与厨房",
     "Conti e cucina",
     "Facturas y cocina",
     "বিল ও রান্নাঘর",
-    "Bills & kitchen"
+    "Счета и кухня"
   ],
   "Payment / bills": [
     "付款／账单",
     "Pagamenti / conti",
     "Pagos / facturas",
     "পেমেন্ট / বিল",
-    "Payment / bills"
+    "Оплата / счета"
   ],
   "Awaiting cashier": [
     "等待收银员",
     "In attesa del cassiere",
     "Pendiente de caja",
     "ক্যাশিয়ারের অপেক্ষায়",
-    "Awaiting cashier"
+    "Ожидает кассира"
   ],
   "Sent": [
     "已发送",
     "Inviato",
     "Enviado",
     "পাঠানো হয়েছে",
-    "Sent"
+    "Отправлено"
   ],
   "Preparing": [
     "准备中",
     "In preparazione",
     "Preparando",
     "তৈরি হচ্ছে",
-    "Preparing"
+    "Готовится"
   ],
   "Ready": [
     "已准备好",
     "Pronto",
     "Listo",
     "প্রস্তুত",
-    "Ready"
+    "Готово"
   ],
   "Served": [
     "已上餐",
     "Servito",
     "Servido",
     "পরিবেশিত",
-    "Served"
+    "Подано"
   ],
   "Review orders": [
     "查看订单",
     "Controlla ordini",
     "Revisar pedidos",
     "অর্ডার দেখুন",
-    "Review orders"
+    "Проверить заказы"
   ],
   "Review": [
     "查看",
     "Controlla",
     "Revisar",
     "পর্যালোচনা",
-    "Review"
+    "Проверить"
   ],
   "Bill filter": [
     "账单筛选",
     "Filtro conti",
     "Filtro de facturas",
     "বিল ফিল্টার",
-    "Bill filter"
+    "Фильтр счетов"
   ],
   "Search bill, guest, room or table…": [
     "搜索账单、客人、房间或餐桌…",
     "Cerca conto, ospite, camera o tavolo…",
     "Buscar factura, huésped, habitación o mesa…",
     "বিল, অতিথি, কক্ষ বা টেবিল খুঁজুন…",
-    "Search bill, guest, room or table…"
+    "Поиск счёта, гостя, номера или стола…"
   ],
   "Search products by name…": [
     "按名称搜索商品…",
     "Cerca prodotti per nome…",
     "Buscar productos por nombre…",
     "নাম দিয়ে পণ্য খুঁজুন…",
-    "Search products by name…"
+    "Поиск товаров по названию…"
   ],
   "Search guests": [
     "搜索客人",
     "Cerca ospiti",
     "Buscar huéspedes",
     "অতিথি খুঁজুন",
-    "Search guests"
+    "Поиск гостей"
   ],
   "Guest, booking or room": [
     "客人、预订或房间",
     "Ospite, prenotazione o camera",
     "Huésped, reserva o habitación",
     "অতিথি, বুকিং বা কক্ষ",
-    "Guest, booking or room"
+    "Гость, бронирование или номер"
   ],
   "Search name, username or room": [
     "搜索姓名、用户名或房间",
     "Cerca nome, utente o camera",
     "Buscar nombre, usuario o habitación",
     "নাম, ব্যবহারকারীর নাম বা কক্ষ খুঁজুন",
-    "Search name, username or room"
+    "Поиск по имени, логину или номеру"
   ],
   "Plan your trip": [
     "规划行程",
     "Pianifica il viaggio",
     "Planifica tu viaje",
     "আপনার ভ্রমণ পরিকল্পনা করুন",
-    "Plan your trip"
+    "Спланируйте поездку"
   ],
   "Book a transfer": [
     "预订接送",
     "Prenota un trasferimento",
     "Reservar un traslado",
     "ট্রান্সফার বুক করুন",
-    "Book a transfer"
+    "Забронировать трансфер"
   ],
   "Book transfer": [
     "预订接送",
     "Prenota trasferimento",
     "Reservar traslado",
     "ট্রান্সফার বুক করুন",
-    "Book transfer"
+    "Забронировать трансфер"
   ],
   "Book Transfer": [
     "预订接送",
     "Prenota trasferimento",
     "Reservar traslado",
     "ট্রান্সফার বুক করুন",
-    "Book Transfer"
+    "Забронировать трансфер"
   ],
   "Book your transfer": [
     "预订您的接送",
     "Prenota il tuo trasferimento",
     "Reserva tu traslado",
     "আপনার ট্রান্সফার বুক করুন",
-    "Book your transfer"
+    "Забронируйте трансфер"
   ],
   "One way": [
     "单程",
     "Solo andata",
     "Solo ida",
     "একমুখী",
-    "One way"
+    "В одну сторону"
   ],
   "Return": [
     "往返",
     "Andata e ritorno",
     "Ida y vuelta",
     "যাওয়া-আসা",
-    "Return"
+    "Туда и обратно"
   ],
   "Departure": [
     "出发",
     "Partenza",
     "Salida",
     "যাত্রা",
-    "Departure"
+    "Отправление"
   ],
   "Arrival": [
     "抵达",
     "Arrivo",
     "Llegada",
     "আগমন",
-    "Arrival"
+    "Прибытие"
   ],
   "Departure location": [
     "出发地点",
     "Luogo di partenza",
     "Lugar de salida",
     "যাত্রার স্থান",
-    "Departure location"
+    "Место отправления"
   ],
   "Arrival location": [
     "抵达地点",
     "Luogo di arrivo",
     "Lugar de llegada",
     "আগমনের স্থান",
-    "Arrival location"
+    "Место прибытия"
   ],
   "Departure date": [
     "出发日期",
     "Data partenza",
     "Fecha de salida",
     "যাত্রার তারিখ",
-    "Departure date"
+    "Дата отправления"
   ],
   "Return date": [
     "返程日期",
     "Data ritorno",
     "Fecha de regreso",
     "ফেরার তারিখ",
-    "Return date"
+    "Дата возвращения"
   ],
   "Travel date": [
     "出行日期",
     "Data viaggio",
     "Fecha del viaje",
     "ভ্রমণের তারিখ",
-    "Travel date"
+    "Дата поездки"
   ],
   "Passenger type": [
     "乘客类型",
     "Tipo passeggero",
     "Tipo de pasajero",
     "যাত্রীর ধরন",
-    "Passenger type"
+    "Тип пассажира"
   ],
   "Local": [
     "本地居民",
     "Residente",
     "Local",
     "স্থানীয়",
-    "Local"
+    "Местный"
   ],
   "Expat": [
     "外籍居民",
     "Residente straniero",
     "Residente extranjero",
     "প্রবাসী",
-    "Expat"
+    "Экспат"
   ],
   "Tourist": [
     "游客",
     "Turista",
     "Turista",
     "পর্যটক",
-    "Tourist"
+    "Турист"
   ],
   "Children (2–11)": [
     "儿童（2–11岁）",
     "Bambini (2–11 anni)",
     "Niños (2–11 años)",
     "শিশু (২–১১ বছর)",
-    "Children (2–11)"
+    "Дети (2–11)"
   ],
   "Infants (under 2)": [
     "婴儿（2岁以下）",
     "Neonati (meno di 2 anni)",
     "Bebés (menores de 2 años)",
     "শিশু (২ বছরের নিচে)",
-    "Infants (under 2)"
+    "Младенцы (до 2 лет)"
   ],
   "Search speedboats": [
     "搜索快艇",
     "Cerca motoscafi",
     "Buscar lanchas",
     "স্পিডবোট খুঁজুন",
-    "Search speedboats"
+    "Поиск катеров"
   ],
   "Choose a speedboat": [
     "选择快艇",
     "Scegli un motoscafo",
     "Elige una lancha",
     "স্পিডবোট বেছে নিন",
-    "Choose a speedboat"
+    "Выберите катер"
   ],
   "Choose return speedboat": [
     "选择返程快艇",
     "Scegli motoscafo di ritorno",
     "Elige lancha de regreso",
     "ফেরার স্পিডবোট বেছে নিন",
-    "Choose return speedboat"
+    "Выберите обратный катер"
   ],
   "Choose your seats": [
     "选择座位",
     "Scegli i posti",
     "Elige tus asientos",
     "আপনার আসন বেছে নিন",
-    "Choose your seats"
+    "Выберите места"
   ],
   "Seat": [
     "座位",
     "Posto",
     "Asiento",
     "আসন",
-    "Seat"
+    "Место"
   ],
   "Seats": [
     "座位",
     "Posti",
     "Asientos",
     "আসন",
-    "Seats"
+    "Места"
   ],
   "Selected": [
     "已选",
     "Selezionato",
     "Seleccionado",
     "বাছাইকৃত",
-    "Selected"
+    "Выбрано"
   ],
   "Full": [
     "已满",
     "Completo",
     "Completo",
     "পূর্ণ",
-    "Full"
+    "Нет мест"
   ],
   "Morning": [
     "上午",
     "Mattina",
     "Mañana",
     "সকাল",
-    "Morning"
+    "Утро"
   ],
   "Afternoon": [
     "下午",
     "Pomeriggio",
     "Tarde",
     "বিকেল",
-    "Afternoon"
+    "День"
   ],
   "Lowest price": [
     "最低价格",
     "Prezzo più basso",
     "Precio más bajo",
     "সর্বনিম্ন দাম",
-    "Lowest price"
+    "Самая низкая цена"
   ],
   "All departures": [
     "所有班次",
     "Tutte le partenze",
     "Todas las salidas",
     "সব যাত্রা",
-    "All departures"
+    "Все отправления"
   ],
   "Review your booking": [
     "核对预订",
     "Controlla la prenotazione",
     "Revisa tu reserva",
     "আপনার বুকিং যাচাই করুন",
-    "Review your booking"
+    "Проверьте бронирование"
   ],
   "Lead passenger": [
     "主要乘客",
     "Passeggero principale",
     "Pasajero principal",
     "প্রধান যাত্রী",
-    "Lead passenger"
+    "Главный пассажир"
   ],
   "Flight details / notes": [
     "航班详情／备注",
     "Dettagli volo / note",
     "Datos del vuelo / notas",
     "ফ্লাইটের বিবরণ / নোট",
-    "Flight details / notes"
+    "Данные рейса / примечания"
   ],
   "Pay at reception (MVR)": [
     "在前台付款（MVR）",
     "Paga alla reception (MVR)",
     "Pagar en recepción (MVR)",
     "রিসেপশনে পেমেন্ট (MVR)",
-    "Pay at reception (MVR)"
+    "Оплата на ресепшене (MVR)"
   ],
   "Pay at reception.": [
     "请在前台付款。",
     "Paga alla reception.",
     "Paga en recepción.",
     "রিসেপশনে পেমেন্ট করুন।",
-    "Pay at reception."
+    "Оплатить на ресепшене."
   ],
   "Pay later": [
     "稍后付款",
     "Paga dopo",
     "Pagar después",
     "পরে পেমেন্ট",
-    "Pay later"
+    "Оплатить позже"
   ],
   "Confirm booking": [
     "确认预订",
     "Conferma prenotazione",
     "Confirmar reserva",
     "বুকিং নিশ্চিত করুন",
-    "Confirm booking"
+    "Подтвердить бронирование"
   ],
   "Confirm & add to room": [
     "确认并计入房账",
     "Conferma e addebita alla camera",
     "Confirmar y cargar a la habitación",
     "নিশ্চিত করে কক্ষের বিলে যোগ করুন",
-    "Confirm & add to room"
+    "Подтвердить и добавить на номер"
   ],
   "Add to my room": [
     "计入我的房账",
     "Addebita alla mia camera",
     "Cargar a mi habitación",
     "আমার কক্ষের বিলে যোগ করুন",
-    "Add to my room"
+    "Добавить на мой номер"
   ],
   "Manifest": [
     "乘客名单",
     "Manifesto passeggeri",
     "Lista de pasajeros",
     "যাত্রী তালিকা",
-    "Manifest"
+    "Манифест"
   ],
   "Schedules": [
     "班次",
     "Orari",
     "Horarios",
     "সময়সূচি",
-    "Schedules"
+    "Расписания"
   ],
   "Speedboat schedules": [
     "快艇班次",
     "Orari motoscafi",
     "Horarios de lanchas",
     "স্পিডবোট সময়সূচি",
-    "Speedboat schedules"
+    "Расписание катеров"
   ],
   "Add departure": [
     "添加班次",
     "Aggiungi partenza",
     "Añadir salida",
     "যাত্রা যোগ করুন",
-    "Add departure"
+    "Добавить отправление"
   ],
   "Edit departure": [
     "编辑班次",
     "Modifica partenza",
     "Editar salida",
     "যাত্রা সম্পাদনা",
-    "Edit departure"
+    "Изменить отправление"
   ],
   "New departure": [
     "新班次",
     "Nuova partenza",
     "Nueva salida",
     "নতুন যাত্রা",
-    "New departure"
+    "Новое отправление"
   ],
   "Boat": [
     "船只",
     "Barca",
     "Barco",
     "নৌকা",
-    "Boat"
+    "Катер"
   ],
   "Boat / operator": [
     "船只／运营商",
     "Barca / operatore",
     "Barco / operador",
     "নৌকা / পরিচালনাকারী",
-    "Boat / operator"
+    "Катер / оператор"
   ],
   "From": [
     "从",
     "Da",
     "Desde",
     "থেকে",
-    "From"
+    "Откуда"
   ],
   "To": [
     "至",
     "A",
     "Hasta",
     "গন্তব্য",
-    "To"
+    "Куда"
   ],
   "Swap route": [
     "交换路线",
     "Inverti percorso",
     "Invertir ruta",
     "রুট বদলান",
-    "Swap route"
+    "Поменять маршрут"
   ],
   "Adult fare (MVR)": [
     "成人票价（MVR）",
     "Tariffa adulti (MVR)",
     "Tarifa de adulto (MVR)",
     "প্রাপ্তবয়স্ক ভাড়া (MVR)",
-    "Adult fare (MVR)"
+    "Тариф для взрослого (MVR)"
   ],
   "Room fare (USD, optional)": [
     "房账票价（美元，选填）",
     "Tariffa camera (USD, facoltativa)",
     "Tarifa a habitación (USD, opcional)",
     "কক্ষের ভাড়া (USD, ঐচ্ছিক)",
-    "Room fare (USD, optional)"
+    "Тариф на номер (USD, необязательно)"
   ],
   "Accept bookings": [
     "接受预订",
     "Accetta prenotazioni",
     "Aceptar reservas",
     "বুকিং গ্রহণ করুন",
-    "Accept bookings"
+    "Принимать бронирования"
   ],
   "Availability": [
     "可用情况",
     "Disponibilità",
     "Disponibilidad",
     "প্রাপ্যতা",
-    "Availability"
+    "Доступность"
   ],
   "Save departure": [
     "保存班次",
     "Salva partenza",
     "Guardar salida",
     "যাত্রা সংরক্ষণ",
-    "Save departure"
+    "Сохранить отправление"
   ],
   "Boarded": [
     "已登船",
     "Imbarcato",
     "Embarcado",
     "নৌকায় উঠেছেন",
-    "Boarded"
+    "На борту"
   ],
   "Check in passengers": [
     "办理乘客登船",
     "Registra passeggeri",
     "Registrar pasajeros",
     "যাত্রী চেক-ইন",
-    "Check in passengers"
+    "Регистрация пассажиров"
   ],
   "Cancel booking": [
     "取消预订",
     "Annulla prenotazione",
     "Cancelar reserva",
     "বুকিং বাতিল করুন",
-    "Cancel booking"
+    "Отменить бронирование"
   ],
   "Transport login ↗": [
     "交通登录 ↗",
     "Accesso trasporti ↗",
     "Acceso a transporte ↗",
     "পরিবহন লগইন ↗",
-    "Transport login ↗"
+    "Вход в транспорт ↗"
   ],
   "Book an excursion": [
     "预订游览",
     "Prenota un’escursione",
     "Reservar una excursión",
     "ভ্রমণ বুক করুন",
-    "Book an excursion"
+    "Забронировать экскурсию"
   ],
   "Book Excursion": [
     "预订游览",
     "Prenota escursione",
     "Reservar excursión",
     "ভ্রমণ বুক করুন",
-    "Book Excursion"
+    "Забронировать экскурсию"
   ],
   "Book excursion": [
     "预订游览",
     "Prenota escursione",
     "Reservar excursión",
     "ভ্রমণ বুক করুন",
-    "Book excursion"
+    "Забронировать экскурсию"
   ],
   "Book another excursion": [
     "预订另一次游览",
     "Prenota un’altra escursione",
     "Reservar otra excursión",
     "আরেকটি ভ্রমণ বুক করুন",
-    "Book another excursion"
+    "Забронировать ещё экскурсию"
   ],
   "Browse and book excursions": [
     "浏览并预订游览",
     "Scopri e prenota escursioni",
     "Ver y reservar excursiones",
     "ভ্রমণ দেখুন ও বুক করুন",
-    "Browse and book excursions"
+    "Просмотреть и забронировать экскурсии"
   ],
   "Choose an excursion": [
     "选择游览",
     "Scegli un’escursione",
     "Elige una excursión",
     "ভ্রমণ বেছে নিন",
-    "Choose an excursion"
+    "Выберите экскурсию"
   ],
   "Preferred date": [
     "首选日期",
     "Data preferita",
     "Fecha preferida",
     "পছন্দের তারিখ",
-    "Preferred date"
+    "Предпочтительная дата"
   ],
   "Hotel or meeting location": [
     "酒店或集合地点",
     "Hotel o punto d’incontro",
     "Hotel o punto de encuentro",
     "হোটেল বা সাক্ষাতের স্থান",
-    "Hotel or meeting location"
+    "Отель или место встречи"
   ],
   "Hotel room (optional)": [
     "酒店房号（选填）",
     "Camera hotel (facoltativa)",
     "Habitación de hotel (opcional)",
     "হোটেলের কক্ষ (ঐচ্ছিক)",
-    "Hotel room (optional)"
+    "Номер в отеле (необязательно)"
   ],
   "Hotel name, or visiting Dhiffushi": [
     "酒店名称，或填写到访 Dhiffushi",
     "Nome hotel, oppure visita a Dhiffushi",
     "Nombre del hotel o visita a Dhiffushi",
     "হোটেলের নাম, অথবা Dhiffushi ভ্রমণ",
-    "Hotel name, or visiting Dhiffushi"
+    "Название отеля или визит на Диффуши"
   ],
   "Tell us about any requests": [
     "请告知任何要求",
     "Indicaci eventuali richieste",
     "Indica cualquier petición",
     "আপনার অনুরোধ জানান",
-    "Tell us about any requests"
+    "Сообщите нам о пожеланиях"
   ],
   "Booking request received": [
     "已收到预订申请",
     "Richiesta ricevuta",
     "Solicitud recibida",
     "বুকিং অনুরোধ পাওয়া গেছে",
-    "Booking request received"
+    "Запрос на бронирование получен"
   ],
   "Your excursion requests": [
     "您的游览申请",
     "Le tue richieste di escursione",
     "Tus solicitudes de excursión",
     "আপনার ভ্রমণের অনুরোধ",
-    "Your excursion requests"
+    "Ваши запросы на экскурсии"
   ],
   "Guest excursion bookings": [
     "客人游览预订",
     "Prenotazioni escursioni ospiti",
     "Reservas de excursiones de huéspedes",
     "অতিথির ভ্রমণ বুকিং",
-    "Guest excursion bookings"
+    "Бронирования экскурсий гостей"
   ],
   "Guest transfer bookings": [
     "客人接送预订",
     "Prenotazioni trasferimenti ospiti",
     "Reservas de traslados de huéspedes",
     "অতিথির ট্রান্সফার বুকিং",
-    "Guest transfer bookings"
+    "Бронирования трансферов гостей"
   ],
   "Snorkeling": [
     "浮潜",
     "Snorkeling",
     "Esnórquel",
     "স্নরকেলিং",
-    "Snorkeling"
+    "Снорклинг"
   ],
   "Turtle Snorkeling": [
     "海龟浮潜",
     "Snorkeling con tartarughe",
     "Esnórquel con tortugas",
     "কচ্ছপ স্নরকেলিং",
-    "Turtle Snorkeling"
+    "Снорклинг с черепахами"
   ],
   "Shark Snorkeling": [
     "鲨鱼浮潜",
     "Snorkeling con squali",
     "Esnórquel con tiburones",
     "হাঙর স্নরকেলিং",
-    "Shark Snorkeling"
+    "Снорклинг с акулами"
   ],
   "Shark Snorkeling (Nurse Shark)": [
     "护士鲨浮潜",
     "Snorkeling con squali nutrice",
     "Esnórquel con tiburones nodriza",
     "নার্স হাঙর স্নরকেলিং",
-    "Shark Snorkeling (Nurse Shark)"
+    "Снорклинг с акулами (акула-нянька)"
   ],
   "Coral Garden Snorkeling": [
     "珊瑚花园浮潜",
     "Snorkeling al giardino di coralli",
     "Esnórquel en el jardín de coral",
     "প্রবাল বাগানে স্নরকেলিং",
-    "Coral Garden Snorkeling"
+    "Снорклинг в коралловом саду"
   ],
   "Coral Garden": [
     "珊瑚花园",
     "Giardino di coralli",
     "Jardín de coral",
     "প্রবাল বাগান",
-    "Coral Garden"
+    "Коралловый сад"
   ],
   "Fish Tank Snorkeling": [
     "鱼群浮潜",
     "Snorkeling a Fish Tank",
     "Esnórquel en Fish Tank",
     "ফিশ ট্যাঙ্ক স্নরকেলিং",
-    "Fish Tank Snorkeling"
+    "Снорклинг Fish Tank"
   ],
   "Fish Tank": [
     "鱼群观赏点",
@@ -2727,777 +2727,777 @@
     "Avvistamento delfini",
     "Avistamiento de delfines",
     "ডলফিন দেখা",
-    "Dolphin Watching"
+    "Наблюдение за дельфинами"
   ],
   "Fishing": [
     "垂钓",
     "Pesca",
     "Pesca",
     "মাছ ধরা",
-    "Fishing"
+    "Рыбалка"
   ],
   "Sandbank Trip": [
     "沙洲游",
     "Gita al banco di sabbia",
     "Excursión al banco de arena",
     "বালুচর ভ্রমণ",
-    "Sandbank Trip"
+    "Поездка на песчаную косу"
   ],
   "Sandbank Dinner": [
     "沙洲晚餐",
     "Cena sul banco di sabbia",
     "Cena en el banco de arena",
     "বালুচরে রাতের খাবার",
-    "Sandbank Dinner"
+    "Ужин на песчаной косе"
   ],
   "Beach Dinner with Seafood": [
     "海滩海鲜晚餐",
     "Cena di pesce in spiaggia",
     "Cena de marisco en la playa",
     "সৈকতে সামুদ্রিক খাবারের নৈশভোজ",
-    "Beach Dinner with Seafood"
+    "Ужин с морепродуктами на пляже"
   ],
   "Combined packages": [
     "组合套餐",
     "Pacchetti combinati",
     "Paquetes combinados",
     "সমন্বিত প্যাকেজ",
-    "Combined packages"
+    "Комбинированные пакеты"
   ],
   "Special package": [
     "特别套餐",
     "Pacchetto speciale",
     "Paquete especial",
     "বিশেষ প্যাকেজ",
-    "Special package"
+    "Специальный пакет"
   ],
   "Shark + Turtle Snorkeling": [
     "鲨鱼与海龟浮潜",
     "Snorkeling squali e tartarughe",
     "Esnórquel con tiburones y tortugas",
     "হাঙর ও কচ্ছপ স্নরকেলিং",
-    "Shark + Turtle Snorkeling"
+    "Снорклинг с акулами + черепахами"
   ],
   "Coral Garden + Sandbank": [
     "珊瑚花园与沙洲",
     "Coralli e banco di sabbia",
     "Coral y banco de arena",
     "প্রবাল বাগান ও বালুচর",
-    "Coral Garden + Sandbank"
+    "Коралловый сад + песчаная коса"
   ],
   "Dolphin Watching + Fishing + Dinner": [
     "海豚观赏、垂钓与晚餐",
     "Delfini, pesca e cena",
     "Delfines, pesca y cena",
     "ডলফিন দেখা, মাছ ধরা ও নৈশভোজ",
-    "Dolphin Watching + Fishing + Dinner"
+    "Дельфины + рыбалка + ужин"
   ],
   "Fish Tank + Turtle Snorkeling": [
     "鱼群与海龟浮潜",
     "Fish Tank e tartarughe",
     "Fish Tank y tortugas",
     "ফিশ ট্যাঙ্ক ও কচ্ছপ স্নরকেলিং",
-    "Fish Tank + Turtle Snorkeling"
+    "Fish Tank + снорклинг с черепахами"
   ],
   "Free underwater videos": [
     "免费水下视频",
     "Video subacquei gratuiti",
     "Vídeos submarinos gratis",
     "বিনামূল্যে পানির নিচের ভিডিও",
-    "Free underwater videos"
+    "Бесплатные подводные видео"
   ],
   "per person": [
     "每人",
     "per persona",
     "por persona",
     "প্রতি ব্যক্তি",
-    "per person"
+    "за человека"
   ],
   "Minimum 2 guests": [
     "至少2人",
     "Minimo 2 ospiti",
     "Mínimo 2 personas",
     "কমপক্ষে ২ জন অতিথি",
-    "Minimum 2 guests"
+    "Минимум 2 гостя"
   ],
   "Guest messages": [
     "客人消息",
     "Messaggi ospiti",
     "Mensajes de huéspedes",
     "অতিথির বার্তা",
-    "Guest messages"
+    "Сообщения гостей"
   ],
   "Chat with reception": [
     "联系前台",
     "Chat con reception",
     "Chat con recepción",
     "রিসেপশনের সঙ্গে চ্যাট",
-    "Chat with reception"
+    "Чат с ресепшеном"
   ],
   "Messages": [
     "消息",
     "Messaggi",
     "Mensajes",
     "বার্তা",
-    "Messages"
+    "Сообщения"
   ],
   "Message": [
     "消息",
     "Messaggio",
     "Mensaje",
     "বার্তা",
-    "Message"
+    "Сообщение"
   ],
   "Send message": [
     "发送消息",
     "Invia messaggio",
     "Enviar mensaje",
     "বার্তা পাঠান",
-    "Send message"
+    "Отправить сообщение"
   ],
   "Write a message…": [
     "输入消息…",
     "Scrivi un messaggio…",
     "Escribe un mensaje…",
     "বার্তা লিখুন…",
-    "Write a message…"
+    "Напишите сообщение…"
   ],
   "Write an announcement…": [
     "输入公告…",
     "Scrivi un annuncio…",
     "Escribe un anuncio…",
     "ঘোষণা লিখুন…",
-    "Write an announcement…"
+    "Напишите объявление…"
   ],
   "Announcement": [
     "公告",
     "Annuncio",
     "Anuncio",
     "ঘোষণা",
-    "Announcement"
+    "Объявление"
   ],
   "Conversation": [
     "对话",
     "Conversazione",
     "Conversación",
     "কথোপকথন",
-    "Conversation"
+    "Переписка"
   ],
   "Send to all": [
     "发送给所有人",
     "Invia a tutti",
     "Enviar a todos",
     "সবাইকে পাঠান",
-    "Send to all"
+    "Отправить всем"
   ],
   "Send to": [
     "发送至",
     "Invia a",
     "Enviar a",
     "পাঠান",
-    "Send to"
+    "Отправить"
   ],
   "Send request": [
     "发送申请",
     "Invia richiesta",
     "Enviar solicitud",
     "অনুরোধ পাঠান",
-    "Send request"
+    "Отправить запрос"
   ],
   "No messages yet.": [
     "暂无消息。",
     "Nessun messaggio.",
     "Todavía no hay mensajes.",
     "এখনও বার্তা নেই।",
-    "No messages yet."
+    "Сообщений пока нет."
   ],
   "Load older messages": [
     "加载更早消息",
     "Carica messaggi precedenti",
     "Cargar mensajes anteriores",
     "আগের বার্তা দেখুন",
-    "Load older messages"
+    "Загрузить старые сообщения"
   ],
   "Rice": [
     "米饭",
     "Riso",
     "Arroz",
     "ভাত",
-    "Rice"
+    "Рис"
   ],
   "Vegetable": [
     "蔬菜",
     "Verdure",
     "Verduras",
     "সবজি",
-    "Vegetable"
+    "Овощи"
   ],
   "Tuna": [
     "金枪鱼",
     "Tonno",
     "Atún",
     "টুনা",
-    "Tuna"
+    "Тунец"
   ],
   "Chicken": [
     "鸡肉",
     "Pollo",
     "Pollo",
     "মুরগি",
-    "Chicken"
+    "Курица"
   ],
   "Beef": [
     "牛肉",
     "Manzo",
     "Ternera",
     "গরুর মাংস",
-    "Beef"
+    "Говядина"
   ],
   "Seafood": [
     "海鲜",
     "Frutti di mare",
     "Marisco",
     "সামুদ্রিক খাবার",
-    "Seafood"
+    "Морепродукты"
   ],
   "Fish": [
     "鱼",
     "Pesce",
     "Pescado",
     "মাছ",
-    "Fish"
+    "Рыба"
   ],
   "Prawn": [
     "虾",
     "Gamberi",
     "Gambas",
     "চিংড়ি",
-    "Prawn"
+    "Креветка"
   ],
   "Shrimp": [
     "虾",
     "Gamberi",
     "Camarones",
     "চিংড়ি",
-    "Shrimp"
+    "Креветка"
   ],
   "Curry with Rice": [
     "咖喱配米饭",
     "Curry con riso",
     "Curry con arroz",
     "তরকারি ও ভাত",
-    "Curry with Rice"
+    "Карри с рисом"
   ],
   "Fried rice": [
     "炒饭",
     "Riso saltato",
     "Arroz frito",
     "ফ্রাইড রাইস",
-    "Fried rice"
+    "Жареный рис"
   ],
   "Noodles": [
     "面条",
     "Noodles",
     "Fideos",
     "নুডলস",
-    "Noodles"
+    "Лапша"
   ],
   "Burger": [
     "汉堡",
     "Hamburger",
     "Hamburguesa",
     "বার্গার",
-    "Burger"
+    "Бургер"
   ],
   "Pizza": [
     "披萨",
     "Pizza",
     "Pizza",
     "পিৎজা",
-    "Pizza"
+    "Пицца"
   ],
   "Breakfast": [
     "早餐",
     "Colazione",
     "Desayuno",
     "সকালের নাশতা",
-    "Breakfast"
+    "Завтрак"
   ],
   "Lunch": [
     "午餐",
     "Pranzo",
     "Almuerzo",
     "দুপুরের খাবার",
-    "Lunch"
+    "Обед"
   ],
   "Dinner": [
     "晚餐",
     "Cena",
     "Cena",
     "রাতের খাবার",
-    "Dinner"
+    "Ужин"
   ],
   "Coffee": [
     "咖啡",
     "Caffè",
     "Café",
     "কফি",
-    "Coffee"
+    "Кофе"
   ],
   "Tea": [
     "茶",
     "Tè",
     "Té",
     "চা",
-    "Tea"
+    "Чай"
   ],
   "Water": [
     "水",
     "Acqua",
     "Agua",
     "পানি",
-    "Water"
+    "Вода"
   ],
   "Fresh juice": [
     "鲜榨果汁",
     "Succo fresco",
     "Zumo natural",
     "তাজা জুস",
-    "Fresh juice"
+    "Свежий сок"
   ],
   "Soft Drink": [
     "软饮料",
     "Bibita",
     "Refresco",
     "কোমল পানীয়",
-    "Soft Drink"
+    "Газированный напиток"
   ],
   "Salad": [
     "沙拉",
     "Insalata",
     "Ensalada",
     "সালাদ",
-    "Salad"
+    "Салат"
   ],
   "Soup": [
     "汤",
     "Zuppa",
     "Sopa",
     "স্যুপ",
-    "Soup"
+    "Суп"
   ],
   "Dessert": [
     "甜点",
     "Dolce",
     "Postre",
     "মিষ্টান্ন",
-    "Dessert"
+    "Десерт"
   ],
   "Passport": [
     "护照",
     "Passaporto",
     "Pasaporte",
     "পাসপোর্ট",
-    "Passport"
+    "Паспорт"
   ],
   "Passport photo": [
     "护照照片",
     "Foto passaporto",
     "Foto del pasaporte",
     "পাসপোর্টের ছবি",
-    "Passport photo"
+    "Фото паспорта"
   ],
   "Upload passport photo": [
     "上传护照照片",
     "Carica foto passaporto",
     "Subir foto del pasaporte",
     "পাসপোর্টের ছবি আপলোড করুন",
-    "Upload passport photo"
+    "Загрузить фото паспорта"
   ],
   "View saved passport": [
     "查看已保存护照",
     "Vedi passaporto salvato",
     "Ver pasaporte guardado",
     "সংরক্ষিত পাসপোর্ট দেখুন",
-    "View saved passport"
+    "Просмотреть сохранённый паспорт"
   ],
   "Remove photo": [
     "移除照片",
     "Rimuovi foto",
     "Eliminar foto",
     "ছবি সরান",
-    "Remove photo"
+    "Удалить фото"
   ],
   "No photo selected": [
     "未选择照片",
     "Nessuna foto selezionata",
     "Ninguna foto seleccionada",
     "কোনো ছবি বাছাই করা হয়নি",
-    "No photo selected"
+    "Фото не выбрано"
   ],
   "Receipt printer": [
     "小票打印机",
     "Stampante scontrini",
     "Impresora de recibos",
     "রসিদ প্রিন্টার",
-    "Receipt printer"
+    "Принтер чеков"
   ],
   "Printer settings": [
     "打印机设置",
     "Impostazioni stampante",
     "Ajustes de impresora",
     "প্রিন্টার সেটিংস",
-    "Printer settings"
+    "Настройки принтера"
   ],
   "Printer": [
     "打印机",
     "Stampante",
     "Impresora",
     "প্রিন্টার",
-    "Printer"
+    "Принтер"
   ],
   "Connection method": [
     "连接方式",
     "Metodo di connessione",
     "Método de conexión",
     "সংযোগ পদ্ধতি",
-    "Connection method"
+    "Способ подключения"
   ],
   "Connect USB printer": [
     "连接USB打印机",
     "Collega stampante USB",
     "Conectar impresora USB",
     "USB প্রিন্টার সংযোগ করুন",
-    "Connect USB printer"
+    "Подключить USB-принтер"
   ],
   "Connect / refresh printers": [
     "连接／刷新打印机",
     "Collega / aggiorna stampanti",
     "Conectar / actualizar impresoras",
     "প্রিন্টার সংযোগ / রিফ্রেশ",
-    "Connect / refresh printers"
+    "Подключить / обновить принтеры"
   ],
   "Select printer": [
     "选择打印机",
     "Seleziona stampante",
     "Seleccionar impresora",
     "প্রিন্টার বেছে নিন",
-    "Select printer"
+    "Выберите принтер"
   ],
   "Not connected": [
     "未连接",
     "Non connesso",
     "Sin conectar",
     "সংযুক্ত নয়",
-    "Not connected"
+    "Не подключено"
   ],
   "Connecting…": [
     "正在连接…",
     "Connessione…",
     "Conectando…",
     "সংযোগ হচ্ছে…",
-    "Connecting…"
+    "Подключение…"
   ],
   "Paper width": [
     "纸张宽度",
     "Larghezza carta",
     "Ancho del papel",
     "কাগজের প্রস্থ",
-    "Paper width"
+    "Ширина бумаги"
   ],
   "Receipt length": [
     "小票长度",
     "Lunghezza scontrino",
     "Longitud del recibo",
     "রসিদের দৈর্ঘ্য",
-    "Receipt length"
+    "Длина чека"
   ],
   "Automatic — content only": [
     "自动：仅内容",
     "Automatica — solo contenuto",
     "Automática — solo contenido",
     "স্বয়ংক্রিয় — শুধু বিষয়বস্তু",
-    "Automatic — content only"
+    "Автоматически — только содержимое"
   ],
   "Copies": [
     "份数",
     "Copie",
     "Copias",
     "কপি",
-    "Copies"
+    "Копии"
   ],
   "Font size (%)": [
     "字号（%）",
     "Dimensione carattere (%)",
     "Tamaño de letra (%)",
     "ফন্টের আকার (%)",
-    "Font size (%)"
+    "Размер шрифта (%)"
   ],
   "Top margin (mm)": [
     "上边距（毫米）",
     "Margine superiore (mm)",
     "Margen superior (mm)",
     "উপরের মার্জিন (মিমি)",
-    "Top margin (mm)"
+    "Верхнее поле (мм)"
   ],
   "Bottom margin (mm)": [
     "下边距（毫米）",
     "Margine inferiore (mm)",
     "Margen inferior (mm)",
     "নিচের মার্জিন (মিমি)",
-    "Bottom margin (mm)"
+    "Нижнее поле (мм)"
   ],
   "Left margin (mm)": [
     "左边距（毫米）",
     "Margine sinistro (mm)",
     "Margen izquierdo (mm)",
     "বামের মার্জিন (মিমি)",
-    "Left margin (mm)"
+    "Левое поле (мм)"
   ],
   "Right margin (mm)": [
     "右边距（毫米）",
     "Margine destro (mm)",
     "Margen derecho (mm)",
     "ডানের মার্জিন (মিমি)",
-    "Right margin (mm)"
+    "Правое поле (мм)"
   ],
   "Feed after receipt (lines)": [
     "打印后进纸（行）",
     "Avanzamento dopo scontrino (righe)",
     "Avance tras recibo (líneas)",
     "রসিদের পর কাগজ এগোনো (লাইন)",
-    "Feed after receipt (lines)"
+    "Подача после чека (строки)"
   ],
   "Extra header text": [
     "额外页眉文字",
     "Testo intestazione extra",
     "Texto adicional de cabecera",
     "অতিরিক্ত শিরোনাম",
-    "Extra header text"
+    "Дополнительный текст заголовка"
   ],
   "Extra footer text": [
     "额外页脚文字",
     "Testo piè di pagina extra",
     "Texto adicional de pie",
     "অতিরিক্ত নিচের লেখা",
-    "Extra footer text"
+    "Дополнительный текст внизу"
   ],
   "Print test receipt": [
     "打印测试小票",
     "Stampa scontrino di prova",
     "Imprimir recibo de prueba",
     "পরীক্ষামূলক রসিদ প্রিন্ট",
-    "Print test receipt"
+    "Печать тестового чека"
   ],
   "Save settings": [
     "保存设置",
     "Salva impostazioni",
     "Guardar ajustes",
     "সেটিংস সংরক্ষণ",
-    "Save settings"
+    "Сохранить настройки"
   ],
   "Browser print / PDF": [
     "浏览器打印／PDF",
     "Stampa browser / PDF",
     "Imprimir desde navegador / PDF",
     "ব্রাউজার প্রিন্ট / PDF",
-    "Browser print / PDF"
+    "Печать браузера / PDF"
   ],
   "Direct thermal print": [
     "直接热敏打印",
     "Stampa termica diretta",
     "Impresión térmica directa",
     "সরাসরি থার্মাল প্রিন্ট",
-    "Direct thermal print"
+    "Прямая термопечать"
   ],
   "Print": [
     "打印",
     "Stampa",
     "Imprimir",
     "প্রিন্ট",
-    "Print"
+    "Печать"
   ],
   "Preview": [
     "预览",
     "Anteprima",
     "Vista previa",
     "প্রিভিউ",
-    "Preview"
+    "Предпросмотр"
   ],
   "Open restaurant menu": [
     "打开餐厅菜单",
     "Apri menu ristorante",
     "Abrir menú del restaurante",
     "রেস্তোরাঁর মেনু খুলুন",
-    "Open restaurant menu"
+    "Открыть меню ресторана"
   ],
   "Finish visit": [
     "结束访问",
     "Termina visita",
     "Finalizar visita",
     "ভিজিট শেষ করুন",
-    "Finish visit"
+    "Завершить визит"
   ],
   "My stay": [
     "我的住宿",
     "Il mio soggiorno",
     "Mi estancia",
     "আমার থাকা",
-    "My stay"
+    "Моё проживание"
   ],
   "Your island stay": [
     "您的海岛住宿",
     "Il tuo soggiorno sull’isola",
     "Tu estancia en la isla",
     "দ্বীপে আপনার থাকা",
-    "Your island stay"
+    "Ваш отдых на острове"
   ],
   "My bookings": [
     "我的预订",
     "Le mie prenotazioni",
     "Mis reservas",
     "আমার বুকিং",
-    "My bookings"
+    "Мои бронирования"
   ],
   "Room bills": [
     "房间账单",
     "Conti camera",
     "Facturas de habitación",
     "কক্ষের বিল",
-    "Room bills"
+    "Счета номера"
   ],
   "Guest services": [
     "客人服务",
     "Servizi ospiti",
     "Servicios para huéspedes",
     "অতিথি সেবা",
-    "Guest services"
+    "Услуги для гостей"
   ],
   "Guest portal": [
     "客人入口",
     "Portale ospiti",
     "Portal de huéspedes",
     "অতিথি পোর্টাল",
-    "Guest portal"
+    "Портал гостя"
   ],
   "Nightly rate (USD)": [
     "每晚价格（美元）",
     "Tariffa a notte (USD)",
     "Tarifa por noche (USD)",
     "প্রতি রাতের মূল্য (USD)",
-    "Nightly rate (USD)"
+    "Тариф за ночь (USD)"
   ],
   "Reference / note": [
     "参考号／备注",
     "Riferimento / nota",
     "Referencia / nota",
     "রেফারেন্স / নোট",
-    "Reference / note"
+    "Ссылка / примечание"
   ],
   "Payment received": [
     "已收到付款",
     "Pagamento ricevuto",
     "Pago recibido",
     "পেমেন্ট পাওয়া গেছে",
-    "Payment received"
+    "Оплата получена"
   ],
   "Opening payments": [
     "初始付款",
     "Pagamenti iniziali",
     "Pagos iniciales",
     "প্রাথমিক পেমেন্ট",
-    "Opening payments"
+    "Открытие платежей"
   ],
   "New checkout date": [
     "新的退房日期",
     "Nuova data di partenza",
     "Nueva fecha de salida",
     "নতুন চেক-আউট তারিখ",
-    "New checkout date"
+    "Новая дата выезда"
   ],
   "Additional nightly rate (USD)": [
     "额外每晚价格（美元）",
     "Tariffa aggiuntiva a notte (USD)",
     "Tarifa adicional por noche (USD)",
     "অতিরিক্ত প্রতি রাতের মূল্য (USD)",
-    "Additional nightly rate (USD)"
+    "Дополнительный тариф за ночь (USD)"
   ],
   "Additional charge": [
     "额外费用",
     "Costo aggiuntivo",
     "Cargo adicional",
     "অতিরিক্ত খরচ",
-    "Additional charge"
+    "Дополнительная плата"
   ],
   "Not added": [
     "未添加",
     "Non aggiunto",
     "No añadido",
     "যোগ করা হয়নি",
-    "Not added"
+    "Не добавлено"
   ],
   "Add number": [
     "添加号码",
     "Aggiungi numero",
     "Añadir número",
     "নম্বর যোগ করুন",
-    "Add number"
+    "Добавить номер"
   ],
   "Current stays": [
     "当前住客",
     "Soggiorni attuali",
     "Estancias actuales",
     "বর্তমান অতিথি",
-    "Current stays"
+    "Текущие проживания"
   ],
   "Total rooms": [
     "客房总数",
     "Camere totali",
     "Habitaciones totales",
     "মোট কক্ষ",
-    "Total rooms"
+    "Всего номеров"
   ],
   "Total Rooms": [
     "客房总数",
     "Camere totali",
     "Habitaciones totales",
     "মোট কক্ষ",
-    "Total Rooms"
+    "Всего номеров"
   ],
   "Average Occupancy": [
     "平均入住率",
     "Occupazione media",
     "Ocupación media",
     "গড় কক্ষ ব্যবহার",
-    "Average Occupancy"
+    "Средняя загрузка"
   ],
   "Room Revenue": [
     "客房收入",
     "Ricavi camere",
     "Ingresos de habitaciones",
     "কক্ষের আয়",
-    "Room Revenue"
+    "Доход от номеров"
   ],
   "Restaurant Revenue": [
     "餐厅收入",
     "Ricavi ristorante",
     "Ingresos del restaurante",
     "রেস্তোরাঁর আয়",
-    "Restaurant Revenue"
+    "Доход ресторана"
   ],
   "Excursion Revenue": [
     "游览收入",
     "Ricavi escursioni",
     "Ingresos de excursiones",
     "ভ্রমণের আয়",
-    "Excursion Revenue"
+    "Доход от экскурсий"
   ],
   "Total Revenue": [
     "总收入",
     "Ricavi totali",
     "Ingresos totales",
     "মোট আয়",
-    "Total Revenue"
+    "Общий доход"
   ],
   "Check-ins": [
     "入住",
