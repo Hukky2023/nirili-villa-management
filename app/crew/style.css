@@ -355,3 +355,70 @@
 .crew-trip-date-controls>button.active{background:#e7f5fa;border-color:#8fc9dd;color:#075f86}
 .crew-trip-date-controls>button span{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#087cad;color:#fff;font-size:10px;font-weight:900}
 @media(max-width:650px){.crew-trip-date-controls{display:grid;grid-template-columns:1fr}.crew-trip-date-controls>button,.crew-trip-date-picker{width:100%}.crew-trip-header-actions>button{width:100%;justify-content:center}}
+
+
+/* Responsive crew portal layout refresh */
+.crew-location-page{max-width:980px;padding:22px 16px 64px}
+.crew-location-card,.crew-trip-section{box-shadow:0 8px 28px rgba(20,57,77,.05)}
+.crew-location-card{grid-template-columns:58px minmax(0,1fr) auto;align-items:center}
+.crew-location-actions{grid-column:auto;display:flex;justify-content:flex-end}
+.crew-location-actions button{white-space:nowrap}
+.crew-trip-section>header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start}
+.crew-trip-header-actions{min-width:0}
+.crew-trip-date-controls{display:grid;grid-template-columns:auto minmax(190px,1fr) auto;gap:8px;align-items:stretch}
+.crew-trip-date-controls>button,.crew-trip-date-picker{min-height:44px}
+.crew-trip-date-picker{min-width:0}
+.crew-trip-date-picker input{width:100%;min-width:0}
+.crew-trip-grid{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.crew-trip-grid>article{min-width:0}
+.crew-trip-empty{min-height:150px;background:#fbfdfe}
+.crew-location-privacy{margin-top:16px}
+
+@media(max-width:760px){
+ .crew-location-page{padding:14px 10px 48px}
+ .crew-location-top{display:flex;align-items:flex-start}
+ .crew-location-top h1{font-size:26px}
+ .crew-location-card{grid-template-columns:52px minmax(0,1fr);gap:12px;padding:16px}
+ .crew-location-icon{width:52px;height:52px}
+ .crew-location-actions{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+ .crew-location-actions .primary,.crew-location-actions .danger{width:100%}
+ .crew-trip-section{padding:14px}
+ .crew-trip-section>header{grid-template-columns:1fr;gap:12px}
+ .crew-trip-header-actions{width:100%}
+ .crew-trip-date-controls{grid-template-columns:1fr 1.5fr 1fr;width:100%}
+ .crew-trip-date-controls>button,.crew-trip-date-picker{justify-content:center}
+ .crew-trip-date-picker span{display:none}
+ .crew-trip-date-picker input{font-size:14px;text-align:center}
+ .crew-trip-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:520px){
+ .crew-location-top{gap:10px}
+ .crew-location-top h1{font-size:23px}
+ .crew-location-top p{font-size:13px}
+ .crew-location-card h2{font-size:17px}
+ .crew-location-card p{font-size:13px}
+ .crew-location-actions{grid-template-columns:1fr 96px}
+ .crew-location-actions button{padding:9px 10px;min-height:44px;font-size:13px}
+ .crew-trip-section>header h2{font-size:19px}
+ .crew-trip-section>header p{font-size:13px}
+ .crew-trip-date-controls{grid-template-columns:1fr}
+ .crew-trip-date-controls>button,.crew-trip-date-picker{width:100%;justify-content:flex-start}
+ .crew-trip-date-picker{padding:6px 10px}
+ .crew-trip-date-picker span{display:inline}
+ .crew-trip-date-picker input{text-align:left;font-size:16px}
+ .crew-trip-empty{min-height:130px;padding:22px 14px}
+ .crew-trip-grid>article{padding:12px}
+ .crew-trip-operation-details{grid-template-columns:1fr 1fr}
+ .crew-trip-operation-details .other-crew{grid-column:1/-1}
+ .crew-location-privacy{font-size:13px}
+}
+
+@media(max-width:380px){
+ .crew-location-page{padding-left:8px;padding-right:8px}
+ .crew-location-card,.crew-trip-section{border-radius:14px}
+ .crew-location-actions{grid-template-columns:1fr}
+ .crew-location-actions button{width:100%}
+ .crew-trip-operation-details{grid-template-columns:1fr}
+ .crew-trip-operation-details .other-crew{grid-column:auto}
+}
