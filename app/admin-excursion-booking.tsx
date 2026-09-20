@@ -4,7 +4,6 @@ import {X} from 'lucide-react';
 import {formatDateDMY} from '../lib/date-format';
 import {excursionChildPolicyText,excursionPriceCents} from '../lib/excursion-children';
 import {excursionDeparturePassed} from '../lib/guest-catalog';
-import {scheduleCanServeRequest,scheduleMatchRank} from '../lib/excursion-operations';
 
 type Props={
  schedules:any[];
@@ -39,14 +38,20 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
   finally{setLoadingDay(false)}
  }
 
- const bookableSchedules=useMemo(()=>daySchedules.filter((s:any)=>s.status==='Open'&&!excursionDeparturePassed(s.date,s.time)),[daySchedules]);
- const selectedMenu=useMemo(()=>menu.find((item:any)=>item.id===form.menuItemId&&item.kind==='excursion'),[menu,form.menuItemId]);
- const matchedSchedules=useMemo(()=>!selectedMenu?[]:bookableSchedules.filter((s:any)=>scheduleCanServeRequest(selectedMenu.name,s.name)).sort((a:any,b:any)=>scheduleMatchRank(selectedMenu.name,a.name)-scheduleMatchRank(selectedMenu.name,b.name)||String(a.time).localeCompare(String(b.time))),[bookableSchedules,selectedMenu]);
- const selected=matchedSchedules[0];
+ const bookableSchedules=useMemo(()=>daySchedules
+  .filter((s:any)=>{
+   if(s.status!=='Open'||excursionDeparturePassed(s.date,s.time))return false;
+   const group=s.sharedBoatKey?dayGroups[s.sharedBoatKey]:null;
+   const booked=Number(group?.bookedPax??s.bookedPax??0);
+   const capacity=Number(group?.capacity??s.capacity??0);
+   return capacity>booked;
+  })
+  .sort((a:any,b:any)=>String(a.time).localeCompare(String(b.time))||String(a.name).localeCompare(String(b.name))),[daySchedules,dayGroups]);
+ const selected=useMemo(()=>bookableSchedules.find((s:any)=>s.id===form.scheduleId)||null,[bookableSchedules,form.scheduleId]);
  const group=selected?.sharedBoatKey?dayGroups[selected.sharedBoatKey]:null;
- const booked=group?.bookedPax??selected?.bookedPax??0;
- const capacity=group?.capacity??selected?.capacity??0;
- const needsNewSchedule=!!selectedMenu&&(!selected||booked+Number(form.quantity||0)>capacity);
+ const booked=Number(group?.bookedPax??selected?.bookedPax??0);
+ const capacity=Number(group?.capacity??selected?.capacity??0);
+ const remaining=Math.max(0,capacity-booked);
  const inHouse=(stays||[]).filter((s:any)=>s.status==='In House');
  const money=(c:number)=>'$'+((Number(c)||0)/100).toFixed(2);
 
@@ -61,16 +66,16 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
 
  async function submit(e:React.FormEvent){
   e.preventDefault();if(saving)return;
-  if(!selectedMenu){onMessage('Choose an excursion.');return;}
+  if(!selected){onMessage('Choose an available trip.');return;}
   const total=Number(form.quantity)||0,ageTotal=(Number(form.adults)||0)+(Number(form.children)||0)+(Number(form.infants)||0);
   if(total<1||total>100||ageTotal!==total){onMessage('Total seats must match Adults + Children + Children under 3.');return;}
   if(form.guestType==='inhouse'&&!form.stayId){onMessage('Choose an in-house guest.');return;}
   if(form.guestType==='walkin'&&(!form.guest.trim()||!form.hotel.trim()||!form.phone.trim())){onMessage('Enter the walk-in guest name, hotel and WhatsApp number.');return;}
     setSaving(true);onMessage('');
   try{
-   const r=await fetch('/api/excursion-schedules',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'admin-booking-auto',date:bookingDate,menuItemId:selectedMenu.id,guestType:form.guestType,stayId:form.stayId,guest:form.guest,hotel:form.hotel,externalRoom:form.externalRoom,phone:form.phone,quantity:total,adults:Number(form.adults)||0,children:Number(form.children)||0,infants:Number(form.infants)||0,notes:form.notes,buggyRequested:!!form.buggyRequested})});
+   const r=await fetch('/api/excursion-schedules',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'admin-booking',date:bookingDate,scheduleId:selected.id,guestType:form.guestType,stayId:form.stayId,guest:form.guest,hotel:form.hotel,externalRoom:form.externalRoom,phone:form.phone,quantity:total,adults:Number(form.adults)||0,children:Number(form.children)||0,infants:Number(form.infants)||0,notes:form.notes,buggyRequested:!!form.buggyRequested})});
    const d=await r.json();if(!r.ok)throw Error(d.error||'Could not save excursion booking.');
-   onMessage(d.booking?.requiresScheduling?'Booking saved. No suitable schedule was available, so it was sent to Admin as a request to create a schedule.':'Excursion booking confirmed and assigned automatically for '+formatDateDMY(bookingDate)+'.');
+   onMessage('Excursion booking confirmed for '+formatDateDMY(bookingDate)+' at '+selected.time+' Maldives time.');
    setOpen(false);reset();if(bookingDate===date)await onSaved();window.dispatchEvent(new Event('services-updated'));
   }catch(e){onMessage((e as Error).message)}finally{setSaving(false)}
  }
@@ -81,7 +86,7 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
    <header><div><small>ADMIN BOOKING</small><h3>Book excursion on any day</h3><p>{formatDateDMY(bookingDate)} · Choose any future date, excursion and number of seats.</p></div><button type="button" className="excursion-dialog-close" aria-label="Close" onClick={close}><X/></button></header>
    <div className="excursion-schedule-form-grid">
     <label>Date<input required type="date" min={maldivesToday()} value={bookingDate} onChange={e=>loadDay(e.target.value)}/><small>Change the date to load that day's excursion schedule.</small></label>
-    <label>Excursion<select required value={form.menuItemId} onChange={e=>setForm({...form,menuItemId:e.target.value})}><option value="">Choose excursion</option>{menu.filter((item:any)=>item.kind==='excursion'&&item.active!==false).map((item:any)=><option key={item.id} value={item.id}>{item.name}</option>)}</select><small>{selectedMenu?(selected?('Auto match: '+selected.time+' · '+selected.name+(needsNewSchedule?' · no seats available, request will be created':'')):'No matching schedule on this date. A schedule request will be created.'):'Choose an excursion first.'}</small></label>
+    <label>Available trip<select required disabled={loadingDay||!bookableSchedules.length} value={form.scheduleId} onChange={e=>setForm({...form,scheduleId:e.target.value})}><option value="">{loadingDay?'Loading trips…':bookableSchedules.length?'Choose available trip':'No available not-started trips'}</option>{bookableSchedules.map((trip:any)=>{const tripGroup=trip.sharedBoatKey?dayGroups[trip.sharedBoatKey]:null;const tripBooked=Number(tripGroup?.bookedPax??trip.bookedPax??0);const tripCapacity=Number(tripGroup?.capacity??trip.capacity??0);const left=Math.max(0,tripCapacity-tripBooked);return <option key={trip.id} value={trip.id}>{trip.time} · {trip.name} · {left} seat{left===1?'':'s'} left</option>})}</select><small>{selected?selected.time+' Maldives time · '+remaining+' of '+capacity+' seats available':'Only trips on the selected date that have not started yet are shown. Times are checked in Maldives time.'}</small></label>
     <label>Guest type<select value={form.guestType} onChange={e=>setForm({...form,guestType:e.target.value,stayId:'',guest:'',hotel:'',externalRoom:'',phone:''})}><option value="inhouse">In-house guest</option><option value="walkin">Walk-in guest</option></select></label>
     <div className="full admin-child-policy"><strong>Children policy</strong><span>{excursionChildPolicyText()}</span></div>
 
@@ -98,10 +103,10 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
      <label className="full guest-buggy-request"><span><input type="checkbox" checked={!!form.buggyRequested} onChange={e=>setForm({...form,buggyRequested:e.target.checked})}/> Request buggy pickup</span><small>The guest should be ready outside the hotel or meeting location 15 minutes before departure.</small></label>
     </>}
 
-    {selectedMenu&&<div className="full admin-booking-capacity"><span>Automatic assignment</span><strong>{selected?booked+' / '+capacity+' confirmed · Booking '+form.quantity+' seat'+(Number(form.quantity)===1?'':'s'):'No same excursion scheduled'}</strong><small>{selected&&selected.priceCents?money(excursionPriceCents(selected.priceCents,'guest',{adults:Number(form.adults)||0,children:Number(form.children)||0,infants:Number(form.infants)||0,total:Number(form.quantity)||0}))+' total · ':''}{needsNewSchedule?'This booking will be saved as Awaiting Scheduling and Admin will get a request to create/assign a suitable trip.':'Seats are available. The booking will be assigned automatically to '+selected.time+' · '+selected.name+'.'}</small></div>}
+    {selected&&<div className="full admin-booking-capacity"><span>Selected trip</span><strong>{selected.time} · {selected.name}</strong><small>{booked+' / '+capacity+' confirmed · '+remaining+' seat'+(remaining===1?'':'s')+' remaining · '}{selected.priceCents?money(excursionPriceCents(selected.priceCents,'guest',{adults:Number(form.adults)||0,children:Number(form.children)||0,infants:Number(form.infants)||0,total:Number(form.quantity)||0}))+' total · ':''}Departure time is checked using Maldives time (UTC+5).</small></div>}
     <label className="full">Notes<textarea rows={3} maxLength={1000} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label>
    </div>
-   <footer><button type="button" className="excursion-secondary-btn" disabled={saving} onClick={close}>Cancel</button><button type="submit" className="excursion-primary-btn" disabled={saving||loadingDay||!form.quantity||form.quantity<1||form.quantity>100}>{saving?'Saving…':'Confirm booking'}</button></footer>
+   <footer><button type="button" className="excursion-secondary-btn" disabled={saving} onClick={close}>Cancel</button><button type="submit" className="excursion-primary-btn" disabled={saving||loadingDay||!selected||!form.quantity||form.quantity<1||form.quantity>100||Number(form.quantity)>remaining}>{saving?'Saving…':'Confirm booking'}</button></footer>
   </form></div>}
  </>;
 }
