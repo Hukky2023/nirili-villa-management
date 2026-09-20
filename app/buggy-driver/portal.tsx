@@ -1,7 +1,7 @@
 'use client';
 
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {BellRing,CheckCircle2,Clock3,MapPin,Phone,Plus,Users} from 'lucide-react';
+import {BellRing,CheckCircle2,Clock3,MapPin,Phone,Plus,Trash2,Users} from 'lucide-react';
 import {startLiveRefresh} from '../../lib/live-refresh';
 import DateFieldDMY from '../date-field-dmy';
 import SessionButton from '../session-button';
@@ -54,12 +54,12 @@ export default function BuggyDriverPortal(){
   finally{setBusy('');}
  }
 
- async function update(id:string,action:'arrived'|'boarded'|'dinner-dropoff'|'return-arrived'|'return-boarded'|'return-complete'){
+ async function update(id:string,action:'arrived'|'boarded'|'cancel'|'dinner-dropoff'|'return-arrived'|'return-boarded'|'return-complete'){
   if(busy)return;setBusy(id+action);setError('');
   try{
    const r=await fetch('/api/buggy-driver',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,action})}),d=await r.json();
    if(!r.ok)throw Error(d.error||'Could not update pickup.');
-   setPickups(list=>list.map(item=>item.id===id?d.pickup:item));
+   setPickups(list=>action==='cancel'?list.filter(item=>item.id!==id):list.map(item=>item.id===id?d.pickup:item));
    window.dispatchEvent(new Event('services-updated'));
   }catch(e){setError(e instanceof Error?e.message:'Could not update pickup.');}
   finally{setBusy('');}
@@ -99,7 +99,7 @@ export default function BuggyDriverPortal(){
      {p.notes&&<p className="buggy-notes">{p.notes}</p>}
     </div>
     <div className="buggy-actions">
-     {p.status==='Pending pickup'&&<button type="button" className="arrived" disabled={busy===p.id+'arrived'} onClick={()=>update(p.id,'arrived')}><BellRing size={18}/>{busy===p.id+'arrived'?'Notifying…':'I arrived · Notify guest'}</button>}
+     {p.status==='Pending pickup'&&<><button type="button" className="arrived" disabled={busy===p.id+'arrived'} onClick={()=>update(p.id,'arrived')}><BellRing size={18}/>{busy===p.id+'arrived'?'Notifying…':'I arrived · Notify guest'}</button>{p.manual&&<button type="button" className="cancel-manual" disabled={busy===p.id+'cancel'} onClick={()=>{if(confirm('Cancel this manual buggy booking?'))void update(p.id,'cancel')}}><Trash2 size={18}/>{busy===p.id+'cancel'?'Cancelling…':'Cancel'}</button>}</>}
      {p.status==='Arrived'&&<><div className="buggy-arrived-note"><BellRing size={17}/>Guest notified that the buggy has arrived.</div><button type="button" className="boarded" disabled={busy===p.id+'boarded'} onClick={()=>update(p.id,'boarded')}><CheckCircle2 size={18}/>{busy===p.id+'boarded'?'Saving…':p.roundTrip?'Guests on buggy · To dinner':'Guests on buggy'}</button></>}
      {!p.roundTrip&&p.status==='Boarded'&&<div className="buggy-boarded"><CheckCircle2 size={20}/><strong>Pickup complete</strong><span>Guests are on the buggy.</span></div>}
      {p.roundTrip&&p.status==='Going to dinner'&&<button type="button" className="boarded" disabled={busy===p.id+'dinner-dropoff'} onClick={()=>update(p.id,'dinner-dropoff')}><MapPin size={18}/>{busy===p.id+'dinner-dropoff'?'Saving…':'Dropped guests at dinner'}</button>}
