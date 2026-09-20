@@ -40,7 +40,15 @@ export default function BuggyDriverPortal(){
   try{
    const r=await fetch('/api/buggy-driver',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(booking)}),d=await r.json();
    if(!r.ok)throw Error(d.error||'Could not book buggy.');
-   setBooking(null);setDate(d.pickup.date);await load(d.pickup.date);
+   setBooking(null);
+   const created=d.pickup;
+   if(created?.date===date){
+    setPickups(list=>[...list.filter(item=>item.id!==created.id),created].sort((a:any,b:any)=>(a.pickupTime||a.excursionTime).localeCompare(b.pickupTime||b.excursionTime)||a.guest.localeCompare(b.guest)));
+   }else if(created?.date){
+    setDate(created.date);
+   }else{
+    await load(date);
+   }
    window.dispatchEvent(new Event('services-updated'));
   }catch(e){setError(e instanceof Error?e.message:'Could not book buggy.');}
   finally{setBusy('');}
