@@ -27,9 +27,3 @@ jobs:
         run: node --experimental-strip-types --test tests/excursion-billing.test.mjs
       - name: Build production worker
         run: pnpm run build && node self-host-config.mjs dc69f294-de1e-4cd4-8322-93da8739eb73
-      - name: Deploy to Cloudflare Workers
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: pnpm exec wrangler deploy --config wrangler.selfhost.json
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
