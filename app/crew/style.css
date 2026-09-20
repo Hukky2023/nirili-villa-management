@@ -438,3 +438,11 @@
  .crew-location-toggle{width:42px;height:42px;padding:0;justify-content:center}
  .crew-location-toggle span{display:none}
 }
+
+
+.crew-history-button{display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:8px 11px;border:1px solid #c8dce5;border-radius:999px;background:#fff;color:#176080;font-weight:800}
+.crew-history-button:disabled{opacity:.65}
+@media(max-width:520px){
+ .crew-history-button{width:42px;height:42px;padding:0;justify-content:center}
+ .crew-history-button span{display:none}
+}
