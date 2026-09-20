@@ -348,3 +348,10 @@
 .crew-trip-date-picker span{font-size:12px}
 .crew-trip-date-picker input{min-width:138px;border:0;background:transparent;color:#173a4d;font:inherit;font-weight:700;outline:none}
 @media(max-width:650px){.crew-trip-date-picker{width:100%;justify-content:space-between}.crew-trip-date-picker input{min-width:0;flex:1}}
+
+
+.crew-trip-date-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.crew-trip-date-controls>button{display:flex;align-items:center;gap:7px;min-height:40px;padding:8px 12px;border:1px solid #c8dce5;border-radius:9px;background:#fff;color:#176080;font-weight:800}
+.crew-trip-date-controls>button.active{background:#e7f5fa;border-color:#8fc9dd;color:#075f86}
+.crew-trip-date-controls>button span{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#087cad;color:#fff;font-size:10px;font-weight:900}
+@media(max-width:650px){.crew-trip-date-controls{display:grid;grid-template-columns:1fr}.crew-trip-date-controls>button,.crew-trip-date-picker{width:100%}.crew-trip-header-actions>button{width:100%;justify-content:center}}
