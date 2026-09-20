@@ -28,9 +28,13 @@ export function buildExcursionTimetable(
   const day = schedules.filter(s => s.date === date)
     .sort((a, b) => a.time.localeCompare(b.time) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   let bookings = 0;
-  const trips = day.map(schedule => {
+  const trips = day.flatMap(schedule => {
     // Reuse View/Guest list's confirmation and legacy-record matching rules.
     const manifest = buildExcursionManifest(schedule, day, state, resources, () => false);
+
+    // Cancelled trips must never appear in the timetable preview or shared timetable.
+    if (String(manifest.trip.status || '').trim().toLowerCase() === 'cancelled') return [];
+
     bookings += manifest.totals.bookings;
     const extras = new Map<string, TimetableVessel>();
     for (const booking of manifest.bookings) {
@@ -41,14 +45,14 @@ export function buildExcursionTimetable(
       group.pax += booking.guests;
       extras.set(key, group);
     }
-    return {
+    return [{
       id: schedule.id, name: manifest.trip.name, time: manifest.trip.time, endTime: String((schedule as any).endTime||''), status: manifest.trip.status,
       confirmedPax: manifest.totals.pax, mainVesselPax: manifest.totals.mainVesselPax,
       vessel: manifest.trip.vessel, gopro: (resources.gopros||[]).find((item:any)=>item.id===(schedule as any).goproId)?.name||'', drone: (resources.drones||[]).find((item:any)=>item.id===(schedule as any).droneId)?.name||'', crew: manifest.trip.crew,
       extraVessels: [...extras.values()].sort((a, b) => a.vessel.localeCompare(b.vessel)),
       sharedTrips: manifest.totals.sharedTrips, sharedBoatPax: manifest.totals.boatPax,
       capacity: manifest.totals.capacity,
-    };
+    }];
   });
   return {date, generatedAt, trips, totals: {trips: trips.length, bookings, pax: trips.reduce((sum, trip) => sum + trip.confirmedPax, 0)}};
 }
