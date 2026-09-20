@@ -33,7 +33,7 @@ export function buildExcursionTimetable(
     const manifest = buildExcursionManifest(schedule, day, state, resources, () => false);
 
     // Cancelled trips must never appear in the timetable preview or shared timetable.
-    if (String(manifest.trip.status || '').trim().toLowerCase() === 'cancelled') return [];
+    if (String(manifest.trip.status || '').trim().toLowerCase().includes('cancel')) return [];
 
     bookings += manifest.totals.bookings;
     const extras = new Map<string, TimetableVessel>();
