@@ -342,3 +342,9 @@
 .crew-future-trip-list>article{padding:14px;border:1px solid #d7e5eb;border-radius:12px;background:#fbfdfe}
 .crew-future-trip-list h3{margin:12px 0 9px;color:#173a4d;font-size:18px}
 @media(max-width:650px){.crew-trip-header-actions{justify-content:flex-start}.crew-trip-header-actions button{flex:1}.crew-future-dialog{padding:16px 12px}}
+
+
+.crew-trip-date-picker{display:flex;align-items:center;gap:7px;min-height:40px;padding:7px 10px;border:1px solid #c8dce5;border-radius:9px;background:#fff;color:#176080;font-weight:800}
+.crew-trip-date-picker span{font-size:12px}
+.crew-trip-date-picker input{min-width:138px;border:0;background:transparent;color:#173a4d;font:inherit;font-weight:700;outline:none}
+@media(max-width:650px){.crew-trip-date-picker{width:100%;justify-content:space-between}.crew-trip-date-picker input{min-width:0;flex:1}}
