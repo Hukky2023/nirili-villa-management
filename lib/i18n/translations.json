@@ -5549,5 +5549,54 @@
     "Explora el mundo submarino alrededor de Dhiffushi.",
     "Dhiffushi-এর চারপাশের পানির নিচের জগৎ ঘুরে দেখুন।",
     "Исследуйте подводный мир вокруг Dhiffushi."
+  ],
+  "My bill": [
+    "我的账单",
+    "Il mio conto",
+    "Mi cuenta",
+    "আমার বিল",
+    "Мой счёт"
+  ],
+  "Prefer a private or custom transfer? Request one below. Reception will confirm arrangements.": [
+    "想要私人或定制接送？请在下方提交请求，前台将确认安排。",
+    "Preferisci un trasferimento privato o personalizzato? Richiedilo qui sotto. La reception confermerà l'organizzazione.",
+    "¿Prefieres un traslado privado o personalizado? Solicítalo abajo. Recepción confirmará los detalles.",
+    "প্রাইভেট বা কাস্টম ট্রান্সফার চান? নিচে অনুরোধ করুন। রিসেপশন ব্যবস্থা নিশ্চিত করবে।",
+    "Предпочитаете частный или индивидуальный трансфер? Оставьте запрос ниже. Ресепшен подтвердит детали."
+  ],
+  "Airport → Dhiffushi": [
+    "机场 → Dhiffushi",
+    "Aeroporto → Dhiffushi",
+    "Aeropuerto → Dhiffushi",
+    "এয়ারপোর্ট → Dhiffushi",
+    "Аэропорт → Dhiffushi"
+  ],
+  "Dhiffushi → Airport": [
+    "Dhiffushi → 机场",
+    "Dhiffushi → Aeroporto",
+    "Dhiffushi → Aeropuerto",
+    "Dhiffushi → এয়ারপোর্ট",
+    "Dhiffushi → Аэропорт"
+  ],
+  "/ person": [
+    "/ 人",
+    "/ persona",
+    "/ persona",
+    "/ জন",
+    "/ человек"
+  ],
+  "Shared speedboat arrival transfer, per person. Add your flight details and preferred time. Reception confirms the available departure.": [
+    "共享快艇抵达接送，按人收费。请填写航班信息和首选时间，前台将确认可用班次。",
+    "Trasferimento di arrivo in motoscafo condiviso, per persona. Inserisci i dettagli del volo e l'orario preferito. La reception confermerà la partenza disponibile.",
+    "Traslado de llegada en lancha rápida compartida, por persona. Añade los datos de tu vuelo y la hora preferida. Recepción confirmará la salida disponible.",
+    "শেয়ার্ড স্পিডবোটে আগমনের ট্রান্সফার, প্রতি ব্যক্তি। ফ্লাইটের তথ্য ও পছন্দের সময় দিন। রিসেপশন উপলভ্য যাত্রার সময় নিশ্চিত করবে।",
+    "Трансфер по прибытии на общем скоростном катере, цена за человека. Укажите данные рейса и желаемое время. Ресепшен подтвердит доступный рейс."
+  ],
+  "Shared speedboat departure transfer, per person. Include your flight time so reception can help arrange a suitable boat.": [
+    "共享快艇离岛接送，按人收费。请填写航班时间，以便前台协助安排合适的快艇。",
+    "Trasferimento di partenza in motoscafo condiviso, per persona. Inserisci l'orario del volo così la reception potrà aiutarti a organizzare una barca adatta.",
+    "Traslado de salida en lancha rápida compartida, por persona. Incluye la hora de tu vuelo para que recepción pueda ayudarte a organizar una lancha adecuada.",
+    "শেয়ার্ড স্পিডবোটে প্রস্থানের ট্রান্সফার, প্রতি ব্যক্তি। ফ্লাইটের সময় দিন যাতে রিসেপশন উপযুক্ত বোটের ব্যবস্থা করতে পারে।",
+    "Трансфер при выезде на общем скоростном катере, цена за человека. Укажите время рейса, чтобы ресепшен помог подобрать подходящий катер."
   ]
 }
