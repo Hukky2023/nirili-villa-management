@@ -91,7 +91,9 @@ export async function GET(r:Request){
  try{
   await clearExistingRequestCreatedSchedulesOnce();
   await ensureStandardDailyExcursions(date);
-  const raw=await schedulesForDate(date);
+  const rawAll=await schedulesForDate(date);
+  // Cancelled trips remain stored for history/audit, but are removed from the live admin schedule screen.
+  const raw=rawAll.filter((schedule:any)=>schedule.status!=='Cancelled');
   const {state}=await loadStays(),orders=Array.isArray(state.orders)?state.orders:[];
   const schedules=raw.map((s:any)=>{
    const confirmedOrders=orders.filter((o:any)=>matches(o,s)&&isConfirmed(o)&&!o.separateVessel);
