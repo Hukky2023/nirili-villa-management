@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useRef,useState} from 'react';
-import {CalendarDays,Clock3,MapPin,Navigation,RefreshCw,ShieldCheck,StopCircle,TriangleAlert,Ship,UsersRound} from 'lucide-react';
+import {CalendarDays,Clock3,MapPin,ShieldCheck,TriangleAlert,Ship,UsersRound} from 'lucide-react';
 import SessionButton from '../session-button';
 import './style.css';
 
@@ -69,15 +69,7 @@ export default function CrewLocationPortal(){
  }
 
  return <main className="crew-location-page">
-  <header className="crew-location-top"><div><small>NIRILI TOURS · CREW</small><h1>Crew location</h1><p>{profile?.name||'Crew member'} · {profile?.username||''}</p></div><SessionButton signedIn inline/></header>
-  <section className="crew-location-card">
-   <div className="crew-location-icon"><Navigation size={32}/></div>
-   <div><h2>{sharing?'Live location is sharing':'Share your location with Admin'}</h2><p>Use this while you are on duty so Admin can see your latest position. Your browser will ask for location permission.</p></div>
-   <div className="crew-location-actions">
-    {!sharing?<button type="button" className="primary" disabled={busy} onClick={startSharing}><MapPin size={18}/>{busy?'Getting location…':'Start sharing live location'}</button>:<button type="button" className="danger" disabled={busy} onClick={stopSharing}><StopCircle size={18}/>Stop sharing</button>}
-    <button type="button" disabled={busy} onClick={load}><RefreshCw size={17}/>Refresh</button>
-   </div>
-  </section>
+  <header className="crew-location-top"><div><small>NIRILI TOURS · CREW</small><h1>Crew location</h1><p>{profile?.name||'Crew member'} · {profile?.username||''}</p></div><div className="crew-top-actions"><button type="button" className={'crew-location-toggle '+(sharing?'sharing':'not-sharing')} disabled={busy} onClick={()=>sharing?void stopSharing():startSharing()} aria-label={sharing?'Stop sharing live location':'Start sharing live location'} title={sharing?'Location sharing is ON — tap to stop':'Location sharing is OFF — tap to start'}><MapPin size={21}/><span>{busy?'…':sharing?'Sharing':'Not sharing'}</span></button><SessionButton signedIn inline/></div></header>
   <section className="crew-trip-section">
    <header><div><small>MY ASSIGNED TRIPS</small><h2>{viewDate===today?"Today's excursion assignments":'Assigned trips · '+viewDate.split('-').reverse().join('-')}</h2><p>Select a date to see only the excursions assigned to you for that day.</p></div><div className="crew-trip-header-actions"><div className="crew-trip-date-controls"><button type="button" className={viewDate===today?'active':''} onClick={()=>setSelectedDate(today)}><CalendarDays size={16}/>Today trips</button><label className="crew-trip-date-picker"><CalendarDays size={16}/><span>Date</span><input type="date" min={today} value={viewDate} onChange={e=>setSelectedDate(e.target.value||today)}/></label><button type="button" onClick={()=>setFutureOpen(true)}><CalendarDays size={16}/>Future trips{futureTrips.length?<span>{futureTrips.length}</span>:null}</button></div></div></header>
    {!selectedTrips.length?<div className="crew-trip-empty"><CalendarDays size={28}/><strong>No trips assigned for {viewDate===today?'today':viewDate.split('-').reverse().join('-')}</strong><span>Select another date to check your assigned excursions.</span></div>:<div className="crew-trip-grid">{selectedTrips.map((trip:any)=><article key={trip.key}><div className="crew-trip-date"><CalendarDays size={17}/><strong>{trip.date.split('-').reverse().join('-')}</strong><span><Clock3 size={15}/>{trip.time} · Maldives time</span></div><h3>{trip.tripNames.join(' + ')}</h3><div className="crew-trip-operation-details"><div><Ship size={17}/><span>Assigned vessel</span><strong>{trip.vessel||'Not assigned'}</strong></div><div><UsersRound size={17}/><span>Confirmed pax</span><strong>{Number(trip.pax)||0}</strong></div><div className="other-crew"><UsersRound size={17}/><span>Other crew</span><strong>{trip.otherCrew?.length?trip.otherCrew.join(', '):'No other crew assigned'}</strong></div><div className="trip-status-detail"><Clock3 size={17}/><span>Excursion status</span><strong>{trip.tripStatus||'Excursion scheduled'}</strong></div></div><div className="crew-trip-meta"><span className="trip-status">{trip.tripStatus||'Excursion scheduled'}</span>{trip.request&&<span className="pending">Request pending</span>}</div>{trip.request?<div className="crew-trip-request-status"><strong>Unable-to-go request sent</strong><p>{trip.request.reason}</p><small>Waiting for Admin decision.</small></div>:<button type="button" className="crew-unable-btn" onClick={()=>{setUnavailableTrip(trip);setReason('');setError('')}}><TriangleAlert size={17}/>I am unable to go</button>}</article>)}</div>}
