@@ -80,7 +80,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
         if ([401, 403, 404].includes(response.status)) setManifest(null);
         throw new Error(result.error || 'Could not load the guest list.');
       }
-      if (result.manifest?.trip?.id !== scheduleId || !Array.isArray(result.manifest?.bookings) || !result.manifest?.totals) {
+      if (result.manifest?.trip?.id !== scheduleId || result.manifest?.trip?.date !== date || !Array.isArray(result.manifest?.bookings) || !result.manifest?.totals) {
         throw new Error('The guest list could not be read. Please refresh.');
       }
       applyManifest(result.manifest, !background); setError('');
@@ -304,7 +304,7 @@ function GuestListDialog({scheduleId, tripName, date, onClose}: Props & {onClose
     <footer className="excursion-guest-footer">
       {manifest && <div className="excursion-guest-totals" aria-live="polite"><div><span>Confirmed bookings: <strong>{manifest.totals.bookings}</strong></span><span>Total guests: <strong>{manifest.totals.pax}</strong></span><span>Boarded: <strong>{boarded}</strong></span><span>Did not board: <strong>{notBoarded}</strong></span></div>
         <small>{manifest.totals.sharedTrips > 1 ? 'Shared boat occupancy' : 'Scheduled boat occupancy'}: {manifest.totals.boatPax} / {manifest.totals.capacity}
-          {manifest.totals.sharedTrips > 1 && <> across {manifest.totals.sharedTrips} excursions; this list includes all confirmed guests sharing the departure.</>}
+          {manifest.totals.sharedTrips > 1 && <> across {manifest.totals.sharedTrips} excursions; this guest list shows only the selected trip. Other trips are included in the boat occupancy, not this list.</>}
           {manifest.totals.extraVesselPax > 0 && <> · {manifest.totals.extraVesselPax} guests on extra vessels.</>}</small>
       </div>}
       <button type="button" className="excursion-guest-button" disabled={savingAttendance||statusBusy} onClick={onClose}>Close</button>

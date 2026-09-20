@@ -26,43 +26,53 @@ const boatKey = (s: ManifestSchedule) => s.sharedGroup
   ? JSON.stringify([s.date, s.time, 'group', s.sharedGroup])
   : s.vesselId ? JSON.stringify([s.date, s.time, 'vessel', s.vesselId]) : '';
 
-/** Read-only manifest. An explicit schedule ID always wins over names and dates. */
+const isCancelledSchedule = (schedule: ManifestSchedule) => ['cancelled', 'canceled'].includes(text(schedule.status).toLowerCase());
+
+/** Read-only manifest. Match explicit schedule IDs within the booked date, never across days. */
 export function buildExcursionManifest(
   selected: ManifestSchedule, schedules: ManifestSchedule[],
   state: {orders?: any[]; stays?: any[]},
   resources: {vessels: any[]; crew: any[]}, isPaid: (order: any) => boolean,
+  scope: 'trip' | 'departure' = 'trip',
 ): ExcursionManifest {
   // Standard daily schedules intentionally reuse the same schedule id on different dates.
   // Resolve a booking by schedule id + booked date so guests from another day never leak
   // into this manifest.
-  const byIdDate = new Map(schedules.map(s => [JSON.stringify([s.date, s.id]), s]));
+  // The timetable filters cancelled rows before calling us, while View loads the full
+  // day's records. Apply the same filter here so both callers resolve the same guests.
+  const activeSchedules = schedules.filter(s => !isCancelledSchedule(s));
+  const byIdDate = new Map(activeSchedules.map(s => [JSON.stringify([s.date, s.id]), s]));
   const byId = new Map<string, ManifestSchedule[]>();
-  for (const s of schedules) byId.set(s.id, [...(byId.get(s.id) || []), s]);
+  for (const s of activeSchedules) byId.set(s.id, [...(byId.get(s.id) || []), s]);
   const byDeparture = new Map<string, ManifestSchedule[]>();
-  for (const s of schedules) {
+  for (const s of activeSchedules) {
     const key = departureKey(s.date, s.time, s.name);
     byDeparture.set(key, [...(byDeparture.get(key) || []), s]);
   }
   const key = boatKey(selected);
-  const shared = key ? schedules.filter(s => boatKey(s) === key) : [selected];
+  const shared = isCancelledSchedule(selected) ? [] : key ? activeSchedules.filter(s => boatKey(s) === key) : [selected];
   const boatIds = new Set(shared.map(s => s.id));
   const stays = new Map((state.stays || []).map(s => [s.id, s]));
   const bookings: ConfirmedExcursionBooking[] = [];
+  const seenBookingIds = new Set<string>();
   let boatPax = 0;
 
   for (const order of state.orders || []) {
     if (!isConfirmedExcursion(order)) continue;
+    const bookedDate = text(order.date) || text(order.schedule?.date);
+    if (bookedDate && bookedDate !== text(selected.date)) continue;
     let schedule: ManifestSchedule | undefined;
     if (text(order.scheduleId)) {
-      const bookedDate = text(order.date) || text(order.schedule?.date);
       schedule = bookedDate ? byIdDate.get(JSON.stringify([bookedDate, text(order.scheduleId)])) : undefined;
-      if (!schedule) {
+      // Only undated legacy records may use a unique-ID fallback. A known date
+      // must never fall back to the same repeating daily ID on a different date.
+      if (!bookedDate) {
         const idMatches = byId.get(text(order.scheduleId)) || [];
         if (idMatches.length === 1) schedule = idMatches[0];
       }
     } else {
       const stored = order.schedule || {};
-      const matches = byDeparture.get(departureKey(stored.date || order.date, stored.time || order.time, order.name)) || [];
+      const matches = byDeparture.get(departureKey(bookedDate, text(order.time) || text(stored.time), order.name)) || [];
       if (matches.length === 1) schedule = matches[0];
       else if (text(stored.vesselId)) {
         const sameVessel = matches.filter(s => s.vesselId === stored.vesselId);
@@ -71,16 +81,19 @@ export function buildExcursionManifest(
       }
     }
     if (!schedule) continue;
+    const bookingId = text(order.id);
+    if (bookingId && seenBookingIds.has(bookingId)) continue;
     const onSharedScheduledBoat = boatIds.has(schedule.id) && schedule.date === selected.date && !order.separateVessel;
     if (onSharedScheduledBoat) {
-      // Shared departures use one physical boat, so occupancy must include passengers from
-      // every excursion on that boat. The guest-list dialog, however, belongs to one
-      // schedule only and must never show passengers booked on a sibling excursion.
+      if (bookingId) seenBookingIds.add(bookingId);
+      // Count all seats on the shared boat, but keep View on the selected trip.
+      // Only the server's physical-departure attendance checks request the full roster.
       boatPax += count(order.quantity);
-      if (schedule.id === selected.id) {
+      if (scope === 'departure' || schedule.id === selected.id) {
         bookings.push(toConfirmedExcursionBooking(order, stays.get(order.stayId), schedule, resources, isPaid(order)));
       }
     } else if (schedule.id === selected.id && schedule.date === selected.date && order.separateVessel) {
+      if (bookingId) seenBookingIds.add(bookingId);
       // Keep extra-vessel bookings for the selected excursion visible, while the scheduled
       // boat passenger total stays aligned with the timetable occupancy.
       bookings.push(toConfirmedExcursionBooking(order, stays.get(order.stayId), schedule, resources, isPaid(order)));

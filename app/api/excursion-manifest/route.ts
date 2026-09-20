@@ -37,11 +37,11 @@ function schedulesOnly(rows: any[]): ManifestSchedule[] {
   return rows.map(({_key, _revision, ...schedule}) => schedule);
 }
 
-function manifestFor(selected: any, schedules: ManifestSchedule[], state: any) {
-  return buildExcursionManifest(selected, schedules, state, excursionResources(state), order => excursionPaid(order, state));
+function manifestFor(selected: any, schedules: ManifestSchedule[], state: any, scope: 'trip' | 'departure' = 'trip') {
+  return buildExcursionManifest(selected, schedules, state, excursionResources(state), order => excursionPaid(order, state), scope);
 }
 
-/** Staff-only guest manifest for one physical excursion departure. */
+/** Staff-only guest list for the selected scheduled trip and date. */
 export async function GET(request: Request) {
   try {
     const user = await currentUser();
@@ -129,11 +129,14 @@ export async function PATCH(request: Request) {
       if (nextIndex !== currentIndex + 1) throw Error('Follow the trip sequence: Excursion scheduled → Guests boarded & Departed → Arrived & Completed.');
 
       if (nextStatus === 'Guests boarded & Departed') {
-        if (!currentManifest.bookings.length) throw Error('There are no confirmed guests to board.');
-        if (currentManifest.bookings.some(booking => !booking.attendanceReviewedAt || booking.people.some(person => !person.nameRecorded))) {
-          throw Error('Save the complete guest-name and boarding checklist before marking Guests boarded.');
+        // Trip lists are separate, but the status transition below covers the physical
+        // shared departure. Require every sibling trip's attendance to be reviewed first.
+        const departureManifest = manifestFor(selected, schedules, state, 'departure');
+        if (!departureManifest.bookings.length) throw Error('There are no confirmed guests to board.');
+        if (departureManifest.bookings.some(booking => !booking.attendanceReviewedAt || booking.people.some(person => !person.nameRecorded))) {
+          throw Error('Save the guest-name and boarding checklist for every trip sharing this departure before marking Guests boarded.');
         }
-        const boarded = currentManifest.bookings.flatMap(booking => booking.people).filter(person => person.boarded).length;
+        const boarded = departureManifest.bookings.flatMap(booking => booking.people).filter(person => person.boarded).length;
         if (!boarded) throw Error('Tick at least one guest as boarded before continuing.');
       }
 
