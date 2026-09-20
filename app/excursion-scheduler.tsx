@@ -63,6 +63,23 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
  async function loadMenu(silent=false){if(!silent)setMessage('');try{const r=await fetch('/api/excursion-menu',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not load excursion menu');setMenu(d.items||[]);}catch(e){if(!silent)setMessage((e as Error).message);}}
  useEffect(()=>{if(tab==='Schedule')load(date);if(tab==='Crew members')void loadCrewTripRequests(true);if(tab==='Excursion menu')loadMenu()},[date,tab]);
  useEffect(()=>{const onRefresh=()=>{if(tab==='Schedule')void load(date,true);if(tab==='Crew members')void loadCrewTripRequests(true);if(tab==='Excursion menu')void loadMenu(true)};window.addEventListener('nirili:auto-refresh',onRefresh);return()=>window.removeEventListener('nirili:auto-refresh',onRefresh)},[date,tab]);
+ useEffect(()=>{
+  if(tab!=='Schedule'||date!==maldivesToday()||loading||!schedules.length)return;
+  const scheduledTrips=schedules.filter((item:any)=>item.status!=='Cancelled');
+  const tripsToCheck=scheduledTrips.length?scheduledTrips:schedules;
+  const endTimes=tripsToCheck.map((item:any)=>String(item.endTime||inferTripEndTime(item.name,item.time)||'')).filter((value:string)=>/^\d{2}:\d{2}$/.test(value));
+  if(!endTimes.length)return;
+  const lastEndMinutes=Math.max(...endTimes.map((value:string)=>{const [hour,minute]=value.split(':').map(Number);return hour*60+minute;}));
+  const advanceIfFinished=()=>{
+   if(date!==maldivesToday())return;
+   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Indian/Maldives',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());
+   const hour=Number(parts.find(part=>part.type==='hour')?.value||0),minute=Number(parts.find(part=>part.type==='minute')?.value||0);
+   if(hour*60+minute>=lastEndMinutes)setDate(shiftDate(date,1));
+  };
+  advanceIfFinished();
+  const timer=window.setInterval(advanceIfFinished,30000);
+  return()=>window.clearInterval(timer);
+ },[tab,date,schedules,loading]);
  async function reviewCrewTripRequest(request:any,decision:'Approved'|'Declined'){
   if(crewRequestBusy)return;
   let decisionNote='',replacementCrewId='';
