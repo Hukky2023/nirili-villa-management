@@ -101,14 +101,17 @@ export async function PATCH(r:Request){
  if(!hasPermission(user,'buggy_driver')||!sameOrigin(r))return Response.json({error:'Buggy Driver access required.'},{status:403});
  try{
   const b=await r.json(),id=String(b.id||'').slice(0,120),action=String(b.action||'');
-  if(!id||!['arrived','boarded','dinner-dropoff','return-arrived','return-boarded','return-complete'].includes(action))throw Error('Choose a valid pickup action.');
+  if(!id||!['arrived','boarded','cancel','dinner-dropoff','return-arrived','return-boarded','return-complete'].includes(action))throw Error('Choose a valid pickup action.');
   const {state,revision}=await loadStays();
   const manual=(state.buggyBookings||[]).find((o:any)=>o.id===id&&o.cancelled!==true);
   const order=manual||(state.orders||[]).find((o:any)=>o.id===id&&confirmed(o)&&(!!o.stayId||o.buggyRequested===true));
   if(!order)throw Error('Pickup booking not found or no longer active.');
   const now=new Date().toISOString();
   const roundTrip=!manual&&isRomanticBeachDinner(order)&&!!order.buggyRoundTrip;
-  if(action==='arrived'){
+  if(action==='cancel'){
+   if(!manual)throw Error('Only manual buggy bookings can be cancelled from the Buggy Driver screen.');
+   order.cancelled=true;order.cancelledAt=now;order.cancelledBy=user?.username||user?.displayName||'buggy-driver';order.buggyStatus='Cancelled';
+  }else if(action==='arrived'){
    if(!order.buggyArrivedAt){
     order.buggyArrivedAt=now;
     order.buggyArrivedBy=user?.username||user?.displayName||'buggy-driver';
@@ -138,6 +141,6 @@ export async function PATCH(r:Request){
   }
   const saved=await saveStayAccess(state,revision,user?.userId||'buggy-driver');
   if(!saved)return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
-  return Response.json({ok:true,pickup:manual?manualPickupFor(order):pickupFor(order,state)},{headers:{'Cache-Control':'no-store'}});
+  return Response.json(action==='cancel'?{ok:true,cancelled:true,id}:{ok:true,pickup:manual?manualPickupFor(order):pickupFor(order,state)},{headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not update pickup.'},{status:400});}
 }
