@@ -31,7 +31,9 @@ export default function WalkInExcursions(){
   try{
    const guests=[{name:name.trim(),ageCategory:leadAge},...companions.map(guest=>({name:String(guest.name||'').trim(),ageCategory:String(guest.ageCategory||'')}))];
    if(guests.some(guest=>!guest.name||!guest.ageCategory)){throw Error('Enter the name and age category for every guest.');}
-   const r=await fetch('/api/walkin-excursions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone:phone.replace(/[\s()-]/g,''),hotel,room,departureDate,guests})}),d=await r.json();
+   const normalizedPhone=phone.replace(/[\s()-]/g,'');
+   if(!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)){throw Error('Enter a valid WhatsApp / contact number with country code, for example +960…');}
+   const r=await fetch('/api/walkin-excursions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone:normalizedPhone,hotel,room,departureDate,guests})}),d=await r.json();
    if(!r.ok)throw Error(d.error||'Could not create temporary login.');
    setAccount(d.account);setLoginUser(d.account.username);setLoginPassword(d.account.password);
   }catch(e){setError((e as Error).message);}finally{setBusy(false);}
@@ -82,7 +84,7 @@ export default function WalkInExcursions(){
      <label><UiText>Hotel / guesthouse / location</UiText><UiField as="input" required maxLength={150} value={hotel} onChange={e=>setHotel(e.target.value)} placeholder="Where you are staying"/></label>
      <label><UiText>Room number (optional)</UiText><UiField as="input" maxLength={50} value={room} onChange={e=>setRoom(e.target.value)} placeholder="Room number"/></label>
      <label><UiText>Staying until</UiText><DateFieldDMY required value={departureDate} min={today||undefined} onChange={setDepartureDate} ariaLabel="Departure date from Dhiffushi"/></label>
-     <label><UiText>WhatsApp / contact (optional)</UiText><UiField as="input" type="tel" maxLength={30} autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+960…"/></label>
+     <label><UiText>WhatsApp / contact</UiText><UiField as="input" type="tel" required maxLength={30} autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+960…"/><small><UiText>Required. Include country code, for example +960…</UiText></small></label>
     </div>
    </section>
 
