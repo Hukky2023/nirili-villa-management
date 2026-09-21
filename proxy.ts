@@ -1,5 +1,5 @@
 import {NextResponse,NextRequest} from 'next/server';
-export function middleware(request:NextRequest){
+export function proxy(request:NextRequest){
  const url=new URL(request.url),id=url.searchParams.get('tab')||'',valid=/^[a-f0-9]{32}$/.test(id);
  if(!valid&&!url.pathname.startsWith('/api/')&&request.method==='GET'){
   url.searchParams.set('tab',crypto.randomUUID().replace(/-/g,''));const response=NextResponse.redirect(url);response.headers.set('Cache-Control','private, no-store');return response;
