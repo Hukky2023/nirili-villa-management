@@ -8,7 +8,7 @@ import {useEffect,useState} from "react";
 import "./accounts.css";
 import AccountPassword from "./account-password";
 import GuestAccountForm from "./guest-account-form";
-const options=[["guesthouse_reception","Guest house reception: bookings, rooms, guests and check-in/out"],["waiter_pos","Waiter: tables and orders"],["restaurant_pos","Restaurant POS, kitchen and payments"],["kitchen_pos","Kitchen: active orders and preparation status only"],["edit_bills","Edit bills (discounts: Admin only)"],["edit_excursions","Edit excursions"],["edit_transfers","Edit transportation"],["buggy_driver","Buggy driver: pickup list, arrival notifications and boarding"],["crew_location","Crew member: share live location with Admin"]];
+const options=[["guesthouse_reception","Guest house reception: bookings, rooms, guests and check-in/out"],["excursions_manager","Excursions manager: schedules, vessels, crew and accessories"],["waiter_pos","Waiter: tables and orders"],["restaurant_pos","Restaurant POS, kitchen and payments"],["kitchen_pos","Kitchen: active orders and preparation status only"],["edit_bills","Edit bills (discounts: Admin only)"],["edit_excursions","Edit excursions"],["edit_transfers","Edit transportation"],["buggy_driver","Buggy driver: pickup list, arrival notifications and boarding"],["crew_location","Crew member: share live location with Admin"]];
 export default function StaffAccounts(){
 const [users,setUsers]=useState<any[]>([]),[query,setQuery]=useState(""),[roleFilter,setRoleFilter]=useState("All"),[directoryView,setDirectoryView]=useState<'active'|'disabled'>('active'),[createOpen,setCreateOpen]=useState(false),[createType,setCreateType]=useState<''|'staff'|'guest'>('');
 const [form,setForm]=useState({name:"",username:"",email:"",password:"",permissions:[] as string[]}),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
@@ -45,6 +45,7 @@ function accountCategory(u:any){
 function staffAccessProfile(u:any){
  if(u.role!=='staff')return '';
  if(u.permissions.includes('guesthouse_reception'))return 'Guest House Reception';
+ if(u.permissions.includes('excursions_manager'))return 'Excursions Manager';
  if(u.permissions.includes('restaurant_pos'))return 'Cashier';
  if(u.permissions.includes('waiter_pos'))return 'Waiter';
  if(u.permissions.includes('kitchen_pos'))return 'Kitchen';
