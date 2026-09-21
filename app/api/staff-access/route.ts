@@ -4,7 +4,7 @@ import {authDb,currentUser,hashPassword,validPassword,sameOrigin,validEmail} fro
 import {walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
 import {appendAccountHistory,readAccountHistory,accountHistoryStatement,preserveAccountHistoryStatement} from '../../../lib/account-history';
 import {accountStays,historyFor} from '../../../lib/account-history-events';
-const permissions=["waiter_pos","restaurant_pos","kitchen_pos","edit_bills","edit_excursions","edit_transfers","buggy_driver","crew_location"];
+const permissions=["guesthouse_reception","waiter_pos","restaurant_pos","kitchen_pos","edit_bills","edit_excursions","edit_transfers","buggy_driver","crew_location"];
 
 export async function GET(){
  if((await currentUser())?.role!=="admin")return Response.json({error:"Admin access required"},{status:403});
