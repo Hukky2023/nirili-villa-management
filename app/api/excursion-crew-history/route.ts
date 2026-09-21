@@ -33,7 +33,7 @@ export async function GET(request:Request){
   const resources=excursionResources(state);
   let crewId=new URL(request.url).searchParams.get('crewId')?.trim()||'';
   let crew:any=null;
-  if(user.role==='admin'){
+  if(user.role==='admin'||hasPermission(user,'excursions_manager')){
    if(!validId(crewId))return Response.json({error:'Choose a crew member.'},{status:400,headers});
    crew=resources.crew.find((member:any)=>member.id===crewId);
   }else{
