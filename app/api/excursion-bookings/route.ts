@@ -12,7 +12,7 @@ const legacyKey = (date: unknown, time: unknown, name: unknown) => JSON.stringif
 export async function GET() {
   try {
     const user = await currentUser();
-    if (!hasPermission(user, 'edit_excursions')) {
+    if (!hasPermission(user, 'edit_excursions') && !hasPermission(user, 'excursions_manager')) {
       return Response.json({error: 'Excursion access is required.'}, {status: 403, headers});
     }
     const {state, revision} = await loadStays();
