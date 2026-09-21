@@ -6,7 +6,6 @@
     "orientation": "default",
     "userInterfaceStyle": "automatic",
     "scheme": "nirilivilla",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nirili.villa",
