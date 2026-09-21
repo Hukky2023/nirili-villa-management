@@ -2,7 +2,7 @@ import {sessionCookieName,currentTab} from './tab-session';
 import {env} from "cloudflare:workers";
 import {cookies} from "next/headers";
 
-export type Permission="waiter_pos"|"restaurant_pos"|"kitchen_pos"|"edit_bills"|"edit_excursions"|"edit_transfers"|"buggy_driver"|"crew_location";
+export type Permission="guesthouse_reception"|"waiter_pos"|"restaurant_pos"|"kitchen_pos"|"edit_bills"|"edit_excursions"|"edit_transfers"|"buggy_driver"|"crew_location";
 export type Actor={userId:string;username:string;email:string;displayName:string;role:"admin"|"staff"|"guest";permissions:Permission[]};
 export function authDb(){if(!env.DB)throw new Error("Account service unavailable");return env.DB;}
 export const cookieName="nirili_session";
