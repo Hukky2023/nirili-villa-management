@@ -20,8 +20,8 @@ jobs:
       run:
         working-directory: mobile
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22.13.0"
       - run: npm install
@@ -36,11 +36,11 @@ jobs:
       run:
         working-directory: mobile
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22.13.0"
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -54,10 +54,11 @@ jobs:
       - run: npx expo prebuild --platform android --clean --non-interactive
       - run: ./gradlew assembleDebug
         working-directory: mobile/android
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nirili-villa-android-debug
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
   ios-generate:
     runs-on: macos-latest
@@ -66,8 +67,8 @@ jobs:
       run:
         working-directory: mobile
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22.13.0"
       - run: npm install
