@@ -12,10 +12,10 @@ function canViewHotel(u:any){
  if(u.role==='admin')return true;
  if(u.role!=='staff')return false;
  if(u.permissions.length===0)return true;
- return u.permissions.some((p:string)=>['edit_bills','edit_excursions','edit_transfers'].includes(p));
+ return u.permissions.some((p:string)=>['guesthouse_reception','edit_bills','edit_excursions','edit_transfers'].includes(p));
 }
 export async function GET(){const u=await currentUser();if(!canViewHotel(u)||restaurantOnly(u))return Response.json({error:'Hotel management access required'},{status:403});try{return Response.json(await stayView(),{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
-export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();if(!hasPermission(u,'edit_bills'))return Response.json({error:'Admin or bill editing permission is required.'},{status:403});const {state,revision}=await loadStays();
+export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();const canManageStay=hasPermission(u,'guesthouse_reception')||hasPermission(u,'edit_bills');if(!canManageStay)return Response.json({error:'Reception or bill editing permission is required.'},{status:403});const {state,revision}=await loadStays();
 if(b.action==='create'){
  if(restaurantOnly(u))return Response.json({error:'Hotel booking access required.'},{status:403});
  const previous=state.stays.find((s:any)=>s.creationRequest===b.requestId&&s.createdBy===u.username);
@@ -45,7 +45,7 @@ if(b.action==='editbooking'||b.action==='deletebooking'){
  if(!await saveStayAccess(state,revision,u.userId,plan,revoke,details?.documents||[],details?.removed||[]))return Response.json({error:'Booking changed. Reopen it and try again.'},{status:409});
  return Response.json({booking:b.action==='editbooking'?booking:null,deleted:b.action==='deletebooking'});
 }
-const roomAction=['roomstatus','note'].includes(b.action);const s=roomAction?{room:b.room,history:[]}:state.stays.find((s:any)=>s.id===b.id);if(!s)return Response.json({error:'Booking not found'},{status:404});if(b.action==='payment'&&s.payments.some((p:any)=>p.id===b.requestId))return Response.json(await stayView());if(b.revision!==revision)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});let detail='';let loginPlan:any=null;let revoke:string[]=[];const room=state.rooms.find((x:any)=>x.number===s.room);if(!room)throw Error('Room not found.');const f=roomAction?null:await folioFor(s);
+if(['payment','markpaid','markunpaid'].includes(b.action)&&!hasPermission(u,'edit_bills'))return Response.json({error:'Bill editing permission is required for payment actions.'},{status:403});const roomAction=['roomstatus','note'].includes(b.action);const s=roomAction?{room:b.room,history:[]}:state.stays.find((s:any)=>s.id===b.id);if(!s)return Response.json({error:'Booking not found'},{status:404});if(b.action==='payment'&&s.payments.some((p:any)=>p.id===b.requestId))return Response.json(await stayView());if(b.revision!==revision)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});let detail='';let loginPlan:any=null;let revoke:string[]=[];const room=state.rooms.find((x:any)=>x.number===s.room);if(!room)throw Error('Room not found.');const f=roomAction?null:await folioFor(s);
 if(b.action==='markpaid'){s.markedUnpaid=false;if(f.balanceCents<0)throw Error('This booking has a credit balance. Review it before marking paid.');if(f.balanceCents>0)s.payments.push({id:crypto.randomUUID(),cents:f.balanceCents,method:'Marked paid',reference:'Full balance marked paid',date:new Date().toISOString(),by:u.username});s.paidBills={...(s.paidBills||{}),...Object.fromEntries(f.bills.filter((x:any)=>x.status!=='Cancelled').map((x:any)=>[billPaymentKey(x),x.totalCents]))};detail='All current bills marked paid · Payment received $'+(Math.max(0,f.balanceCents)/100).toFixed(2);}
 else if(b.action==='markunpaid'){
 const date=new Date().toISOString();let reversed=0;
