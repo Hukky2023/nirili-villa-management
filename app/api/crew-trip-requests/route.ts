@@ -101,7 +101,7 @@ export async function GET(){
  if(!user)return Response.json({error:'Login required.'},{status:401,headers});
  try{
   const schedules=await allSchedules(),requests=await allRequests();
-  if(user.role==='admin'){
+  if(user.role==='admin'||hasPermission(user,'excursions_manager')){
    const visible=requests.filter((request:any)=>request.status==='Pending'||Date.parse(request.createdAt||'')>Date.now()-30*86400000).sort((a:any,b:any)=>String(b.createdAt).localeCompare(String(a.createdAt)));
    return Response.json({mode:'admin',requests:visible.map((request:any)=>requestView(request,schedules)),pendingCount:visible.filter((request:any)=>request.status==='Pending').length},{headers});
   }
@@ -164,7 +164,7 @@ export async function POST(r:Request){
 
 export async function PATCH(r:Request){
  const user=await currentUser();
- if(!user||user.role!=='admin'||!sameOrigin(r))return Response.json({error:'Admin access required.'},{status:403,headers});
+ if(!user||(user.role!=='admin'&&!hasPermission(user,'excursions_manager'))||!sameOrigin(r))return Response.json({error:'Excursions manager access required.'},{status:403,headers});
  try{
   const b=await r.json(),id=text(b.id,100),decision=text(b.decision,20),decisionNote=text(b.decisionNote,500),replacementCrewId=text(b.replacementCrewId,120);
   if(!id||!['Approved','Declined'].includes(decision))throw Error('Choose Approve or Decline.');
