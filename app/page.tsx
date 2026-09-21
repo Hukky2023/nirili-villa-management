@@ -12,7 +12,7 @@ const portals=[["admin","Admin","Manage the property, staff and permissions."],[
 async function Portal({portal,room}:{portal:string;room?:string}){
 const user=await requireChatGPTUser("/?portal="+portal+(room?"&room="+encodeURIComponent(room):""));
 if(user.role==="staff"){
- const managementAccess=user.permissions.length===0||user.permissions.some(p=>["edit_bills","edit_excursions","edit_transfers"].includes(p));
+ const managementAccess=user.permissions.length===0||user.permissions.some(p=>["guesthouse_reception","edit_bills","edit_excursions","edit_transfers"].includes(p));
  const crewOnly=user.permissions.includes("crew_location")&&!managementAccess&&!restaurantOnly(user)&&!user.permissions.includes("buggy_driver");
  const buggyOnly=user.permissions.includes("buggy_driver")&&!managementAccess&&!restaurantOnly(user)&&!user.permissions.includes("crew_location");
  if(crewOnly)await tabRedirect('/crew');
