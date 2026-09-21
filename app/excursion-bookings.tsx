@@ -101,7 +101,7 @@ export default function ExcursionBookings() {
       {visible.length ? <div className="excursion-booking-list">{visible.map(b => <article className="excursion-confirmed-booking" key={b.id}>
         <header className="excursion-booking-card-head"><div><small>{b.id}</small><h4>{b.excursion}</h4></div><div className="excursion-booking-badges"><span className="confirmed">Confirmed</span><span className={b.pricing?.complimentary ? 'confirmed' : b.paymentStatus.toLowerCase()}>{b.pricing?.complimentary ? 'Complimentary / Free' : b.paymentStatus}</span>{b.privateBoatRequested&&<span className="buggy">Private boat +$50</span>}{b.buggyRequested&&<span className="buggy">{b.guestType==='In-house'?'Buggy included':'Buggy requested'}</span>}</div></header>
         <dl className="excursion-booking-overview">
-          <div><dt>Lead guest</dt><dd>{b.guest}<small>{b.guestType}</small>{b.groupName&&<small>Group: {b.groupName}</small>}</dd></div>
+          <div><dt>Lead guest</dt><dd>{b.guest}<small>{b.guestType}</small>{b.groupName&&<small>Group: {b.groupName}</small>}<small>Phone / WhatsApp: {b.phone ? <a href={'tel:'+b.phone}>{b.phone}</a> : 'Not recorded'}</small></dd></div>
           <div><dt>Hotel / room</dt><dd>{b.hotel || 'Hotel not recorded'}<small>{b.room ? 'Room ' + b.room : 'Room not recorded'}</small></dd></div>
           <div><dt>Booked for</dt><dd>{dateLabel(b.date)}<small>{b.serviceType==='romantic-beach-dinner'?(b.time?'Dinner time '+b.time+' · Maldives time':'Dinner time not assigned'):(b.time || 'Time not assigned yet')+(b.endTime?'–'+b.endTime:'')+' · Maldives time'}</small></dd></div>
           <div><dt>Booking created</dt><dd>{createdLabel(b.createdAt)}<small>Maldives time</small></dd></div>
@@ -110,7 +110,7 @@ export default function ExcursionBookings() {
         <ExcursionBillingActions booking={b} canAdjust={canAdjustBilling} revision={revision} onUpdated={() => load()}/>
         <details className="excursion-booking-details"><summary>View details<span className="excursion-booking-sr-only"> for {b.guest}, booking {b.id}</span></summary>
           <dl>
-            {b.groupName&&<div><dt>Family / group</dt><dd>{b.groupName}<small>{b.guests} guests under one booking</small></dd></div>}<div><dt>Phone / WhatsApp</dt><dd>{b.phone || 'Not recorded'}</dd></div>
+            {b.groupName&&<div><dt>Family / group</dt><dd>{b.groupName}<small>{b.guests} guests under one booking</small></dd></div>}<div><dt>Phone / WhatsApp</dt><dd>{b.phone ? <a href={'tel:'+b.phone}>{b.phone}</a> : 'Not recorded'}</dd></div>
             <div><dt>Vessel</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.vessel}{b.separateVessel && <small>Extra vessel booking</small>}</dd></div>
             <div><dt>Assigned crew</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.crew.length ? b.crew.join(', ') : 'Not assigned'}</dd></div>
             <div><dt>Trip status</dt><dd>{b.tripStatus}{b.endTime&&<small>Trip end: {b.endTime} · Maldives time</small>}{b.returnTime&&<small>Return pickup: {b.returnTime} · Maldives time</small>}{b.privateBoatRequested&&<small>Private boat surcharge: {money(b.privateBoatSurchargeCents)}</small>}</dd></div>
