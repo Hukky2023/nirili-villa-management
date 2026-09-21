@@ -20,11 +20,11 @@ function clean(raw:any,id?:string){
  const detail=String(raw?.detail||'').trim().slice(0,1000);
  return {id:recordId,kind:'excursion',name,cents,category,group:categoryGroup(category),pricingUnit,detail,active:raw?.active!==false,updatedAt:new Date().toISOString()};
 }
-function canEdit(user:any){return !!user&&user.role!=='guest'&&hasPermission(user,'edit_excursions');}
+function canEdit(user:any){return !!user&&user.role!=='guest'&&(hasPermission(user,'edit_excursions')||hasPermission(user,'excursions_manager'));}
 
 export async function GET(){
  const user=await currentUser();
- if(!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
+ if(!hasPermission(user,'edit_excursions')&&!hasPermission(user,'excursions_manager'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{return Response.json({items:await loadExcursionMenu()},{headers:{'Cache-Control':'no-store'}})}
  catch{return Response.json({error:'Could not load excursion menu.'},{status:503})}
 }
