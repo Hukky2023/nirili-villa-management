@@ -11,7 +11,7 @@ export async function GET(){
  const user=await currentUser();
  if(!user)return Response.json({error:'Login required.'},{status:401,headers});
  try{
-  if(user.role==='admin'||hasPermission(user,'edit_excursions')){
+  if(user.role==='admin'||hasPermission(user,'edit_excursions')||hasPermission(user,'excursions_manager')){
    const accounts=(await authDb().prepare("SELECT id,username,name,permissions,active FROM accounts WHERE role='staff' AND active=1 ORDER BY name").all<any>()).results||[];
    const crew=accounts.filter((a:any)=>{try{return JSON.parse(a.permissions||'[]').includes('crew_location')}catch{return false}});
    const rows=(await authDb().prepare('SELECT key,payload FROM operation_records WHERE key LIKE ?').bind(prefix+'%').all<any>()).results||[];
