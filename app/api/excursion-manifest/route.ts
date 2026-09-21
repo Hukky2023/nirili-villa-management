@@ -45,7 +45,7 @@ function manifestFor(selected: any, schedules: ManifestSchedule[], state: any, s
 export async function GET(request: Request) {
   try {
     const user = await currentUser();
-    if (!hasPermission(user, 'edit_excursions')) {
+    if (!hasPermission(user, 'edit_excursions') && !hasPermission(user, 'excursions_manager')) {
       return Response.json({error: 'Excursion access is required.'}, {status: 403, headers});
     }
     const url = new URL(request.url);
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   const user = await currentUser();
-  if (!hasPermission(user, 'edit_excursions') || !sameOrigin(request)) {
+  if (!hasPermission(user, 'edit_excursions') && !hasPermission(user, 'excursions_manager') || !sameOrigin(request)) {
     return Response.json({error: 'Excursion editing permission is required.'}, {status: 403, headers});
   }
   try {
