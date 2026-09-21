@@ -10,7 +10,7 @@ const headers = {'Cache-Control': 'private, no-store', 'Vary': 'Cookie'};
 export async function GET(request: Request) {
   try {
     const user = await currentUser();
-    if (!user || user.role === 'guest' || !hasPermission(user, 'edit_excursions')) {
+    if (!user || user.role === 'guest' || !hasPermission(user, 'edit_excursions') && !hasPermission(user, 'excursions_manager')) {
       return Response.json({error: 'Excursion access is required.'}, {status: 403, headers});
     }
     const date = new URL(request.url).searchParams.get('date') || '';
