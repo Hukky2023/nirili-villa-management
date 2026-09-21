@@ -11,12 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import {
-  WebView,
-  type WebViewNavigation,
-  type WebViewNavigationEvent,
-  type WebViewErrorEvent,
-} from "react-native-webview";
+import { WebView } from "react-native-webview";
 
 import {
   HOTEL_SYSTEM_URL,
@@ -24,10 +19,11 @@ import {
   isInternalUrl,
 } from "./config";
 
-const USER_AGENT_SUFFIX = " NiriliVillaMobile/1.0";
+const USER_AGENT_SUFFIX = "NiriliVillaMobile/1.0";
+const NativeWebView = WebView as unknown as React.ComponentType<any>;
 
 export default function App() {
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<any>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [loadKey, setLoadKey] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -58,8 +54,8 @@ export default function App() {
     return () => subscription.remove();
   }, [canGoBack]);
 
-  const handleNavigation = useCallback((navigation: WebViewNavigation) => {
-    setCanGoBack(navigation.canGoBack);
+  const handleNavigation = useCallback((navigation: any) => {
+    setCanGoBack(Boolean(navigation?.canGoBack));
   }, []);
 
   const handleShouldStart = useCallback((request: { url: string }) => {
@@ -77,11 +73,11 @@ export default function App() {
     return true;
   }, []);
 
-  const handleLoadEnd = useCallback((_event: WebViewNavigationEvent) => {
+  const handleLoadEnd = useCallback(() => {
     setLoading(false);
   }, []);
 
-  const handleError = useCallback((_event: WebViewErrorEvent) => {
+  const handleError = useCallback(() => {
     setLoading(false);
     setFailed(true);
   }, []);
@@ -113,7 +109,7 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.container}>
-        <WebView
+        <NativeWebView
           key={loadKey}
           ref={webViewRef}
           source={{ uri: HOTEL_SYSTEM_URL }}
@@ -133,7 +129,7 @@ export default function App() {
           onLoadStart={() => setLoading(true)}
           onLoadEnd={handleLoadEnd}
           onError={handleError}
-          applicationNameForUserAgent={USER_AGENT_SUFFIX.trim()}
+          applicationNameForUserAgent={USER_AGENT_SUFFIX}
           startInLoadingState
           renderLoading={() => (
             <View style={styles.loadingOverlay}>
@@ -166,7 +162,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
