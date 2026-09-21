@@ -86,7 +86,7 @@ async function schedulesForDate(date:string){
 
 export async function GET(r:Request){
  const user=await currentUser();
- if(!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
+ if(!hasPermission(user,'edit_excursions')&&!hasPermission(user,'excursions_manager'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  const date=new URL(r.url).searchParams.get('date')||'';
  if(!validDate(date))return Response.json({error:'Valid schedule date required.'},{status:400});
  try{
@@ -132,13 +132,13 @@ export async function GET(r:Request){
    quotedCents:Math.max(0,Number(o.quotedCents)||0),unitPriceCents:Math.max(0,Number(o.unitPriceCents)||0),pricingUnit:o.pricingUnit||'guest',
    buggyRequested:!!o.buggyRequested,privateBoatRequested:!!o.privateBoatRequested,privateBoatSurchargeCents:Number(o.privateBoatSurchargeCents)||0,preferredTime:o.preferredTime||'',preferredEndTime:o.preferredEndTime||'',serviceType:o.serviceType||'',serviceRequest:!!o.serviceRequest,notes:o.notes||'',source:o.source||'',createdAt:o.createdAt||''
   }));
-  return Response.json({date,schedules:enriched,sharedBoatGroups:groups,unscheduledRequests,canEdit:hasPermission(user,'edit_excursions')},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({date,schedules:enriched,sharedBoatGroups:groups,unscheduledRequests,canEdit:hasPermission(user,'edit_excursions')||hasPermission(user,'excursions_manager')},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Could not load excursion schedules.'},{status:503});}
 }
 
 export async function POST(r:Request){
  const user=await currentUser();
- if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
+ if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions')&&!hasPermission(user,'excursions_manager'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{
   const input=await r.json(),{state}=await loadStays();
   const body=await clean(input,state),crew=excursionResources(state).crew;
@@ -162,7 +162,7 @@ export async function POST(r:Request){
 
 export async function PUT(r:Request){
  const user=await currentUser();
- if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
+ if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions')&&!hasPermission(user,'excursions_manager'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{
   const raw=await r.json();
   const id=String(raw.id||'').slice(0,100),revision=Number(raw.revision);
@@ -199,7 +199,7 @@ export async function PUT(r:Request){
 
 export async function PATCH(r:Request){
  const user=await currentUser();
- if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
+ if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions')&&!hasPermission(user,'excursions_manager'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{
   const b=await r.json();
   if(b.action==='cancel-schedule'){
@@ -428,6 +428,6 @@ export async function PATCH(r:Request){
 
 export async function DELETE(r:Request){
  const user=await currentUser();
- if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
+ if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions')&&!hasPermission(user,'excursions_manager'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  return Response.json({error:'Scheduled excursions are not deleted. Use Cancel excursion and provide a reason.'},{status:400});
 }
