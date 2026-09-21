@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Nirili Villa",
+    "slug": "nirili-villa",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "scheme": "nirilivilla",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nirili.villa",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Nirili Villa uses the camera to upload guest passports, booking documents and operational photos.",
+        "NSPhotoLibraryUsageDescription": "Nirili Villa uses your photo library to upload guest passports, booking documents and operational photos.",
+        "NSPhotoLibraryAddUsageDescription": "Nirili Villa can save exported vouchers and bills when you choose to save them."
+      }
+    },
+    "android": {
+      "package": "com.nirili.villa",
+      "permissions": [
+        "CAMERA"
+      ],
+      "allowBackup": false
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "hotelSystemUrl": "https://nirili-villa.nirili-management.workers.dev"
+    }
+  }
+}
