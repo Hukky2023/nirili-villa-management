@@ -5,7 +5,7 @@ export function dashboardAccess(user:Row|null):DashboardAccess {
  const permissions=Array.isArray(user?.permissions)?user.permissions:[];
  const admin=user?.role==='admin',staff=user?.role==='staff';
  const has=(permission:string)=>admin||(staff&&permissions.includes(permission));
- return {hotel:admin||(staff&&(permissions.length===0||permissions.some((p:string)=>['edit_bills','edit_excursions','edit_transfers'].includes(p)))),revenue:has('edit_bills'),transfers:has('edit_transfers'),excursions:has('edit_excursions'),pos:admin||(staff&&permissions.some((p:string)=>['waiter_pos','restaurant_pos','kitchen_pos','edit_bills'].includes(p))),reports:admin};
+ return {hotel:admin||(staff&&(permissions.length===0||permissions.some((p:string)=>['guesthouse_reception','edit_bills','edit_excursions','edit_transfers'].includes(p)))),revenue:has('edit_bills'),transfers:has('edit_transfers'),excursions:has('edit_excursions'),pos:admin||(staff&&permissions.some((p:string)=>['waiter_pos','restaurant_pos','kitchen_pos','edit_bills'].includes(p))),reports:admin};
 }
 const list=(value:any):Row[]=>Array.isArray(value)?value.filter(x=>x&&typeof x==='object'):[];
 const text=(value:any)=>typeof value==='string'?value:'';
