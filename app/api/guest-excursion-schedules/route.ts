@@ -1,4 +1,4 @@
-import {authDb,currentUser,sameOrigin} from '../../../lib/auth';
+import {authDb,currentGuestUser,sameOrigin} from '../../../lib/auth';
 import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {catalog,excursionDeparturePassed,islandToday,validDate} from '../../../lib/guest-catalog';
@@ -124,7 +124,7 @@ async function schedulesForDate(date:string){
 }
 
 export async function GET(r:Request){
- const user=await currentUser();
+ const user=await currentGuestUser();
  if(!user||user.role!=='guest')return Response.json({error:'Guest login required.'},{status:403});
  const date=new URL(r.url).searchParams.get('date')||islandToday();
  if(!validDate(date))return Response.json({error:'Choose a valid date.'},{status:400});
@@ -159,7 +159,7 @@ export async function GET(r:Request){
 }
 
 export async function POST(r:Request){
- const user=await currentUser();
+ const user=await currentGuestUser();
  if(!user||user.role!=='guest'||!sameOrigin(r))return Response.json({error:'Guest login required.'},{status:403});
  try{
   const b=await r.json();
@@ -341,7 +341,7 @@ export async function POST(r:Request){
 }
 
 export async function PATCH(r:Request){
- const user=await currentUser();
+ const user=await currentGuestUser();
  if(!user||user.role!=='guest'||!sameOrigin(r))return Response.json({error:'Guest login required.'},{status:403});
  try{
   const b=await r.json(),bookingId=String(b.bookingId||'').slice(0,100),newDate=String(b.date||''),groupName=String(b.groupName||'').trim().replace(/\s+/g,' ').slice(0,100);
@@ -437,7 +437,7 @@ export async function PATCH(r:Request){
 }
 
 export async function DELETE(r:Request){
- const user=await currentUser();
+ const user=await currentGuestUser();
  if(!user||user.role!=='guest'||!sameOrigin(r))return Response.json({error:'Guest login required.'},{status:403});
  try{
   const b=await r.json(),bookingId=String(b.bookingId||'').slice(0,100);

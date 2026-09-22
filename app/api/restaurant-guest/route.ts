@@ -2,7 +2,7 @@ import {diningRoom,diningOrderRoom} from '../../../lib/dining-room';
 import {sessionCookieName} from '../../../lib/tab-session';
 import {mealItemIncluded,halfBoardFreeOrderAvailable} from '../../../lib/meal-access';
 import {cookies} from 'next/headers';
-import {currentUser,authDb,randomToken,digest,sameOrigin,limit} from '../../../lib/auth';
+import {currentGuestUser,authDb,randomToken,digest,sameOrigin,limit} from '../../../lib/auth';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {loadMenu} from '../../../lib/menu-server';
 import {restaurantTables} from '../../../lib/restaurant-tables';
@@ -12,12 +12,12 @@ async function identity(r:Request,create=false){
  const diningCookie=await sessionCookieName('nirili_dining');
  const requested=new URL(r.url).searchParams.get('mode');
  if(requested==='account'){
-  const u=await currentUser();
+  const u=await currentGuestUser();
   if(u?.role!=='guest'||!u.userId.startsWith('walkin-exc-'))throw Error('Sign in with your temporary walk-in guest account.');
   return {key:'guest:'+u.userId,mode:'account',user:u,token:'',fresh:false};
  }
  if(requested==='inhouse'){
-  const u=await currentUser();
+  const u=await currentGuestUser();
   if(u?.role!=='guest')throw Error('Sign in with your in-house guest account.');
   return {key:'guest:'+u.userId,mode:'inhouse',user:u,token:'',fresh:false};
  }

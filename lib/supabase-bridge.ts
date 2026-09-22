@@ -137,7 +137,7 @@ async function restUpsert(table:string,rows:any[],onConflict:string){
 export async function mirrorLegacyAccounts(rows:LegacyAccountRow[]){
   if(!supabaseBridgeConfigured()||!Array.isArray(rows)||!rows.length)return 0;
   const now=new Date().toISOString();
-  const values=rows.filter(row=>row.role!=='guest').map(row=>({
+  const values=rows.map(row=>({
     id:row.id,
     username:row.username,
     email:row.email||null,
@@ -236,7 +236,7 @@ async function syncMappedEmployeeMetadata(row:LegacyAccountRow){
 }
 
 export async function mirrorLegacyAccount(row:LegacyAccountRow){
-  if(!supabaseBridgeConfigured()||row.role==='guest')return false;
+  if(!supabaseBridgeConfigured())return false;
   const legacy={
     id:row.id,
     username:row.username,
@@ -342,6 +342,11 @@ export async function deactivateSupabaseAccount(legacyAccountId:string){
     method:'PATCH',
     headers:{Prefer:'return=minimal'},
     body:JSON.stringify({active:false,updated_at:new Date().toISOString()})
+  },'secret');
+  await sb('/rest/v1/guest_accounts?legacy_account_id=eq.'+encodeURIComponent(legacyAccountId),{
+    method:'PATCH',
+    headers:{Prefer:'return=minimal'},
+    body:JSON.stringify({active:false,valid_until:new Date().toISOString()})
   },'secret');
   return true;
 }

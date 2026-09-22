@@ -1,11 +1,12 @@
 import {toggleTransferPayment} from '../../../lib/transport-payment';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {canTransport,isTransportAgent,transportRole} from '../../../lib/transport-access';
-import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
+import {authDb,currentUser,currentGuestUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {restaurantOnly} from '../../../lib/pos-access';
 import {createTransfer,initialTransport,TransportState,Sailing} from '../../../lib/transport';
 import {mirrorTransportState,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 const key='transport-bookings-v1';
+async function transportUser(){return (await currentUser())||(await currentGuestUser());}
 async function load(){const row=await authDb().prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(key).first<any>();return {state:row?JSON.parse(row.payload) as TransportState:initialTransport(),revision:row?.revision||0};}
 async function loadForRead(){
  try{
@@ -25,8 +26,8 @@ async function loadHotelPrimary(){
  return loadStays();
 }
 async function visible(state:TransportState,revision:number,u:any){const canEdit=hasPermission(u,'edit_transfers');const hotel=await loadHotelPrimary();const eligible=u.role==='guest'&&!isTransportAgent(u)?hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&s.checkOut>=new Date(Date.now()+5*3600000).toISOString().slice(0,10)):[];const ownRoom=eligible.length===1?{id:eligible[0].id,room:eligible[0].room,checkIn:eligible[0].checkIn,checkOut:eligible[0].checkOut}:null;return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.filter(b=>b.status!=='Cancelled').flatMap(b=>b.journeys.map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };}
-export async function GET(){const u=await currentUser();if(!u||!canTransport(u))return Response.json({error:'Sign in to access transfers.'},{status:403});try{const {state,revision}=await loadForRead();return Response.json(await visible(state,revision,u),{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Unable to load transfers. Please retry.'},{status:503});}}
-export async function POST(r:Request){const u=await currentUser();if(!u||!canTransport(u)||!sameOrigin(r))return Response.json({error:'Not allowed.'},{status:403});try{
+export async function GET(){const u=await transportUser();if(!u||!canTransport(u))return Response.json({error:'Sign in to access transfers.'},{status:403});try{const {state,revision}=await loadForRead();return Response.json(await visible(state,revision,u),{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Unable to load transfers. Please retry.'},{status:503});}}
+export async function POST(r:Request){const u=await transportUser();if(!u||!canTransport(u)||!sameOrigin(r))return Response.json({error:'Not allowed.'},{status:403});try{
  const b=await r.json();const {state,revision}=await loadForRead();const canEdit=hasPermission(u,'edit_transfers');
  if(b.action==='book'&&state.bookings.some(x=>x.token===b.token&&x.owner===u.userId))return Response.json(await visible(state,revision,u));
  if(b.revision!==revision)return Response.json({error:'Transfers changed on another device. Refresh and review before saving.'},{status:409});

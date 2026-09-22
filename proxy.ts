@@ -5,7 +5,12 @@ const publicHotelHost='nirilihotels.com';
 const publicHotelWwwHost='www.nirilihotels.com';
 
 function bookingSiteResponse(url:URL){
- if(url.pathname==='/api/public-booking')return NextResponse.next();
+ const guestApi=new Set(['/api/public-booking','/api/guest-auth/login','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/guest-excursion-schedules']);
+ if(guestApi.has(url.pathname)){
+  const response=NextResponse.next();
+  response.headers.set('Cache-Control',url.pathname==='/api/public-booking'?'public, max-age=0, must-revalidate':'private, no-store, max-age=0');
+  return response;
+ }
 
  if(url.pathname==='/'){
   url.pathname='/book';
@@ -17,6 +22,12 @@ function bookingSiteResponse(url:URL){
  if(url.pathname==='/book'||url.pathname.startsWith('/book/')){
   const response=NextResponse.next();
   response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
+  return response;
+ }
+
+ if(url.pathname==='/stay'||url.pathname.startsWith('/stay/')){
+  const response=NextResponse.next();
+  response.headers.set('Cache-Control','private, no-store, max-age=0');
   return response;
  }
 
