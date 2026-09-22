@@ -305,6 +305,25 @@ export async function PATCH(r:Request){
    return Response.json({ok:true,booking:{id:order.id,status:'Confirmed'},schedule:{...record,revision:1}},{status:201});
   }
 
+  if(b.action==='reject-unscheduled-request'){
+   const requestId=String(b.requestId||'').slice(0,100);
+   if(!requestId)throw Error('Choose a valid excursion request.');
+   const {state,revision}=await loadStays();
+   const order=(state.orders||[]).find((o:any)=>o.id===requestId&&o.kind==='excursion'&&o.unscheduledRequest===true&&o.approvalStatus==='Pending'&&o.status!=='Cancelled');
+   if(!order)throw Error('This scheduling request has already been handled.');
+   order.approvalStatus='Declined';
+   order.status='Cancelled';
+   order.unscheduledRequest=false;
+   order.seatRequest=false;
+   order.cents=0;
+   order.rejectedAt=new Date().toISOString();
+   order.rejectedBy=user.username;
+   order.guestNotified=false;
+   const saved=await saveStayAccess(state,revision,user.userId);
+   if(!saved)return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
+   return Response.json({ok:true,requestId,status:'Rejected'});
+  }
+
   if(b.action==='admin-booking-auto'){
    const date=String(b.date||''),menuItemId=String(b.menuItemId||'').slice(0,100),guestType=String(b.guestType||''),mix=excursionGuestMix(b,Number(b.quantity)||1,100),quantity=mix.total,notes=String(b.notes||'').trim().slice(0,1000);
    if(!validDate(date)||!menuItemId||!['inhouse','walkin'].includes(guestType))throw Error('Check the excursion, date, guest type and number of guests.');
