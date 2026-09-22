@@ -137,7 +137,7 @@ async function restUpsert(table:string,rows:any[],onConflict:string){
 export async function mirrorLegacyAccounts(rows:LegacyAccountRow[]){
   if(!supabaseBridgeConfigured()||!Array.isArray(rows)||!rows.length)return 0;
   const now=new Date().toISOString();
-  const values=rows.filter(row=>row.role!=='guest').map(row=>({
+  const values=rows.map(row=>({
     id:row.id,
     username:row.username,
     email:row.email||null,
@@ -236,7 +236,7 @@ async function syncMappedEmployeeMetadata(row:LegacyAccountRow){
 }
 
 export async function mirrorLegacyAccount(row:LegacyAccountRow){
-  if(!supabaseBridgeConfigured()||row.role==='guest')return false;
+  if(!supabaseBridgeConfigured())return false;
   const legacy={
     id:row.id,
     username:row.username,

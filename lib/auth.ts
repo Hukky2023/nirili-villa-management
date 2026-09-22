@@ -7,6 +7,7 @@ export type Permission="guesthouse_reception"|"excursions_manager"|"waiter_pos"|
 export type Actor={userId:string;username:string;email:string;displayName:string;role:"admin"|"staff"|"guest";permissions:Permission[]};
 export function authDb(){if(!env.DB)throw new Error("Account service unavailable");return env.DB;}
 export const cookieName="nirili_session";
+export const guestCookieName="nirili_guest_session";
 const bookingResetMarker20260919='system-reset:2026-09-19-terminate-non-admin-sessions-clear-bookings-v1';
 const guestLoginPurgeMarker20260922='system-reset:2026-09-22-delete-all-guest-logins-v1';
 
@@ -83,13 +84,21 @@ export async function verifyPassword(password:string,salt:string,expected:string
 export function publicUser(row:any):Actor{let permissions:Permission[]=[];try{permissions=Array.isArray(row.permissions)?row.permissions:JSON.parse(row.permissions||"[]");}catch{}return {userId:row.id,username:row.username,email:row.email||"",displayName:row.name,role:row.role,permissions};}
 export async function currentUser():Promise<Actor|null>{
 try{await applyBookingAndSessionResetOnce();}catch{}
-try{await purgeAllGuestLoginsOnce();}catch{}
 const token=(await cookies()).get(await sessionCookieName())?.value;if(!token)return null;
 const tokenHash=await digest(token),now=Date.now();let row:any=null;
 try{row=await readLegacySessionAccount(tokenHash,now);}catch{}
 if(!row)row=await authDb().prepare("SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id=a.id WHERE s.token_hash=? AND s.expires_at>? AND a.active=1").bind(tokenHash,now).first();
 if(!row||row.role==='guest')return null;
 return await roomLoginActive(row.id)?publicUser(row):null;}
+
+export async function currentGuestUser():Promise<Actor|null>{
+ const token=(await cookies()).get(guestCookieName)?.value;if(!token)return null;
+ const tokenHash=await digest(token),now=Date.now();let row:any=null;
+ try{row=await readLegacySessionAccount(tokenHash,now);}catch{}
+ if(!row)row=await authDb().prepare("SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id=a.id WHERE s.token_hash=? AND s.expires_at>? AND a.active=1").bind(tokenHash,now).first();
+ if(!row||row.role!=='guest')return null;
+ return await roomLoginActive(row.id)?publicUser(row):null;
+}
 export function hasPermission(user:Actor|null,permission:Permission){return !!user&&(user.role==="admin"||(user.role==="staff"&&user.permissions.includes(permission)));}
 export function sameOrigin(r:Request){return r.headers.get("origin")===new URL(r.url).origin;}
 export async function issueSession(id:string,tab?:string){
@@ -97,6 +106,13 @@ const token=randomToken(),tokenHash=await digest(token),expiresAt=Date.now()+12*
 try{primary=await upsertLegacySession(tokenHash,id,expiresAt);}catch{}
 try{await authDb().prepare("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(tokenHash,id,expiresAt).run();}catch(error){if(!primary)throw error;}
 return (tab?cookieName+"_"+tab:await sessionCookieName())+"="+token+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200";}
+
+export async function issueGuestSession(id:string){
+ const token=randomToken(),tokenHash=await digest(token),expiresAt=Date.now()+12*60*60*1000;let primary=false;
+ try{primary=await upsertLegacySession(tokenHash,id,expiresAt);}catch{}
+ try{await authDb().prepare("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(tokenHash,id,expiresAt).run();}catch(error){if(!primary)throw error;}
+ return guestCookieName+"="+token+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200";
+}
 export async function bootstrap(){
 const value=(env as unknown as Record<string,string>).NIRILI_BOOTSTRAP;
 if(!value)throw new Error("Initial accounts have not been configured");
