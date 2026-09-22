@@ -75,7 +75,7 @@ export default function GuestBookingSite(){
    <a className="nav-book" href="#book">Request a stay <ArrowRight/></a>
   </header>
 
-  <section className="hero" id="stay">
+  <section className="booking-hero" id="stay">
    <div className="hero-copy">
     <span className="eyebrow"><MapPin/> DHIFFUSHI ISLAND · MALDIVES</span>
     <h1>Island days.<br/><em>Easy stays.</em></h1>
