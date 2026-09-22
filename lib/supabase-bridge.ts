@@ -41,7 +41,9 @@ export async function supabaseBridgeHealth(){
     const rows=await restSelect('rooms','select=room_number&limit=1');
     return {configured:true,reachable:true,roomsVisible:Array.isArray(rows)?rows.length:0};
   }catch(error){
-    return {configured:true,reachable:false,error:error instanceof Error?error.message:'Supabase connection failed.'};
+    const message=error instanceof Error?error.message:'Supabase connection failed.';
+    const safeMessage=message.replace(/sb_(?:secret|publishable)_[A-Za-z0-9_-]+/g,'[redacted]');
+    return {configured:true,reachable:false,error:safeMessage};
   }
 }
 
