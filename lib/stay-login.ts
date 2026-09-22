@@ -3,7 +3,7 @@ import {credentialStatement} from './credential-store';
 import {stayKey} from './stays';
 import {prepareExtraVesselTrips} from './excursion-extra-vessels';
 import {preserveAccountHistoryStatement} from './account-history';
-import {mirrorHotelState,mirrorLegacyAccount,mirrorOperationalRecord} from './supabase-bridge';
+import {mirrorHotelState,mirrorLegacyAccount,mirrorOperationalRecord,saveOperationalRecordPrimary} from './supabase-bridge';
 export async function prepareStayLogin(state:any,s:any){
  const db=authDb(),username=String(s.room);
  const existing=await db.prepare('SELECT id,role,password_hash,salt FROM accounts WHERE username=?').bind(username).first<any>();
@@ -20,7 +20,20 @@ export async function saveStayAccess(state:any,revision:number,by:string,plan:an
  if(options.extraVesselsOnly&&!extra.movedBookings)return true;
  // A unique write marker prevents a failed CAS from matching an identical
  // payload already saved by another request.
- const payload=JSON.stringify({...state,accessWriteId:crypto.randomUUID()}),next=revision+1;
+ const primaryState={...state,accessWriteId:crypto.randomUUID()},payload=JSON.stringify(primaryState),next=revision+1;
+ const simplePrimary=!plan&&revoke.length===0&&documents.length===0&&removedDocuments.length===0&&extra.trips.length===0;
+ if(simplePrimary){
+  let primaryRevision=0,primaryAvailable=true;
+  try{primaryRevision=await saveOperationalRecordPrimary(stayKey,primaryState,revision,by);}catch{primaryAvailable=false;}
+  if(primaryAvailable){
+   if(!primaryRevision)return false;
+   try{
+    await db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,payload,primaryRevision,by).run();
+   }catch{}
+   try{await mirrorHotelState(primaryState);}catch{}
+   return true;
+  }
+ }
  const guard='EXISTS(SELECT 1 FROM operation_records WHERE key=? AND revision=? AND payload=?)';
  const args=[stayKey,next,payload];
  // If a referenced timetable row changes while preparing an extra trip, retry
