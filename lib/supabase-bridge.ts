@@ -133,6 +133,75 @@ async function restUpsert(table:string,rows:any[],onConflict:string){
   },'secret') as any[];
 }
 
+
+export async function mirrorLegacyAccounts(rows:LegacyAccountRow[]){
+  if(!supabaseBridgeConfigured()||!Array.isArray(rows)||!rows.length)return 0;
+  const now=new Date().toISOString();
+  const values=rows.map(row=>({
+    id:row.id,
+    username:row.username,
+    email:row.email||null,
+    name:row.name,
+    password_hash:row.password_hash||'',
+    salt:row.salt||'',
+    role:appRole(row.role),
+    permissions:permissions(row.permissions),
+    active:row.active===undefined?true:!!row.active,
+    updated_at:now
+  }));
+  await restUpsert('legacy_accounts',values,'id');
+  return values.length;
+}
+
+export async function mirrorOperationalSnapshot(records:any[],bills:any[]){
+  if(!supabaseBridgeConfigured())return {operations:0,schedules:0,bills:0,transport:false};
+  const now=new Date().toISOString(),batch=crypto.randomUUID();
+  const parse=(value:any)=>{if(typeof value!=='string')return value??{};try{return JSON.parse(value||'{}')}catch{return {raw:value}}};
+  const opRows=(records||[]).map((record:any)=>({
+    key:String(record.key),
+    payload:parse(record.payload),
+    revision:Number(record.revision)||0,
+    updated_by:record.updated_by||null,
+    synced_at:now,
+    sync_batch_id:batch
+  })).filter((row:any)=>row.key);
+  await restUpsert('operational_records',opRows,'key');
+
+  const scheduleRows=opRows.filter((row:any)=>row.key.startsWith('excursion-schedule:')).map((row:any)=>{
+    const schedule=row.payload||{};
+    return {
+      source_key:row.key,
+      schedule_id:String(schedule.id||''),
+      schedule_date:schedule.date||null,
+      departure_time:schedule.time||null,
+      end_time:schedule.endTime||null,
+      excursion_name:schedule.name||null,
+      vessel_id:schedule.vesselId||null,
+      capacity:Number.isFinite(Number(schedule.capacity))?Number(schedule.capacity):null,
+      status:schedule.status||null,
+      payload:schedule,
+      synced_at:now,
+      sync_batch_id:batch
+    };
+  });
+  await restUpsert('excursion_schedules',scheduleRows,'source_key');
+
+  const billRows=(bills||[]).map((bill:any)=>({
+    key:String(bill.key),
+    payload:parse(bill.payload),
+    revision:Number(bill.revision)||0,
+    updated_by:bill.updated_by||null,
+    synced_at:now,
+    sync_batch_id:batch
+  })).filter((row:any)=>row.key);
+  await restUpsert('restaurant_bills',billRows,'key');
+
+  const transport=opRows.find((row:any)=>row.key==='transport-bookings-v1');
+  if(transport)await mirrorTransportState(transport.payload);
+
+  return {operations:opRows.length,schedules:scheduleRows.length,bills:billRows.length,transport:!!transport};
+}
+
 export async function mirrorLegacyAccount(row:LegacyAccountRow){
   if(!supabaseBridgeConfigured())return false;
   const legacy={
