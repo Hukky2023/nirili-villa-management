@@ -8,6 +8,35 @@ export type Actor={userId:string;username:string;email:string;displayName:string
 export function authDb(){if(!env.DB)throw new Error("Account service unavailable");return env.DB;}
 export const cookieName="nirili_session";
 const bookingResetMarker20260919='system-reset:2026-09-19-terminate-non-admin-sessions-clear-bookings-v1';
+const guestLoginPurgeMarker20260922='system-reset:2026-09-22-delete-all-guest-logins-v1';
+
+async function purgeAllGuestLoginsOnce(){
+ const db=authDb();
+ const marker=await db.prepare('SELECT key FROM operation_records WHERE key=?').bind(guestLoginPurgeMarker20260922).first<any>();
+ if(marker)return;
+ const hotelRow=await db.prepare("SELECT payload FROM operation_records WHERE key='hotel-stays-v1'").first<any>();
+ const statements:any[]=[];
+ if(hotelRow){
+  const state=JSON.parse(hotelRow.payload||'{}');
+  for(const stay of state.stays||[]){
+   delete stay.accountId;delete stay.roomLogin;delete stay.loginIssuedAt;delete stay.loginTerminatedAt;delete stay.loginTerminatedAccountId;
+  }
+  state.walkinExcursionAccounts=[];
+  for(const order of state.orders||[])delete order.accountId;
+  for(const order of state.posOrders||[])if(typeof order.guestKey==='string'&&order.guestKey.startsWith('guest:'))delete order.guestKey;
+  statements.push(db.prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key='hotel-stays-v1'")
+   .bind(JSON.stringify(state),'system:'+guestLoginPurgeMarker20260922));
+ }
+ statements.push(
+  db.prepare("DELETE FROM operation_records WHERE key IN (SELECT 'credential:'||id FROM accounts WHERE role='guest')"),
+  db.prepare("DELETE FROM account_sessions WHERE account_id IN (SELECT id FROM accounts WHERE role='guest')"),
+  db.prepare("DELETE FROM accounts WHERE role='guest'"),
+  db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)')
+   .bind(guestLoginPurgeMarker20260922,JSON.stringify({at:new Date().toISOString(),action:'Deleted all guest logins and revoked guest sessions.'}),'system:'+guestLoginPurgeMarker20260922)
+ );
+ await db.batch(statements);
+}
+
 
 async function applyBookingAndSessionResetOnce(){
  const db=authDb();
@@ -54,11 +83,13 @@ export async function verifyPassword(password:string,salt:string,expected:string
 export function publicUser(row:any):Actor{let permissions:Permission[]=[];try{permissions=Array.isArray(row.permissions)?row.permissions:JSON.parse(row.permissions||"[]");}catch{}return {userId:row.id,username:row.username,email:row.email||"",displayName:row.name,role:row.role,permissions};}
 export async function currentUser():Promise<Actor|null>{
 try{await applyBookingAndSessionResetOnce();}catch{}
+try{await purgeAllGuestLoginsOnce();}catch{}
 const token=(await cookies()).get(await sessionCookieName())?.value;if(!token)return null;
 const tokenHash=await digest(token),now=Date.now();let row:any=null;
 try{row=await readLegacySessionAccount(tokenHash,now);}catch{}
 if(!row)row=await authDb().prepare("SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id=a.id WHERE s.token_hash=? AND s.expires_at>? AND a.active=1").bind(tokenHash,now).first();
-return row&&await roomLoginActive(row.id)?publicUser(row):null;}
+if(!row||row.role==='guest')return null;
+return await roomLoginActive(row.id)?publicUser(row):null;}
 export function hasPermission(user:Actor|null,permission:Permission){return !!user&&(user.role==="admin"||(user.role==="staff"&&user.permissions.includes(permission)));}
 export function sameOrigin(r:Request){return r.headers.get("origin")===new URL(r.url).origin;}
 export async function issueSession(id:string,tab?:string){
