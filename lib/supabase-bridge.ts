@@ -17,10 +17,18 @@ const publishableFallback='sb_publishable_78tYy6PCg8n0LSQeOvCacw_Y45t--Xk';
 
 function config(){
   const values=env as unknown as Record<string,string|undefined>;
+  const nodeEnv=(typeof process!=='undefined'&&process.env?process.env:{}) as Record<string,string|undefined>;
+  const read=(...keys:string[])=>{
+    for(const key of keys){
+      const value=values[key]??nodeEnv[key];
+      if(typeof value==='string'&&value.trim())return value.trim();
+    }
+    return '';
+  };
   return {
-    url:values.NEXT_PUBLIC_SUPABASE_URL||values.SUPABASE_URL||projectUrl,
-    publishable:values.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||values.SUPABASE_PUBLISHABLE_KEY||publishableFallback,
-    secret:values.SUPABASE_SECRET_KEY||''
+    url:read('NEXT_PUBLIC_SUPABASE_URL','SUPABASE_URL')||projectUrl,
+    publishable:read('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY','SUPABASE_PUBLISHABLE_KEY')||publishableFallback,
+    secret:read('SUPABASE_SECRET_KEY')
   };
 }
 
