@@ -58,7 +58,12 @@ export async function POST(r:Request){const u=await currentUser();if(!u||!canTra
  const hotelSql=authDb().prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=? AND EXISTS(SELECT 1 FROM operation_records WHERE key=? AND json_extract(payload,'$.writeToken')=?)").bind(JSON.stringify(hotelWrite.state),u.userId,stayKey,hotelWrite.revision,key,writeToken);
  const results=await authDb().batch([transportSql,hotelSql]);
  if(!results[0].meta.changes||!results[1].meta.changes)return Response.json({error:'Room or seat availability changed. Refresh and try again.'},{status:409});
- try{await Promise.all([mirrorTransportState(state),mirrorOperationalRecord(key,state,revision+1,u.userId),mirrorHotelState(hotelWrite.state)]);}catch{}
+ try{await Promise.all([
+  mirrorTransportState(state),
+  mirrorOperationalRecord(key,state,revision+1,u.userId),
+  mirrorHotelState(hotelWrite.state),
+  mirrorOperationalRecord(stayKey,hotelWrite.state,hotelWrite.revision+1,u.userId)
+ ]);}catch{}
  return Response.json(await visible(state,revision+1,u));
  }
  let primaryRevision=0,primaryAvailable=true;
