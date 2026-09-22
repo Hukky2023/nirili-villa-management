@@ -1,6 +1,7 @@
 import {currentUser,sameOrigin} from '../../../../lib/auth';
 import {
   discoverBookingComMappings,
+  ensureBookingComWebhook,
   getBookingComChannelState,
   previewBookingComAvailability,
   pullBookingComFeed,
@@ -41,6 +42,7 @@ export async function POST(request:Request){
     const body=await request.json();
     const action=String(body?.action||'');
     if(action==='selftest')return Response.json(await runBookingComSelfTest(),{headers});
+    if(action==='webhook')return Response.json(await ensureBookingComWebhook(new URL(request.url).origin+'/api/channels/booking-com/webhook'),{headers});
     if(action==='test')return Response.json(await testBookingComConnection(),{headers});
     if(action==='discover')return Response.json(await discoverBookingComMappings(),{headers});
     if(action==='mappings')return Response.json(await saveBookingComMappings(body),{headers});
