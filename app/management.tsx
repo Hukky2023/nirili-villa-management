@@ -86,6 +86,7 @@ const allowed=(m:Module)=>{
  if(["Dashboard","Bookings","Rooms","Guests"].includes(m))return coreHotelAccess;
  if(m==="Transfers")return staffHas("edit_transfers");
  if(m==="Excursions")return staffHas("edit_excursions")||staffHas("excursions_manager");
+ if(m==="Buggy")return coreHotelAccess;
  if(m==="POS")return permissions.some(permission=>["waiter_pos","restaurant_pos","kitchen_pos","edit_bills"].includes(permission));
  return false;
 };
