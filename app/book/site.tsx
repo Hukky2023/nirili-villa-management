@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,Palmtree,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
 
 type Plan={name:string;nightlyCents:number};
