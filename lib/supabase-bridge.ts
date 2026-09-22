@@ -29,7 +29,7 @@ function config(){
     const trimmed=value.trim().replace(/^["']|["']$/g,'');
     // Supabase sb_* keys contain no whitespace. Remove accidental line breaks,
     // spaces and zero-width characters introduced while copying from a dashboard.
-    return trimmed.replace(/[\\s\\u200B-\\u200D\\uFEFF]+/g,'');
+    return trimmed.replace(/[\s\u200B-\u200D\uFEFF]+/g,'');
   };
   const secretRaw=readRaw('SUPABASE_SECRET_KEY');
   const publishableRaw=readRaw('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY','SUPABASE_PUBLISHABLE_KEY');
