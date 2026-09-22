@@ -3,6 +3,7 @@ import {loadStays, stayKey} from '../../../lib/stays';
 import {excursionPaid, excursionResources} from '../../../lib/excursion-workflow';
 import {isConfirmedExcursion, toConfirmedExcursionBooking} from '../../../lib/excursion-bookings';
 import {applyExcursionBillingAdjustment, excursionPricing} from '../../../lib/excursion-billing';
+import {mirrorHotelState} from '../../../lib/supabase-bridge';
 
 const headers = {'Cache-Control': 'private, no-store', 'Vary': 'Cookie'};
 const normal = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -84,6 +85,7 @@ export async function PATCH(request: Request) {
     const saved = await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?')
       .bind(JSON.stringify(state), user.userId, stayKey, revision).run();
     if (!saved.meta.changes) return Response.json({error: 'Another user changed the bill. Close this action, refresh bookings and review the amount again.'}, {status: 409, headers});
+    try { await mirrorHotelState(state); } catch {}
     return Response.json({ok: true, revision: revision + 1, pricing: excursionPricing(result.order)}, {headers});
   } catch {
     return Response.json({error: 'Could not save the billing adjustment. Please retry.'}, {status: 503, headers});
