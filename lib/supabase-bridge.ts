@@ -251,6 +251,90 @@ function bookingStatus(value:any){
   return 'confirmed';
 }
 
+
+export async function mirrorOperationalRecord(key:string,payload:any,revision:number=0,updatedBy:string=''){
+  if(!supabaseBridgeConfigured())return false;
+  const batch=crypto.randomUUID();
+  await restUpsert('operational_records',[{
+    key,
+    payload,
+    revision:Number(revision)||0,
+    updated_by:updatedBy||null,
+    synced_at:new Date().toISOString(),
+    sync_batch_id:batch
+  }],'key');
+  return true;
+}
+
+export async function mirrorRestaurantBillRecord(key:string,payload:any,revision:number=0,updatedBy:string=''){
+  if(!supabaseBridgeConfigured())return false;
+  await restUpsert('restaurant_bills',[{
+    key,
+    payload,
+    revision:Number(revision)||0,
+    updated_by:updatedBy||null,
+    synced_at:new Date().toISOString(),
+    sync_batch_id:crypto.randomUUID()
+  }],'key');
+  return true;
+}
+
+export async function mirrorExcursionScheduleRecord(key:string,schedule:any){
+  if(!supabaseBridgeConfigured()||!schedule)return false;
+  await mirrorOperationalRecord(key,schedule,Number(schedule.revision||0),String(schedule.updatedBy||''));
+  await restUpsert('excursion_schedules',[{
+    source_key:key,
+    schedule_id:String(schedule.id||''),
+    schedule_date:schedule.date||null,
+    departure_time:schedule.time||null,
+    end_time:schedule.endTime||null,
+    excursion_name:schedule.name||null,
+    vessel_id:schedule.vesselId||null,
+    capacity:Number.isFinite(Number(schedule.capacity))?Number(schedule.capacity):null,
+    status:schedule.status||null,
+    payload:schedule,
+    synced_at:new Date().toISOString(),
+    sync_batch_id:crypto.randomUUID()
+  }],'source_key');
+  return true;
+}
+
+export async function mirrorTransportState(state:any){
+  if(!supabaseBridgeConfigured()||!state)return false;
+  const batch=crypto.randomUUID(),now=new Date().toISOString();
+  const bookings=(state.bookings||[]).map((b:any)=>({
+    id:String(b.id),
+    owner_id:b.owner||null,
+    stay_id:b.stayId||null,
+    room:b.room||null,
+    guest:b.guest||b.name||null,
+    status:b.status||null,
+    payment_status:b.paymentStatus||b.payment||null,
+    created_at:b.created||b.createdAt||null,
+    payload:b,
+    synced_at:now,
+    sync_batch_id:batch
+  })).filter((x:any)=>x.id);
+  await restUpsert('transfer_bookings',bookings,'id');
+  const sailings=(state.sailings||[]).map((s:any)=>({
+    id:String(s.id),
+    boat:s.boat||null,
+    from_location:s.from||null,
+    to_location:s.to||null,
+    depart_time:s.depart||null,
+    arrive_time:s.arrive||null,
+    capacity:Number.isFinite(Number(s.capacity))?Number(s.capacity):null,
+    fare_cents:Number.isFinite(Number(s.fare))?Number(s.fare):null,
+    room_fare_cents:Number.isFinite(Number(s.roomFare))?Number(s.roomFare):null,
+    active:s.active!==false,
+    payload:s,
+    synced_at:now,
+    sync_batch_id:batch
+  })).filter((x:any)=>x.id);
+  await restUpsert('transport_sailings',sailings,'id');
+  return true;
+}
+
 export async function mirrorHotelState(state:any){
   if(!supabaseBridgeConfigured())return false;
   const now=new Date().toISOString();
@@ -313,5 +397,41 @@ export async function mirrorHotelState(state:any){
       valid_until:stay.checkedOutAt||null
     }));
   await restUpsert('guest_accounts',guestAccounts,'legacy_account_id');
+
+  const batch=crypto.randomUUID();
+  const restaurantOrders=(state.posOrders||[]).map((o:any)=>({
+    id:String(o.id),
+    stay_id:o.stayId||null,
+    room:o.room||null,
+    customer:o.customer||null,
+    table_number:o.table||null,
+    status:o.kitchen||o.status||null,
+    payment_method:o.method||null,
+    total_cents:Number(o.cents||0),
+    created_at:o.createdAt||null,
+    payload:o,
+    synced_at:now,
+    sync_batch_id:batch
+  })).filter((x:any)=>x.id);
+  await restUpsert('restaurant_orders',restaurantOrders,'id');
+
+  const excursionBookings=(state.orders||[]).filter((o:any)=>o.kind==='excursion').map((o:any)=>({
+    id:String(o.id),
+    stay_id:o.stayId||null,
+    room:o.room||null,
+    guest:o.guest||null,
+    excursion_name:o.name||null,
+    booking_date:o.date||o.schedule?.date||null,
+    booking_time:o.time||o.schedule?.time||null,
+    status:o.status||null,
+    payment_status:o.paymentStatus||null,
+    total_cents:Number(o.cents||0),
+    schedule_id:o.scheduleId||null,
+    payload:o,
+    synced_at:now,
+    sync_batch_id:batch
+  })).filter((x:any)=>x.id);
+  await restUpsert('excursion_bookings',excursionBookings,'id');
+
   return true;
 }
