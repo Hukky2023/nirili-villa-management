@@ -322,7 +322,7 @@ export async function PATCH(r:Request){
       return {schedule,capacity,confirmedPax,remaining:Math.max(0,capacity-confirmedPax),rank:scheduleMatchRank(item.name,schedule.name)};
     })
     .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
-   const chosen=candidates.find((candidate:any)=>candidate.remaining>=quantity);
+   const chosen=b.forceUnscheduled===true?undefined:candidates.find((candidate:any)=>candidate.remaining>=quantity);
    let stay:any=null,guest='',phone='',hotel='',room='',accountId:any=undefined,stayId:any=undefined;
    if(guestType==='inhouse'){
     stay=(state.stays||[]).find((x:any)=>x.id===String(b.stayId||'')&&x.status==='In House');
