@@ -175,11 +175,14 @@ export async function updateBookingComConnection(input:any){
   const mode=input?.mode==='production'?'production':'staging';
   const propertyId=text(input?.propertyId,100)||null;
   const channelPropertyId=text(input?.channelPropertyId,100)||null;
+  const requestedStagingHotelId=text(input?.stagingBookingHotelId,20)||String(current.settings?.stagingBookingHotelId||stagingBookingHotelId);
+  if(mode==='staging'&&!/^\d{5,12}$/.test(requestedStagingHotelId))throw Error('Enter a valid numeric Booking.com staging Hotel ID.');
   const enabled=truthy(input?.enabled);
   const settings={
     ...(current.settings||{}),
     inventoryMode:'room_type',
     roomTypeName:'Double Room',
+    stagingBookingHotelId:requestedStagingHotelId,
     autoImportReservations:input?.autoImportReservations!==false,
     autoPushAvailability:truthy(input?.autoPushAvailability),
     dryRun:input?.dryRun!==false
@@ -306,7 +309,7 @@ export async function bootstrapBookingComStaging(){
     patch('channel_connections','id=eq.'+connectionId,{
       property_id:propertyId,
       status:'configured',
-      settings:{...(connection.settings||{}),stagingBootstrapped:true,stagingRoomTypeId:roomTypeId,stagingBookingHotelId,stagingCurrency:'GBP'},
+      settings:{...(connection.settings||{}),stagingBootstrapped:true,stagingRoomTypeId:roomTypeId,stagingBookingHotelId:String(connection.settings?.stagingBookingHotelId||stagingBookingHotelId),stagingCurrency:'GBP'},
       last_error:null,
       updated_at:isoNow()
     }),
