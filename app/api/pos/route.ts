@@ -9,6 +9,7 @@ import {canPOS,canKitchen,canTakePayment} from '../../../lib/pos-access';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {loadMenu} from '../../../lib/menu-server';
 import {loadRestaurantPaymentSettingsWithDailyRates} from '../../../lib/restaurant-payment-settings';
+import {mirrorHotelState} from '../../../lib/supabase-bridge';
 async function view(){
  const {state,revision}=await loadStays();
  const actor=await currentUser();
@@ -90,5 +91,5 @@ if(b.action==='create'){
 }
  else throw Error('Unknown action.');
 }
-const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});return Response.json(await view());
+const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});try{await mirrorHotelState(state);}catch{}return Response.json(await view());
 }catch(e){return Response.json({error:(e as Error).message},{status:400});}}
