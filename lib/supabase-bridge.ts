@@ -439,6 +439,13 @@ export async function clearSystemNotifications(){
 
 
 
+
+export async function readOperationalRecordsPrimary(prefix:string){
+  if(!supabaseBridgeConfigured())return [];
+  const rows=await restSelect('operational_records','select=key,payload,revision,updated_by&key=like.'+encodeURIComponent(prefix+'*')+'&order=key.asc');
+  return rows||[];
+}
+
 export async function readOperationalRecordPrimary(key:string){
   if(!supabaseBridgeConfigured())return null;
   const rows=await restSelect('operational_records','select=key,payload,revision,updated_by&key=eq.'+encodeURIComponent(key)+'&limit=1');
