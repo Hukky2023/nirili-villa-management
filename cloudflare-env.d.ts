@@ -7,5 +7,8 @@ declare namespace Cloudflare {
     NEXT_PUBLIC_SUPABASE_URL?: string;
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
     SUPABASE_SECRET_KEY?: string;
+    CHANNEX_API_KEY?: string;
+    CHANNEX_WEBHOOK_TOKEN?: string;
+    CHANNEX_API_BASE_URL?: string;
   }
 }
