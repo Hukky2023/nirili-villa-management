@@ -10,7 +10,7 @@ import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requ
 import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
 import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,scheduleCanServeRequest,scheduleMatchRank,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
-import {mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -247,6 +247,24 @@ export async function PATCH(r:Request){
     order.guestNotified=false;
    }
    const cancelledSchedule={...schedule,status:'Cancelled',cancellationReason:reason,cancelledAt:now,cancelledBy:user.username,updatedAt:now};
+   let pair:any=null,primaryAvailable=true,primaryConflict=false;
+   try{
+    pair=await saveOperationalPairPrimary(key,cancelledSchedule,Number(row.revision),stayKey,state,revision,user.userId);
+   }catch(error){
+    const message=error instanceof Error?error.message:String(error||'');
+    if(message.includes('CAS_CONFLICT'))primaryConflict=true;else primaryAvailable=false;
+   }
+   if(primaryConflict)return Response.json({error:'The excursion changed elsewhere. Reload and try again.'},{status:409});
+   if(primaryAvailable&&pair?.revisionA&&pair?.revisionB){
+    try{
+     await db.batch([
+      db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(cancelledSchedule),pair.revisionA,user.userId),
+      db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),pair.revisionB,user.userId)
+     ]);
+    }catch{}
+    try{await Promise.all([mirrorExcursionScheduleRecord(key,{...cancelledSchedule,revision:pair.revisionA,updatedBy:user.userId}),mirrorHotelState(state)]);}catch{}
+    return Response.json({ok:true,cancelledBookings:affected.length,reason,status:'Cancelled'});
+   }
    const stayPayload=JSON.stringify(state);
    const statements:any[]=[
     db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(cancelledSchedule),user.userId,key,Number(row.revision))
