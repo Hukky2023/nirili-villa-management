@@ -1,11 +1,11 @@
 import {authDb,currentUser,sameOrigin} from '../../../lib/auth';
 import {loadStays} from '../../../lib/stays';
-import {mirrorHotelState,mirrorLegacyAccount,supabaseBridgeConfigured} from '../../../lib/supabase-bridge';
+import {mirrorHotelState,mirrorLegacyAccount,supabaseBridgeConfigured,supabaseBridgeHealth} from '../../../lib/supabase-bridge';
 
 export async function GET(){
   const user=await currentUser();
   if(user?.role!=='admin')return Response.json({error:'Admin access required'},{status:403});
-  return Response.json({configured:supabaseBridgeConfigured()},{headers:{'Cache-Control':'no-store'}});
+  return Response.json(await supabaseBridgeHealth(),{headers:{'Cache-Control':'no-store'}});
 }
 
 export async function POST(request:Request){
