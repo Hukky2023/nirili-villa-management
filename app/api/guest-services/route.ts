@@ -11,7 +11,7 @@ import {appendAccountHistory} from '../../../lib/account-history';
 import {loadStays,stayKey,folioFor} from '../../../lib/stays';
 import {catalog,plans,nightly,islandToday,validDate} from '../../../lib/guest-catalog';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
-import {ensureSupabaseEmployee,mirrorLegacyAccount} from '../../../lib/supabase-bridge';
+import {deactivateSupabaseAccount,ensureSupabaseEmployee,mirrorLegacyAccount} from '../../../lib/supabase-bridge';
 const MIN_EXCURSION_PAX=1;
 import {walkInExcursionBill,walkInExcursionProfile,syncWalkInExcursionAccess} from '../../../lib/walkin-excursion-access';
 function canUseManagementServices(u:any){
@@ -121,6 +121,7 @@ if(b.action==='excursion-crew-update'){
    const active=member.active!==false&&member.active!==0,db=authDb();
    await db.prepare("UPDATE accounts SET name=?,active=? WHERE id=? AND role='staff'").bind(member.name,active?1:0,member.accountId).run();
    if(!active)await db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(member.accountId).run();
+   try{const account=await db.prepare('SELECT * FROM accounts WHERE id=?').bind(member.accountId).first<any>();if(account)await mirrorLegacyAccount(account);}catch{}
    try{await appendAccountHistory(member.accountId,{at:new Date().toISOString(),action:active?'Crew profile updated':'Crew account disabled',by:u.username,detail:'Crew name/status updated from Excursions.'});}catch{}
   }catch{}
  }
@@ -139,8 +140,10 @@ if(b.action==='excursion-crew-remove'){
      db.prepare('DELETE FROM operation_records WHERE key=?').bind('credential:'+member.accountId),
      db.prepare("DELETE FROM accounts WHERE id=? AND role='staff'").bind(member.accountId)
     ]);
+    try{await deactivateSupabaseAccount(member.accountId);}catch{}
    }else if(account){
     await db.prepare("UPDATE accounts SET permissions=? WHERE id=? AND role='staff'").bind(JSON.stringify(remaining),member.accountId).run();
+    try{const updated=await db.prepare('SELECT * FROM accounts WHERE id=?').bind(member.accountId).first<any>();if(updated)await mirrorLegacyAccount(updated);}catch{}
    }
   }catch{}
  }
