@@ -420,6 +420,29 @@ export async function readExcursionSchedulesPrimary(date:string){
   return rows.map((row:any)=>({...row.payload,revision:Number(row.revision)||0,__key:row.key}));
 }
 
+
+export async function saveOperationalPairPrimary(
+  keyA:string,payloadA:any,expectedRevisionA:number,
+  keyB:string,payloadB:any,expectedRevisionB:number,
+  updatedBy:string
+){
+  if(!supabaseBridgeConfigured())return null;
+  const result=await sb('/rest/v1/rpc/save_operational_pair',{
+    method:'POST',
+    body:JSON.stringify({
+      p_key_a:keyA,
+      p_payload_a:payloadA,
+      p_expected_revision_a:expectedRevisionA,
+      p_key_b:keyB,
+      p_payload_b:payloadB,
+      p_expected_revision_b:expectedRevisionB,
+      p_updated_by:updatedBy
+    })
+  },'secret');
+  if(!result||typeof result!=='object')return null;
+  return {revisionA:Number(result.revisionA)||0,revisionB:Number(result.revisionB)||0};
+}
+
 export async function saveOperationalRecordPrimary(key:string,payload:any,expectedRevision:number,updatedBy:string){
   if(!supabaseBridgeConfigured())return 0;
   const result=await sb('/rest/v1/rpc/save_operational_record',{
