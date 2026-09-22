@@ -37,6 +37,7 @@ export default function ChannelManager(){
       if(action==='preview')setPreview(b);
       if(action==='push'){setPreview(b.preview||null);setNotice(b.dryRun?'Dry-run complete. No external inventory changed.':'Availability sent to Channex.');}
       if(action==='selftest')setNotice((b.message||'PMS self-test passed.')+' Simulated '+(b.simulatedReference||'booking')+(b.simulatedRoom?' in room '+b.simulatedRoom:'')+'.');
+      if(action==='bootstrap')setNotice(b.bootstrap?.message||'Nirili Villa staging property created.');
       if(action==='webhook')setNotice((b.created?'Booking webhook created.':'Booking webhook checked and repaired.')+' Event: booking.');
       if(action==='test')setNotice('Channex connection successful.');
       if(action==='discover')setNotice('Room types and rate plans loaded from Channex.');
@@ -81,7 +82,7 @@ export default function ChannelManager(){
         <label>Environment<select value={draft.mode} onChange={e=>setDraft({...draft,mode:e.target.value})}><option value="staging">Staging / test</option><option value="production">Production</option></select></label>
         <label>Channex property ID<input value={draft.propertyId} onChange={e=>setDraft({...draft,propertyId:e.target.value})} placeholder="Channex property UUID"/></label>
         <label>Booking.com property ID<input value={draft.channelPropertyId} onChange={e=>setDraft({...draft,channelPropertyId:e.target.value})} placeholder="Booking.com hotel ID"/></label>
-        <div className="channel-actions"><button className="primary" disabled={!!busy} onClick={save}>Save settings</button><button disabled={!!busy||!credentials.apiKeyConfigured} onClick={()=>post('test')}><RefreshCw/>Test Channex</button><button disabled={!!busy} onClick={()=>post('selftest')}><ShieldCheck/>Run PMS self-test</button></div>
+        <div className="channel-actions"><button className="primary" disabled={!!busy} onClick={save}>Save settings</button><button disabled={!!busy||!credentials.apiKeyConfigured} onClick={()=>post('test')}><RefreshCw/>Test Channex</button><button disabled={!!busy} onClick={()=>post('selftest')}><ShieldCheck/>Run PMS self-test</button>{draft.mode==='staging'&&!draft.propertyId&&<button disabled={!!busy||!credentials.apiKeyConfigured} onClick={()=>post('bootstrap')}><CloudCog/>Create Nirili staging property</button>}</div>
         {c.last_error&&<p className="channel-inline-error">{c.last_error}</p>}
       </article>
 
