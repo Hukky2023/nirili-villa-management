@@ -381,6 +381,24 @@ export async function mirrorTransportState(state:any){
     sync_batch_id:batch
   })).filter((x:any)=>x.id);
   await restUpsert('transport_sailings',sailings,'id');
+  const payments:any[]=[];
+  for(const booking of state.bookings||[]){
+    for(const p of booking.paymentHistory||[])payments.push({
+      id:'transfer:'+String(p.id||crypto.randomUUID()),
+      module:'transfer',
+      reference_id:String(booking.id||''),
+      booking_reference:booking.stayId||null,
+      amount_cents:Number(p.cents||0),
+      currency:'MVR',
+      method:p.method||'Transfer payment',
+      status:Number(p.cents||0)>=0?'Paid':'Reversed',
+      paid_at:p.date||p.at||null,
+      payload:p,
+      synced_at:now,
+      sync_batch_id:batch
+    });
+  }
+  await restUpsert('payments',payments,'id');
   return true;
 }
 
@@ -481,6 +499,58 @@ export async function mirrorHotelState(state:any){
     sync_batch_id:batch
   })).filter((x:any)=>x.id);
   await restUpsert('excursion_bookings',excursionBookings,'id');
+
+  const payments:any[]=[];
+  for(const stay of state.stays||[]){
+    for(const p of stay.payments||[])payments.push({
+      id:'hotel:'+String(p.id||crypto.randomUUID()),
+      module:'hotel',
+      reference_id:String(stay.id||''),
+      booking_reference:String(stay.id||''),
+      amount_cents:Number(p.cents||0),
+      currency:'USD',
+      method:p.method||null,
+      status:Number(p.cents||0)>=0?'Paid':'Reversed',
+      paid_at:p.date||p.at||null,
+      payload:p,
+      synced_at:now,
+      sync_batch_id:batch
+    });
+  }
+  for(const order of state.posOrders||[]){
+    if(['Cash','Card','Bank transfer'].includes(String(order.method||'')))payments.push({
+      id:'restaurant:'+String(order.id),
+      module:'restaurant',
+      reference_id:String(order.id),
+      booking_reference:order.stayId||null,
+      amount_cents:Number(order.cents||0),
+      currency:order.currency||'USD',
+      method:order.method||null,
+      status:'Paid',
+      paid_at:order.paidAt||order.updatedAt||order.createdAt||null,
+      payload:order,
+      synced_at:now,
+      sync_batch_id:batch
+    });
+  }
+  for(const order of state.orders||[]){
+    if(order.kind!=='excursion')continue;
+    for(const p of order.excursionPayments||[])payments.push({
+      id:'excursion:'+String(p.id||crypto.randomUUID()),
+      module:'excursion',
+      reference_id:String(order.id),
+      booking_reference:order.stayId||null,
+      amount_cents:Number(p.cents||0),
+      currency:'USD',
+      method:p.method||null,
+      status:Number(p.cents||0)>=0?'Paid':'Reversed',
+      paid_at:p.at||p.date||null,
+      payload:p,
+      synced_at:now,
+      sync_batch_id:batch
+    });
+  }
+  await restUpsert('payments',payments,'id');
 
   return true;
 }
