@@ -200,6 +200,43 @@ export async function testBookingComConnection(){
   }
 }
 
+export async function ensureBookingComWebhook(callbackUrl:string){
+  const connection=await getConnection();
+  const cfg=runtime();
+  if(!cfg.channexKey)throw Error('CHANNEX_API_KEY is not configured on Cloudflare.');
+  if(!cfg.channexWebhookToken)throw Error('CHANNEX_WEBHOOK_TOKEN is not configured on Cloudflare.');
+  if(!connection.property_id)throw Error('Enter and save the Channex property ID first.');
+  if(!/^https:\/\//i.test(callbackUrl))throw Error('Webhook callback URL must use HTTPS.');
+
+  const propertyId=encodeURIComponent(connection.property_id);
+  const existingResult=await channex(connection,'/webhooks?filter[property_id]='+propertyId+'&pagination[limit]=100');
+  const existing=rowsOf(existingResult).find((item:any)=>{
+    const a=attrsOf(item);
+    return String(a.callback_url||'')===callbackUrl&&String(a.event_mask||'')==='booking';
+  });
+  const payload={
+    webhook:{
+      property_id:connection.property_id,
+      callback_url:callbackUrl,
+      event_mask:'booking',
+      headers:{'X-Nirili-Channel-Secret':cfg.channexWebhookToken},
+      is_active:true,
+      send_data:true
+    }
+  };
+  const result=existing
+    ?await channex(connection,'/webhooks/'+encodeURIComponent(String(existing.id||attrsOf(existing).id)),{method:'PUT',body:JSON.stringify(payload)})
+    :await channex(connection,'/webhooks',{method:'POST',body:JSON.stringify(payload)});
+  const row=rowsOf(result)[0]||result?.data||result;
+  const webhookId=String(row?.id||attrsOf(row)?.id||existing?.id||'');
+  await patch('channel_connections','id=eq.'+connectionId,{
+    settings:{...(connection.settings||{}),webhookId,webhookCallbackUrl:callbackUrl},
+    updated_at:isoNow(),
+    last_error:null
+  });
+  return {ok:true,created:!existing,webhookId,callbackUrl,eventMask:'booking'};
+}
+
 export async function discoverBookingComMappings(){
   const connection=await getConnection();
   if(!connection.property_id)throw Error('Enter and save the Channex property ID first.');
