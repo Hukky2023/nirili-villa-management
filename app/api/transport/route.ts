@@ -4,7 +4,7 @@ import {canTransport,isTransportAgent,transportRole} from '../../../lib/transpor
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {restaurantOnly} from '../../../lib/pos-access';
 import {createTransfer,initialTransport,TransportState,Sailing} from '../../../lib/transport';
-import {mirrorTransportState,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {mirrorTransportState,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 const key='transport-bookings-v1';
 async function load(){const row=await authDb().prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(key).first<any>();return {state:row?JSON.parse(row.payload) as TransportState:initialTransport(),revision:row?.revision||0};}
 async function loadForRead(){
@@ -53,6 +53,24 @@ export async function POST(r:Request){const u=await currentUser();if(!u||!canTra
  else throw Error('Invalid booking action.');
  }else throw Error('Unknown action.');
  if(hotelWrite){
+ let pair:any=null,primaryAvailable=true,primaryConflict=false;
+ try{
+  pair=await saveOperationalPairPrimary(key,state,revision,stayKey,hotelWrite.state,hotelWrite.revision,u.userId);
+ }catch(error){
+  const message=error instanceof Error?error.message:String(error||'');
+  if(message.includes('CAS_CONFLICT'))primaryConflict=true;else primaryAvailable=false;
+ }
+ if(primaryConflict)return Response.json({error:'Room or seat availability changed. Refresh and try again.'},{status:409});
+ if(primaryAvailable&&pair?.revisionA&&pair?.revisionB){
+  try{
+   await authDb().batch([
+    authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(state),pair.revisionA,u.userId),
+    authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(hotelWrite.state),pair.revisionB,u.userId)
+   ]);
+  }catch{}
+  try{await Promise.all([mirrorTransportState(state),mirrorHotelState(hotelWrite.state)]);}catch{}
+  return Response.json(await visible(state,pair.revisionA,u));
+ }
  const writeToken=crypto.randomUUID();const payload=JSON.stringify({...state,writeToken});
  const transportSql=revision===0?authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) SELECT ?,?,1,? WHERE EXISTS(SELECT 1 FROM operation_records WHERE key=? AND revision=?)').bind(key,payload,u.userId,stayKey,hotelWrite.revision):authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=? AND EXISTS(SELECT 1 FROM operation_records WHERE key=? AND revision=?)').bind(payload,u.userId,key,revision,stayKey,hotelWrite.revision);
  const hotelSql=authDb().prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=? AND EXISTS(SELECT 1 FROM operation_records WHERE key=? AND json_extract(payload,'$.writeToken')=?)").bind(JSON.stringify(hotelWrite.state),u.userId,stayKey,hotelWrite.revision,key,writeToken);
