@@ -141,7 +141,7 @@ export async function getBookingComChannelState(){
     recentEvents,
     credentials:{
       apiKeyConfigured:!!cfg.channexKey,
-      webhookTokenConfigured:!!cfg.channexWebhookToken,
+      webhookTokenConfigured:!!cfg.channexWebhookToken||!!connection.settings?.webhookTokenHash,
       supabaseConfigured:!!cfg.supabaseSecret
     },
     webhookPath:'/api/channels/booking-com/webhook'
@@ -314,9 +314,13 @@ export async function ensureBookingComWebhook(callbackUrl:string){
   const connection=await getConnection();
   const cfg=runtime();
   if(!cfg.channexKey)throw Error('CHANNEX_API_KEY is not configured on Cloudflare.');
-  if(!cfg.channexWebhookToken)throw Error('CHANNEX_WEBHOOK_TOKEN is not configured on Cloudflare.');
   if(!connection.property_id)throw Error('Enter and save the Channex property ID first.');
   if(!/^https:\/\//i.test(callbackUrl))throw Error('Webhook callback URL must use HTTPS.');
+
+  const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);
+  const generatedToken=Array.from(bytes).map(x=>x.toString(16).padStart(2,'0')).join('');
+  const webhookToken=cfg.channexWebhookToken||generatedToken;
+  const tokenHash=await hashText(webhookToken);
 
   const propertyId=encodeURIComponent(connection.property_id);
   const existingResult=await channex(connection,'/webhooks?filter[property_id]='+propertyId+'&pagination[limit]=100');
@@ -329,7 +333,7 @@ export async function ensureBookingComWebhook(callbackUrl:string){
       property_id:connection.property_id,
       callback_url:callbackUrl,
       event_mask:'booking',
-      headers:{'X-Nirili-Channel-Secret':cfg.channexWebhookToken},
+      headers:{'X-Nirili-Channel-Secret':webhookToken},
       is_active:true,
       send_data:true
     }
@@ -340,7 +344,7 @@ export async function ensureBookingComWebhook(callbackUrl:string){
   const row=rowsOf(result)[0]||result?.data||result;
   const webhookId=String(row?.id||attrsOf(row)?.id||existing?.id||'');
   await patch('channel_connections','id=eq.'+connectionId,{
-    settings:{...(connection.settings||{}),webhookId,webhookCallbackUrl:callbackUrl},
+    settings:{...(connection.settings||{}),webhookId,webhookCallbackUrl:callbackUrl,webhookTokenHash:tokenHash},
     updated_at:isoNow(),
     last_error:null
   });
@@ -889,10 +893,13 @@ function webhookRevisionId(payload:any){
 
 export async function handleBookingComWebhook(request:Request){
   const cfg=runtime();
-  if(!cfg.channexWebhookToken)throw Error('CHANNEX_WEBHOOK_TOKEN is not configured on Cloudflare.');
-  const url=new URL(request.url);
-  const supplied=request.headers.get('x-nirili-channel-secret')||url.searchParams.get('token')||'';
-  if(!supplied||!equalSecret(supplied,cfg.channexWebhookToken))throw Object.assign(Error('Invalid webhook token.'),{status:401});
+  const connection=await getConnection();
+  const supplied=request.headers.get('x-nirili-channel-secret')||'';
+  if(!supplied)throw Object.assign(Error('Missing webhook token.'),{status:401});
+  let valid=false;
+  if(cfg.channexWebhookToken)valid=equalSecret(supplied,cfg.channexWebhookToken);
+  else if(connection.settings?.webhookTokenHash)valid=equalSecret(await hashText(supplied),String(connection.settings.webhookTokenHash));
+  if(!valid)throw Object.assign(Error('Invalid webhook token.'),{status:401});
   const raw=await request.text();
   let payload:any;try{payload=JSON.parse(raw||'{}')}catch{throw Object.assign(Error('Invalid webhook JSON.'),{status:400})}
   const revisionId=webhookRevisionId(payload);
@@ -902,7 +909,6 @@ export async function handleBookingComWebhook(request:Request){
   if(existing[0]?.status==='processed')return {ok:true,duplicate:true,revisionId:revisionId||null};
 
   await recordEvent(eventKey,'inbound',eventType,'received',payload);
-  const connection=await getConnection();
   if(!connection.enabled){
     await recordEvent(eventKey,'inbound',eventType,'ignored',payload,'Channel is disabled.');
     return {ok:true,ignored:true,reason:'disabled'};
