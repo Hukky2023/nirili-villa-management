@@ -1,4 +1,5 @@
 import {authDb} from './auth';
+import {readOperationalRecordPrimary,saveOperationalRecordPrimary} from './supabase-bridge';
 
 export type RestaurantPaymentSettings={
  usdToMvrRate:number;
@@ -40,14 +41,22 @@ function positive(value:any,fallback=0){
  const n=Number(value);return Number.isFinite(n)&&n>0?n:fallback;
 }
 async function persist(settings:RestaurantPaymentSettings,by:string){
+ let primary:any=null;try{primary=await readOperationalRecordPrimary(KEY);}catch{}
+ let nextRevision=0,primaryAvailable=true;
+ try{nextRevision=await saveOperationalRecordPrimary(KEY,settings,Number(primary?.revision)||0,by);}catch{primaryAvailable=false;}
+ if(primaryAvailable){
+  if(!nextRevision)throw Error('Payment settings changed. Reload and try again.');
+  try{await authDb().prepare("INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by").bind(KEY,JSON.stringify(settings),nextRevision,by).run();}catch{}
+  return settings;
+ }
  await authDb().prepare("INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=operation_records.revision+1,updated_by=excluded.updated_by").bind(KEY,JSON.stringify(settings),by).run();
  return settings;
 }
 export async function loadRestaurantPaymentSettings():Promise<RestaurantPaymentSettings>{
  try{
-  const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(KEY).first<any>();
+  let row:any=null;try{row=await readOperationalRecordPrimary(KEY);}catch{}if(!row)row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(KEY).first<any>();
   if(!row)return {...defaults};
-  const value=JSON.parse(row.payload||'{}');
+  const value=typeof row.payload==='string'?JSON.parse(row.payload||'{}'):row.payload||{};
   return {
    usdToMvrRate:positive(value.usdToMvrRate,defaults.usdToMvrRate),
    usdToEurRate:positive(value.usdToEurRate,0),
