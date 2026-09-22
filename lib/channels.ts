@@ -200,6 +200,116 @@ export async function testBookingComConnection(){
   }
 }
 
+export async function bootstrapBookingComStaging(){
+  const connection=await getConnection();
+  if(connection.mode!=='staging')throw Error('Staging bootstrap is blocked in production mode.');
+  if(!runtime().channexKey)throw Error('CHANNEX_API_KEY is not configured on Cloudflare.');
+  if(connection.property_id)throw Error('A Channex property is already selected. Use Discover from Channex instead.');
+
+  const propertyResult=await channex(connection,'/properties',{
+    method:'POST',
+    body:JSON.stringify({property:{
+      title:'Nirili Villa Staging',
+      currency:'USD',
+      country:'MV',
+      city:'Dhiffushi',
+      address:'Dhiffushi, Kaafu Atoll',
+      timezone:'Indian/Maldives',
+      facilities:[]
+    }})
+  });
+  const propertyRow=rowsOf(propertyResult)[0]||propertyResult?.data||propertyResult;
+  const propertyId=String(propertyRow?.id||attrsOf(propertyRow)?.id||'');
+  if(!propertyId)throw Error('Channex did not return the new staging property ID.');
+
+  const roomResult=await channex(connection,'/room_types',{
+    method:'POST',
+    body:JSON.stringify({room_type:{
+      property_id:propertyId,
+      title:'Double Room',
+      count_of_rooms:14,
+      occ_adults:3,
+      occ_children:1,
+      occ_infants:0,
+      default_occupancy:2,
+      room_kind:'room',
+      facilities:[]
+    }})
+  });
+  const roomRow=rowsOf(roomResult)[0]||roomResult?.data||roomResult;
+  const roomTypeId=String(roomRow?.id||attrsOf(roomRow)?.id||'');
+  if(!roomTypeId)throw Error('Channex did not return the Double Room type ID.');
+
+  const plans=[
+    {title:'Bed & Breakfast',meal:'Bed & Breakfast',mealType:'bed_and_breakfast',rates:[50,60,70]},
+    {title:'Half Board',meal:'Half Board',mealType:'half_board',rates:[70,80,90]},
+    {title:'Full Board',meal:'Full Board',mealType:'full_board',rates:[80,100,120]}
+  ];
+  const rateRows:any[]=[];
+  for(const plan of plans){
+    const result=await channex(connection,'/rate_plans',{
+      method:'POST',
+      body:JSON.stringify({rate_plan:{
+        title:plan.title,
+        property_id:propertyId,
+        room_type_id:roomTypeId,
+        currency:'USD',
+        sell_mode:'per_person',
+        rate_mode:'manual',
+        meal_type:plan.mealType,
+        options:[
+          {occupancy:1,is_primary:false,rate:plan.rates[0]},
+          {occupancy:2,is_primary:true,rate:plan.rates[1]},
+          {occupancy:3,is_primary:false,rate:plan.rates[2]}
+        ]
+      }})
+    });
+    const row=rowsOf(result)[0]||result?.data||result;
+    const id=String(row?.id||attrsOf(row)?.id||'');
+    if(!id)throw Error('Channex did not return a rate plan ID for '+plan.title+'.');
+    rateRows.push({
+      connection_id:connectionId,
+      channel_rate_id:id,
+      channel_rate_name:plan.title,
+      pms_meal_plan:plan.meal,
+      currency:'USD',
+      active:true,
+      settings:{roomTypeId},
+      updated_at:isoNow()
+    });
+  }
+
+  await Promise.all([
+    patch('channel_connections','id=eq.'+connectionId,{
+      property_id:propertyId,
+      status:'configured',
+      settings:{...(connection.settings||{}),stagingBootstrapped:true,stagingRoomTypeId:roomTypeId},
+      last_error:null,
+      updated_at:isoNow()
+    }),
+    upsert('channel_room_mappings',[{
+      connection_id:connectionId,
+      channel_room_id:roomTypeId,
+      channel_room_name:'Double Room',
+      pms_room_type:'Double Room',
+      active:true,
+      settings:{},
+      updated_at:isoNow()
+    }],'connection_id,channel_room_id'),
+    upsert('channel_rate_mappings',rateRows,'connection_id,channel_rate_id')
+  ]);
+
+  return {
+    ...(await getBookingComChannelState()),
+    bootstrap:{
+      propertyId,
+      roomTypeId,
+      ratePlanIds:rateRows.map(row=>row.channel_rate_id),
+      message:'Nirili Villa staging property created with 14 Double Rooms and BB/HB/FB rate plans.'
+    }
+  };
+}
+
 export async function ensureBookingComWebhook(callbackUrl:string){
   const connection=await getConnection();
   const cfg=runtime();
