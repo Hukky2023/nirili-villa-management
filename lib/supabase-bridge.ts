@@ -202,6 +202,39 @@ export async function mirrorOperationalSnapshot(records:any[],bills:any[]){
   return {operations:opRows.length,schedules:scheduleRows.length,bills:billRows.length,transport:!!transport};
 }
 
+
+async function syncMappedEmployeeMetadata(row:LegacyAccountRow){
+  if(!['admin','staff'].includes(row.role))return;
+  const mapped=await restSelect('legacy_accounts','id=eq.'+encodeURIComponent(row.id)+'&select=auth_user_id&limit=1');
+  const authUserId=mapped[0]?.auth_user_id as string|undefined;
+  if(!authUserId)return;
+  const p=new Set(permissions(row.permissions));
+  await restUpsert('profiles',[{
+    id:authUserId,
+    username:row.username,
+    full_name:row.name,
+    email:row.email||syntheticEmail(row.username),
+    role:appRole(row.role),
+    active:row.active===undefined?true:!!row.active,
+    legacy_account_id:row.id,
+    updated_at:new Date().toISOString()
+  }],'id');
+  if(row.role==='staff')await restUpsert('staff_permissions',[{
+    user_id:authUserId,
+    guesthouse_reception:p.has('guesthouse_reception'),
+    excursions_manager:p.has('excursions_manager'),
+    waiter_pos:p.has('waiter_pos'),
+    restaurant_pos:p.has('restaurant_pos'),
+    kitchen_pos:p.has('kitchen_pos'),
+    edit_bills:p.has('edit_bills'),
+    edit_excursions:p.has('edit_excursions'),
+    edit_transfers:p.has('edit_transfers'),
+    buggy_driver:p.has('buggy_driver'),
+    crew_location:p.has('crew_location'),
+    updated_at:new Date().toISOString()
+  }],'user_id');
+}
+
 export async function mirrorLegacyAccount(row:LegacyAccountRow){
   if(!supabaseBridgeConfigured())return false;
   const legacy={
@@ -217,6 +250,7 @@ export async function mirrorLegacyAccount(row:LegacyAccountRow){
     updated_at:new Date().toISOString()
   };
   await restUpsert('legacy_accounts',[legacy],'id');
+  try{await syncMappedEmployeeMetadata(row);}catch{}
   return true;
 }
 
