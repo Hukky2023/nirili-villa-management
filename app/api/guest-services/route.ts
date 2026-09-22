@@ -11,7 +11,7 @@ import {appendAccountHistory} from '../../../lib/account-history';
 import {loadStays,stayKey,folioFor} from '../../../lib/stays';
 import {catalog,plans,nightly,islandToday,validDate} from '../../../lib/guest-catalog';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
-import {deactivateSupabaseAccount,ensureSupabaseEmployee,mirrorLegacyAccount,readOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {deactivateSupabaseAccount,deleteLegacySessionsForAccount,ensureSupabaseEmployee,mirrorLegacyAccount,readOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {updateRoomInventory} from '../../../lib/rooms';
 const MIN_EXCURSION_PAX=1;
 import {walkInExcursionBill,walkInExcursionProfile,syncWalkInExcursionAccess} from '../../../lib/walkin-excursion-access';
@@ -122,7 +122,7 @@ if(b.action==='excursion-crew-update'){
   try{
    const active=member.active!==false&&member.active!==0,db=authDb();
    await db.prepare("UPDATE accounts SET name=?,active=? WHERE id=? AND role='staff'").bind(member.name,active?1:0,member.accountId).run();
-   if(!active)await db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(member.accountId).run();
+   if(!active){await db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(member.accountId).run();try{await deleteLegacySessionsForAccount(member.accountId);}catch{}}
    try{const account=await db.prepare('SELECT * FROM accounts WHERE id=?').bind(member.accountId).first<any>();if(account)await mirrorLegacyAccount(account);}catch{}
    try{await appendAccountHistory(member.accountId,{at:new Date().toISOString(),action:active?'Crew profile updated':'Crew account disabled',by:u.username,detail:'Crew name/status updated from Excursions.'});}catch{}
   }catch{}
