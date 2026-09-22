@@ -11,6 +11,7 @@ type BillingBooking = ConfirmedExcursionBooking & {pricing?: ExcursionPricing; b
 const pageSize = 25;
 const money = (cents: number) => '$' + (cents / 100).toFixed(2);
 const dateLabel = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.split('-').reverse().join('-') : 'Not recorded';
+const ageLabel = (category: string) => category === 'child' ? 'Child (3–11)' : category === 'infant' ? 'Under 3' : category === 'adult' ? 'Adult (12+)' : 'Age not recorded';
 function createdLabel(value: string) {
   const date = new Date(value);
   if (!value || Number.isNaN(date.getTime())) return 'Not recorded';
@@ -116,6 +117,7 @@ export default function ExcursionBookings() {
             <div><dt>Trip status</dt><dd>{b.tripStatus}{b.endTime&&<small>Trip end: {b.endTime} · Maldives time</small>}{b.returnTime&&<small>Return pickup: {b.returnTime} · Maldives time</small>}{b.privateBoatRequested&&<small>Private boat surcharge: {money(b.privateBoatSurchargeCents)}</small>}</dd></div>
             <div><dt>Buggy pickup</dt><dd>{b.serviceType==='romantic-beach-dinner'?(b.buggyRequested?'Round trip to dinner location and back':'Not requested'):(b.guestType==='In-house' ? 'Included automatically' : (b.buggyRequested ? 'Requested' : 'Not requested'))}</dd></div>
             <div><dt>Children policy</dt><dd>Under 3 free<small>Ages 3–11: 50% · Ages 12+: full price</small></dd></div><div><dt>Payment status</dt><dd>{b.pricing?.complimentary ? 'Complimentary / Free' : b.paymentStatus} · {money(b.totalCents)} USD<small>One combined payment for all guests in this booking</small></dd></div>
+            <div className="excursion-booking-guests"><dt>Guest list</dt><dd>{b.people?.length ? <ol>{b.people.map(person => <li key={person.id}><span><strong>{person.nameRecorded ? person.name : 'Name not recorded'}</strong><small>{ageLabel(person.ageCategory)}{person.footSize ? ' · EU foot size '+person.footSize : ''}</small></span>{person.boarded && <em>Boarded</em>}</li>)}</ol> : 'Guest names not recorded'}</dd></div>
             <div><dt>Booking source</dt><dd>{b.source || 'Not recorded'}</dd></div>
             <div><dt>Booked by</dt><dd>{b.createdBy || 'Not recorded'}</dd></div>
             <div><dt>Booking created</dt><dd>{createdLabel(b.createdAt)}{b.createdAt && <small>Maldives time</small>}</dd></div>

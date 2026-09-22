@@ -42,3 +42,66 @@
 }
 
 .excursion-booking-badges .buggy{background:#eaf5fb;color:#176080}
+
+
+.excursion-booking-guests{grid-column:1/-1}
+.excursion-booking-guests dd{margin:0}
+.excursion-booking-guests ol{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;
+ margin:7px 0 0;
+ padding:0;
+ list-style:none;
+ counter-reset:excursion-guests;
+}
+.excursion-booking-guests li{
+ counter-increment:excursion-guests;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ min-width:0;
+ padding:9px 10px;
+ border:1px solid #dbe7ec;
+ border-radius:9px;
+ background:#f9fcfd;
+}
+.excursion-booking-guests li::before{
+ content:counter(excursion-guests);
+ flex:none;
+ display:grid;
+ place-items:center;
+ width:25px;
+ height:25px;
+ border-radius:999px;
+ background:#e9f6fb;
+ color:#087cad;
+ font-size:11px;
+ font-weight:900;
+}
+.excursion-booking-guests li>span{
+ display:grid;
+ gap:2px;
+ min-width:0;
+ margin-right:auto;
+}
+.excursion-booking-guests li strong{
+ overflow:hidden;
+ text-overflow:ellipsis;
+ color:#173a4d;
+}
+.excursion-booking-guests li small{color:#617d8b}
+.excursion-booking-guests li em{
+ flex:none;
+ padding:4px 7px;
+ border-radius:999px;
+ background:#e8f7ee;
+ color:#267044;
+ font-size:10px;
+ font-style:normal;
+ font-weight:800;
+}
+@media(max-width:650px){
+ .excursion-booking-guests ol{grid-template-columns:1fr}
+}
