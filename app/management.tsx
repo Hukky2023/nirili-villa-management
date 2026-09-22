@@ -19,7 +19,8 @@ import GuestServices,{BookingReview,CheckInButton,ServiceInbox} from "./guest-se
 import AdminNotifications from "./admin-notifications";
 import RoomWorkspace from "./room-workspace";
 import StaffAccounts from "./staff-accounts";
-import OperationsPanel from "./operations-panel";\nimport BuggyManagementPanel from "./buggy-management";
+import OperationsPanel from "./operations-panel";
+import BuggyManagementPanel from "./buggy-management";
 const BillAccess=createContext(false);
 const StayAccess=createContext(false);
 import {BedDouble,Bell,CalendarDays,CarFront,CircleDollarSign,FileText,Gauge,House,Menu,Plane,Plus,Search,Settings,ShipWheel,ShoppingCart,Sparkles,Users,UtensilsCrossed,X,CheckCircle2,ArrowRight,UserRound,LifeBuoy} from "lucide-react";
