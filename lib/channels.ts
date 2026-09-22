@@ -1,6 +1,7 @@
 import {env} from 'cloudflare:workers';
 import {authDb} from './auth';
 import {nextBookingReference} from './booking-reference';
+import {nightly} from './guest-catalog';
 import {updateRoomInventory} from './rooms';
 import {stayKey} from './stays';
 import {
@@ -13,6 +14,8 @@ import {
 const connectionId='booking-com';
 const projectUrl='https://vjbyrjqibzebpzontxgc.supabase.co';
 const allowedMeals=new Set(['Bed & Breakfast','Half Board','Full Board']);
+const stagingSandboxKey='booking-com-staging-hotel-v1';
+const stagingBookingHotelId='5868189';
 
 type ChannelConnection={
   id:string;
@@ -114,6 +117,25 @@ async function channex(connection:ChannelConnection,path:string,init:RequestInit
 function rowsOf(result:any){return Array.isArray(result?.data)?result.data:Array.isArray(result)?result:result?.data?[result.data]:[];}
 function attrsOf(item:any){return item?.attributes||item||{};}
 function isoNow(){return new Date().toISOString();}
+function seedStagingHotel(){
+  const rooms=['101','102','103','104','105','106','201','202','203','204','301','302','303','304']
+    .map(number=>({number,capacity:3,status:'Available',note:''}));
+  return {rooms,stays:[],requests:[],orders:[],posOrders:[],deletedBookings:[],nextBookingNumber:9001};
+}
+
+async function loadStagingHotel(){
+  const rows=await select('integration_state','key=eq.'+encodeURIComponent(stagingSandboxKey)+'&select=key,payload,updated_at&limit=1');
+  const state=rows[0]?.payload&&typeof rows[0].payload==='object'?rows[0].payload:seedStagingHotel();
+  state.rooms??=seedStagingHotel().rooms;state.stays??=[];state.requests??=[];state.orders??=[];state.posOrders??=[];
+  updateRoomInventory(state);
+  return state;
+}
+
+async function saveStagingHotel(state:any){
+  await upsert('integration_state',[{key:stagingSandboxKey,payload:state,updated_at:isoNow()}],'key');
+  return state;
+}
+
 function maldivesToday(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
   const get=(type:string)=>parts.find(part=>part.type===type)?.value||'';
@@ -210,8 +232,9 @@ export async function bootstrapBookingComStaging(){
     method:'POST',
     body:JSON.stringify({property:{
       title:'Nirili Villa Staging',
-      currency:'USD',
+      currency:'GBP',
       country:'MV',
+      property_type:'guest_house',
       city:'Dhiffushi',
       address:'Dhiffushi, Kaafu Atoll',
       timezone:'Indian/Maldives',
@@ -229,7 +252,7 @@ export async function bootstrapBookingComStaging(){
       title:'Double Room',
       count_of_rooms:14,
       occ_adults:3,
-      occ_children:1,
+      occ_children:0,
       occ_infants:0,
       default_occupancy:2,
       room_kind:'room',
@@ -253,7 +276,7 @@ export async function bootstrapBookingComStaging(){
         title:plan.title,
         property_id:propertyId,
         room_type_id:roomTypeId,
-        currency:'USD',
+        currency:'GBP',
         sell_mode:'per_person',
         rate_mode:'manual',
         meal_type:plan.mealType,
@@ -272,7 +295,7 @@ export async function bootstrapBookingComStaging(){
       channel_rate_id:id,
       channel_rate_name:plan.title,
       pms_meal_plan:plan.meal,
-      currency:'USD',
+      currency:'GBP',
       active:true,
       settings:{roomTypeId},
       updated_at:isoNow()
@@ -283,7 +306,7 @@ export async function bootstrapBookingComStaging(){
     patch('channel_connections','id=eq.'+connectionId,{
       property_id:propertyId,
       status:'configured',
-      settings:{...(connection.settings||{}),stagingBootstrapped:true,stagingRoomTypeId:roomTypeId},
+      settings:{...(connection.settings||{}),stagingBootstrapped:true,stagingRoomTypeId:roomTypeId,stagingBookingHotelId,stagingCurrency:'GBP'},
       last_error:null,
       updated_at:isoNow()
     }),
@@ -305,7 +328,9 @@ export async function bootstrapBookingComStaging(){
       propertyId,
       roomTypeId,
       ratePlanIds:rateRows.map(row=>row.channel_rate_id),
-      message:'Nirili Villa staging property created with 14 Double Rooms and BB/HB/FB rate plans.'
+      bookingComTestHotelId:stagingBookingHotelId,
+      currency:'GBP',
+      message:'Nirili Villa staging property created with 14 Double Rooms and GBP BB/HB/FB test rates for the Channex Booking.com test account.'
     }
   };
 }
@@ -500,9 +525,11 @@ export async function runBookingComSelfTest(){
 export async function previewBookingComAvailability(days=30,startDate=maldivesToday()){
   const count=Math.max(1,Math.min(365,Math.trunc(Number(days)||30)));
   if(!/^\d{4}-\d{2}-\d{2}$/.test(startDate))startDate=maldivesToday();
-  const hotel=await readOperationalRecordPrimary(stayKey);
-  if(!hotel?.payload)throw Error('Hotel inventory is not available in Supabase.');
-  const state=hotel.payload;
+  const connection=await getConnection();
+  const state=connection.mode==='staging'
+    ?await loadStagingHotel()
+    :(await readOperationalRecordPrimary(stayKey))?.payload;
+  if(!state)throw Error('Hotel inventory is not available in Supabase.');
   const rooms=(Array.isArray(state.rooms)?state.rooms:[]).filter((room:any)=>String(room.status||'').toLowerCase()!=='maintenance');
   const stays=Array.isArray(state.stays)?state.stays:[];
   const values=Array.from({length:count},(_,i)=>{
@@ -641,7 +668,7 @@ function roomAmount(parsed:any,room:any){
   return amount>0?amount:parsed.amount/Math.max(1,parsed.rooms.length);
 }
 
-function mutateHotelState(state:any,parsed:any,mappings:any){
+function mutateHotelState(state:any,parsed:any,mappings:any,options:{sandbox?:boolean}={}){
   state.stays??=[];state.rooms??=[];
   const existing=state.stays.filter((stay:any)=>stay?.channel?.connectionId===connectionId&&stay?.channel?.externalReservationId===parsed.externalReservationId);
   if(parsed.status==='cancelled'){
@@ -660,7 +687,7 @@ function mutateHotelState(state:any,parsed:any,mappings:any){
   }
   if(!['new','modified'].includes(parsed.status))throw Error('Unsupported Booking.com revision status: '+parsed.status);
   if(!parsed.externalReservationId||!parsed.arrivalDate||!parsed.departureDate||parsed.departureDate<=parsed.arrivalDate)throw Error('Booking.com revision is missing a valid reservation ID or stay dates.');
-  if(parsed.currency!=='USD')throw Error('Booking.com booking currency is '+parsed.currency+'. Automatic import is paused until a USD rate/currency mapping is configured.');
+  if(!options.sandbox&&parsed.currency!=='USD')throw Error('Booking.com booking currency is '+parsed.currency+'. Automatic import is paused until a USD rate/currency mapping is configured.');
 
   const bookingRooms=parsed.rooms.length?parsed.rooms:[{
     checkin_date:parsed.arrivalDate,checkout_date:parsed.departureDate,
@@ -687,8 +714,9 @@ function mutateHotelState(state:any,parsed:any,mappings:any){
     const pax=adults+children;
     if(pax<1||pax>3)throw Error('Booking.com room '+(index+1)+' has '+pax+' guests; Nirili rooms allow up to 3 guests.');
     const nights=Math.max(1,Math.round((Date.parse(checkOut)-Date.parse(checkIn))/86400000));
-    const amountCents=Math.max(0,Math.round(roomAmount(parsed,incoming)*100));
-    const rateCents=Math.max(0,Math.round(amountCents/nights));
+    const externalAmount=roomAmount(parsed,incoming);
+    const amountCents=options.sandbox?nightly(meal,pax)*nights:Math.max(0,Math.round(externalAmount*100));
+    const rateCents=options.sandbox?nightly(meal,pax):Math.max(0,Math.round(amountCents/nights));
     const guest=roomGuestName(incoming,parsed.guestName);
     let stay=existing.find((item:any)=>Number(item?.channel?.roomIndex)===index);
 
@@ -797,27 +825,32 @@ export async function processBookingComRevision(revision:any,eventKey?:string){
     let savedRefs:string[]=[];
     let savedState:any=null;
     let savedRevision=0;
-    for(let attempt=0;attempt<4;attempt++){
-      const hotel=await readOperationalRecordPrimary(stayKey);
-      if(!hotel?.payload)throw Error('Hotel state is unavailable in Supabase.');
-      const state=structuredClone(hotel.payload);
-      const refs=mutateHotelState(state,parsed,mappings);
-      const next=await saveOperationalRecordPrimary(stayKey,state,Number(hotel.revision)||0,'channel:booking-com');
-      if(next>Number(hotel.revision||0)){
-        savedRefs=refs;savedState=state;savedRevision=next;break;
+    if(connection.mode==='staging'){
+      const state=structuredClone(await loadStagingHotel());
+      savedRefs=mutateHotelState(state,parsed,mappings,{sandbox:true});
+      savedState=await saveStagingHotel(state);
+    }else{
+      for(let attempt=0;attempt<4;attempt++){
+        const hotel=await readOperationalRecordPrimary(stayKey);
+        if(!hotel?.payload)throw Error('Hotel state is unavailable in Supabase.');
+        const state=structuredClone(hotel.payload);
+        const refs=mutateHotelState(state,parsed,mappings);
+        const next=await saveOperationalRecordPrimary(stayKey,state,Number(hotel.revision)||0,'channel:booking-com');
+        if(next>Number(hotel.revision||0)){
+          savedRefs=refs;savedState=state;savedRevision=next;break;
+        }
       }
+      if(!savedState)throw Error('Hotel inventory changed repeatedly while applying the Booking.com reservation. The revision was not acknowledged.');
+      await Promise.all([mirrorHotelState(savedState),saveD1Rollback(savedState,savedRevision)]);
     }
-    if(!savedState)throw Error('Hotel inventory changed repeatedly while applying the Booking.com reservation. The revision was not acknowledged.');
     await Promise.all([
-      mirrorHotelState(savedState),
-      saveD1Rollback(savedState,savedRevision),
       updateChannelReservation(parsed,parsed.status==='cancelled'?'cancelled':'processed',savedRefs),
       patch('channel_connections','id=eq.'+connectionId,{last_inbound_at:isoNow(),last_error:null,updated_at:isoNow()})
     ]);
     const detail=parsed.status==='cancelled'
       ?'Booking.com cancellation · '+parsed.guestName+' · '+parsed.arrivalDate+' → '+parsed.departureDate
       :'Booking.com '+(parsed.status==='modified'?'booking modified':'new booking')+' · '+parsed.guestName+' · '+parsed.arrivalDate+' → '+parsed.departureDate+(savedRefs.length?' · '+savedRefs.join(', '):'');
-    await saveSystemNotifications([{
+    if(connection.mode==='production')await saveSystemNotifications([{
       id:'booking-com:'+parsed.revisionId,
       type:'hotel-booking',
       title:parsed.status==='cancelled'?'Booking.com cancellation':parsed.status==='modified'?'Booking.com booking modified':'New Booking.com reservation',
