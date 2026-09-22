@@ -343,6 +343,11 @@ export async function deactivateSupabaseAccount(legacyAccountId:string){
     headers:{Prefer:'return=minimal'},
     body:JSON.stringify({active:false,updated_at:new Date().toISOString()})
   },'secret');
+  await sb('/rest/v1/guest_accounts?legacy_account_id=eq.'+encodeURIComponent(legacyAccountId),{
+    method:'PATCH',
+    headers:{Prefer:'return=minimal'},
+    body:JSON.stringify({active:false,valid_until:new Date().toISOString()})
+  },'secret');
   return true;
 }
 
