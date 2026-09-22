@@ -34,6 +34,17 @@ function config(){
 
 export function supabaseBridgeConfigured(){return !!config().secret;}
 
+export async function supabaseBridgeHealth(){
+  const cfg=config();
+  if(!cfg.secret)return {configured:false,reachable:false,error:'SUPABASE_SECRET_KEY is not available to this deployment.'};
+  try{
+    const rows=await restSelect('rooms','select=room_number&limit=1');
+    return {configured:true,reachable:true,roomsVisible:Array.isArray(rows)?rows.length:0};
+  }catch(error){
+    return {configured:true,reachable:false,error:error instanceof Error?error.message:'Supabase connection failed.'};
+  }
+}
+
 function permissions(value:LegacyAccountRow['permissions']){
   if(Array.isArray(value))return value;
   try{return JSON.parse(String(value||'[]'));}catch{return [];}
