@@ -259,6 +259,21 @@ export async function mirrorLegacyAccount(row:LegacyAccountRow){
 
 
 
+
+export async function updatePublicBookingRequestStatus(id:string,status:string,extra:any={}){
+  if(!supabaseBridgeConfigured())return false;
+  await sb('/rest/v1/public_booking_requests?id=eq.'+encodeURIComponent(id),{
+    method:'PATCH',
+    headers:{Prefer:'return=minimal'},
+    body:JSON.stringify({
+      status,
+      updated_at:new Date().toISOString(),
+      payload:{...extra,status}
+    })
+  },'secret');
+  return true;
+}
+
 export async function submitPublicBookingRequest(request:any){
   if(!supabaseBridgeConfigured())throw Error('Booking service is unavailable.');
   return await sb('/rest/v1/rpc/submit_public_booking_request',{
