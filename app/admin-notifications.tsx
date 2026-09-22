@@ -82,6 +82,12 @@ export default function AdminNotifications(){
  const polling=useRef(false);
  useEffect(()=>{
   try{setNotices(JSON.parse(localStorage.getItem(NOTICE_KEY)||"[]"))}catch{}
+  void getJson("/api/notifications").then(server=>{
+   if(Array.isArray(server?.notifications)){
+    setNotices(server.notifications);
+    try{localStorage.setItem(NOTICE_KEY,JSON.stringify(server.notifications))}catch{}
+   }
+  });
   let stop=false;
   const poll=async()=>{
    if(stop||polling.current||document.hidden)return;
@@ -98,8 +104,10 @@ export default function AdminNotifications(){
      const added=buildNotices(previous,{...previous,...current});
      if(added.length){
       setNotices(existing=>{
-       const ids=new Set(existing.map(n=>n.id));const merged=[...added.filter(n=>!ids.has(n.id)),...existing].slice(0,150);
-       localStorage.setItem(NOTICE_KEY,JSON.stringify(merged));return merged;
+       const ids=new Set(existing.map(n=>n.id));const fresh=added.filter(n=>!ids.has(n.id)),merged=[...fresh,...existing].slice(0,150);
+       localStorage.setItem(NOTICE_KEY,JSON.stringify(merged));
+       if(fresh.length)void fetch("/api/notifications",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({notifications:fresh})}).catch(()=>{});
+       return merged;
       });
       try{navigator.vibrate?.([120,70,120])}catch{}
       if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
@@ -117,8 +125,9 @@ export default function AdminNotifications(){
  },[]);
  const unread=useMemo(()=>notices.filter(n=>!n.read).length,[notices]);
  const save=(next:Notice[])=>{setNotices(next);try{localStorage.setItem(NOTICE_KEY,JSON.stringify(next))}catch{}};
- const markAll=()=>save(notices.map(n=>({...n,read:true})));
- const clear=()=>save([]);
+ const markAll=()=>{save(notices.map(n=>({...n,read:true})));void fetch("/api/notifications",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({})}).catch(()=>{})};
+ const markOne=(id:string)=>{save(notices.map(x=>x.id===id?{...x,read:true}:x));void fetch("/api/notifications",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:[id]})}).catch(()=>{})};
+ const clear=()=>{save([]);void fetch("/api/notifications",{method:"DELETE"}).catch(()=>{})};
  const enablePhone=async()=>{if(typeof Notification!=="undefined")try{await Notification.requestPermission()}catch{}};
  return <div className="nv-notifications">
   <button className={"nv-notification-trigger "+(unread?"has-unread":"")} onClick={()=>setOpen(v=>!v)} aria-label={"Notifications, "+unread+" unread"} aria-expanded={open}>
@@ -127,7 +136,7 @@ export default function AdminNotifications(){
   {open&&<><button className="nv-notification-backdrop" aria-label="Close notifications" onClick={()=>setOpen(false)}/><section className="nv-notification-panel">
    <header><div><strong><UiText>Notifications</UiText></strong><small><UiText>Bookings, messages, guests and system changes</UiText></small></div><button onClick={()=>setOpen(false)} aria-label="Close"><X size={18}/></button></header>
    <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button><button onClick={enablePhone}><UiText>Enable phone notifications</UiText></button><button onClick={clear}><UiText>Clear</UiText></button></div>
-   <div className="nv-notification-list">{notices.length?notices.map(n=><button key={n.id} className={n.read?"read":""} onClick={()=>save(notices.map(x=>x.id===n.id?{...x,read:true}:x))}>
+   <div className="nv-notification-list">{notices.length?notices.map(n=><button key={n.id} className={n.read?"read":""} onClick={()=>markOne(n.id)}>
     <i className={"type "+n.type}/><span><strong><UiText>{n.title}</UiText></strong><small><UiText>{n.detail}</UiText></small><time>{new Date(n.at).toLocaleString()}</time></span>
    </button>):<p className="empty"><UiText>No notifications yet.</UiText></p>}</div>
   </section></>}
