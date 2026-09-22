@@ -4,7 +4,7 @@ import {authDb,currentUser,hashPassword,validPassword,sameOrigin,validEmail} fro
 import {walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
 import {appendAccountHistory,readAccountHistory,accountHistoryStatement,preserveAccountHistoryStatement} from '../../../lib/account-history';
 import {accountStays,historyFor} from '../../../lib/account-history-events';
-import {mirrorLegacyAccount} from '../../../lib/supabase-bridge';
+import {mirrorLegacyAccount,ensureSupabaseEmployee} from '../../../lib/supabase-bridge';
 const permissions=["guesthouse_reception","excursions_manager","waiter_pos","restaurant_pos","kitchen_pos","edit_bills","edit_excursions","edit_transfers","buggy_driver","crew_location"];
 
 export async function GET(){
@@ -67,7 +67,13 @@ const usernameUsed=await db.prepare("SELECT id FROM accounts WHERE username=?").
 if(usernameUsed)return Response.json({error:"That username is already in use. Choose a different username."},{status:409});
 if(email){const emailUsed=await db.prepare("SELECT id FROM accounts WHERE email=?").bind(email).first<any>();if(emailUsed)return Response.json({error:"That email address is already linked to another account."},{status:409});}
 const p=await hashPassword(password),id=crypto.randomUUID();const results=await db.batch([db.prepare("INSERT INTO accounts(id,username,email,name,password_hash,salt,role,permissions,active) VALUES(?,?,?,?,?,?,'staff',?,1)").bind(id,username,email||null,name,p.hash,p.salt,JSON.stringify(b.permissions)),await credentialStatement(id,p.hash,password,admin.userId)]);const result=results[0];
-if(result.meta.changes){await appendAccountHistory(id,{at:new Date().toISOString(),action:'Staff account created',by:admin.username,detail:(b.permissions||[]).join(', ')||'No permissions assigned.'});const row=await db.prepare("SELECT * FROM accounts WHERE id=?").bind(id).first<any>();if(row)try{await mirrorLegacyAccount(row);}catch{}}
+if(result.meta.changes){
+ await appendAccountHistory(id,{at:new Date().toISOString(),action:'Staff account created',by:admin.username,detail:(b.permissions||[]).join(', ')||'No permissions assigned.'});
+ const row=await db.prepare("SELECT * FROM accounts WHERE id=?").bind(id).first<any>();
+ if(row)try{
+  await Promise.race([ensureSupabaseEmployee(row,password),new Promise(resolve=>setTimeout(resolve,1500))]);
+ }catch{try{await mirrorLegacyAccount(row);}catch{}}
+}
 return Response.json(result.meta.changes?{ok:true}:{error:"Could not create the staff account."},{status:result.meta.changes?200:503});
 }catch{return Response.json({error:"Could not update staff. Retry."},{status:503});}}
 export const POST=change;export const DELETE=change;
