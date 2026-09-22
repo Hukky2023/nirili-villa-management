@@ -2,7 +2,8 @@ import {transportPortalAllowed,isTransportAgent} from '../../../../lib/transport
 import {withTab} from '../../../../lib/tab-session';
 import {restaurantOnly,canPOS,canKitchen,canTakePayment} from '../../../../lib/pos-access';
 import {roomLoginActive,authDb,bootstrap,verifyPassword,issueSession,sameOrigin,limit,publicUser} from "../../../../lib/auth";
-import {authenticateSupabaseEmployee,ensureSupabaseEmployee} from "../../../../lib/supabase-bridge";
+import {authenticateSupabaseEmployee,ensureSupabaseEmployee,mirrorHotelState} from "../../../../lib/supabase-bridge";
+import {loadStays} from "../../../../lib/stays";
 export async function POST(request:Request){
 if(!sameOrigin(request))return Response.json({error:"Invalid request"},{status:403});
 try{
@@ -21,6 +22,7 @@ if(!row){
  if(['admin','staff'].includes(row.role))try{await ensureSupabaseEmployee(row,b.password);}catch{}
 }else if(!await roomLoginActive(row.id))return Response.json({error:"Incorrect username or password."},{status:401});
 const user=publicUser(row);
+if(user.role==='admin')try{const {state}=await loadStays();await mirrorHotelState(state);}catch{}
 if(typeof b.portal==="string"&&b.portal.startsWith("transport_")&&!transportPortalAllowed(user,b.portal))return Response.json({error:"This account cannot access the selected transport portal."},{status:403});
 if(isTransportAgent(user)&&!["transport_agent","direct"].includes(b.portal))return Response.json({error:"Use the Agent login on the transport page."},{status:403});
 if(b.portal==="admin"&&user.role!=="admin"||b.portal==="staff"&&!["admin","staff"].includes(user.role))return Response.json({error:"This account cannot access that portal."},{status:403});
