@@ -1,4 +1,4 @@
-import {credentialStatement} from '../../../lib/credential-store';
+import {credentialStatement,mirrorCredentialRecord} from '../../../lib/credential-store';
 import {loadStays} from '../../../lib/stays';
 import {authDb,currentUser,hashPassword,validPassword,sameOrigin,validEmail} from "../../../lib/auth";
 import {walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
@@ -73,6 +73,7 @@ if(result.meta.changes){
  if(row)try{
   await Promise.race([ensureSupabaseEmployee(row,password),new Promise(resolve=>setTimeout(resolve,1500))]);
  }catch{try{await mirrorLegacyAccount(row);}catch{}}
+ try{await mirrorCredentialRecord(id);}catch{}
 }
 return Response.json(result.meta.changes?{ok:true}:{error:"Could not create the staff account."},{status:result.meta.changes?200:503});
 }catch{return Response.json({error:"Could not update staff. Retry."},{status:503});}}
