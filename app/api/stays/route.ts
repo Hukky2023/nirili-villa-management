@@ -9,6 +9,7 @@ import {loadStays,stayView,stayKey,folioFor} from '../../../lib/stays';
 import {updateRoomInventory} from '../../../lib/rooms';
 import {readOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {appendAccountHistory} from '../../../lib/account-history';
+import {autoPushBookingComAvailability} from '../../../lib/channels';
 function canViewHotel(u:any){
  if(!u)return false;
  if(u.role==='admin')return true;
@@ -49,6 +50,7 @@ if(b.action==='create'){
  const booking=createDirectBooking(state,{...b,guest:details?.guests[0].name??b.guest},u.username);
  if(details)Object.assign(booking,{guests:details.guests,adults:details.adults,children:details.children,whatsapp:details.guests[0].phone});
  if(!await saveStayAccess(state,revision,u.userId,null,[],details?.documents||[]))return Response.json({error:'Another booking changed room availability. Review the rooms and try again.'},{status:409});
+ await autoPushBookingComAvailability();
  return Response.json({booking},{status:201});
 }
 if(b.action==='editbooking'||b.action==='deletebooking'){
@@ -67,6 +69,7 @@ if(b.action==='editbooking'||b.action==='deletebooking'){
   if(booking.status==='In House'&&previous.room!==booking.room){delete booking.accountId;delete booking.roomLogin;delete booking.loginIssuedAt;plan=null;}
  }
  if(!await saveStayAccess(state,revision,u.userId,plan,revoke,details?.documents||[],details?.removed||[]))return Response.json({error:'Booking changed. Reopen it and try again.'},{status:409});
+ await autoPushBookingComAvailability();
  return Response.json({booking:b.action==='editbooking'?booking:null,deleted:b.action==='deletebooking'});
 }
 if(['payment','markpaid','markunpaid'].includes(b.action)&&!hasPermission(u,'edit_bills'))return Response.json({error:'Bill editing permission is required for payment actions.'},{status:403});const roomAction=['roomstatus','note'].includes(b.action);const s=roomAction?{room:b.room,history:[]}:state.stays.find((s:any)=>s.id===b.id);if(!s)return Response.json({error:'Booking not found'},{status:404});if(b.action==='payment'&&s.payments.some((p:any)=>p.id===b.requestId))return Response.json(await projectStayState(state,revision));if(b.revision!==revision)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});let detail='';let loginPlan:any=null;let revoke:string[]=[];const room=state.rooms.find((x:any)=>x.number===s.room);if(!room)throw Error('Room not found.');const f=roomAction?null:await folioFor(s,state.orders);
@@ -97,5 +100,5 @@ else if(b.action==='checkout'){
  detail='Guest checked out · In-house login terminated · Room marked Cleaning';
 }
 else throw Error('Unknown action');
-s.history.unshift({date:new Date().toISOString(),detail,by:u.username});const saved=await saveStayAccess(state,revision,u.userId,loginPlan,revoke);if(!saved)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});if(b.action==='checkout'&&s.accountId)await appendAccountHistory(s.accountId,{at:s.checkedOutAt||new Date().toISOString(),action:'In-house login terminated at checkout',by:u.username,detail:'Room '+s.room+' · '+s.id});return Response.json(await projectStayState(state,revision+1));
+s.history.unshift({date:new Date().toISOString(),detail,by:u.username});const saved=await saveStayAccess(state,revision,u.userId,loginPlan,revoke);if(!saved)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});if(['extend','roomstatus'].includes(b.action))await autoPushBookingComAvailability();if(b.action==='checkout'&&s.accountId)await appendAccountHistory(s.accountId,{at:s.checkedOutAt||new Date().toISOString(),action:'In-house login terminated at checkout',by:u.username,detail:'Room '+s.room+' · '+s.id});return Response.json(await projectStayState(state,revision+1));
 }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not save. Please retry.'},{status:400})}}
