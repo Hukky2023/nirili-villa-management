@@ -10,6 +10,7 @@ import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requ
 import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
 import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,scheduleCanServeRequest,scheduleMatchRank,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
+import {mirrorExcursionScheduleRecord,mirrorHotelState} from '../../../lib/supabase-bridge';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -155,6 +156,7 @@ export async function POST(r:Request){
   if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,daySchedules,state.orders||[],crew));
   const result=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(prefix+body.date+':'+id,JSON.stringify(record),user.userId).run();
   if(!result.meta.changes)throw Error('Could not create schedule.');
+  try{await mirrorExcursionScheduleRecord(prefix+body.date+':'+id,{...record,revision:1,updatedBy:user.userId});}catch{}
   return Response.json({schedule:{...record,revision:1}},{status:201});
  }catch(e){return Response.json({error:(e as Error).message||'Could not create schedule.'},{status:400});
  }
@@ -192,6 +194,7 @@ export async function PUT(r:Request){
   if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,daySchedules,state.orders||[],crew,old));
   const result=await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision).run();
   if(!result.meta.changes)return Response.json({error:'Schedule changed elsewhere. Reload and try again.'},{status:409});
+  try{await mirrorExcursionScheduleRecord(key,{...record,revision:revision+1,updatedBy:user.userId});}catch{}
   return Response.json({schedule:{...record,revision:revision+1}});
  }catch(e){return Response.json({error:(e as Error).message||'Could not update schedule.'},{status:400});
  }
@@ -233,6 +236,7 @@ export async function PATCH(r:Request){
    else statements.push(db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(stayPayload,user.userId,stayKey,revision));
    const results=await db.batch(statements);
    if(!results[0].meta.changes||!results[1].meta.changes)return Response.json({error:'The excursion changed elsewhere. Reload and try again.'},{status:409});
+   try{await mirrorExcursionScheduleRecord(key,{...cancelledSchedule,revision:Number(row.revision)+1,updatedBy:user.userId});await mirrorHotelState(state);}catch{}
    return Response.json({ok:true,cancelledBookings:affected.length,reason,status:'Cancelled'});
   }
 
@@ -302,6 +306,7 @@ export async function PATCH(r:Request){
     await authDb().prepare('DELETE FROM operation_records WHERE key=?').bind(key).run();
     return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
    }
+   try{await mirrorExcursionScheduleRecord(key,{...record,revision:1,updatedBy:user.userId});}catch{}
    return Response.json({ok:true,booking:{id:order.id,status:'Confirmed'},schedule:{...record,revision:1}},{status:201});
   }
 
