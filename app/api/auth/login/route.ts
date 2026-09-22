@@ -2,8 +2,7 @@ import {transportPortalAllowed,isTransportAgent} from '../../../../lib/transport
 import {withTab} from '../../../../lib/tab-session';
 import {restaurantOnly,canPOS,canKitchen,canTakePayment} from '../../../../lib/pos-access';
 import {roomLoginActive,authDb,bootstrap,verifyPassword,issueSession,sameOrigin,limit,publicUser} from "../../../../lib/auth";
-import {authenticateSupabaseEmployee,ensureSupabaseEmployee,mirrorHotelState,mirrorLegacyAccount,mirrorOperationalRecord,mirrorRestaurantBillRecord,mirrorExcursionScheduleRecord,mirrorTransportState} from "../../../../lib/supabase-bridge";
-import {loadStays} from "../../../../lib/stays";
+import {authenticateSupabaseEmployee,ensureSupabaseEmployee} from "../../../../lib/supabase-bridge";
 export async function POST(request:Request){
 if(!sameOrigin(request))return Response.json({error:"Invalid request"},{status:403});
 try{
@@ -23,24 +22,6 @@ if(!row){
  if(['admin','staff'].includes(row.role))try{await ensureSupabaseEmployee(row,b.password);}catch{}
 }else if(!await roomLoginActive(row.id))return Response.json({error:"Incorrect username or password."},{status:401});
 const user=publicUser(row);
-if(user.role==='admin')try{
- const db=authDb();
- const allAccounts=(await db.prepare("SELECT * FROM accounts").all<any>()).results||[];
- for(const account of allAccounts)try{await mirrorLegacyAccount(account);}catch{}
- const {state}=await loadStays();await mirrorHotelState(state);
-
- const ops=(await db.prepare("SELECT key,payload,revision,updated_by FROM operation_records").all<any>()).results||[];
- for(const record of ops){
-  try{
-   const payload=JSON.parse(record.payload||'{}');
-   await mirrorOperationalRecord(record.key,payload,record.revision,record.updated_by);
-   if(String(record.key).startsWith('excursion-schedule:'))await mirrorExcursionScheduleRecord(record.key,payload);
-   if(record.key==='transport-bookings-v1')await mirrorTransportState(payload);
-  }catch{}
- }
- const bills=(await db.prepare("SELECT key,payload,revision,updated_by FROM restaurant_bills").all<any>()).results||[];
- for(const bill of bills)try{await mirrorRestaurantBillRecord(bill.key,JSON.parse(bill.payload||'{}'),bill.revision,bill.updated_by);}catch{}
-}catch{}
 if(typeof b.portal==="string"&&b.portal.startsWith("transport_")&&!transportPortalAllowed(user,b.portal))return Response.json({error:"This account cannot access the selected transport portal."},{status:403});
 if(isTransportAgent(user)&&!["transport_agent","direct"].includes(b.portal))return Response.json({error:"Use the Agent login on the transport page."},{status:403});
 if(b.portal==="admin"&&user.role!=="admin"||b.portal==="staff"&&!["admin","staff"].includes(user.role))return Response.json({error:"This account cannot access that portal."},{status:403});
