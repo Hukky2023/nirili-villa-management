@@ -14,10 +14,20 @@ async function loadForRead(){
  }catch{}
  return load();
 }
-async function visible(state:TransportState,revision:number,u:any){const canEdit=hasPermission(u,'edit_transfers');const hotel=await loadStays();const eligible=u.role==='guest'&&!isTransportAgent(u)?hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&s.checkOut>=new Date(Date.now()+5*3600000).toISOString().slice(0,10)):[];const ownRoom=eligible.length===1?{id:eligible[0].id,room:eligible[0].room,checkIn:eligible[0].checkIn,checkOut:eligible[0].checkOut}:null;return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.filter(b=>b.status!=='Cancelled').flatMap(b=>b.journeys.map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };}
+async function loadHotelPrimary(){
+ try{
+  const row=await readOperationalRecordPrimary(stayKey);
+  if(row?.payload){
+   const state=row.payload;state.stays??=[];state.orders??=[];state.rooms??=[];
+   return {state,revision:Number(row.revision)||0};
+  }
+ }catch{}
+ return loadStays();
+}
+async function visible(state:TransportState,revision:number,u:any){const canEdit=hasPermission(u,'edit_transfers');const hotel=await loadHotelPrimary();const eligible=u.role==='guest'&&!isTransportAgent(u)?hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&s.checkOut>=new Date(Date.now()+5*3600000).toISOString().slice(0,10)):[];const ownRoom=eligible.length===1?{id:eligible[0].id,room:eligible[0].room,checkIn:eligible[0].checkIn,checkOut:eligible[0].checkOut}:null;return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.filter(b=>b.status!=='Cancelled').flatMap(b=>b.journeys.map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };}
 export async function GET(){const u=await currentUser();if(!u||!canTransport(u))return Response.json({error:'Sign in to access transfers.'},{status:403});try{const {state,revision}=await loadForRead();return Response.json(await visible(state,revision,u),{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Unable to load transfers. Please retry.'},{status:503});}}
 export async function POST(r:Request){const u=await currentUser();if(!u||!canTransport(u)||!sameOrigin(r))return Response.json({error:'Not allowed.'},{status:403});try{
- const b=await r.json();const {state,revision}=await load();const canEdit=hasPermission(u,'edit_transfers');
+ const b=await r.json();const {state,revision}=await loadForRead();const canEdit=hasPermission(u,'edit_transfers');
  if(b.action==='book'&&state.bookings.some(x=>x.token===b.token&&x.owner===u.userId))return Response.json(await visible(state,revision,u));
  if(b.revision!==revision)return Response.json({error:'Transfers changed on another device. Refresh and review before saving.'},{status:409});
  let hotelWrite:any=null;
@@ -25,7 +35,7 @@ export async function POST(r:Request){const u=await currentUser();if(!u||!canTra
  const booking=createTransfer(state,b,u.userId);
  if(b.payment==='room'){
  if(u.role!=='guest'||isTransportAgent(u))return Response.json({error:'Only a linked guest login can charge transport to a room.'},{status:403});
- const hotel=await loadStays();const eligible=hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&booking.journeys.every(j=>j.date>=s.checkIn&&j.date<=s.checkOut));
+ const hotel=await loadHotelPrimary();const eligible=hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&booking.journeys.every(j=>j.date>=s.checkIn&&j.date<=s.checkOut));
  if(eligible.length!==1)throw Error('An eligible room must be linked to your guest login for all travel dates. Ask reception for help.');
  const stay=eligible[0];let cents=0;
  for(const j of booking.journeys){const fare=state.sailings.find(s=>s.id===j.scheduleId)?.roomFare;if(!Number.isInteger(fare)||fare!<0)throw Error('Reception must set the USD room fare before this departure can be charged to your room.');cents+=fare!*b.adults+Math.round(fare!/2)*b.children;}
