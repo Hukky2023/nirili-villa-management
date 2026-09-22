@@ -1,7 +1,7 @@
 import {sessionCookieName,currentTab} from './tab-session';
 import {env} from "cloudflare:workers";
 import {cookies} from "next/headers";
-import {deactivateSupabaseAccount,readLegacySessionAccount,upsertLegacySession} from './supabase-bridge';
+import {deactivateSupabaseAccount,readLegacySessionAccount,readOperationalRecordPrimary,upsertLegacySession} from './supabase-bridge';
 
 export type Permission="guesthouse_reception"|"excursions_manager"|"waiter_pos"|"restaurant_pos"|"kitchen_pos"|"edit_bills"|"edit_excursions"|"edit_transfers"|"buggy_driver"|"crew_location";
 export type Actor={userId:string;username:string;email:string;displayName:string;role:"admin"|"staff"|"guest";permissions:Permission[]};
@@ -79,9 +79,9 @@ export const validEmail=(e:string)=>e.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.
 
 export async function roomLoginActive(id:string){
  if(!id.startsWith('room-')&&!id.startsWith('walkin-exc-'))return true;
- const r=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind('hotel-stays-v1').first<any>();
- if(!r)return false;
- const state=JSON.parse(r.payload);
+ let state:any=null;try{state=(await readOperationalRecordPrimary('hotel-stays-v1'))?.payload||null;}catch{}
+ if(!state){const r=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind('hotel-stays-v1').first<any>();if(!r)return false;state=JSON.parse(r.payload);}
+
  if(id.startsWith('walkin-exc-')){
   const profile=(state.walkinExcursionAccounts||[]).find((x:any)=>x.accountId===id);
   const expired=!profile||profile.active!==true||(profile.expiresAt&&Date.parse(profile.expiresAt)<=Date.now());
