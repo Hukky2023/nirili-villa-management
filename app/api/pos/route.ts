@@ -9,9 +9,20 @@ import {canPOS,canKitchen,canTakePayment} from '../../../lib/pos-access';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {loadMenu} from '../../../lib/menu-server';
 import {loadRestaurantPaymentSettingsWithDailyRates} from '../../../lib/restaurant-payment-settings';
-import {mirrorHotelState,mirrorOperationalRecord,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {updateRoomInventory} from '../../../lib/rooms';
+async function readStateForView(){
+ try{
+  const row=await readOperationalRecordPrimary(stayKey);
+  if(row?.payload){
+   const state=row.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];updateRoomInventory(state);
+   return {state,revision:Number(row.revision)||0};
+  }
+ }catch{}
+ return loadStays();
+}
 async function view(){
- const {state,revision}=await loadStays();
+ const {state,revision}=await readStateForView();
  const actor=await currentUser();
  const kitchenOnly=!!actor&&canKitchen(actor)&&!canPOS(actor);
  const guestOrders=state.orders.filter((o:any)=>o.kind==='food'&&o.status!=='Cancelled').map((o:any)=>({
