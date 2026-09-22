@@ -372,6 +372,13 @@ export async function clearSystemNotifications(){
 
 
 
+
+export async function readOperationalRecordPrimary(key:string){
+  if(!supabaseBridgeConfigured())return null;
+  const rows=await restSelect('operational_records','select=key,payload,revision,updated_by&key=eq.'+encodeURIComponent(key)+'&limit=1');
+  return rows[0]||null;
+}
+
 export async function readExcursionSchedulesPrimary(date:string){
   if(!supabaseBridgeConfigured())return [];
   const pattern='excursion-schedule:'+date+':*';
