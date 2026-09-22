@@ -254,6 +254,20 @@ export async function mirrorLegacyAccount(row:LegacyAccountRow){
   return true;
 }
 
+
+export async function updateSupabaseEmployeePassword(legacyAccountId:string,password:string){
+  if(!supabaseBridgeConfigured())return {mapped:false,updated:false};
+  const rows=await restSelect('legacy_accounts','id=eq.'+encodeURIComponent(legacyAccountId)+'&select=auth_user_id,role&limit=1');
+  const row=rows[0];
+  const authUserId=row?.auth_user_id as string|undefined;
+  if(!authUserId||!['admin','staff'].includes(String(row?.role||'')))return {mapped:false,updated:false};
+  await sb('/auth/v1/admin/users/'+encodeURIComponent(authUserId),{
+    method:'PUT',
+    body:JSON.stringify({password})
+  },'secret');
+  return {mapped:true,updated:true};
+}
+
 export async function ensureSupabaseEmployee(row:LegacyAccountRow,password:string){
   if(!supabaseBridgeConfigured()||!['admin','staff'].includes(row.role))return null;
   await mirrorLegacyAccount(row);
