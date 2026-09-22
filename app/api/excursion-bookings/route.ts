@@ -3,7 +3,7 @@ import {loadStays, stayKey} from '../../../lib/stays';
 import {excursionPaid, excursionResources} from '../../../lib/excursion-workflow';
 import {isConfirmedExcursion, toConfirmedExcursionBooking} from '../../../lib/excursion-bookings';
 import {applyExcursionBillingAdjustment, excursionPricing} from '../../../lib/excursion-billing';
-import {mirrorHotelState} from '../../../lib/supabase-bridge';
+import {mirrorHotelState,mirrorOperationalRecord,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 
 const headers = {'Cache-Control': 'private, no-store', 'Vary': 'Cookie'};
 const normal = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -82,10 +82,18 @@ export async function PATCH(request: Request) {
       return Response.json({error: error instanceof Error ? error.message : 'Check the billing adjustment.'}, {status: 400, headers});
     }
     if (result.duplicate) return Response.json({ok: true, revision, pricing: excursionPricing(result.order)}, {headers});
+    let nextRevision=0,primaryAvailable=true;
+    try{nextRevision=await saveOperationalRecordPrimary(stayKey,state,revision,user.userId);}catch{primaryAvailable=false;}
+    if(primaryAvailable){
+      if(!nextRevision)return Response.json({error: 'Another user changed the bill. Close this action, refresh bookings and review the amount again.'}, {status: 409, headers});
+      try{await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),nextRevision,user.userId).run();}catch{}
+      try{await mirrorHotelState(state);}catch{}
+      return Response.json({ok:true,revision:nextRevision,pricing:excursionPricing(result.order)},{headers});
+    }
     const saved = await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?')
       .bind(JSON.stringify(state), user.userId, stayKey, revision).run();
     if (!saved.meta.changes) return Response.json({error: 'Another user changed the bill. Close this action, refresh bookings and review the amount again.'}, {status: 409, headers});
-    try { await mirrorHotelState(state); } catch {}
+    try { await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,user.userId)]); } catch {}
     return Response.json({ok: true, revision: revision + 1, pricing: excursionPricing(result.order)}, {headers});
   } catch {
     return Response.json({error: 'Could not save the billing adjustment. Please retry.'}, {status: 503, headers});
