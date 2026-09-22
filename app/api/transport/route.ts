@@ -4,11 +4,18 @@ import {canTransport,isTransportAgent,transportRole} from '../../../lib/transpor
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {restaurantOnly} from '../../../lib/pos-access';
 import {createTransfer,initialTransport,TransportState,Sailing} from '../../../lib/transport';
-import {mirrorTransportState,mirrorHotelState} from '../../../lib/supabase-bridge';
+import {mirrorTransportState,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 const key='transport-bookings-v1';
 async function load(){const row=await authDb().prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(key).first<any>();return {state:row?JSON.parse(row.payload) as TransportState:initialTransport(),revision:row?.revision||0};}
+async function loadForRead(){
+ try{
+  const row=await readOperationalRecordPrimary(key);
+  if(row)return {state:(row.payload||initialTransport()) as TransportState,revision:Number(row.revision)||0};
+ }catch{}
+ return load();
+}
 async function visible(state:TransportState,revision:number,u:any){const canEdit=hasPermission(u,'edit_transfers');const hotel=await loadStays();const eligible=u.role==='guest'&&!isTransportAgent(u)?hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&s.checkOut>=new Date(Date.now()+5*3600000).toISOString().slice(0,10)):[];const ownRoom=eligible.length===1?{id:eligible[0].id,room:eligible[0].room,checkIn:eligible[0].checkIn,checkOut:eligible[0].checkOut}:null;return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.filter(b=>b.status!=='Cancelled').flatMap(b=>b.journeys.map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };}
-export async function GET(){const u=await currentUser();if(!u||!canTransport(u))return Response.json({error:'Sign in to access transfers.'},{status:403});try{const {state,revision}=await load();return Response.json(await visible(state,revision,u),{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Unable to load transfers. Please retry.'},{status:503});}}
+export async function GET(){const u=await currentUser();if(!u||!canTransport(u))return Response.json({error:'Sign in to access transfers.'},{status:403});try{const {state,revision}=await loadForRead();return Response.json(await visible(state,revision,u),{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Unable to load transfers. Please retry.'},{status:503});}}
 export async function POST(r:Request){const u=await currentUser();if(!u||!canTransport(u)||!sameOrigin(r))return Response.json({error:'Not allowed.'},{status:403});try{
  const b=await r.json();const {state,revision}=await load();const canEdit=hasPermission(u,'edit_transfers');
  if(b.action==='book'&&state.bookings.some(x=>x.token===b.token&&x.owner===u.userId))return Response.json(await visible(state,revision,u));
@@ -51,11 +58,11 @@ export async function POST(r:Request){const u=await currentUser();if(!u||!canTra
  const hotelSql=authDb().prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=? AND EXISTS(SELECT 1 FROM operation_records WHERE key=? AND json_extract(payload,'$.writeToken')=?)").bind(JSON.stringify(hotelWrite.state),u.userId,stayKey,hotelWrite.revision,key,writeToken);
  const results=await authDb().batch([transportSql,hotelSql]);
  if(!results[0].meta.changes||!results[1].meta.changes)return Response.json({error:'Room or seat availability changed. Refresh and try again.'},{status:409});
- try{await mirrorTransportState(state);await mirrorHotelState(hotelWrite.state);}catch{}
+ try{await Promise.all([mirrorTransportState(state),mirrorOperationalRecord(key,state,revision+1,u.userId),mirrorHotelState(hotelWrite.state)]);}catch{}
  return Response.json(await visible(state,revision+1,u));
  }
  const payload=JSON.stringify(state);const result=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(key,payload,u.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(payload,u.userId,key,revision).run();
  if(!result.meta.changes)return Response.json({error:'Another booking was saved first. Refresh and review your seats.'},{status:409});
- try{await mirrorTransportState(state);}catch{}
+ try{await Promise.all([mirrorTransportState(state),mirrorOperationalRecord(key,state,revision+1,u.userId)]);}catch{}
  return Response.json(await visible(state,revision+1,u));
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Unable to save transfers.'},{status:400});}}
