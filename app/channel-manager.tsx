@@ -20,6 +20,7 @@ export default function ChannelManager(){
       setData(b);setDraft({
         enabled:!!b.connection.enabled,mode:b.connection.mode||'staging',
         propertyId:b.connection.property_id||'',channelPropertyId:b.connection.channel_property_id||'',
+        stagingBookingHotelId:b.connection.settings?.stagingBookingHotelId||'6519420',
         dryRun:b.connection.settings?.dryRun!==false,
         autoImportReservations:b.connection.settings?.autoImportReservations!==false,
         autoPushAvailability:!!b.connection.settings?.autoPushAvailability
@@ -33,7 +34,7 @@ export default function ChannelManager(){
     try{
       const r=await fetch('/api/channels/booking-com',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...extra})});
       const b=await r.json();if(!r.ok)throw Error(b.error||'Channel action failed.');
-      if(b.connection){setData(b);setDraft((d:any)=>({...d,enabled:!!b.connection.enabled,mode:b.connection.mode,propertyId:b.connection.property_id||'',channelPropertyId:b.connection.channel_property_id||'',dryRun:b.connection.settings?.dryRun!==false}));}
+      if(b.connection){setData(b);setDraft((d:any)=>({...d,enabled:!!b.connection.enabled,mode:b.connection.mode,propertyId:b.connection.property_id||'',channelPropertyId:b.connection.channel_property_id||'',stagingBookingHotelId:b.connection.settings?.stagingBookingHotelId||d?.stagingBookingHotelId||'6519420',dryRun:b.connection.settings?.dryRun!==false}));}
       if(action==='preview')setPreview(b);
       if(action==='push'){setPreview(b.preview||null);setNotice(b.dryRun?'Dry-run complete. No external inventory changed.':'Availability sent to Channex.');}
       if(action==='selftest')setNotice((b.message||'PMS self-test passed.')+' Simulated '+(b.simulatedReference||'booking')+(b.simulatedRoom?' in room '+b.simulatedRoom:'')+'.');
@@ -81,7 +82,7 @@ export default function ChannelManager(){
         <header><CloudCog/><div><h2>Connection</h2><p>Save IDs first, then test and discover mappings.</p></div></header>
         <label>Environment<select value={draft.mode} onChange={e=>setDraft({...draft,mode:e.target.value})}><option value="staging">Staging / test</option><option value="production">Production</option></select></label>
         <label>Channex property ID<input value={draft.propertyId} onChange={e=>setDraft({...draft,propertyId:e.target.value})} placeholder="Channex property UUID"/></label>
-        <label>{draft.mode==='staging'?'Live Booking.com property ID (saved for production)':'Booking.com property ID'}<input value={draft.channelPropertyId} onChange={e=>setDraft({...draft,channelPropertyId:e.target.value})} placeholder="Booking.com hotel ID"/></label>{draft.mode==='staging'&&<p className="channel-staging-note"><b>Booking.com staging test hotel: {c.settings?.stagingBookingHotelId||'6519420'}</b><span>Channex test currency: GBP. Your live Booking.com property {draft.channelPropertyId||'5747514'} is not connected or changed during staging.</span></p>}
+        <label>{draft.mode==='staging'?'Live Booking.com property ID (saved for production)':'Booking.com property ID'}<input value={draft.channelPropertyId} onChange={e=>setDraft({...draft,channelPropertyId:e.target.value})} placeholder="Booking.com hotel ID"/></label>{draft.mode==='staging'&&<div className="channel-staging-note"><label><b>Booking.com staging Hotel ID</b><input inputMode="numeric" pattern="[0-9]*" value={draft.stagingBookingHotelId||''} onChange={e=>setDraft({...draft,stagingBookingHotelId:e.target.value.replace(/\D/g,'').slice(0,12)})} placeholder="Use an available GBP test Hotel ID from Channex"/></label><span>Shared Channex test accounts can be busy. Enter whichever available GBP Hotel ID Channex shows, then click Save settings. Your live Booking.com property {draft.channelPropertyId||'5747514'} remains untouched during staging.</span></div>}
         <div className="channel-actions"><button className="primary" disabled={!!busy} onClick={save}>Save settings</button><button disabled={!!busy||!credentials.apiKeyConfigured} onClick={()=>post('test')}><RefreshCw/>Test Channex</button><button disabled={!!busy} onClick={()=>post('selftest')}><ShieldCheck/>Run PMS self-test</button>{draft.mode==='staging'&&!draft.propertyId&&<button disabled={!!busy||!credentials.apiKeyConfigured} onClick={()=>post('bootstrap')}><CloudCog/>Create Nirili staging property</button>}</div>
         {c.last_error&&<p className="channel-inline-error">{c.last_error}</p>}
       </article>
