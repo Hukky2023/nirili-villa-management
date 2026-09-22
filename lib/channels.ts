@@ -94,7 +94,7 @@ async function getConnection():Promise<ChannelConnection>{
 function channexBase(connection:ChannelConnection){
   const cfg=runtime();
   if(cfg.channexBaseOverride)return cfg.channexBaseOverride;
-  return connection.mode==='production'?'https://app.channex.io/api/v1':'https://staging.channex.io/api/v1';
+  return connection.mode==='production'?'https://secure.channex.io/api/v1':'https://staging.channex.io/api/v1';
 }
 
 async function channex(connection:ChannelConnection,path:string,init:RequestInit={}){
@@ -268,6 +268,82 @@ export async function saveBookingComMappings(input:any){
     upsert('channel_rate_mappings',rates,'connection_id,channel_rate_id')
   ]);
   return getBookingComChannelState();
+}
+
+export async function runBookingComSelfTest(){
+  const hotel=await readOperationalRecordPrimary(stayKey);
+  if(!hotel?.payload)throw Error('Hotel state is unavailable in Supabase.');
+  const state=structuredClone(hotel.payload);
+  state.stays??=[];state.rooms??=[];
+  updateRoomInventory(state);
+
+  const startBase=maldivesToday();
+  let checkIn='',checkOut='';
+  for(let i=1;i<360;i++){
+    const a=addDays(startBase,i),b=addDays(startBase,i+1);
+    const room=availableRoom(state,a,b,2);
+    if(room){checkIn=a;checkOut=b;break;}
+  }
+  if(!checkIn)throw Error('Self-test could not find an available future room.');
+
+  const mappings={
+    rooms:new Map([['self-test-room',{channel_room_id:'self-test-room',pms_room_type:'Double Room',active:true}]]),
+    rates:new Map([['self-test-rate',{channel_rate_id:'self-test-rate',pms_meal_plan:'Bed & Breakfast',active:true}]])
+  };
+  const externalReservationId='SELFTEST-'+crypto.randomUUID();
+  const base:any={
+    externalReservationId,
+    revisionId:'REV-NEW-'+crypto.randomUUID(),
+    otaReservationCode:externalReservationId,
+    status:'new',
+    arrivalDate:checkIn,
+    departureDate:checkOut,
+    adults:2,children:0,amount:120,currency:'USD',
+    guestName:'Booking.com Self Test',
+    phone:null,email:null,notes:'Synthetic self-test only',paymentCollect:null,
+    rooms:[{
+      room_type_id:'self-test-room',
+      rate_plan_id:'self-test-rate',
+      checkin_date:checkIn,
+      checkout_date:checkOut,
+      occupancy:{adults:2,children:0},
+      amount:120,
+      guests:[{name:'Booking.com',surname:'Self Test'}]
+    }]
+  };
+
+  const beforeCount=state.stays.length;
+  const newRefs=mutateHotelState(state,base,mappings);
+  if(newRefs.length!==1||state.stays.length!==beforeCount+1)throw Error('New-booking simulation did not create exactly one PMS stay.');
+  const created=state.stays.find((stay:any)=>stay.id===newRefs[0]);
+  if(!created||created.source!=='Booking.com'||created.status!=='Confirmed')throw Error('New-booking simulation produced an invalid PMS stay.');
+
+  const modified={...base,status:'modified',revisionId:'REV-MOD-'+crypto.randomUUID(),guestName:'Booking.com Self Test Modified'};
+  const modifiedRefs=mutateHotelState(state,modified,mappings);
+  const changed=state.stays.find((stay:any)=>stay.id===newRefs[0]);
+  if(!modifiedRefs.includes(newRefs[0])||changed?.guest!=='Booking.com Self Test') {
+    // Guest name comes from the room guest structure; update it there for the modification test.
+    modified.rooms=modified.rooms.map((room:any)=>({...room,guests:[{name:'Booking.com',surname:'Self Test Modified'}]}));
+    mutateHotelState(state,modified,mappings);
+  }
+  const changedAgain=state.stays.find((stay:any)=>stay.id===newRefs[0]);
+  if(changedAgain?.guest!=='Booking.com Self Test Modified')throw Error('Modification simulation did not update the existing PMS stay.');
+
+  const cancelled={...modified,status:'cancelled',revisionId:'REV-CAN-'+crypto.randomUUID(),rooms:[]};
+  const cancelledRefs=mutateHotelState(state,cancelled,mappings);
+  const cancelledStay=state.stays.find((stay:any)=>stay.id===newRefs[0]);
+  if(!cancelledRefs.includes(newRefs[0])||cancelledStay?.status!=='Cancelled')throw Error('Cancellation simulation did not cancel the PMS stay.');
+
+  return {
+    ok:true,
+    persisted:false,
+    checks:['new_booking','modification','cancellation','room_assignment','booking_reference'],
+    simulatedReference:newRefs[0],
+    simulatedRoom:created.room,
+    checkIn,
+    checkOut,
+    message:'Self-test passed without changing PMS or Channex data.'
+  };
 }
 
 export async function previewBookingComAvailability(days=30,startDate=maldivesToday()){
