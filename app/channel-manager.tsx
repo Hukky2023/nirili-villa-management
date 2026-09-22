@@ -72,7 +72,7 @@ export default function ChannelManager(){
     <div className="channel-checks">
       <em className={credentials.supabaseConfigured?'ok':''}><Database/>Supabase</em>
       <em className={credentials.apiKeyConfigured?'ok':''}><ShieldCheck/>Channex API key</em>
-      <em className={credentials.webhookTokenConfigured?'ok':''}><ShieldCheck/>Webhook secret</em>
+      <em className={credentials.webhookTokenConfigured?'ok':''}><ShieldCheck/>Webhook protection</em>
       <em className={mapped?'ok':''}><Link2/>Mappings</em>
     </div>
 
@@ -99,7 +99,7 @@ export default function ChannelManager(){
     <article className="channel-card">
       <header><Database/><div><h2>Booking webhook & recovery feed</h2><p>Webhook imports quickly; feed polling recovers missed delivery.</p></div></header>
       <code className="channel-code">{webhook}</code>
-      <p className="channel-hint">The PMS configures Channex to send the private <code>X-Nirili-Channel-Secret</code> header using the Cloudflare secret <code>CHANNEX_WEBHOOK_TOKEN</code>. The secret is never displayed in the browser or placed in the callback URL.</p><div className="channel-actions"><button disabled={!!busy||!draft.propertyId||!credentials.apiKeyConfigured||!credentials.webhookTokenConfigured} onClick={()=>post('webhook')}><ShieldCheck/>Create / repair webhook</button></div><div className="channel-links"><a href="https://staging.channex.io/" target="_blank" rel="noreferrer">Open Channex staging</a><a href="https://staging.channex.io/user_profile" target="_blank" rel="noreferrer">Create / view API key</a></div>
+      <p className="channel-hint">The PMS automatically generates a private webhook credential and configures Channex to send it in the <code>X-Nirili-Channel-Secret</code> header. Only its verification hash is stored by the PMS; the secret is never displayed in the browser or placed in the callback URL.</p><div className="channel-actions"><button disabled={!!busy||!draft.propertyId||!credentials.apiKeyConfigured} onClick={()=>post('webhook')}><ShieldCheck/>Create / repair webhook</button></div><div className="channel-links"><a href="https://staging.channex.io/" target="_blank" rel="noreferrer">Open Channex staging</a><a href="https://staging.channex.io/user_profile" target="_blank" rel="noreferrer">Create / view API key</a></div>
       <div className="channel-actions"><button disabled={!!busy||!draft.enabled||!credentials.apiKeyConfigured} onClick={()=>post('pull')}><RotateCw/>Check booking feed now</button></div>
     </article>
 
