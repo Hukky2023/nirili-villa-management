@@ -258,6 +258,15 @@ export async function mirrorLegacyAccount(row:LegacyAccountRow){
 
 
 
+
+export async function submitPublicBookingRequest(request:any){
+  if(!supabaseBridgeConfigured())throw Error('Booking service is unavailable.');
+  return await sb('/rest/v1/rpc/submit_public_booking_request',{
+    method:'POST',
+    body:JSON.stringify({p_request:request})
+  },'secret');
+}
+
 export async function hitSupabaseRateLimit(key:string,max:number){
   if(!supabaseBridgeConfigured())throw Error('Supabase bridge is not configured.');
   const result=await sb('/rest/v1/rpc/hit_rate_limit',{
