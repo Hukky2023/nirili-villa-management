@@ -94,7 +94,7 @@ const open=(m:Module)=>{if(allowed(m))setModule(m);setSide(false)};
 useEffect(()=>{if(role!=="guest"&&new URLSearchParams(window.location.search).has("room"))setModule("Rooms")},[role]);
 useEffect(()=>{
  if(role!=="admin")return;
- const key="nirili-supabase-backfill-v4";
+ const key="nirili-supabase-backfill-v5";
  try{if(sessionStorage.getItem(key)==="1")return;sessionStorage.setItem(key,"1")}catch{}
  const timer=window.setTimeout(()=>{
   void fetch("/api/supabase-sync",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}).catch(()=>{});
