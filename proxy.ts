@@ -1,6 +1,6 @@
 import {NextResponse,NextRequest} from 'next/server';
 
-const guestBookingHost='booking.nirilivilla.com';
+const guestBookingHost='booking.nirilihotels.com';
 
 export function proxy(request:NextRequest){
  const url=new URL(request.url);
