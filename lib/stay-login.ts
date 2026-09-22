@@ -1,5 +1,5 @@
 import {authDb,hashPassword,verifyPassword} from './auth';
-import {credentialStatement} from './credential-store';
+import {credentialStatement,mirrorCredentialRecord} from './credential-store';
 import {stayKey} from './stays';
 import {prepareExtraVesselTrips} from './excursion-extra-vessels';
 import {preserveAccountHistoryStatement} from './account-history';
@@ -66,7 +66,7 @@ export async function saveStayAccess(state:any,revision:number,by:string,plan:an
     ...documents.map(doc=>mirrorOperationalRecord('passport:'+doc.id,doc.payload,1,by)),
     ...removedDocuments.map(id=>deleteOperationalRecordPrimary('passport:'+id))
   ]);}catch{}
-  if(plan)try{await mirrorLegacyAccount({id:plan.id,username:plan.username,name:plan.name,role:'guest',permissions:'[]',active:1});}catch{}
+  if(plan)try{await mirrorLegacyAccount({id:plan.id,username:plan.username,name:plan.name,role:'guest',permissions:'[]',active:1});await mirrorCredentialRecord(plan.id);}catch{}
   for(const id of disabledIds)try{await deactivateSupabaseAccount(id);}catch{}
  }
  return saved;
