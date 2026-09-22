@@ -463,6 +463,8 @@ export async function PATCH(r:Request){
     if(!requestedVesselId)throw Error('This departure is at capacity. Assign a new vessel for this booking.');
     vessel=resources.vessels.find((v:any)=>v.id===requestedVesselId);
     if(!vessel||vessel.condition!=='Available')throw Error('Choose an available vessel.');
+    const vesselCapacity=Number(vessel.capacity);
+    if(Number.isSafeInteger(vesselCapacity)&&vesselCapacity<quantity)throw Error(vessel.name+' only has '+vesselCapacity+' passenger seats. Choose a vessel that can carry all '+quantity+' guests.');
     const originalVesselIds=new Set(groupSchedules.map((s:any)=>String(s.vesselId||'')).filter(Boolean));
     if(originalVesselIds.has(vessel.id))throw Error('Choose a different vessel from the vessel already assigned to this departure.');
     const endTime=schedule.endTime||inferTripEndTime(schedule.name,schedule.time);
