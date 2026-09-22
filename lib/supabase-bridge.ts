@@ -18,17 +18,26 @@ const publishableFallback='sb_publishable_78tYy6PCg8n0LSQeOvCacw_Y45t--Xk';
 function config(){
   const values=env as unknown as Record<string,string|undefined>;
   const nodeEnv=(typeof process!=='undefined'&&process.env?process.env:{}) as Record<string,string|undefined>;
-  const read=(...keys:string[])=>{
+  const readRaw=(...keys:string[])=>{
     for(const key of keys){
       const value=values[key]??nodeEnv[key];
-      if(typeof value==='string'&&value.trim())return value.trim();
+      if(typeof value==='string'&&value.trim())return value;
     }
     return '';
   };
+  const normalizeKey=(value:string)=>{
+    const trimmed=value.trim().replace(/^["']|["']$/g,'');
+    // Supabase sb_* keys contain no whitespace. Remove accidental line breaks,
+    // spaces and zero-width characters introduced while copying from a dashboard.
+    return trimmed.replace(/[\\s\\u200B-\\u200D\\uFEFF]+/g,'');
+  };
+  const secretRaw=readRaw('SUPABASE_SECRET_KEY');
+  const publishableRaw=readRaw('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY','SUPABASE_PUBLISHABLE_KEY');
   return {
-    url:read('NEXT_PUBLIC_SUPABASE_URL','SUPABASE_URL')||projectUrl,
-    publishable:read('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY','SUPABASE_PUBLISHABLE_KEY')||publishableFallback,
-    secret:read('SUPABASE_SECRET_KEY')
+    url:readRaw('NEXT_PUBLIC_SUPABASE_URL','SUPABASE_URL').trim()||projectUrl,
+    publishable:normalizeKey(publishableRaw)||publishableFallback,
+    secret:normalizeKey(secretRaw),
+    secretWasNormalized:!!secretRaw&&normalizeKey(secretRaw)!==secretRaw.trim()
   };
 }
 
@@ -63,6 +72,7 @@ export async function supabaseBridgeHealth(){
       roomsVisible:Array.isArray(rows)?rows.length:0,
       secretFormat:cfg.secret.startsWith('sb_secret_'),
       secretLength:cfg.secret.length,
+      secretWasNormalized:cfg.secretWasNormalized,
       projectRef:'vjbyrjqibzebpzontxgc',
       diagnosticVersion:'supabase-health-v2'
     };
@@ -75,6 +85,7 @@ export async function supabaseBridgeHealth(){
       publicError:publicReachable?undefined:publicError,
       secretFormat:cfg.secret.startsWith('sb_secret_'),
       secretLength:cfg.secret.length,
+      secretWasNormalized:cfg.secretWasNormalized,
       projectRef:'vjbyrjqibzebpzontxgc',
       diagnosticVersion:'supabase-health-v2',
       error:message
