@@ -5,6 +5,7 @@ import {
   previewBookingComAvailability,
   pullBookingComFeed,
   pushBookingComAvailability,
+  runBookingComSelfTest,
   saveBookingComMappings,
   testBookingComConnection,
   updateBookingComConnection
@@ -39,6 +40,7 @@ export async function POST(request:Request){
   try{
     const body=await request.json();
     const action=String(body?.action||'');
+    if(action==='selftest')return Response.json(await runBookingComSelfTest(),{headers});
     if(action==='test')return Response.json(await testBookingComConnection(),{headers});
     if(action==='discover')return Response.json(await discoverBookingComMappings(),{headers});
     if(action==='mappings')return Response.json(await saveBookingComMappings(body),{headers});
