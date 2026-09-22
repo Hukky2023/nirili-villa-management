@@ -1,0 +1,57 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mobile/android-app-v1
+    paths:
+      - 'mobile/android/**'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Build installable APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.6.0'
+          cache-provider: basic
+
+      - name: Install Android SDK 36
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Name APK
+        run: |
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk \
+             mobile/android/Nirili-Villa-Management.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          path: mobile/android/Nirili-Villa-Management.apk
+          archive: false
+          if-no-files-found: error
+          retention-days: 30
