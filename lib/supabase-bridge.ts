@@ -156,7 +156,7 @@ export async function mirrorLegacyAccounts(rows:LegacyAccountRow[]){
 export async function mirrorOperationalSnapshot(records:any[],bills:any[]){
   if(!supabaseBridgeConfigured())return {operations:0,schedules:0,bills:0,transport:false};
   const now=new Date().toISOString(),batch=crypto.randomUUID();
-  const parse=(value:any)=>{if(typeof value!=='string')return value??{};try{return JSON.parse(value||'{}')}catch{return {raw:value}}};
+  const parse=(value:any)=>{if(typeof value!=='string')return value??{};try{return JSON.parse(value||'{}')}catch{return value}};
   const opRows=(records||[]).map((record:any)=>({
     key:String(record.key),
     payload:parse(record.payload),
