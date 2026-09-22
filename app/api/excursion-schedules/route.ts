@@ -10,7 +10,7 @@ import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requ
 import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
 import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,scheduleCanServeRequest,scheduleMatchRank,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
-import {mirrorExcursionScheduleRecord,mirrorHotelState} from '../../../lib/supabase-bridge';
+import {mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -81,6 +81,10 @@ async function clearExistingRequestCreatedSchedulesOnce(){
  ]);
 }
 async function schedulesForDate(date:string){
+ try{
+  const primary=await readExcursionSchedulesPrimary(date);
+  if(primary.length)return primary.map((row:any)=>({...row})).sort((a:any,b:any)=>String(a.time||'').localeCompare(String(b.time||''))||String(a.name||'').localeCompare(String(b.name||'')));
+ }catch{}
  const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(prefix+date+':%').all<any>();
  return (rows.results||[]).map((row:any)=>({...JSON.parse(row.payload),revision:row.revision})).sort((a:any,b:any)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
 }
@@ -154,10 +158,18 @@ export async function POST(r:Request){
   const id=crypto.randomUUID();
   const record={id,...body,guideIds,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
   if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,daySchedules,state.orders||[],crew));
-  const result=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(prefix+body.date+':'+id,JSON.stringify(record),user.userId).run();
-  if(!result.meta.changes)throw Error('Could not create schedule.');
-  try{await mirrorExcursionScheduleRecord(prefix+body.date+':'+id,{...record,revision:1,updatedBy:user.userId});}catch{}
-  return Response.json({schedule:{...record,revision:1}},{status:201});
+  const key=prefix+body.date+':'+id;
+  let revision=0;
+  try{revision=await saveOperationalRecordPrimary(key,record,0,user.userId);}catch{}
+  if(!revision){
+   const result=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(key,JSON.stringify(record),user.userId).run();
+   if(!result.meta.changes)throw Error('Could not create schedule.');
+   revision=1;
+   try{await mirrorExcursionScheduleRecord(key,{...record,revision,updatedBy:user.userId});}catch{}
+  }else{
+   try{await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(record),revision,user.userId).run();}catch{}
+  }
+  return Response.json({schedule:{...record,revision}},{status:201});
  }catch(e){return Response.json({error:(e as Error).message||'Could not create schedule.'},{status:400});
  }
 }
@@ -192,10 +204,17 @@ export async function PUT(r:Request){
   if(droneClash)throw Error('This drone is already assigned to '+droneClash.name+' from '+droneClash.time+' to '+(droneClash.endTime||inferTripEndTime(droneClash.name,droneClash.time))+'. Choose another drone or wait until that trip ends.');
   // Closing an unsafe/understaffed trip must remain possible; departure is guarded separately.
   if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,daySchedules,state.orders||[],crew,old));
-  const result=await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision).run();
-  if(!result.meta.changes)return Response.json({error:'Schedule changed elsewhere. Reload and try again.'},{status:409});
-  try{await mirrorExcursionScheduleRecord(key,{...record,revision:revision+1,updatedBy:user.userId});}catch{}
-  return Response.json({schedule:{...record,revision:revision+1}});
+  let nextRevision=0;
+  try{nextRevision=await saveOperationalRecordPrimary(key,record,revision,user.userId);}catch{}
+  if(!nextRevision){
+   const result=await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision).run();
+   if(!result.meta.changes)return Response.json({error:'Schedule changed elsewhere. Reload and try again.'},{status:409});
+   nextRevision=revision+1;
+   try{await mirrorExcursionScheduleRecord(key,{...record,revision:nextRevision,updatedBy:user.userId});}catch{}
+  }else{
+   try{await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(record),nextRevision,user.userId).run();}catch{}
+  }
+  return Response.json({schedule:{...record,revision:nextRevision}});
  }catch(e){return Response.json({error:(e as Error).message||'Could not update schedule.'},{status:400});
  }
 }
