@@ -15,7 +15,7 @@ const connectionId='booking-com';
 const projectUrl='https://vjbyrjqibzebpzontxgc.supabase.co';
 const allowedMeals=new Set(['Bed & Breakfast','Half Board','Full Board']);
 const stagingSandboxKey='booking-com-staging-hotel-v1';
-const stagingBookingHotelId='5868189';
+const stagingBookingHotelId='6519420';
 
 type ChannelConnection={
   id:string;
