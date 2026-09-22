@@ -3,7 +3,7 @@ import {credentialStatement} from './credential-store';
 import {stayKey} from './stays';
 import {prepareExtraVesselTrips} from './excursion-extra-vessels';
 import {preserveAccountHistoryStatement} from './account-history';
-import {deleteOperationalRecordPrimary,mirrorHotelState,mirrorLegacyAccount,mirrorOperationalRecord,saveOperationalRecordPrimary} from './supabase-bridge';
+import {deactivateSupabaseAccount,deleteOperationalRecordPrimary,mirrorHotelState,mirrorLegacyAccount,mirrorOperationalRecord,saveOperationalRecordPrimary} from './supabase-bridge';
 export async function prepareStayLogin(state:any,s:any){
  const db=authDb(),username=String(s.room);
  const existing=await db.prepare('SELECT id,role,password_hash,salt FROM accounts WHERE username=?').bind(username).first<any>();
@@ -67,6 +67,7 @@ export async function saveStayAccess(state:any,revision:number,by:string,plan:an
     ...removedDocuments.map(id=>deleteOperationalRecordPrimary('passport:'+id))
   ]);}catch{}
   if(plan)try{await mirrorLegacyAccount({id:plan.id,username:plan.username,name:plan.name,role:'guest',permissions:'[]',active:1});}catch{}
+  for(const id of disabledIds)try{await deactivateSupabaseAccount(id);}catch{}
  }
  return saved;
 }
