@@ -252,6 +252,55 @@ function bookingStatus(value:any){
 }
 
 
+
+export async function listSystemNotifications(limit=150){
+  if(!supabaseBridgeConfigured())return [];
+  const rows=await restSelect('system_notifications','select=id,event_key,event_type,title,detail,created_at,read_at,payload&order=created_at.desc&limit='+Math.max(1,Math.min(200,limit)));
+  return rows.map((row:any)=>({
+    id:row.event_key||row.id,
+    type:row.event_type,
+    title:row.title,
+    detail:row.detail||'',
+    at:row.created_at,
+    read:!!row.read_at
+  }));
+}
+
+export async function saveSystemNotifications(notices:any[]){
+  if(!supabaseBridgeConfigured()||!Array.isArray(notices)||!notices.length)return 0;
+  const rows=notices.slice(0,100).map((n:any)=>({
+    event_key:String(n.id||crypto.randomUUID()).slice(0,250),
+    event_type:String(n.type||'change').slice(0,80),
+    title:String(n.title||'Notification').slice(0,200),
+    detail:String(n.detail||'').slice(0,1000),
+    created_at:n.at||new Date().toISOString(),
+    read_at:n.read?new Date().toISOString():null,
+    payload:n
+  }));
+  await restUpsert('system_notifications',rows,'event_key');
+  return rows.length;
+}
+
+export async function markSystemNotificationsRead(eventKeys?:string[]){
+  if(!supabaseBridgeConfigured())return false;
+  const now=new Date().toISOString();
+  const filter=Array.isArray(eventKeys)&&eventKeys.length
+    ?'event_key=in.('+eventKeys.map(x=>encodeURIComponent(String(x))).join(',')+')'
+    :'read_at=is.null';
+  await sb('/rest/v1/system_notifications?'+filter,{
+    method:'PATCH',
+    headers:{Prefer:'return=minimal'},
+    body:JSON.stringify({read_at:now})
+  },'secret');
+  return true;
+}
+
+export async function clearSystemNotifications(){
+  if(!supabaseBridgeConfigured())return false;
+  await sb('/rest/v1/system_notifications?id=not.is.null',{method:'DELETE',headers:{Prefer:'return=minimal'}},'secret');
+  return true;
+}
+
 export async function mirrorOperationalRecord(key:string,payload:any,revision:number=0,updatedBy:string=''){
   if(!supabaseBridgeConfigured())return false;
   const batch=crypto.randomUUID();
