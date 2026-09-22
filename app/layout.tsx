@@ -8,7 +8,7 @@ import "./globals.css";
 import "./excursion-cancel.css";
 import "./excursion-timetable.css";
 import "./guest-excursion-cleanup.css";
-import "./admin-responsive.css";
+import "./admin-responsive.css";\nimport "./buggy-management.css";
 
 // Use the actual device width without disabling pinch-to-zoom.
 export const viewport: Viewport = {
