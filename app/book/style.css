@@ -23,3 +23,37 @@
   .guest-booking-site .guest-nav .nav-book span{font-size:12px!important}
   .guest-booking-site .guest-nav .nav-book:after{content:none!important}
 }
+
+
+/* Improve readability over the photographic hero while keeping the previous layout. */
+.guest-booking-site .hero{
+  background:
+    linear-gradient(90deg,rgba(3,43,68,.92) 0%,rgba(3,66,91,.78) 48%,rgba(4,104,124,.52) 100%),
+    url("https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=1800&q=80") center/cover;
+  color:#fff;
+}
+.guest-booking-site .hero .eyebrow{
+  color:#63d6e8;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+}
+.guest-booking-site .hero h1,
+.guest-booking-site .hero h1 em{
+  color:#fff;
+  text-shadow:0 2px 14px rgba(0,0,0,.22);
+}
+.guest-booking-site .hero .hero-copy>p{
+  color:#eef9fb;
+  text-shadow:0 1px 3px rgba(0,0,0,.42);
+  font-weight:500;
+}
+.guest-booking-site .hero .hero-actions>a:not(.primary){
+  color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.35);
+}
+.guest-booking-site .hero .trust-row{
+  color:#e0f3f6;
+  text-shadow:0 1px 3px rgba(0,0,0,.35);
+}
+.guest-booking-site .hero .trust-row svg{
+  color:#8fe2ee;
+}
