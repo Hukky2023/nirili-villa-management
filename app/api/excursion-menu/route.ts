@@ -1,5 +1,6 @@
 import {currentUser,hasPermission,sameOrigin,authDb} from '../../../lib/auth';
 import {loadExcursionMenu,excursionMenuKey,categoryGroup,type ExcursionCategory} from '../../../lib/excursion-menu';
+import {readOperationalRecordPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 
 const validCategory=(v:any):v is ExcursionCategory=>['single','combined','special'].includes(String(v));
 const canonicalCombinedNames:Record<string,string>={
@@ -35,7 +36,10 @@ export async function POST(r:Request){
   const body=await r.json();
   const id='custom-'+crypto.randomUUID().slice(0,12);
   const item=clean(body,id);
-  const result=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(excursionMenuKey(id),JSON.stringify(item),user.userId).run();
+  const key=excursionMenuKey(id);let revision=0,primaryAvailable=true;
+  try{revision=await saveOperationalRecordPrimary(key,item,0,user.userId);}catch{primaryAvailable=false;}
+  if(primaryAvailable){if(!revision)throw Error('Could not add excursion.');try{await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(item),revision,user.userId).run();}catch{}return Response.json({item:{...item,revision}},{status:201});}
+  const result=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(key,JSON.stringify(item),user.userId).run();
   if(!result.meta.changes)throw Error('Could not add excursion.');
   return Response.json({item:{...item,revision:1}},{status:201});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not add excursion.'},{status:400})}
@@ -47,10 +51,18 @@ export async function PUT(r:Request){
   const body=await r.json(),id=String(body?.id||'').trim().slice(0,100);
   if(!id)throw Error('Excursion record is required.');
   const item=clean(body,id),key=excursionMenuKey(id);
-  const existing=await authDb().prepare('SELECT revision FROM operation_records WHERE key=?').bind(key).first<any>();
+  let existing:any=null;try{existing=await readOperationalRecordPrimary(key);}catch{}
+  if(!existing)existing=await authDb().prepare('SELECT revision FROM operation_records WHERE key=?').bind(key).first<any>();
+  const expected=Number(existing?.revision)||0;
+  let revision=0,primaryAvailable=true;try{revision=await saveOperationalRecordPrimary(key,item,expected,user.userId);}catch{primaryAvailable=false;}
+  if(primaryAvailable){
+   if(!revision)return Response.json({error:'Excursion changed. Refresh and try again.'},{status:409});
+   try{await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(item),revision,user.userId).run();}catch{}
+   return Response.json({item:{...item,revision}});
+  }
   if(existing){
    await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=?').bind(JSON.stringify(item),user.userId,key).run();
-   return Response.json({item:{...item,revision:Number(existing.revision||0)+1}});
+   return Response.json({item:{...item,revision:expected+1}});
   }
   await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(key,JSON.stringify(item),user.userId).run();
   return Response.json({item:{...item,revision:1}});
