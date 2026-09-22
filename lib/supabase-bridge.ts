@@ -398,8 +398,8 @@ export async function ensureSupabaseEmployee(row:LegacyAccountRow,password:strin
 export async function authenticateSupabaseEmployee(identifier:string,password:string){
   if(!supabaseBridgeConfigured())return null;
   const encoded=encodeURIComponent(identifier.toLowerCase());
-  let rows=await restSelect('legacy_accounts','username=eq.'+encoded+'&active=eq.true&select=id,username,email,role,auth_user_id&limit=1');
-  if(!rows.length)rows=await restSelect('legacy_accounts','email=eq.'+encoded+'&active=eq.true&select=id,username,email,role,auth_user_id&limit=1');
+  let rows=await restSelect('legacy_accounts','username=eq.'+encoded+'&active=eq.true&select=id,username,email,name,role,permissions,active,auth_user_id&limit=1');
+  if(!rows.length)rows=await restSelect('legacy_accounts','email=eq.'+encoded+'&active=eq.true&select=id,username,email,name,role,permissions,active,auth_user_id&limit=1');
   const row=rows[0];
   if(!row||!['admin','staff'].includes(row.role)||!row.auth_user_id)return null;
   const email=(row.email||syntheticEmail(row.username)).toLowerCase();
@@ -408,7 +408,7 @@ export async function authenticateSupabaseEmployee(identifier:string,password:st
       method:'POST',
       body:JSON.stringify({email,password})
     },'publishable');
-    return {legacyId:String(row.id)};
+    return {legacyId:String(row.id),account:row};
   }catch{return null;}
 }
 
