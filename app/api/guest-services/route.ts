@@ -6,11 +6,12 @@ import {mealItemIncluded} from '../../../lib/meal-access';
 import {restaurantOnly} from '../../../lib/pos-access';
 import {foodCatalog} from '../../../lib/menu-server';
 import {authDb,currentUser,hasPermission,sameOrigin,hashPassword,validPassword} from '../../../lib/auth';
-import {credentialStatement} from '../../../lib/credential-store';
+import {credentialStatement,mirrorCredentialRecord} from '../../../lib/credential-store';
 import {appendAccountHistory} from '../../../lib/account-history';
 import {loadStays,stayKey,folioFor} from '../../../lib/stays';
 import {catalog,plans,nightly,islandToday,validDate} from '../../../lib/guest-catalog';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
+import {ensureSupabaseEmployee,mirrorLegacyAccount} from '../../../lib/supabase-bridge';
 const MIN_EXCURSION_PAX=1;
 import {walkInExcursionBill,walkInExcursionProfile,syncWalkInExcursionAccess} from '../../../lib/walkin-excursion-access';
 function canUseManagementServices(u:any){
@@ -103,7 +104,16 @@ if(!saved){
  return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
 }
 generatedCrewCommitted=true;
-if(generatedCrewLogin){try{await appendAccountHistory(generatedCrewLogin.accountId,{at:new Date().toISOString(),action:'Crew account created',by:u.username,detail:'Crew Member login created from Excursions → Crew members using credentials chosen by Admin.'});}catch{}}
+if(generatedCrewLogin){
+ try{await appendAccountHistory(generatedCrewLogin.accountId,{at:new Date().toISOString(),action:'Crew account created',by:u.username,detail:'Crew Member login created from Excursions → Crew members using credentials chosen by Admin.'});}catch{}
+ try{
+  const account=await authDb().prepare('SELECT * FROM accounts WHERE id=?').bind(generatedCrewLogin.accountId).first<any>();
+  if(account)await ensureSupabaseEmployee(account,generatedCrewLogin.password);
+  await mirrorCredentialRecord(generatedCrewLogin.accountId);
+ }catch{
+  try{const account=await authDb().prepare('SELECT * FROM accounts WHERE id=?').bind(generatedCrewLogin.accountId).first<any>();if(account)await mirrorLegacyAccount(account);}catch{}
+ }
+}
 if(b.action==='excursion-crew-update'){
  const member=excursionResources(state).crew.find((crew:any)=>crew.id===b.crewId);
  if(member?.accountId){
