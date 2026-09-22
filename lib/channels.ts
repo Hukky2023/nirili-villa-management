@@ -331,6 +331,18 @@ export async function pushBookingComAvailability(days=30,startDate=maldivesToday
   return {ok:true,dryRun:false,sentRanges:values.length,preview,response:result};
 }
 
+export async function autoPushBookingComAvailability(days=365){
+  try{
+    const connection=await getConnection();
+    if(!connection.enabled||connection.settings?.dryRun!==false||connection.settings?.autoPushAvailability!==true)return {ok:true,skipped:true};
+    return await pushBookingComAvailability(days,maldivesToday());
+  }catch(error){
+    const message=error instanceof Error?error.message:'Automatic Booking.com availability sync failed.';
+    try{await patch('channel_connections','id=eq.'+connectionId,{last_error:message,updated_at:isoNow()});}catch{}
+    return {ok:false,skipped:false,error:message};
+  }
+}
+
 function sanitizedRevision(revision:any){
   const source=revision?.data?{...revision,data:{...revision.data}}:{...revision};
   const target=source?.data||source;
@@ -429,6 +441,7 @@ function mutateHotelState(state:any,parsed:any,mappings:any){
     amount:parsed.amount,guests:[]
   }];
   const refs:string[]=[];
+  const touched=new Set<string>();
   for(let index=0;index<bookingRooms.length;index++){
     const incoming=bookingRooms[index]||{};
     const roomTypeId=text(incoming.room_type_id,100);
@@ -489,6 +502,16 @@ function mutateHotelState(state:any,parsed:any,mappings:any){
       state.stays.push(stay);
     }
     refs.push(stay.id);
+    touched.add(stay.id);
+  }
+  if(parsed.status==='modified')for(const old of existing){
+    if(touched.has(old.id))continue;
+    if(old.status==='In House')throw Error('Booking.com removed a room from an in-house booking. Review it manually.');
+    if(old.status!=='Checked Out'){
+      old.status='Cancelled';old.history??=[];
+      old.history.unshift({date:isoNow(),by:'channel:booking-com',detail:'Room removed by Booking.com booking modification · '+parsed.otaReservationCode});
+      refs.push(old.id);
+    }
   }
   updateRoomInventory(state);
   return refs;
@@ -520,7 +543,7 @@ async function updateChannelReservation(parsed:any,status:string,refs:string[]=[
     total_amount:parsed.amount,
     currency:parsed.currency,
     payload:safePayload,
-    processed_at:['processed','cancelled','dry_run','mapping_required','error'].includes(status)?isoNow():null,
+    processed_at:['processed','cancelled','dry_run','ignored','mapping_required','error'].includes(status)?isoNow():null,
     updated_at:isoNow()
   }],'connection_id,external_reservation_id');
 }
@@ -534,9 +557,11 @@ export async function processBookingComRevision(revision:any,eventKey?:string){
     await recordEvent(key,'inbound','booking_revision','error',parsed.safePayload,'Booking revision has no reservation identifier.');
     throw Error('Booking revision has no reservation identifier.');
   }
-  if(!connection.enabled||connection.settings?.dryRun!==false){
-    await updateChannelReservation(parsed,'dry_run');
-    await recordEvent(key,'inbound','booking_revision','ignored',parsed.safePayload,connection.enabled?'Dry-run mode is active.':'Channel is disabled.');
+  const autoImport=connection.settings?.autoImportReservations!==false;
+  if(!connection.enabled||!autoImport||connection.settings?.dryRun!==false){
+    const reason=!connection.enabled?'Channel is disabled.':!autoImport?'Automatic booking import is disabled.':'Dry-run mode is active.';
+    await updateChannelReservation(parsed,!autoImport?'ignored':'dry_run');
+    await recordEvent(key,'inbound','booking_revision','ignored',parsed.safePayload,reason);
     return {processed:false,dryRun:true,revisionId:parsed.revisionId,externalReservationId:parsed.externalReservationId,refs:[]};
   }
 
@@ -572,6 +597,7 @@ export async function processBookingComRevision(revision:any,eventKey?:string){
       detail,at:isoNow(),read:false
     }]);
     await recordEvent(key,'inbound','booking_revision','processed',{revisionId:parsed.revisionId,externalReservationId:parsed.externalReservationId,refs:savedRefs});
+    await autoPushBookingComAvailability(365);
     return {processed:true,dryRun:false,revisionId:parsed.revisionId,externalReservationId:parsed.externalReservationId,refs:savedRefs};
   }catch(error){
     const message=error instanceof Error?error.message:'Booking.com revision processing failed.';
