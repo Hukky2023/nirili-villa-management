@@ -399,6 +399,27 @@ export async function mirrorOperationalRecord(key:string,payload:any,revision:nu
   return true;
 }
 
+
+export async function readRestaurantBillRecord(key:string){
+  if(!supabaseBridgeConfigured())return null;
+  const rows=await restSelect('restaurant_bills','key=eq.'+encodeURIComponent(key)+'&select=key,payload,revision,updated_by&limit=1');
+  return rows[0]||null;
+}
+
+export async function saveRestaurantBillPrimary(key:string,payload:any,expectedRevision:number,updatedBy:string){
+  if(!supabaseBridgeConfigured())return 0;
+  const result=await sb('/rest/v1/rpc/save_restaurant_bill',{
+    method:'POST',
+    body:JSON.stringify({
+      p_key:key,
+      p_payload:payload,
+      p_expected_revision:expectedRevision,
+      p_updated_by:updatedBy
+    })
+  },'secret');
+  return Number(result)||0;
+}
+
 export async function mirrorRestaurantBillRecord(key:string,payload:any,revision:number=0,updatedBy:string=''){
   if(!supabaseBridgeConfigured())return false;
   await restUpsert('restaurant_bills',[{
