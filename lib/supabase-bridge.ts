@@ -257,6 +257,16 @@ export async function mirrorLegacyAccount(row:LegacyAccountRow){
 
 
 
+
+export async function hitSupabaseRateLimit(key:string,max:number){
+  if(!supabaseBridgeConfigured())throw Error('Supabase bridge is not configured.');
+  const result=await sb('/rest/v1/rpc/hit_rate_limit',{
+    method:'POST',
+    body:JSON.stringify({p_key:key,p_max:max})
+  },'secret');
+  return result===true;
+}
+
 export async function readLegacySessionAccount(tokenHash:string,nowMs:number){
   if(!supabaseBridgeConfigured())return null;
   const result=await sb('/rest/v1/rpc/get_legacy_session_account',{
