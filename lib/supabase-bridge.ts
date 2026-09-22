@@ -36,14 +36,49 @@ export function supabaseBridgeConfigured(){return !!config().secret;}
 
 export async function supabaseBridgeHealth(){
   const cfg=config();
-  if(!cfg.secret)return {configured:false,reachable:false,error:'SUPABASE_SECRET_KEY is not available to this deployment.'};
+  const redact=(value:unknown)=>String(value||'').replace(/sb_(?:secret|publishable)_[A-Za-z0-9_-]+/g,'[redacted]');
+  let publicReachable=false,publicError='';
+  try{
+    await sb('/rest/v1/rooms?select=room_number&limit=1',{headers:{Accept:'application/json'}},'publishable');
+    publicReachable=true;
+  }catch(error){
+    publicError=redact(error instanceof Error?error.message:error);
+  }
+  if(!cfg.secret)return {
+    configured:false,
+    reachable:false,
+    publicReachable,
+    publicError:publicReachable?undefined:publicError,
+    secretFormat:false,
+    projectRef:'vjbyrjqibzebpzontxgc',
+    diagnosticVersion:'supabase-health-v2',
+    error:'SUPABASE_SECRET_KEY is not available to this deployment.'
+  };
   try{
     const rows=await restSelect('rooms','select=room_number&limit=1');
-    return {configured:true,reachable:true,roomsVisible:Array.isArray(rows)?rows.length:0};
+    return {
+      configured:true,
+      reachable:true,
+      publicReachable,
+      roomsVisible:Array.isArray(rows)?rows.length:0,
+      secretFormat:cfg.secret.startsWith('sb_secret_'),
+      secretLength:cfg.secret.length,
+      projectRef:'vjbyrjqibzebpzontxgc',
+      diagnosticVersion:'supabase-health-v2'
+    };
   }catch(error){
-    const message=error instanceof Error?error.message:'Supabase connection failed.';
-    const safeMessage=message.replace(/sb_(?:secret|publishable)_[A-Za-z0-9_-]+/g,'[redacted]');
-    return {configured:true,reachable:false,error:safeMessage};
+    const message=redact(error instanceof Error?error.message:'Supabase connection failed.');
+    return {
+      configured:true,
+      reachable:false,
+      publicReachable,
+      publicError:publicReachable?undefined:publicError,
+      secretFormat:cfg.secret.startsWith('sb_secret_'),
+      secretLength:cfg.secret.length,
+      projectRef:'vjbyrjqibzebpzontxgc',
+      diagnosticVersion:'supabase-health-v2',
+      error:message
+    };
   }
 }
 
