@@ -3,6 +3,7 @@ import {credentialStatement} from './credential-store';
 import {stayKey} from './stays';
 import {prepareExtraVesselTrips} from './excursion-extra-vessels';
 import {preserveAccountHistoryStatement} from './account-history';
+import {mirrorHotelState,mirrorLegacyAccount} from './supabase-bridge';
 export async function prepareStayLogin(state:any,s:any){
  const db=authDb(),username=String(s.room);
  const existing=await db.prepare('SELECT id,role,password_hash,salt FROM accounts WHERE username=?').bind(username).first<any>();
@@ -43,5 +44,11 @@ export async function saveStayAccess(state:any,revision:number,by:string,plan:an
  if(plan){writes.push(db.prepare("INSERT INTO accounts(id,username,name,password_hash,salt,role,permissions,active) SELECT ?,?,?,?,?,'guest','[]',1 WHERE "+guard).bind(plan.id,plan.username,plan.name,plan.hash.hash,plan.hash.salt,...args));writes.push(await credentialStatement(plan.id,plan.hash.hash,plan.password,by));}
  for(const doc of documents)writes.push(db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) SELECT ?,?,1,? WHERE '+guard).bind('passport:'+doc.id,doc.payload,by,...args));
  for(const id of removedDocuments)writes.push(db.prepare('DELETE FROM operation_records WHERE key=? AND '+guard).bind('passport:'+id,...args));
- const result=await db.batch(writes);return !!result[0].meta.changes;
+ const result=await db.batch(writes);
+ const saved=!!result[0].meta.changes;
+ if(saved){
+  try{await mirrorHotelState(state);}catch{}
+  if(plan)try{await mirrorLegacyAccount({id:plan.id,username:plan.username,name:plan.name,role:'guest',permissions:'[]',active:1});}catch{}
+ }
+ return saved;
 }
