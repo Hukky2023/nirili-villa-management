@@ -68,6 +68,7 @@ function api(orders, schedules = [selected], allowed = true) {
     };
   }};
   const load = loader({
+    'cloudflare:workers': {env: {}},
     '../../../lib/auth': {authDb: () => db, currentUser: async () => ({userId: 'admin', username: 'admin', role: 'admin'}), hasPermission: () => allowed, sameOrigin: () => true},
     '../../../lib/stays': {loadStays: async () => {reads++; return {state, revision: 1};}},
     '../../../lib/stay-login': {saveStayAccess: async () => {saves++; return true;}},
