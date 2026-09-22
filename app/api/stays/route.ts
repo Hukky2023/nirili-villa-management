@@ -26,12 +26,16 @@ async function loadHotelPrimary(){
  }catch{}
  return loadStays();
 }
+async function projectStayState(state:any,revision:number){
+ updateRoomInventory(state);state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];
+ return {...state,revision,stays:await Promise.all(state.stays.map(async(s:any)=>({...s,folio:await folioFor(s,state.orders)})))};
+}
 export async function GET(){const u=await currentUser();if(!canViewHotel(u)||restaurantOnly(u))return Response.json({error:'Hotel management access required'},{status:403});try{
  let primary:any=null;
  try{primary=await readOperationalRecordPrimary(stayKey);}catch{}
  if(primary?.payload){
-  const state=primary.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];updateRoomInventory(state);
-  return Response.json({...state,revision:Number(primary.revision)||0,stays:await Promise.all((state.stays||[]).map(async(s:any)=>({...s,folio:await folioFor(s,state.orders)})))},{headers:{'Cache-Control':'no-store'}});
+  const state=primary.payload;
+  return Response.json(await projectStayState(state,Number(primary.revision)||0),{headers:{'Cache-Control':'no-store'}});
  }
  return Response.json(await stayView(),{headers:{'Cache-Control':'no-store'}});
 }catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
@@ -65,7 +69,7 @@ if(b.action==='editbooking'||b.action==='deletebooking'){
  if(!await saveStayAccess(state,revision,u.userId,plan,revoke,details?.documents||[],details?.removed||[]))return Response.json({error:'Booking changed. Reopen it and try again.'},{status:409});
  return Response.json({booking:b.action==='editbooking'?booking:null,deleted:b.action==='deletebooking'});
 }
-if(['payment','markpaid','markunpaid'].includes(b.action)&&!hasPermission(u,'edit_bills'))return Response.json({error:'Bill editing permission is required for payment actions.'},{status:403});const roomAction=['roomstatus','note'].includes(b.action);const s=roomAction?{room:b.room,history:[]}:state.stays.find((s:any)=>s.id===b.id);if(!s)return Response.json({error:'Booking not found'},{status:404});if(b.action==='payment'&&s.payments.some((p:any)=>p.id===b.requestId))return Response.json(await stayView());if(b.revision!==revision)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});let detail='';let loginPlan:any=null;let revoke:string[]=[];const room=state.rooms.find((x:any)=>x.number===s.room);if(!room)throw Error('Room not found.');const f=roomAction?null:await folioFor(s,state.orders);
+if(['payment','markpaid','markunpaid'].includes(b.action)&&!hasPermission(u,'edit_bills'))return Response.json({error:'Bill editing permission is required for payment actions.'},{status:403});const roomAction=['roomstatus','note'].includes(b.action);const s=roomAction?{room:b.room,history:[]}:state.stays.find((s:any)=>s.id===b.id);if(!s)return Response.json({error:'Booking not found'},{status:404});if(b.action==='payment'&&s.payments.some((p:any)=>p.id===b.requestId))return Response.json(await projectStayState(state,revision));if(b.revision!==revision)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});let detail='';let loginPlan:any=null;let revoke:string[]=[];const room=state.rooms.find((x:any)=>x.number===s.room);if(!room)throw Error('Room not found.');const f=roomAction?null:await folioFor(s,state.orders);
 if(b.action==='markpaid'){s.markedUnpaid=false;if(f.balanceCents<0)throw Error('This booking has a credit balance. Review it before marking paid.');if(f.balanceCents>0)s.payments.push({id:crypto.randomUUID(),cents:f.balanceCents,method:'Marked paid',reference:'Full balance marked paid',date:new Date().toISOString(),by:u.username});s.paidBills={...(s.paidBills||{}),...Object.fromEntries(f.bills.filter((x:any)=>x.status!=='Cancelled').map((x:any)=>[billPaymentKey(x),x.totalCents]))};detail='All current bills marked paid · Payment received $'+(Math.max(0,f.balanceCents)/100).toFixed(2);}
 else if(b.action==='markunpaid'){
 const date=new Date().toISOString();let reversed=0;
@@ -93,5 +97,5 @@ else if(b.action==='checkout'){
  detail='Guest checked out · In-house login terminated · Room marked Cleaning';
 }
 else throw Error('Unknown action');
-s.history.unshift({date:new Date().toISOString(),detail,by:u.username});const saved=await saveStayAccess(state,revision,u.userId,loginPlan,revoke);if(!saved)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});if(b.action==='checkout'&&s.accountId)await appendAccountHistory(s.accountId,{at:s.checkedOutAt||new Date().toISOString(),action:'In-house login terminated at checkout',by:u.username,detail:'Room '+s.room+' · '+s.id});return Response.json(await stayView());
+s.history.unshift({date:new Date().toISOString(),detail,by:u.username});const saved=await saveStayAccess(state,revision,u.userId,loginPlan,revoke);if(!saved)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});if(b.action==='checkout'&&s.accountId)await appendAccountHistory(s.accountId,{at:s.checkedOutAt||new Date().toISOString(),action:'In-house login terminated at checkout',by:u.username,detail:'Room '+s.room+' · '+s.id});return Response.json(await projectStayState(state,revision+1));
 }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not save. Please retry.'},{status:400})}}
