@@ -5,6 +5,7 @@ export async function GET(){
   return Response.json({
     ok:health.configured&&health.reachable,
     configured:health.configured,
-    reachable:health.reachable
+    reachable:health.reachable,
+    error:health.reachable?undefined:health.error
   },{headers:{'Cache-Control':'no-store'}});
 }
