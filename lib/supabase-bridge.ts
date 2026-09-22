@@ -255,6 +255,24 @@ export async function mirrorLegacyAccount(row:LegacyAccountRow){
 }
 
 
+
+export async function deactivateSupabaseAccount(legacyAccountId:string){
+  if(!supabaseBridgeConfigured())return false;
+  const rows=await restSelect('legacy_accounts','id=eq.'+encodeURIComponent(legacyAccountId)+'&select=auth_user_id&limit=1');
+  const authUserId=rows[0]?.auth_user_id as string|undefined;
+  await sb('/rest/v1/legacy_accounts?id=eq.'+encodeURIComponent(legacyAccountId),{
+    method:'PATCH',
+    headers:{Prefer:'return=minimal'},
+    body:JSON.stringify({active:false,updated_at:new Date().toISOString()})
+  },'secret');
+  if(authUserId)await sb('/rest/v1/profiles?id=eq.'+encodeURIComponent(authUserId),{
+    method:'PATCH',
+    headers:{Prefer:'return=minimal'},
+    body:JSON.stringify({active:false,updated_at:new Date().toISOString()})
+  },'secret');
+  return true;
+}
+
 export async function updateSupabaseEmployeePassword(legacyAccountId:string,password:string){
   if(!supabaseBridgeConfigured())return {mapped:false,updated:false};
   const rows=await restSelect('legacy_accounts','id=eq.'+encodeURIComponent(legacyAccountId)+'&select=auth_user_id,role&limit=1');
