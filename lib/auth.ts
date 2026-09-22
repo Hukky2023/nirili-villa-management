@@ -53,7 +53,7 @@ const hash=hex(await crypto.subtle.deriveBits({name:"PBKDF2",salt:new TextEncode
 export async function verifyPassword(password:string,salt:string,expected:string){const {hash}=await hashPassword(password,salt);let d=hash.length^expected.length;for(let i=0;i<hash.length;i++)d|=hash.charCodeAt(i)^(expected.charCodeAt(i)||0);return d===0;}
 export function publicUser(row:any):Actor{let permissions:Permission[]=[];try{permissions=Array.isArray(row.permissions)?row.permissions:JSON.parse(row.permissions||"[]");}catch{}return {userId:row.id,username:row.username,email:row.email||"",displayName:row.name,role:row.role,permissions};}
 export async function currentUser():Promise<Actor|null>{
-await applyBookingAndSessionResetOnce();
+try{await applyBookingAndSessionResetOnce();}catch{}
 const token=(await cookies()).get(await sessionCookieName())?.value;if(!token)return null;
 const tokenHash=await digest(token),now=Date.now();let row:any=null;
 try{row=await readLegacySessionAccount(tokenHash,now);}catch{}
