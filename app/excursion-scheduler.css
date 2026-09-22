@@ -1277,3 +1277,116 @@
 @media(max-width:430px){
  .crew-trip-admin-action-buttons{grid-template-columns:1fr}
 }
+
+
+/* Admin excursion booking: full passenger roster and capacity handling */
+.admin-excursion-booking{max-width:min(980px,100%)}
+.admin-guest-roster{
+ display:grid;
+ gap:11px;
+ padding:14px;
+ border:1px solid #cfe1e9;
+ border-radius:12px;
+ background:#f8fcfd;
+}
+.admin-guest-roster-head{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:12px;
+}
+.admin-guest-roster-head>div{display:grid;gap:3px}
+.admin-guest-roster-head strong{color:#14354a;font-size:15px}
+.admin-guest-roster-head small{color:#607c8b;font-weight:500;line-height:1.45}
+.admin-guest-roster-head>span{
+ flex:none;
+ padding:5px 9px;
+ border-radius:999px;
+ background:#e9f6fb;
+ color:#087cad;
+ font-size:12px;
+ font-weight:800;
+}
+.admin-guest-roster-list{display:grid;gap:9px}
+.admin-guest-row{
+ display:grid;
+ grid-template-columns:34px minmax(180px,1.45fr) minmax(150px,1fr) minmax(120px,.65fr);
+ gap:10px;
+ align-items:end;
+ padding:10px;
+ border:1px solid #dce9ee;
+ border-radius:10px;
+ background:#fff;
+}
+.admin-guest-number{
+ display:grid;
+ place-items:center;
+ width:30px;
+ height:30px;
+ margin-bottom:7px;
+ border-radius:999px;
+ background:#eef7fa;
+ color:#087cad;
+ font-weight:900;
+}
+.admin-guest-row label{min-width:0}
+.admin-guest-row small{color:#6b8491;font-size:11px;font-weight:500}
+.admin-private-boat,
+.admin-extra-vessel{
+ padding:12px 14px;
+ border:1px solid #c9dfe8;
+ border-radius:11px;
+ background:#f4fbfd;
+}
+.admin-private-boat>span{
+ display:flex;
+ align-items:center;
+ gap:9px;
+ color:#174158;
+ font-weight:800;
+}
+.admin-private-boat input{
+ width:18px!important;
+ min-height:18px!important;
+ height:18px;
+ flex:none;
+ accent-color:#087cad;
+}
+.admin-private-boat strong{margin-left:auto;color:#087cad}
+.admin-private-boat small,
+.admin-extra-vessel small{color:#607c8b;font-weight:500;line-height:1.45}
+.admin-extra-vessel{
+ border-color:#e4cf9d;
+ background:#fffaf0;
+}
+.admin-extra-vessel>strong{color:#8a6010;font-size:12px}
+.admin-booking-capacity{
+ display:grid;
+ gap:4px;
+ padding:12px 14px;
+ border:1px solid #d8e5ec;
+ border-radius:11px;
+ background:#fff;
+}
+.admin-booking-capacity>span{
+ color:#087cad;
+ font-size:11px;
+ font-weight:900;
+ text-transform:uppercase;
+ letter-spacing:.05em;
+}
+.admin-booking-capacity>strong{color:#14354a}
+.admin-booking-capacity>small{color:#607c8b;line-height:1.45}
+@media(max-width:800px){
+ .admin-guest-row{grid-template-columns:34px minmax(0,1fr) minmax(140px,.8fr)}
+ .admin-guest-row label:last-child{grid-column:2/-1}
+}
+@media(max-width:560px){
+ .admin-guest-roster-head{display:grid}
+ .admin-guest-roster-head>span{justify-self:start}
+ .admin-guest-row{grid-template-columns:32px minmax(0,1fr)}
+ .admin-guest-row label,
+ .admin-guest-row label:last-child{grid-column:2}
+ .admin-private-boat>span{align-items:flex-start;flex-wrap:wrap}
+ .admin-private-boat strong{margin-left:27px;width:100%}
+}
