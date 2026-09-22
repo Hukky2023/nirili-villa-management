@@ -1,6 +1,7 @@
 import {sessionCookieName,currentTab} from './tab-session';
 import {env} from "cloudflare:workers";
 import {cookies} from "next/headers";
+import {deactivateSupabaseAccount,readLegacySessionAccount,upsertLegacySession} from './supabase-bridge';
 
 export type Permission="guesthouse_reception"|"excursions_manager"|"waiter_pos"|"restaurant_pos"|"kitchen_pos"|"edit_bills"|"edit_excursions"|"edit_transfers"|"buggy_driver"|"crew_location";
 export type Actor={userId:string;username:string;email:string;displayName:string;role:"admin"|"staff"|"guest";permissions:Permission[]};
@@ -50,16 +51,20 @@ export async function hashPassword(password:string,salt=hex(crypto.getRandomValu
 const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
 const hash=hex(await crypto.subtle.deriveBits({name:"PBKDF2",salt:new TextEncoder().encode(salt),iterations:100000,hash:"SHA-256"},key,256));return {salt,hash};}
 export async function verifyPassword(password:string,salt:string,expected:string){const {hash}=await hashPassword(password,salt);let d=hash.length^expected.length;for(let i=0;i<hash.length;i++)d|=hash.charCodeAt(i)^(expected.charCodeAt(i)||0);return d===0;}
-export function publicUser(row:any):Actor{return {userId:row.id,username:row.username,email:row.email||"",displayName:row.name,role:row.role,permissions:JSON.parse(row.permissions||"[]")};}
+export function publicUser(row:any):Actor{let permissions:Permission[]=[];try{permissions=Array.isArray(row.permissions)?row.permissions:JSON.parse(row.permissions||"[]");}catch{}return {userId:row.id,username:row.username,email:row.email||"",displayName:row.name,role:row.role,permissions};}
 export async function currentUser():Promise<Actor|null>{
 await applyBookingAndSessionResetOnce();
 const token=(await cookies()).get(await sessionCookieName())?.value;if(!token)return null;
-const row=await authDb().prepare("SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id=a.id WHERE s.token_hash=? AND s.expires_at>? AND a.active=1").bind(await digest(token),Date.now()).first();
+const tokenHash=await digest(token),now=Date.now();let row:any=null;
+try{row=await readLegacySessionAccount(tokenHash,now);}catch{}
+if(!row)row=await authDb().prepare("SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id=a.id WHERE s.token_hash=? AND s.expires_at>? AND a.active=1").bind(tokenHash,now).first();
 return row&&await roomLoginActive(row.id)?publicUser(row):null;}
 export function hasPermission(user:Actor|null,permission:Permission){return !!user&&(user.role==="admin"||(user.role==="staff"&&user.permissions.includes(permission)));}
 export function sameOrigin(r:Request){return r.headers.get("origin")===new URL(r.url).origin;}
 export async function issueSession(id:string,tab?:string){
-const token=randomToken();await authDb().prepare("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(await digest(token),id,Date.now()+12*60*60*1000).run();
+const token=randomToken(),tokenHash=await digest(token),expiresAt=Date.now()+12*60*60*1000;let primary=false;
+try{primary=await upsertLegacySession(tokenHash,id,expiresAt);}catch{}
+try{await authDb().prepare("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(tokenHash,id,expiresAt).run();}catch(error){if(!primary)throw error;}
 return (tab?cookieName+"_"+tab:await sessionCookieName())+"="+token+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200";}
 export async function bootstrap(){
 const value=(env as unknown as Record<string,string>).NIRILI_BOOTSTRAP;
@@ -88,6 +93,7 @@ export async function roomLoginActive(id:string){
      db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(id),
      db.prepare('DELETE FROM operation_records WHERE key=?').bind('credential:'+id)
     ]);
+    try{await deactivateSupabaseAccount(id);}catch{}
    }catch{}
    return false;
   }
