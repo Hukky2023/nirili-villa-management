@@ -1,7 +1,7 @@
 import {sessionCookieName,currentTab} from './tab-session';
 import {env} from "cloudflare:workers";
 import {cookies} from "next/headers";
-import {deactivateSupabaseAccount,readLegacySessionAccount,readOperationalRecordPrimary,upsertLegacySession} from './supabase-bridge';
+import {deactivateSupabaseAccount,hitSupabaseRateLimit,readLegacySessionAccount,readOperationalRecordPrimary,upsertLegacySession} from './supabase-bridge';
 
 export type Permission="guesthouse_reception"|"excursions_manager"|"waiter_pos"|"restaurant_pos"|"kitchen_pos"|"edit_bills"|"edit_excursions"|"edit_transfers"|"buggy_driver"|"crew_location";
 export type Actor={userId:string;username:string;email:string;displayName:string;role:"admin"|"staff"|"guest";permissions:Permission[]};
@@ -73,7 +73,7 @@ const seeds=JSON.parse(value);
 await authDb().batch(seeds.map((s:any)=>authDb().prepare("INSERT OR IGNORE INTO accounts(id,username,email,name,password_hash,salt,role,permissions,active) VALUES(?,?,?,?,?,?,?,?,1)").bind(s.id,s.username,s.email,s.name,s.hash,s.salt,s.role,"[]")));
 await applyBookingAndSessionResetOnce();
 }
-export async function limit(key:string,max:number,ms:number){const bucket=Math.floor(Date.now()/ms);const k=await digest(key)+":"+bucket;const r=await authDb().prepare("INSERT INTO account_limits(key,count) VALUES(?,1) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count").bind(k).first<{count:number}>();return !!r&&r.count<=max;}
+export async function limit(key:string,max:number,ms:number){const bucket=Math.floor(Date.now()/ms);const k=await digest(key)+":"+bucket;try{return await hitSupabaseRateLimit(k,max);}catch{}const r=await authDb().prepare("INSERT INTO account_limits(key,count) VALUES(?,1) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count").bind(k).first<{count:number}>();return !!r&&r.count<=max;}
 export function validPassword(p:unknown):p is string{return typeof p==="string"&&p.length>=8&&p.length<=128;}
 export const validEmail=(e:string)=>e.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
