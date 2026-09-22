@@ -301,5 +301,17 @@ export async function mirrorHotelState(state:any){
     }));
   }
   await restUpsert('guests',guests,'legacy_key');
+
+  const guestAccounts=(state.stays||[])
+    .filter((stay:any)=>stay?.accountId&&stay?.id)
+    .map((stay:any)=>({
+      legacy_account_id:String(stay.accountId),
+      booking_reference:String(stay.id),
+      room_number:String(stay.room||''),
+      active:stay.status==='In House'||stay.status==='Confirmed',
+      valid_from:stay.loginIssuedAt||stay.checkedInAt||null,
+      valid_until:stay.checkedOutAt||null
+    }));
+  await restUpsert('guest_accounts',guestAccounts,'legacy_account_id');
   return true;
 }
