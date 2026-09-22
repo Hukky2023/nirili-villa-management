@@ -35,23 +35,25 @@ if(!sameOrigin(r))return Response.json({error:"Invalid request"},{status:403});
 try{const b=await r.json();
 if(r.method==="DELETE"){
  const id=String(b.id||''),db=authDb();
+ const existing=await db.prepare("SELECT * FROM accounts WHERE id=? AND role='staff'").bind(id).first<any>();
+ if(!existing)return Response.json({ok:false},{status:404});
+ try{await mirrorLegacyAccount({...existing,active:0});await deleteLegacySessionsForAccount(id);}catch{return Response.json({error:"Could not disable the Supabase staff login. No changes were made."},{status:503});}
  const history=await preserveAccountHistoryStatement(id,{at:new Date().toISOString(),action:'Account disabled',by:admin.username,detail:'Staff login disabled. History retained for Admin only.'},{guard:"EXISTS(SELECT 1 FROM accounts WHERE id=? AND role='staff' AND active=0)",args:[id]});
  const results=await db.batch([db.prepare("UPDATE accounts SET active=0 WHERE id=? AND role='staff'").bind(id),db.prepare("DELETE FROM account_sessions WHERE account_id=? AND EXISTS(SELECT 1 FROM accounts WHERE id=? AND role='staff' AND active=0)").bind(id,id),history]);
- if(results[0].meta.changes){const row=await db.prepare("SELECT * FROM accounts WHERE id=?").bind(id).first<any>();if(row)try{await mirrorLegacyAccount(row);}catch{}try{await deleteLegacySessionsForAccount(id);}catch{}}
  return Response.json({ok:!!results[0].meta.changes});
 }
 if(!Array.isArray(b.permissions)||b.permissions.some((p:any)=>!permissions.includes(p)))return Response.json({error:"Choose valid permissions."},{status:400});
 if(b.id){
- const db=authDb(),before=await db.prepare("SELECT active,permissions FROM accounts WHERE id=? AND role='staff'").bind(b.id).first<any>();
+ const db=authDb(),before=await db.prepare("SELECT * FROM accounts WHERE id=? AND role='staff'").bind(b.id).first<any>();
  if(!before)return Response.json({error:"Staff not found"},{status:404});
  const active=b.active===false?0:1,newPermissions=JSON.stringify(b.permissions);
+ try{await mirrorLegacyAccount({...before,permissions:newPermissions,active});if(!active)await deleteLegacySessionsForAccount(b.id);}catch{return Response.json({error:"Could not update the Supabase staff login. No changes were made."},{status:503});}
  const guard="EXISTS(SELECT 1 FROM accounts WHERE id=? AND role='staff' AND active=? AND permissions=?)",args=[b.id,active,newPermissions];
  const writes:any[]=[db.prepare("UPDATE accounts SET permissions=?,active=? WHERE id=? AND role='staff'").bind(newPermissions,active,b.id)];
  if(!active)writes.push(db.prepare("DELETE FROM account_sessions WHERE account_id=? AND "+guard).bind(b.id,...args));
  if(Number(before.active)!==active)writes.push(await preserveAccountHistoryStatement(b.id,{at:new Date().toISOString(),action:active?'Account enabled':'Account disabled',by:admin.username,detail:active?'Staff login restored.':'Staff login disabled. History retained for Admin only.'},{guard,args}));
  if(String(before.permissions||'[]')!==newPermissions)writes.push(accountHistoryStatement(b.id,[{at:new Date().toISOString(),action:'Permissions updated',by:admin.username,detail:(b.permissions||[]).join(', ')||'No permissions assigned.'}],admin.username,{guard,args}));
  const results=await db.batch(writes),result=results[0];
- if(result.meta.changes){const row=await db.prepare("SELECT * FROM accounts WHERE id=?").bind(b.id).first<any>();if(row)try{await mirrorLegacyAccount(row);}catch{}if(!active)try{await deleteLegacySessionsForAccount(b.id);}catch{}}
  return Response.json(result.meta.changes?{ok:true}:{error:"Staff not found"},{status:result.meta.changes?200:404});
 }
 const username=typeof b.username==="string"?b.username.trim().toLowerCase():"",email=typeof b.email==="string"?b.email.trim().toLowerCase():"",name=typeof b.name==="string"?b.name.trim():"",password=typeof b.password==="string"?b.password:"";
