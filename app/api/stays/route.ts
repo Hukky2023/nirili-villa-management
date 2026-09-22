@@ -1,7 +1,7 @@
 import {bookingGuests} from '../../../lib/booking-guests';
 import {editBooking,deleteBooking} from '../../../lib/booking-admin';
 import {createDirectBooking} from '../../../lib/direct-booking';
-import {prepareStayLogin,saveStayAccess} from '../../../lib/stay-login';
+import {saveStayAccess} from '../../../lib/stay-login';
 import {restaurantOnly} from '../../../lib/pos-access';
 import {billPaymentKey} from '../../../lib/bill-payment';
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
@@ -64,7 +64,7 @@ if(b.action==='editbooking'||b.action==='deletebooking'){
   details=b.guests===undefined?null:await bookingGuests(b.guests,b.pax,booking.guests||[],b.adults??booking.adults??b.pax,b.children??booking.children??0);
   const previous=editBooking(state,booking,{...b,guest:details?.guests[0].name??b.guest},u.username);
   if(details)Object.assign(booking,{guests:details.guests,adults:details.adults,children:details.children,whatsapp:details.guests[0].phone});
-  if(booking.status==='In House'&&previous.room!==booking.room)plan=await prepareStayLogin(state,booking);
+  if(booking.status==='In House'&&previous.room!==booking.room){delete booking.accountId;delete booking.roomLogin;delete booking.loginIssuedAt;plan=null;}
  }
  if(!await saveStayAccess(state,revision,u.userId,plan,revoke,details?.documents||[],details?.removed||[]))return Response.json({error:'Booking changed. Reopen it and try again.'},{status:409});
  return Response.json({booking:b.action==='editbooking'?booking:null,deleted:b.action==='deletebooking'});
@@ -80,7 +80,7 @@ else if(b.action==='contact'){const phone=String(b.whatsapp||'').replace(/[ ()-]
 else if(b.action==='note'){if(typeof b.note!=='string'||b.note.length>2000)throw Error('Keep room notes under 2,000 characters.');room.note=b.note;detail='Room note updated';}
 else if(b.action==='roomstatus'){if(!['Available','Cleaning','Maintenance'].includes(b.status))throw Error('Choose a valid room status.');if(state.stays.some((x:any)=>x.room===b.room&&x.status==='In House'))throw Error('Move or check out the guest before changing room status.');room.status=b.status;detail='Room status changed to '+b.status;}
 else if(b.action==='payment'){if(typeof b.requestId!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.requestId)||!Number.isInteger(b.cents)||b.cents<=0||b.cents>Math.max(0,f.balanceCents)||!['Cash','Card','Bank transfer'].includes(b.method)||typeof b.reference!=='string'||b.reference.length>200)throw Error('Enter a valid payment no greater than the outstanding balance.');s.payments.push({id:b.requestId,cents:b.cents,method:b.method,reference:b.reference,date:new Date().toISOString(),by:u.username});detail='Payment received: $'+(b.cents/100).toFixed(2)+' · '+b.method;}
-else if(b.action==='move'){if(s.status==='Checked Out')throw Error('This guest has already checked out.');const target=state.rooms.find((x:any)=>x.number===b.target);if(!target||target.number===s.room||target.status!=='Available'||state.stays.some((x:any)=>x.id!==s.id&&x.room===b.target&&x.status!=='Checked Out'&&x.checkIn<s.checkOut&&x.checkOut>s.checkIn))throw Error('That room is unavailable for these stay dates.');detail='Moved from room '+s.room+' to '+b.target;if(s.status==='In House'){room.status='Cleaning';target.status='Occupied';}s.room=b.target;if(s.status==='In House')loginPlan=await prepareStayLogin(state,s);}
+else if(b.action==='move'){if(s.status==='Checked Out')throw Error('This guest has already checked out.');const target=state.rooms.find((x:any)=>x.number===b.target);if(!target||target.number===s.room||target.status!=='Available'||state.stays.some((x:any)=>x.id!==s.id&&x.room===b.target&&x.status!=='Checked Out'&&x.checkIn<s.checkOut&&x.checkOut>s.checkIn))throw Error('That room is unavailable for these stay dates.');detail='Moved from room '+s.room+' to '+b.target;if(s.status==='In House'){room.status='Cleaning';target.status='Occupied';}s.room=b.target;if(s.status==='In House'){delete s.accountId;delete s.roomLogin;delete s.loginIssuedAt;loginPlan=null;}}
 else if(b.action==='extend'){if(s.status==='Checked Out')throw Error('This guest has already checked out.');const d=String(b.date);const nights=(Date.parse(d)-Date.parse(s.checkOut))/86400000;if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||new Date(d).toISOString().slice(0,10)!==d||!Number.isInteger(nights)||nights<1||nights>365||!Number.isInteger(b.rateCents)||b.rateCents<0||b.rateCents>1000000)throw Error('Choose a later checkout date and a valid nightly rate.');if(state.stays.some((x:any)=>x.id!==s.id&&x.room===s.room&&x.status!=='Checked Out'&&x.checkIn<d&&x.checkOut>s.checkOut))throw Error('This room has another booking during the extension.');s.extensions.push({id:'EXT-'+crypto.randomUUID(),from:s.checkOut,to:d,nights,cents:nights*b.rateCents});s.checkOut=d;detail='Stay extended to '+d+' · '+nights+(nights===1?' night':' nights');}
 else if(b.action==='checkout'){
  if(s.status!=='In House')throw Error('Only checked-in guests can check out.');
