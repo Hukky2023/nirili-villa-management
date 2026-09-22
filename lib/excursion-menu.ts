@@ -1,5 +1,6 @@
 import {authDb} from './auth';
 import {catalog} from './guest-catalog';
+import {readOperationalRecordsPrimary} from './supabase-bridge';
 
 const PREFIX='excursion-menu:';
 export type ExcursionCategory='single'|'combined'|'special';
@@ -27,10 +28,12 @@ export function baseExcursionMenu(){
 }
 export async function loadExcursionMenu(){
  const base=baseExcursionMenu();
- const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(PREFIX+'%').all<any>();
+ let rawRows:any[]=[];
+ try{rawRows=await readOperationalRecordsPrimary(PREFIX);}catch{}
+ if(!rawRows.length){const rows=await authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(PREFIX+'%').all<any>();rawRows=rows.results||[];}
  const overrides=new Map<string,any>();
- for(const row of rows.results||[]){
-  try{const item=JSON.parse(row.payload);if(item?.id)overrides.set(String(item.id),{...item,revision:row.revision});}catch{}
+ for(const row of rawRows){
+  try{const item=typeof row.payload==='string'?JSON.parse(row.payload):row.payload;if(item?.id)overrides.set(String(item.id),{...item,revision:Number(row.revision)||0});}catch{}
  }
  const merged=base.map((item:any)=>{
   const override=overrides.get(item.id);
