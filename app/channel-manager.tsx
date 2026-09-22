@@ -36,6 +36,7 @@ export default function ChannelManager(){
       if(b.connection){setData(b);setDraft((d:any)=>({...d,enabled:!!b.connection.enabled,mode:b.connection.mode,propertyId:b.connection.property_id||'',channelPropertyId:b.connection.channel_property_id||'',dryRun:b.connection.settings?.dryRun!==false}));}
       if(action==='preview')setPreview(b);
       if(action==='push'){setPreview(b.preview||null);setNotice(b.dryRun?'Dry-run complete. No external inventory changed.':'Availability sent to Channex.');}
+      if(action==='selftest')setNotice((b.message||'PMS self-test passed.')+' Simulated '+(b.simulatedReference||'booking')+(b.simulatedRoom?' in room '+b.simulatedRoom:'')+'.');
       if(action==='test')setNotice('Channex connection successful.');
       if(action==='discover')setNotice('Room types and rate plans loaded from Channex.');
       if(action==='mappings')setNotice('Mappings saved.');
@@ -79,7 +80,7 @@ export default function ChannelManager(){
         <label>Environment<select value={draft.mode} onChange={e=>setDraft({...draft,mode:e.target.value})}><option value="staging">Staging / test</option><option value="production">Production</option></select></label>
         <label>Channex property ID<input value={draft.propertyId} onChange={e=>setDraft({...draft,propertyId:e.target.value})} placeholder="Channex property UUID"/></label>
         <label>Booking.com property ID<input value={draft.channelPropertyId} onChange={e=>setDraft({...draft,channelPropertyId:e.target.value})} placeholder="Booking.com hotel ID"/></label>
-        <div className="channel-actions"><button className="primary" disabled={!!busy} onClick={save}>Save settings</button><button disabled={!!busy||!credentials.apiKeyConfigured} onClick={()=>post('test')}><RefreshCw/>Test</button></div>
+        <div className="channel-actions"><button className="primary" disabled={!!busy} onClick={save}>Save settings</button><button disabled={!!busy||!credentials.apiKeyConfigured} onClick={()=>post('test')}><RefreshCw/>Test Channex</button><button disabled={!!busy} onClick={()=>post('selftest')}><ShieldCheck/>Run PMS self-test</button></div>
         {c.last_error&&<p className="channel-inline-error">{c.last_error}</p>}
       </article>
 
@@ -96,7 +97,7 @@ export default function ChannelManager(){
     <article className="channel-card">
       <header><Database/><div><h2>Booking webhook & recovery feed</h2><p>Webhook imports quickly; feed polling recovers missed delivery.</p></div></header>
       <code className="channel-code">{webhook}</code>
-      <p className="channel-hint">Replace YOUR_SHARED_TOKEN with the same value stored as the Cloudflare secret CHANNEX_WEBHOOK_TOKEN. The PMS never displays the saved secret.</p>
+      <p className="channel-hint">Replace YOUR_SHARED_TOKEN with the same value stored as the Cloudflare secret CHANNEX_WEBHOOK_TOKEN. The PMS never displays the saved secret.</p><div className="channel-links"><a href="https://staging.channex.io/" target="_blank" rel="noreferrer">Open Channex staging</a><a href="https://staging.channex.io/user_profile" target="_blank" rel="noreferrer">Create / view API key</a></div>
       <div className="channel-actions"><button disabled={!!busy||!draft.enabled||!credentials.apiKeyConfigured} onClick={()=>post('pull')}><RotateCw/>Check booking feed now</button></div>
     </article>
 
