@@ -72,10 +72,10 @@ export default function GuestBookingSite(){
     <div><strong>Nirili Villa</strong><small>DHIFFUSHI · MALDIVES</small></div>
    </a>
    <nav><a href="#stay">Stay</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
-   <a className="nav-book" href="#book">Request a stay <ArrowRight/></a>
+   <a className="nav-book" href="#book"><span>Request a stay</span><ArrowRight/></a>
   </header>
 
-  <section className="booking-hero" id="stay">
+  <section className="hero" id="stay">
    <div className="hero-copy">
     <span className="eyebrow"><MapPin/> DHIFFUSHI ISLAND · MALDIVES</span>
     <h1>Island days.<br/><em>Easy stays.</em></h1>
