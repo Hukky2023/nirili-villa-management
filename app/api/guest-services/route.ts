@@ -11,7 +11,8 @@ import {appendAccountHistory} from '../../../lib/account-history';
 import {loadStays,stayKey,folioFor} from '../../../lib/stays';
 import {catalog,plans,nightly,islandToday,validDate} from '../../../lib/guest-catalog';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
-import {deactivateSupabaseAccount,ensureSupabaseEmployee,mirrorLegacyAccount} from '../../../lib/supabase-bridge';
+import {deactivateSupabaseAccount,ensureSupabaseEmployee,mirrorLegacyAccount,readOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {updateRoomInventory} from '../../../lib/rooms';
 const MIN_EXCURSION_PAX=1;
 import {walkInExcursionBill,walkInExcursionProfile,syncWalkInExcursionAccess} from '../../../lib/walkin-excursion-access';
 function canUseManagementServices(u:any){
@@ -22,7 +23,8 @@ function canUseManagementServices(u:any){
  return u.permissions.some((p:string)=>['guesthouse_reception','excursions_manager','edit_bills','edit_excursions','edit_transfers'].includes(p));
 }
 
-async function view(u:any){const {state,revision}=await loadStays();const excursionMenu=await loadExcursionMenu();const currentCatalog=[...await foodCatalog(),...catalog.filter(i=>i.kind!=='food'&&i.kind!=='excursion'),...excursionMenu];const orders=state.orders.map((o:any)=>{const s=state.stays.find((s:any)=>s.id===o.stayId);return {...o,guestNotified:o.guestNotified??(o.status==='Scheduled and informed'),status:o.kind==='excursion'?excursionStage(o):o.status,paymentStatus:o.status==='Cancelled'?'Cancelled':o.kind==='excursion'?(excursionPaid(o,state)?'Paid':'Unpaid'):s?.paidBills?.[(o.kind==='food'?'Restaurant:':o.kind==='transfer'?'Transfer:':'Excursions:')+o.id]===o.cents?'Paid':'Unpaid'};});if(u.role==='guest'){
+async function loadViewState(){try{const row=await readOperationalRecordPrimary(stayKey);if(row?.payload){const state=row.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.rooms??=[];updateRoomInventory(state);return {state,revision:Number(row.revision)||0};}}catch{}return loadStays();}
+async function view(u:any){const {state,revision}=await loadViewState();const excursionMenu=await loadExcursionMenu();const currentCatalog=[...await foodCatalog(),...catalog.filter(i=>i.kind!=='food'&&i.kind!=='excursion'),...excursionMenu];const orders=state.orders.map((o:any)=>{const s=state.stays.find((s:any)=>s.id===o.stayId);return {...o,guestNotified:o.guestNotified??(o.status==='Scheduled and informed'),status:o.kind==='excursion'?excursionStage(o):o.status,paymentStatus:o.status==='Cancelled'?'Cancelled':o.kind==='excursion'?(excursionPaid(o,state)?'Paid':'Unpaid'):s?.paidBills?.[(o.kind==='food'?'Restaurant:':o.kind==='transfer'?'Transfer:':'Excursions:')+o.id]===o.cents?'Paid':'Unpaid'};});if(u.role==='guest'){
  const walkIn=walkInExcursionProfile(state,u.userId);
  if(walkIn?.active){
   const ownOrders=orders.filter((o:any)=>o.accountId===u.userId&&o.kind==='excursion');
