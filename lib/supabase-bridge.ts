@@ -256,6 +256,45 @@ export async function mirrorLegacyAccount(row:LegacyAccountRow){
 
 
 
+
+export async function readLegacySessionAccount(tokenHash:string,nowMs:number){
+  if(!supabaseBridgeConfigured())return null;
+  const result=await sb('/rest/v1/rpc/get_legacy_session_account',{
+    method:'POST',
+    body:JSON.stringify({p_token_hash:tokenHash,p_now_ms:nowMs})
+  },'secret');
+  return result&&typeof result==='object'?result:null;
+}
+
+export async function upsertLegacySession(tokenHash:string,accountId:string,expiresAt:number){
+  if(!supabaseBridgeConfigured())return false;
+  await restUpsert('legacy_sessions',[{
+    token_hash:tokenHash,
+    account_id:accountId,
+    expires_at:expiresAt,
+    created_at:new Date().toISOString()
+  }],'token_hash');
+  return true;
+}
+
+export async function deleteLegacySession(tokenHash:string){
+  if(!supabaseBridgeConfigured())return false;
+  await sb('/rest/v1/legacy_sessions?token_hash=eq.'+encodeURIComponent(tokenHash),{
+    method:'DELETE',
+    headers:{Prefer:'return=minimal'}
+  },'secret');
+  return true;
+}
+
+export async function deleteLegacySessionsForAccount(accountId:string){
+  if(!supabaseBridgeConfigured())return false;
+  await sb('/rest/v1/legacy_sessions?account_id=eq.'+encodeURIComponent(accountId),{
+    method:'DELETE',
+    headers:{Prefer:'return=minimal'}
+  },'secret');
+  return true;
+}
+
 export async function deactivateSupabaseAccount(legacyAccountId:string){
   if(!supabaseBridgeConfigured())return false;
   const rows=await restSelect('legacy_accounts','id=eq.'+encodeURIComponent(legacyAccountId)+'&select=auth_user_id&limit=1');
