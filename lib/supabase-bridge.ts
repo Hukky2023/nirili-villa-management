@@ -371,6 +371,28 @@ export async function clearSystemNotifications(){
 }
 
 
+
+export async function readExcursionSchedulesPrimary(date:string){
+  if(!supabaseBridgeConfigured())return [];
+  const pattern='excursion-schedule:'+date+':*';
+  const rows=await restSelect('operational_records','select=key,payload,revision&key=like.'+encodeURIComponent(pattern)+'&order=key.asc');
+  return rows.map((row:any)=>({...row.payload,revision:Number(row.revision)||0,__key:row.key}));
+}
+
+export async function saveOperationalRecordPrimary(key:string,payload:any,expectedRevision:number,updatedBy:string){
+  if(!supabaseBridgeConfigured())return 0;
+  const result=await sb('/rest/v1/rpc/save_operational_record',{
+    method:'POST',
+    body:JSON.stringify({
+      p_key:key,
+      p_payload:payload,
+      p_expected_revision:expectedRevision,
+      p_updated_by:updatedBy
+    })
+  },'secret');
+  return Number(result)||0;
+}
+
 export async function readDashboardOperationalSnapshot(today:string){
   if(!supabaseBridgeConfigured())throw Error('Supabase bridge is not configured.');
   const [hotelRows,transportRows,scheduleRows]=await Promise.all([
