@@ -13,7 +13,8 @@ const ip=request.headers.get("cf-connecting-ip")||"unknown";
 if(!await limit("login-ip:"+ip,100,900000)||!await limit("login:"+username,15,900000))return Response.json({error:"Too many attempts. Try again in 15 minutes."},{status:429});
 await bootstrap();
 let row:any=null;
-const supabaseAuth=await authenticateSupabaseEmployee(username,b.password);
+let supabaseAuth:any=null;
+try{supabaseAuth=await authenticateSupabaseEmployee(username,b.password);}catch{}
 if(supabaseAuth)row=await authDb().prepare("SELECT * FROM accounts WHERE id=? AND active=1").bind(supabaseAuth.legacyId).first<any>();
 if(!row){
  row=await authDb().prepare("SELECT * FROM accounts WHERE (username=? OR email=?) AND active=1").bind(username,username).first<any>();
