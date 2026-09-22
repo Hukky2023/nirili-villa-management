@@ -16,6 +16,16 @@ function canViewHotel(u:any){
  if(u.permissions.length===0)return true;
  return u.permissions.some((p:string)=>['guesthouse_reception','edit_bills','edit_excursions','edit_transfers'].includes(p));
 }
+async function loadHotelPrimary(){
+ try{
+  const primary=await readOperationalRecordPrimary(stayKey);
+  if(primary?.payload){
+   const state=primary.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.rooms??=[];updateRoomInventory(state);
+   return {state,revision:Number(primary.revision)||0};
+  }
+ }catch{}
+ return loadStays();
+}
 export async function GET(){const u=await currentUser();if(!canViewHotel(u)||restaurantOnly(u))return Response.json({error:'Hotel management access required'},{status:403});try{
  let primary:any=null;
  try{primary=await readOperationalRecordPrimary(stayKey);}catch{}
@@ -25,7 +35,7 @@ export async function GET(){const u=await currentUser();if(!canViewHotel(u)||res
  }
  return Response.json(await stayView(),{headers:{'Cache-Control':'no-store'}});
 }catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
-export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();const canManageStay=hasPermission(u,'guesthouse_reception')||hasPermission(u,'edit_bills');if(!canManageStay)return Response.json({error:'Reception or bill editing permission is required.'},{status:403});const {state,revision}=await loadStays();
+export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();const canManageStay=hasPermission(u,'guesthouse_reception')||hasPermission(u,'edit_bills');if(!canManageStay)return Response.json({error:'Reception or bill editing permission is required.'},{status:403});const {state,revision}=await loadHotelPrimary();
 if(b.action==='create'){
  if(restaurantOnly(u))return Response.json({error:'Hotel booking access required.'},{status:403});
  const previous=state.stays.find((s:any)=>s.creationRequest===b.requestId&&s.createdBy===u.username);
