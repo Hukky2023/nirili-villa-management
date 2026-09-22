@@ -59,6 +59,7 @@ export function proxy(request:NextRequest){
  }
 
  // Dedicated public websites stay isolated from the management application.
+ // Root domain serves the dedicated /hotel homepage; booking subdomain serves /book.
  if(host===publicHotelHost)return hotelSiteResponse(url);
  if(host===guestBookingHost)return bookingSiteResponse(url);
 
