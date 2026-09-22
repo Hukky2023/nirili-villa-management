@@ -28,6 +28,7 @@ if(!row){
   await Promise.race([ensureSupabaseEmployee(row,b.password),new Promise(resolve=>setTimeout(resolve,700))]);
  }catch{}
 }else if(!await roomLoginActive(row.id))return Response.json({error:"Incorrect username or password."},{status:401});
+if(row.role==='guest')return Response.json({error:"Guest login access has been disabled."},{status:403});
 const user=publicUser(row);
 if(typeof b.portal==="string"&&b.portal.startsWith("transport_")&&!transportPortalAllowed(user,b.portal))return Response.json({error:"This account cannot access the selected transport portal."},{status:403});
 if(isTransportAgent(user)&&!["transport_agent","direct"].includes(b.portal))return Response.json({error:"Use the Agent login on the transport page."},{status:403});
