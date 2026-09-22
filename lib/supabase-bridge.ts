@@ -370,6 +370,21 @@ export async function clearSystemNotifications(){
   return true;
 }
 
+
+export async function readDashboardOperationalSnapshot(today:string){
+  if(!supabaseBridgeConfigured())throw Error('Supabase bridge is not configured.');
+  const [hotelRows,transportRows,scheduleRows]=await Promise.all([
+    restSelect('operational_records','select=key,payload&key=eq.hotel-stays-v1&limit=1'),
+    restSelect('operational_records','select=key,payload&key=eq.transport-bookings-v1&limit=1'),
+    restSelect('operational_records','select=key,payload&key=like.'+encodeURIComponent('excursion-schedule:'+today+':*')+'&order=key.asc')
+  ]);
+  return {
+    hotel:hotelRows[0]?.payload||null,
+    transport:transportRows[0]?.payload||null,
+    schedules:scheduleRows.map((row:any)=>row.payload).filter(Boolean)
+  };
+}
+
 export async function mirrorOperationalRecord(key:string,payload:any,revision:number=0,updatedBy:string=''){
   if(!supabaseBridgeConfigured())return false;
   const batch=crypto.randomUUID();
