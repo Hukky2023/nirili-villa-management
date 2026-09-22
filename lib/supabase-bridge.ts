@@ -471,6 +471,16 @@ export async function readDashboardOperationalSnapshot(today:string){
   };
 }
 
+
+export async function deleteOperationalRecordPrimary(key:string){
+  if(!supabaseBridgeConfigured())return false;
+  await sb('/rest/v1/operational_records?key=eq.'+encodeURIComponent(key),{
+    method:'DELETE',
+    headers:{Prefer:'return=minimal'}
+  },'secret');
+  return true;
+}
+
 export async function mirrorOperationalRecord(key:string,payload:any,revision:number=0,updatedBy:string=''){
   if(!supabaseBridgeConfigured())return false;
   const batch=crypto.randomUUID();
