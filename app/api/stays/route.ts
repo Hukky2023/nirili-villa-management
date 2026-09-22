@@ -6,6 +6,8 @@ import {restaurantOnly} from '../../../lib/pos-access';
 import {billPaymentKey} from '../../../lib/bill-payment';
 import {authDb,currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {loadStays,stayView,stayKey,folioFor} from '../../../lib/stays';
+import {updateRoomInventory} from '../../../lib/rooms';
+import {readOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {appendAccountHistory} from '../../../lib/account-history';
 function canViewHotel(u:any){
  if(!u)return false;
@@ -14,7 +16,15 @@ function canViewHotel(u:any){
  if(u.permissions.length===0)return true;
  return u.permissions.some((p:string)=>['guesthouse_reception','edit_bills','edit_excursions','edit_transfers'].includes(p));
 }
-export async function GET(){const u=await currentUser();if(!canViewHotel(u)||restaurantOnly(u))return Response.json({error:'Hotel management access required'},{status:403});try{return Response.json(await stayView(),{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
+export async function GET(){const u=await currentUser();if(!canViewHotel(u)||restaurantOnly(u))return Response.json({error:'Hotel management access required'},{status:403});try{
+ let primary:any=null;
+ try{primary=await readOperationalRecordPrimary(stayKey);}catch{}
+ if(primary?.payload){
+  const state=primary.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];updateRoomInventory(state);
+  return Response.json({...state,revision:Number(primary.revision)||0,stays:await Promise.all((state.stays||[]).map(async(s:any)=>({...s,folio:await folioFor(s,state.orders)})))},{headers:{'Cache-Control':'no-store'}});
+ }
+ return Response.json(await stayView(),{headers:{'Cache-Control':'no-store'}});
+}catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
 export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();const canManageStay=hasPermission(u,'guesthouse_reception')||hasPermission(u,'edit_bills');if(!canManageStay)return Response.json({error:'Reception or bill editing permission is required.'},{status:403});const {state,revision}=await loadStays();
 if(b.action==='create'){
  if(restaurantOnly(u))return Response.json({error:'Hotel booking access required.'},{status:403});
