@@ -41,6 +41,7 @@ export function excursionManageSnapshot(state:any,order:any,liveSchedule:any=nul
  const pending=pendingExcursionChange(state,order.id);
  const schedule=['Departed','Completed'].includes(String(order.status||''))?(order.schedule||{}):{...(order.schedule||{}),...(liveSchedule||{})};
  const paidCents=externalExcursionPaymentCents(order);
+ const quotedCents=Math.max(0,Number(order.quotedCents)||Number(order.cents)||0);
  const dueCents=Math.max(0,Number(order.cents||order.quotedCents||0)-paidCents);
  const closed=['Completed','Departed','Cancelled'].includes(String(order.status||''));
  const cancelled=String(order.status||'')==='Cancelled'||String(order.approvalStatus||'')==='Cancelled'||String(order.approvalStatus||'')==='Declined';
