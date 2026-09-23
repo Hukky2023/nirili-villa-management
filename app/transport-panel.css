@@ -6,3 +6,12 @@
 .nt-transport-plan label{display:grid;gap:7px;margin:12px 0}
 .nt-transport-plan select{width:100%}
 .nt-plan-warning{padding:10px 12px;border-radius:10px;background:#fff5df;color:#785a1f}
+
+.nt-room-charge{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px;border-radius:12px;background:#eef8f4;border:1px solid #d6ebe2}
+.nt-room-charge span{display:grid;gap:2px;min-width:145px}
+.nt-room-charge small{font-size:10px;letter-spacing:.06em;color:#647d73}
+.nt-room-charge strong{font-size:18px;color:#184f3e}
+.nt-room-charge em{font-style:normal;font-weight:800;font-size:11px;letter-spacing:.08em;padding:5px 8px;border-radius:999px;background:#dff4e9;color:#17633f}
+.nt-plan-billing{display:grid;gap:10px;margin-top:12px;padding:14px;border:1px solid #d8e5e9;border-radius:13px;background:#f8fbfc}
+.nt-plan-billing h4{margin:0}
+.nt-plan-billing>small{color:#607781;line-height:1.4}
