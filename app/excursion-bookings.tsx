@@ -91,7 +91,15 @@ export default function ExcursionBookings() {
     try{
       const response=await fetch('/api/excursion-bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,id:item.id,revision,note})}),result=await response.json();
       if(!response.ok)throw Error(result.error||'Could not review guest request.');
-      setManageMessage(item.type==='cancel'&&approve?'Cancellation approved.'+(result.decision?.refundRequiredCents?' Refund required: '+money(result.decision.refundRequiredCents)+'.':''):(approve?'Guest changes approved.':'Guest request rejected.')+(result.email?.sent?' Email sent.':''));
+      if(item.type==='cancel'&&approve){
+        setManageMessage('Cancellation approved.'+(result.decision?.refundRequiredCents?' Refund required: '+money(result.decision.refundRequiredCents)+'.':'')+(result.email?.sent?' Email sent.':''));
+      }else if(approve&&result.decision?.autoAssigned){
+        setManageMessage('Guest changes approved and automatically assigned to '+(result.decision.time||'the available trip')+(result.decision.scheduleName?' · '+result.decision.scheduleName:'')+'.'+(result.email?.sent?' Guest email sent.':''));
+      }else if(approve&&result.decision?.logisticsChanged){
+        setManageMessage('Guest changes approved. No compatible trip with enough seats was available, so the booking is Awaiting Scheduling.'+(result.email?.sent?' Guest email sent.':''));
+      }else{
+        setManageMessage((approve?'Guest changes approved.':'Guest request rejected.')+(result.email?.sent?' Email sent.':''));
+      }
       await load();
       window.dispatchEvent(new Event('services-updated'));
     }catch(e){setManageMessage(e instanceof Error?e.message:'Could not review guest request.');}
