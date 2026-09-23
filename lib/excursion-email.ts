@@ -51,3 +51,9 @@ export async function sendExternalExcursionRejectedEmail(mail:ExcursionMail):Pro
  const html=shell((cancelling?'Cancellation':'Change')+' request not approved',`<p>Dear ${esc(mail.guest)},</p><p>We could not approve your ${cancelling?'cancellation':'change'} request for <strong>${esc(mail.reference)}</strong>.</p>${mail.reason?`<p><strong>Team note:</strong> ${esc(mail.reason)}</p>`:''}<p>Your existing booking remains active.</p>${table(mail)}${manageButton(mail.manageToken)}`);
  return send({to:mail.email,subject:'Excursion request update · '+mail.reference,html,text:`Nirili Tours - request not approved\n\nBooking: ${mail.reference}\nYour existing booking remains active.\n${mail.reason?'Team note: '+mail.reason+'\n':''}${managePlain(mail.manageToken)}`,key:'external-excursion-rejected/'+(mail.eventId||mail.reference)});
 }
+
+
+export async function sendExternalExcursionDeclinedEmail(mail:ExcursionMail):Promise<MailResult>{
+ const html=shell('Excursion booking update',`<p>Dear ${esc(mail.guest)},</p><p>We’re sorry, but we could not confirm booking <strong>${esc(mail.reference)}</strong> for the requested excursion/date.</p>${mail.reason?`<p><strong>Team note:</strong> ${esc(mail.reason)}</p>`:''}${table(mail)}${manageButton(mail.manageToken)}`);
+ return send({to:mail.email,subject:'Excursion booking update · '+mail.reference,html,text:`Nirili Tours - excursion booking update\n\nBooking: ${mail.reference}\nWe could not confirm this requested excursion.\n${mail.reason?'Team note: '+mail.reason+'\n':''}${managePlain(mail.manageToken)}`,key:'external-excursion-declined/'+(mail.eventId||mail.reference)});
+}
