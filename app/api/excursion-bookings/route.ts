@@ -4,23 +4,76 @@ import {saveStayAccess} from '../../../lib/stay-login';
 import {excursionPaid, excursionResources} from '../../../lib/excursion-workflow';
 import {isConfirmedExcursion, toConfirmedExcursionBooking} from '../../../lib/excursion-bookings';
 import {applyExcursionBillingAdjustment, excursionPricing} from '../../../lib/excursion-billing';
-import {mirrorHotelState,mirrorOperationalRecord,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {mirrorHotelState,mirrorOperationalRecord,readExcursionSchedulesPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {approveExternalExcursionCancellation,approveExternalExcursionChange,approveExternalExcursionPackageCancellation,ensureExcursionManageState,externalPackageOrders,rejectExternalExcursionAction} from '../../../lib/excursion-manage';
 import {sendExternalExcursionCancelledEmail,sendExternalExcursionRejectedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
 import {autoAssignExcursionOrder} from '../../../lib/excursion-auto-assignment';
+import {excursionDeparturePassed,islandToday,validDate} from '../../../lib/guest-catalog';
+import {excursionScheduleLoadForOrder,scheduleCanServeRequest} from '../../../lib/excursion-operations';
 
 const headers = {'Cache-Control': 'private, no-store', 'Vary': 'Cookie'};
 const normal = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 const legacyKey = (date: unknown, time: unknown, name: unknown) => JSON.stringify([date || '', time || '', normal(name)]);
 
+async function schedulesForDate(date:string){
+  try{
+    const primary=await readExcursionSchedulesPrimary(date);
+    if(primary.length)return primary.map((row:any)=>({...row}));
+  }catch{}
+  const rows=await authDb().prepare('SELECT payload,revision FROM operation_records WHERE key LIKE ?')
+    .bind('excursion-schedule:'+date+':%').all<any>();
+  return (rows.results||[]).map((row:any)=>({...JSON.parse(row.payload||'{}'),revision:Number(row.revision)||0}));
+}
+function assignmentSnapshot(order:any){
+  return {
+    date:String(order.date||order.schedule?.date||''),
+    time:String(order.time||order.schedule?.time||''),
+    endTime:String(order.endTime||order.schedule?.endTime||''),
+    scheduleId:String(order.scheduleId||''),
+    scheduleName:String(order.matchedScheduleName||order.schedule?.name||order.name||''),
+    vesselId:String(order.schedule?.vesselId||''),
+    vessel:String(order.schedule?.vessel||'')
+  };
+}
+
 /** All confirmed excursions, across all dates. This endpoint never changes orders. */
-export async function GET() {
+export async function GET(request?: Request) {
   try {
     const user = await currentUser();
     if (!hasPermission(user, 'edit_excursions') && !hasPermission(user, 'excursions_manager')) {
       return Response.json({error: 'Excursion access is required.'}, {status: 403, headers});
     }
     const {state, revision} = await loadStays();state.excursionChanges??=[];
+    const canReassign=hasPermission(user,'edit_excursions')||hasPermission(user,'excursions_manager');
+    const url=request?new URL(request.url):null,bookingId=String(url?.searchParams.get('bookingId')||''),scheduleDate=String(url?.searchParams.get('scheduleDate')||'');
+    if(bookingId||scheduleDate){
+      if(!bookingId||!validDate(scheduleDate)||scheduleDate<islandToday())return Response.json({error:'Choose a valid booking and today or a future trip date.'},{status:400,headers});
+      const order=(state.orders||[]).find((item:any)=>item.id===bookingId&&item.kind==='excursion');
+      if(!order)return Response.json({error:'Excursion booking not found.'},{status:404,headers});
+      if(!isConfirmedExcursion(order))return Response.json({error:'Only confirmed excursion bookings can be reassigned.'},{status:409,headers});
+      if(['Departed','Completed','Cancelled'].includes(String(order.status||'')))return Response.json({error:'Departed, completed or cancelled excursions cannot be reassigned.'},{status:409,headers});
+      if(order.serviceType==='romantic-beach-dinner')return Response.json({error:'Romantic Beach Dinner does not use excursion trip assignment.'},{status:409,headers});
+      if(order.privateBoatRequested===true||order.separateVessel===true)return Response.json({error:'Private or separate-vessel bookings must be managed from the schedule/vessel assignment screen.'},{status:409,headers});
+      const schedules=(await schedulesForDate(scheduleDate)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
+      const resources=excursionResources(state),quantity=Math.max(1,Number(order.quantity)||1);
+      const options=schedules.map((schedule:any)=>{
+        const load=excursionScheduleLoadForOrder(schedule,schedules,state.orders||[],order.id);
+        const vessel=resources.vessels.find((item:any)=>item.id===schedule.vesselId);
+        const current=String(order.scheduleId||'')===String(schedule.id||'')&&String(order.date||order.schedule?.date||'')===String(schedule.date||'');
+        const compatible=scheduleCanServeRequest(order.name,schedule.name);
+        return {
+          id:String(schedule.id||''),date:String(schedule.date||scheduleDate),time:String(schedule.time||''),endTime:String(schedule.endTime||''),
+          name:String(schedule.name||'Excursion trip'),capacity:load.capacity,confirmedPax:load.confirmedPax,remainingSeats:load.remaining,
+          vesselId:String(schedule.vesselId||''),vessel:String(vessel?.name||schedule.vessel||'Not assigned'),
+          compatible,current,canFit:load.remaining>=quantity
+        };
+      }).sort((a:any,b:any)=>(a.current?0:1)-(b.current?0:1)||(a.compatible?0:1)-(b.compatible?0:1)||a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
+      return Response.json({
+        revision,canReassign,
+        booking:{id:order.id,guest:order.guest||'',name:order.name||'',date:order.date||'',time:order.time||order.schedule?.time||'',quantity,people:Array.isArray(order.excursionGuestRoster)?order.excursionGuestRoster:[],packageGroupId:order.packageGroupId||''},
+        schedules:options
+      },{headers});
+    }
     const rows = await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?')
       .bind('excursion-schedule:%').all<any>();
     const schedules = (rows.results || []).map((row: any) => JSON.parse(row.payload));
@@ -57,7 +110,7 @@ export async function GET() {
       const order=(state.orders||[]).find((item:any)=>item.id===change.bookingId&&item.kind==='excursion');
       return {id:change.id,type:change.type,bookingId:change.packageGroupId||change.bookingId,internalBookingId:change.bookingId,packageGroupId:change.packageGroupId||'',requestedAt:change.requestedAt,current:change.current||null,proposed:change.proposed||null,guest:order?.guest||change.current?.guest||'',excursion:change.packageGroupId?(order?.packageName||'Special Package'):(order?.name||change.current?.name||''),date:order?.date||change.current?.date||'',time:order?.time||order?.schedule?.time||'',quantity:Number(order?.quantity||change.current?.quantity||0),hotel:order?.hotel||'',email:order?.email||'',phone:order?.phone||''};
     });
-    return Response.json({bookings,manageRequests, revision, canAdjustBilling: user!.role === 'admin',canReviewManageRequests:true}, {headers});
+    return Response.json({bookings,manageRequests, revision, canAdjustBilling: user!.role === 'admin',canReviewManageRequests:true,canReassign}, {headers});
   } catch {
     return Response.json({error: 'Could not load confirmed excursion bookings. Please try again.'}, {status: 503, headers});
   }
@@ -73,6 +126,44 @@ export async function PATCH(request: Request) {
     let input: any;
     try { input = await request.json(); } catch {
       return Response.json({error: 'Invalid excursion request.'}, {status: 400, headers});
+    }
+    if(input?.action==='reassign-booking'){
+      if(!hasPermission(user,'edit_excursions')&&!hasPermission(user,'excursions_manager'))return Response.json({error:'Excursion management access is required.'},{status:403,headers});
+      const bookingId=String(input.id||''),scheduleId=String(input.scheduleId||''),scheduleDate=String(input.scheduleDate||''),note=String(input.note||'').trim().slice(0,500);
+      if(!bookingId||!scheduleId||!validDate(scheduleDate)||scheduleDate<islandToday()||!Number.isSafeInteger(input.revision)||input.revision<0)return Response.json({error:'Choose a valid booking and target trip.'},{status:400,headers});
+      const {state,revision}=await loadStays();
+      if(input.revision!==revision)return Response.json({error:'Excursion bookings changed. Refresh and choose the trip again.'},{status:409,headers});
+      const order=(state.orders||[]).find((item:any)=>item.id===bookingId&&item.kind==='excursion');
+      if(!order)return Response.json({error:'Excursion booking not found.'},{status:404,headers});
+      if(!isConfirmedExcursion(order))return Response.json({error:'Only confirmed excursion bookings can be reassigned.'},{status:409,headers});
+      if(['Departed','Completed','Cancelled'].includes(String(order.status||'')))return Response.json({error:'Departed, completed or cancelled excursions cannot be reassigned.'},{status:409,headers});
+      if(order.date&&order.time&&excursionDeparturePassed(order.date,order.time))return Response.json({error:'This booking departure time has already passed and cannot be reassigned here.'},{status:409,headers});
+      if(order.serviceType==='romantic-beach-dinner')return Response.json({error:'Romantic Beach Dinner does not use excursion trip assignment.'},{status:409,headers});
+      if(order.privateBoatRequested===true||order.separateVessel===true)return Response.json({error:'Private or separate-vessel bookings must be managed from the schedule/vessel assignment screen.'},{status:409,headers});
+      const schedules=(await schedulesForDate(scheduleDate)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
+      const target=schedules.find((schedule:any)=>String(schedule.id||'')===scheduleId);
+      if(!target)return Response.json({error:'That trip is no longer open. Refresh available trips.'},{status:409,headers});
+      const quantity=Math.max(1,Number(order.quantity)||1),load=excursionScheduleLoadForOrder(target,schedules,state.orders||[],order.id);
+      if(load.remaining<quantity)return Response.json({error:'That trip no longer has enough seats for all '+quantity+' guests.'},{status:409,headers});
+      const compatible=scheduleCanServeRequest(order.name,target.name);
+      if(!compatible&&input.allowIncompatible!==true)return Response.json({error:'This trip does not normally serve '+String(order.name||'this excursion')+'. Confirm a manual override to move the guests there.'},{status:409,headers});
+      const before=assignmentSnapshot(order);
+      const resources=excursionResources(state),vessel=resources.vessels.find((item:any)=>item.id===target.vesselId),crew=resources.crew.filter((item:any)=>target.crewIds?.includes(item.id));
+      const now=new Date().toISOString();
+      order.assignmentHistory=Array.isArray(order.assignmentHistory)?order.assignmentHistory:[];
+      order.assignmentHistory.push({at:now,by:user.username,reason:note,manualOverride:!compatible,from:before,to:{date:target.date,time:target.time,endTime:target.endTime||'',scheduleId:target.id,scheduleName:target.name,vesselId:target.vesselId||'',vessel:vessel?.name||target.vessel||''}});
+      order.date=target.date;order.time=target.time;order.endTime=target.endTime||'';order.returnTime=target.returnTime||'';order.scheduleId=target.id;
+      order.schedule={date:target.date,time:target.time,endTime:target.endTime||'',...(target.returnTime?{returnTime:target.returnTime}:{}),vesselId:target.vesselId,vessel:vessel?.name||target.vessel||'',crewIds:target.crewIds||[],crew:crew.map((person:any)=>person.name)};
+      order.approvalStatus='Approved';order.status='Scheduled';order.seatRequest=false;order.unscheduledRequest=false;order.requestedOverCapacity=false;order.autoConfirmed=false;
+      order.matchedFromMenu=compatible;order.matchedScheduleName=target.name;order.manuallyReassigned=true;order.reassignedAt=now;order.reassignedBy=user.username;order.guestNotified=false;
+      delete order.preferredTime;delete order.preferredEndTime;delete order.preferredScheduleId;delete order.scheduleCancelled;delete order.rescheduleReason;
+      const saved=await saveStayAccess(state,revision,user.userId);
+      if(!saved)return Response.json({error:'Another excursion update was saved. Refresh and try again.'},{status:409,headers});
+      let email:any=null;
+      if(order.source==='External guest website'&&order.email&&order.manageToken)try{
+        email=await sendExternalExcursionUpdatedEmail({email:order.email,guest:order.guest,reference:order.packageGroupId||order.id,excursion:order.packageName||order.name,date:order.date,time:order.time,endTime:order.endTime,quantity:Number(order.quantity)||0,quotedCents:Math.max(0,Number(order.cents)||Number(order.quotedCents)||0),hotel:order.hotel,manageToken:order.manageToken,eventId:'manual-reassign-'+order.id+'-'+now});
+      }catch{email={sent:false,error:'Booking moved, but the guest email could not be sent.'};}
+      return Response.json({ok:true,revision:revision+1,assignment:{id:order.id,date:order.date,time:order.time,endTime:order.endTime,scheduleId:order.scheduleId,scheduleName:target.name,vessel:vessel?.name||target.vessel||'',compatible,manualOverride:!compatible},email},{headers});
     }
     if (typeof input?.action === 'string' && input.action.startsWith('manage-')) {
       if (!hasPermission(user,'edit_excursions') && !hasPermission(user,'excursions_manager')) {
