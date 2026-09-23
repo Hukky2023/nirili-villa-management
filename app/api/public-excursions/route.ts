@@ -211,7 +211,7 @@ export async function POST(request:Request){
   const candidates=allSchedules
    .filter((schedule:any)=>scheduleCanServeRequest(item.name,schedule.name))
    .map((schedule:any)=>({schedule,...candidateLoad(schedule,allSchedules,state.orders),rank:scheduleMatchRank(item.name,schedule.name)}))
-   .sort((a:any,b:any)=>(a.remaining>=mix.total?0:1)-(b.remaining>=mix.total?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
+   .sort((a:any,b:any)=>(a.remaining>=mix.total?0:1)-(b.remaining>=mix.total?0:1)||String(a.schedule.time).localeCompare(String(b.schedule.time))||a.rank-b.rank||b.remaining-a.remaining);
   const chosen=candidates.find((candidate:any)=>candidate.remaining>=mix.total);
 
   if(chosen){
