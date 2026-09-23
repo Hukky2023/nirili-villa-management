@@ -53,3 +53,18 @@ test('planner ignores departures without enough remaining seats and falls back w
  ],2);
  assert.equal(noCapacity,null);
 });
+
+
+test('Special Package planner prefers the earliest chronological itinerary when multiple complete plans are valid',()=>{
+ const candidates=[
+  {id:'early-turtle-coral',date:'2026-10-01',time:'08:00',endTime:'09:30',name:'Turtle + Coral Garden',remaining:6},
+  {id:'late-turtle-coral',date:'2026-10-01',time:'09:00',endTime:'10:00',name:'Turtle + Coral Garden',remaining:6},
+  {id:'sandbank',date:'2026-10-01',time:'10:30',endTime:'12:30',name:'Sandbank + Turtle',remaining:6},
+  {id:'shark',date:'2026-10-02',time:'11:00',endTime:'14:30',name:'Shark + Turtle',remaining:6},
+  {id:'dolphin-fishing',date:'2026-10-02',time:'16:30',endTime:'19:30',name:'Dolphin + Fishing',remaining:6}
+ ];
+ const plan=planSpecialPackageSchedules(candidates,2);
+ assert.ok(plan);
+ assert.equal(plan[0].id,'early-turtle-coral');
+ assert.equal(plan[0].time,'08:00');
+});
