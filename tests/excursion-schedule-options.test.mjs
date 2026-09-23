@@ -6,9 +6,10 @@ import {excursionScheduleNameOptions,standardScheduleSuggestions} from '../lib/e
 test('schedule dropdown contains every active excursion from the catalog',()=>{
  const menu=catalog.filter(item=>item.kind==='excursion').map(item=>({...item,active:true}));
  const options=excursionScheduleNameOptions(menu);
- for(const item of menu){
+ for(const item of menu.filter(item=>item.id!=='special-package')){
   assert.equal(options.includes(item.name),true,'missing '+item.name);
  }
+ assert.equal(options.includes('Special Package'),false,'Special Package must be split into operational legs, not scheduled as one trip');
 });
 
 test('schedule dropdown keeps standard operating trip combinations too',()=>{
