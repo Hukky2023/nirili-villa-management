@@ -117,7 +117,7 @@ export async function PATCH(r:Request){
  if(!hasPermission(user,'buggy_driver')||!sameOrigin(r))return Response.json({error:'Buggy Driver access required.'},{status:403});
  try{
   const b=await r.json(),id=String(b.id||'').slice(0,120),action=String(b.action||'');
-  if(!id||!['arrived','boarded','complete','cancel','dinner-dropoff','return-arrived','return-boarded','return-complete'].includes(action))throw Error('Choose a valid pickup action.');
+  if(!id||!['on-the-way','arrived','boarded','complete','cancel','dinner-dropoff','return-arrived','return-boarded','return-complete'].includes(action))throw Error('Choose a valid pickup action.');
   const {state,revision}=await loadStays();
   const manual=(state.buggyBookings||[]).find((o:any)=>o.id===id&&o.cancelled!==true);
   const order=manual||(state.orders||[]).find((o:any)=>o.id===id&&confirmed(o)&&(!!o.stayId||o.buggyRequested===true));
@@ -127,6 +127,13 @@ export async function PATCH(r:Request){
   if(action==='cancel'){
    if(!manual)throw Error('Only manual buggy bookings can be cancelled from the Buggy Driver screen.');
    order.cancelled=true;order.cancelledAt=now;order.cancelledBy=user?.username||user?.displayName||'buggy-driver';order.buggyStatus='Cancelled';if(guestRide){removeGuestRideBill(state,order);releaseBuggy(state,order);}
+  }else if(action==='on-the-way'){
+   if(!guestRide)throw Error('On the way is only used for in-house guest rides.');
+   if(!order.buggyId)throw Error('This guest ride is waiting for buggy assignment.');
+   if(!['Assigned','Driver on the way'].includes(String(order.buggyStatus||'')))throw Error('This ride is not ready to start pickup.');
+   order.buggyPickupStartedAt=order.buggyPickupStartedAt||now;
+   order.buggyPickupStartedBy=user?.username||user?.displayName||'buggy-driver';
+   order.buggyStatus='Driver on the way';
   }else if(action==='arrived'){
    if(guestRide&&!order.buggyId)throw Error('This guest ride is waiting for buggy assignment.');
    if(!order.buggyArrivedAt){
@@ -163,8 +170,8 @@ export async function PATCH(r:Request){
   }
   const saved=await saveStayAccess(state,revision,user?.userId||'buggy-driver');
   if(!saved)return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
-  if(guestRide&&['arrived','boarded','complete'].includes(action)){
-   const buggy=(state.buggyFleet||[]).find((x:any)=>x.id===order.buggyId),event=action==='arrived'?'arrived':action==='boarded'?'started':'completed';
+  if(guestRide&&['on-the-way','arrived','boarded','complete'].includes(action)){
+   const buggy=(state.buggyFleet||[]).find((x:any)=>x.id===order.buggyId),event=action==='on-the-way'?'on-the-way':action==='arrived'?'arrived':action==='boarded'?'started':'completed';
    try{await sendGuestPushForRide({...order,buggyName:buggy?.name||'',driver:order.buggyDriver||user?.displayName||user?.username||''},event)}catch{}
   }
   return Response.json(action==='cancel'?{ok:true,cancelled:true,id}:{ok:true,pickup:manual?manualPickupFor(order,state):pickupFor(order,state)},{headers:{'Cache-Control':'no-store'}});
