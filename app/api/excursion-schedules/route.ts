@@ -595,6 +595,7 @@ export async function PATCH(r:Request){
    const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(prefix+date+':'+scheduleId).first<any>();
    if(!row)throw Error('This scheduled excursion no longer exists.');
    const schedule=JSON.parse(row.payload);
+   if(norm(schedule.name)==='special package')throw Error('Special Package cannot be booked as one scheduled trip. Use the Special Package booking option so its excursion legs are created separately.');
    if(schedule.status!=='Open')throw Error('This excursion is closed for bookings.');
    if(excursionDeparturePassed(schedule.date,schedule.time))throw Error('This excursion departure time has already passed. A booking cannot be created for it.');
    const sameDay=await schedulesForDate(date),key=sharedKey(schedule),groupSchedules=key?sameDay.filter((s:any)=>sharedKey(s)===key):[schedule],groupIds=new Set(groupSchedules.map((s:any)=>s.id));
