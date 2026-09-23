@@ -39,7 +39,12 @@ export default function ManageBookingSite(){
 
  async function cancel(){
   if(busy||!booking?.canCancel)return;
-  const copy=booking.kind==='request'?'Cancel this booking before it is confirmed?':'Request cancellation of this confirmed booking? Your room will remain reserved until reception approves the cancellation.';
+  const instant=booking.kind==='request'||!booking.cancelRequiresApproval;
+  const copy=booking.kind==='request'
+   ?'Cancel this booking before it is confirmed?'
+   :instant
+    ?'Cancel this confirmed booking now? Your room will be released immediately. Any recorded refund will be handled separately by reception.'
+    :'Request cancellation of this confirmed booking? Your room will remain reserved until reception approves the cancellation.';
   if(!window.confirm(copy))return;
   setBusy(true);setError('');setMessage('');
   try{
@@ -89,7 +94,7 @@ export default function ManageBookingSite(){
 
    <aside className="side-card">
     <div><small>CURRENT ACCOMMODATION</small><strong>{money(booking.totalCents)}</strong>{booking.kind==='request'&&<span>Current estimate</span>}</div>
-    <div className="cancel-zone"><h3>Need to cancel?</h3><p>{booking.kind==='request'?'A booking that has not yet been confirmed can be cancelled immediately.':'A confirmed booking cancellation is sent to reception for approval. Any refund is handled separately according to your booking terms.'}</p><button type="button" className="danger" disabled={!booking.canCancel||busy} onClick={cancel}>{booking.kind==='request'?'Cancel Booking':'Request Cancellation'}</button></div>
+    <div className="cancel-zone"><h3>Need to cancel?</h3><p>{booking.kind==='request'?'A booking that has not yet been confirmed can be cancelled immediately.':booking.cancelRequiresApproval?'The self-cancellation cutoff has passed. Your cancellation will be sent to reception for approval.':'Confirmed bookings can be cancelled immediately through the day before check-in. Any refund is handled separately according to your booking terms.'}</p><button type="button" className="danger" disabled={!booking.canCancel||busy} onClick={cancel}>{booking.kind==='request'||!booking.cancelRequiresApproval?'Cancel Booking':'Request Cancellation'}</button></div>
     <p className="security"><ShieldCheck/> This secure link was created for this booking. Do not forward it to anyone you do not want to manage your reservation.</p>
    </aside>
   </section>}
