@@ -14,6 +14,7 @@ import {mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPri
 import {sendExternalExcursionDeclinedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
 import {sendGuestPushForExcursionTimeChange} from '../../../lib/web-push';
 import {addGuestNotification} from '../../../lib/guest-notifications';
+import {applyExcursionScheduleTimeChange,excursionTimeChangeMessage} from '../../../lib/excursion-time-change';
 import {autoAssignExcursionOrder} from '../../../lib/excursion-auto-assignment';
 
 const prefix='excursion-schedule:';
@@ -261,25 +262,13 @@ export async function PUT(r:Request){
   const departureChanged=String(old.date||'')!==String(record.date||'')||String(old.time||'')!==String(record.time||'');
   const timeChangeNotices:any[]=[];
   if(departureChanged){
-   const resources=excursionResources(state),vessel=resources.vessels.find((item:any)=>item.id===record.vesselId),assignedCrew=resources.crew.filter((item:any)=>record.crewIds?.includes(item.id));
+   const resources=excursionResources(state);
    state.guestNotifications??=[];
    const affected=(state.orders||[]).filter((order:any)=>order.kind==='excursion'&&order.status!=='Cancelled'&&order.approvalStatus!=='Cancelled'&&(String(order.scheduleId||'')===id||matches(order,old)));
    const changedAt=new Date().toISOString();
    for(const order of affected){
-    const before={date:String(order.date||old.date||''),time:String(order.time||order.schedule?.time||old.time||'')};
-    const after={date:String(record.date||''),time:String(record.time||'')};
-    order.scheduleTimeHistory=Array.isArray(order.scheduleTimeHistory)?order.scheduleTimeHistory:[];
-    order.scheduleTimeHistory.push({at:changedAt,by:user.username,from:before,to:after,scheduleId:id});
-    order.date=record.date;order.time=record.time;order.endTime=record.endTime||'';order.returnTime=record.returnTime||'';
-    order.schedule={
-     ...(order.schedule||{}),date:record.date,time:record.time,endTime:record.endTime||'',
-     ...(record.returnTime?{returnTime:record.returnTime}:{}),
-     vesselId:record.vesselId,vessel:vessel?.name||order.schedule?.vessel||'',
-     crewIds:record.crewIds||[],crew:assignedCrew.map((person:any)=>person.name)
-    };
-    order.guestNotified=false;
-    const excursionName=String(order.packageName||order.name||record.name||'Excursion');
-    const message=excursionName+' departure changed from '+(before.time||'the previous time')+' to '+after.time+' on '+after.date+'.';
+    const moved=applyExcursionScheduleTimeChange(order,record,user.username,resources,changedAt),before=moved.before,after=moved.after;
+    const message=excursionTimeChangeMessage(order,before,after);
     if(order.accountId)addGuestNotification(state,{accountId:String(order.accountId),type:'excursion-time-change',title:'Excursion time changed',message,url:'/stay?service=excursion',bookingId:String(order.packageGroupId||order.id||''),metadata:{from:before,to:after,scheduleId:id}});
     timeChangeNotices.push({order,before,after});
    }
