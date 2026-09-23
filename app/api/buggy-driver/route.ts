@@ -99,14 +99,15 @@ export async function GET(r:Request){
 
 export async function POST(r:Request){
  const user=await currentUser();
- if(!hasPermission(user,'buggy_driver')||!sameOrigin(r))return Response.json({error:'Buggy Driver access required.'},{status:403});
+ const canBook=!!user&&(user.role==='admin'||hasPermission(user,'guesthouse_reception'));
+ if(!canBook||!sameOrigin(r))return Response.json({error:'Reception or Admin access required to create buggy bookings.'},{status:403});
  try{
   const b=await r.json(),bookingType=String(b.bookingType||'').trim().slice(0,30),guest=String(b.guest||'').trim().slice(0,100),phone=String(b.phone||'').trim().slice(0,30),date=String(b.date||''),pickupTime=String(b.pickupTime||''),departureTime=String(b.departureTime||'').trim().slice(0,10),location=String(b.location||'').trim().slice(0,150),destination=String(b.destination||'').trim().slice(0,150),quantity=Math.max(1,Math.min(20,Number(b.quantity)||1)),notes=String(b.notes||'').trim().slice(0,500);
   if(!guest||!validDate(date)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(pickupTime)||!location||!destination)throw Error('Enter guest name, date, buggy time, pickup point and drop-off point.');
   const {state,revision}=await loadStays();state.buggyBookings??=[];
-  const item={id:'buggy-'+crypto.randomUUID(),guest,phone,date,pickupTime,departureTime,location,destination,quantity,notes,excursion:bookingType==='checkout'?'Check-out buggy':'Manual buggy booking',bookingType,createdAt:new Date().toISOString(),createdBy:user?.username||user?.displayName||'buggy-driver'};
+  const item={id:'buggy-'+crypto.randomUUID(),guest,phone,date,pickupTime,departureTime,location,destination,quantity,notes,excursion:bookingType==='checkout'?'Check-out buggy':'Manual buggy booking',bookingType,createdAt:new Date().toISOString(),createdBy:user?.username||user?.displayName||'reception'};
   state.buggyBookings.push(item);
-  const saved=await saveStayAccess(state,revision,user?.userId||'buggy-driver');
+  const saved=await saveStayAccess(state,revision,user?.userId||'reception');
   if(!saved)return Response.json({error:'Another update was saved. Please try again.'},{status:409});
   return Response.json({ok:true,pickup:manualPickupFor(item,state)},{status:201,headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not book buggy.'},{status:400});}
