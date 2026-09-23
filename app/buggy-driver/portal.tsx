@@ -54,7 +54,7 @@ export default function BuggyDriverPortal(){
   finally{setBusy('');}
  }
 
- async function update(id:string,action:'arrived'|'boarded'|'cancel'|'dinner-dropoff'|'return-arrived'|'return-boarded'|'return-complete'){
+ async function update(id:string,action:'arrived'|'boarded'|'complete'|'cancel'|'dinner-dropoff'|'return-arrived'|'return-boarded'|'return-complete'){
   if(busy)return;setBusy(id+action);setError('');
   try{
    const r=await fetch('/api/buggy-driver',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,action})}),d=await r.json();
@@ -65,7 +65,7 @@ export default function BuggyDriverPortal(){
   finally{setBusy('');}
  }
 
- const pending=pickups.filter(p=>['Pending pickup','Waiting for dinner to finish'].includes(p.status)).length,arrived=pickups.filter(p=>['Arrived','Return pickup arrived'].includes(p.status)).length,boarded=pickups.filter(p=>['Boarded','Going to dinner','Returning','Round trip complete'].includes(p.status)).length;
+ const pending=pickups.filter(p=>['Requested','Driver on the way','Pending pickup','Waiting for dinner to finish'].includes(p.status)).length,arrived=pickups.filter(p=>['Arrived','Return pickup arrived'].includes(p.status)).length,boarded=pickups.filter(p=>['Boarded','On trip','Going to dinner','Returning','Round trip complete','Completed'].includes(p.status)).length;
 
  return <main className="buggy-driver">
   <header className="buggy-driver-header"><div><small>NIRILI TOURS · DHIFFUSHI</small><h1>Buggy Driver</h1><p>{driver} · Guest pickup list</p></div><SessionButton signedIn inline/></header>
@@ -91,11 +91,31 @@ export default function BuggyDriverPortal(){
   <section className="buggy-pickup-panel">
    <div className="buggy-panel-title"><div><small>{displayDate(date)}</small><h2>Guest pickups</h2></div><span>{pickups.length} pickup{pickups.length===1?'':'s'}</span></div>
    {loading&&!pickups.length?<div className="buggy-empty">Loading pickups…</div>:!pickups.length?<div className="buggy-empty"><strong>No buggy pickups for this date.</strong><span>Confirmed excursion guests who need buggy transport will appear here.</span></div>:<div className="buggy-pickup-list">{pickups.map(p=><article key={p.id} className={'buggy-pickup-card '+p.status.toLowerCase().replace(/\s+/g,'-')}>
-    <div className="buggy-time"><small>{p.roundTrip?'DINNER TRANSFER':'PICKUP'}</small><strong>{p.pickupTime||'Arrange'}</strong><span><Clock3 size={14}/>{p.romanticDinner?(p.pickupTimingNote||'Pickup time arranged'):p.excursionTime+' excursion'}</span></div>
+    <div className="buggy-time"><small>{p.guestRide?'GUEST RIDE':p.roundTrip?'DINNER TRANSFER':'PICKUP'}</small><strong>{p.pickupTime||'Arrange'}</strong><span><Clock3 size={14}/>{p.guestRide?'Requested now':p.romanticDinner?(p.pickupTimingNote||'Pickup time arranged'):p.excursionTime+' excursion'}</span></div>
     <div className="buggy-guest">
      <div className="buggy-name-row"><h3>{p.guest}</h3><span className={'buggy-status '+p.status.toLowerCase().replace(/\s+/g,'-')}>{p.status}</span></div>
-     <p className="buggy-excursion">{p.excursion}{p.roundTrip&&<span className="buggy-roundtrip-badge">Round trip</span>}</p>
-     <div className="buggy-meta"><span><MapPin size={16}/><b>Pickup: {p.location}</b>{p.room?' · Room '+p.room:''}</span>{p.destination&&<span><MapPin size={16}/>Destination: {p.destination}</span>}<span><Users size={16}/>{p.quantity} guest{p.quantity===1?'':'s'}</span>{p.phone&&<a href={'tel:'+p.phone}><Phone size={16}/>{p.phone}</a>}</div>
+     <p className="buggy-excursion">{p.excursion}{p.roundTrip&&<span className="buggy-roundtrip-badge">Round trip</span>}{p.guestRide&&p.chargeToRoom&&<span className="buggy-roundtrip-badge">{p.fareCents>0?'Room bill 
+     {p.notes&&<p className="buggy-notes">{p.notes}</p>}
+    </div>
+    <div className="buggy-actions">
+     {p.status==='Requested'&&p.guestRide&&<div className="buggy-arrived-note"><Clock3 size={17}/>Waiting for dispatch to assign a buggy.</div>}
+     {['Pending pickup','Driver on the way'].includes(p.status)&&<><button type="button" className="arrived" disabled={busy===p.id+'arrived'} onClick={()=>update(p.id,'arrived')}><BellRing size={18}/>{busy===p.id+'arrived'?'Notifying…':'I arrived · Notify guest'}</button>{p.manual&&<button type="button" className="cancel-manual" disabled={busy===p.id+'cancel'} onClick={()=>{if(confirm('Cancel this buggy booking?'))void update(p.id,'cancel')}}><Trash2 size={18}/>{busy===p.id+'cancel'?'Cancelling…':'Cancel'}</button>}</>}
+     {p.status==='Arrived'&&<><div className="buggy-arrived-note"><BellRing size={17}/>Guest notified that the buggy has arrived.</div><button type="button" className="boarded" disabled={busy===p.id+'boarded'} onClick={()=>update(p.id,'boarded')}><CheckCircle2 size={18}/>{busy===p.id+'boarded'?'Saving…':p.roundTrip?'Guests on buggy · To dinner':'Guests on buggy'}</button></>}
+     {!p.guestRide&&!p.roundTrip&&p.status==='Boarded'&&<div className="buggy-boarded"><CheckCircle2 size={20}/><strong>Pickup complete</strong><span>Guests are on the buggy.</span></div>}
+     {p.guestRide&&p.status==='On trip'&&<button type="button" className="boarded" disabled={busy===p.id+'complete'} onClick={()=>update(p.id,'complete')}><CheckCircle2 size={18}/>{busy===p.id+'complete'?'Completing…':'Complete ride · Guest dropped off'}</button>}
+     {p.guestRide&&p.status==='Completed'&&<div className="buggy-boarded"><CheckCircle2 size={20}/><strong>Ride completed</strong><span>Guest dropped off. Buggy returned to available status.</span></div>}
+     {p.roundTrip&&p.status==='Going to dinner'&&<button type="button" className="boarded" disabled={busy===p.id+'dinner-dropoff'} onClick={()=>update(p.id,'dinner-dropoff')}><MapPin size={18}/>{busy===p.id+'dinner-dropoff'?'Saving…':'Dropped guests at dinner'}</button>}
+     {p.roundTrip&&p.status==='Waiting for dinner to finish'&&<><div className="buggy-arrived-note"><Clock3 size={17}/>Return pickup is required after dinner.</div><button type="button" className="arrived" disabled={busy===p.id+'return-arrived'} onClick={()=>update(p.id,'return-arrived')}><BellRing size={18}/>{busy===p.id+'return-arrived'?'Notifying…':'I arrived for return · Notify guest'}</button></>}
+     {p.roundTrip&&p.status==='Return pickup arrived'&&<><div className="buggy-arrived-note"><BellRing size={17}/>Guest notified for the return pickup.</div><button type="button" className="boarded" disabled={busy===p.id+'return-boarded'} onClick={()=>update(p.id,'return-boarded')}><CheckCircle2 size={18}/>{busy===p.id+'return-boarded'?'Saving…':'Guests on buggy · Returning'}</button></>}
+     {p.roundTrip&&p.status==='Returning'&&<button type="button" className="boarded" disabled={busy===p.id+'return-complete'} onClick={()=>update(p.id,'return-complete')}><CheckCircle2 size={18}/>{busy===p.id+'return-complete'?'Saving…':'Returned guests to hotel'}</button>}
+     {p.roundTrip&&p.status==='Round trip complete'&&<div className="buggy-boarded"><CheckCircle2 size={20}/><strong>Round trip complete</strong><span>Guests were taken to dinner and returned to their hotel.</span></div>}
+    </div>
+   </article>)}</div>}
+  </section>
+ </main>;
+}
++(p.fareCents/100).toFixed(2):'No configured fare'}</span>}</p>
+     <div className="buggy-meta"><span><MapPin size={16}/><b>Pickup: {p.location}</b>{p.room?' · Room '+p.room:''}</span>{p.destination&&<span><MapPin size={16}/>Destination: {p.destination}</span>}<span><Users size={16}/>{p.quantity} guest{p.quantity===1?'':'s'}</span>{p.buggyName&&<span>Buggy: {p.buggyName}</span>}{p.driver&&<span>Driver: {p.driver}</span>}{p.phone&&<a href={'tel:'+p.phone}><Phone size={16}/>{p.phone}</a>}</div>
      {p.notes&&<p className="buggy-notes">{p.notes}</p>}
     </div>
     <div className="buggy-actions">
