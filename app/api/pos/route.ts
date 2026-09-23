@@ -9,17 +9,21 @@ import {canPOS,canKitchen,canTakePayment} from '../../../lib/pos-access';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {loadMenu} from '../../../lib/menu-server';
 import {loadRestaurantPaymentSettingsWithDailyRates} from '../../../lib/restaurant-payment-settings';
-import {mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {deleteRestaurantOrderPrimary,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,restoreRestaurantOrdersPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {updateRoomInventory} from '../../../lib/rooms';
 async function readStateForView(){
  try{
   const row=await readOperationalRecordPrimary(stayKey);
   if(row?.payload){
-   const state=row.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];updateRoomInventory(state);
+   const state=row.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];
+   try{await restoreRestaurantOrdersPrimary(state);}catch{}
+   updateRoomInventory(state);
    return {state,revision:Number(row.revision)||0};
   }
  }catch{}
- return loadStays();
+ const fallback=await loadStays();
+ try{await restoreRestaurantOrdersPrimary(fallback.state);}catch{}
+ return fallback;
 }
 async function view(){
  const {state,revision}=await readStateForView();
@@ -110,10 +114,12 @@ if(primaryAvailable){
   await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),primaryRevision,u!.userId).run();
  }catch{}
  try{await mirrorHotelState(state);}catch{}
+ if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
  return Response.json(await view());
 }
 const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();
 if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
 try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,u!.userId)]);}catch{}
+if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
 return Response.json(await view());
 }catch(e){return Response.json({error:(e as Error).message},{status:400});}}
