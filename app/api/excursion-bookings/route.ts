@@ -19,7 +19,7 @@ export async function GET() {
     if (!hasPermission(user, 'edit_excursions') && !hasPermission(user, 'excursions_manager')) {
       return Response.json({error: 'Excursion access is required.'}, {status: 403, headers});
     }
-    const {state, revision} = await loadStays();ensureExcursionManageState(state);
+    const {state, revision} = await loadStays();state.excursionChanges??=[];
     const rows = await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?')
       .bind('excursion-schedule:%').all<any>();
     const schedules = (rows.results || []).map((row: any) => JSON.parse(row.payload));
