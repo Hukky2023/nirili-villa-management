@@ -93,7 +93,7 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   plan.launch={scheduleId:sailing.id,date,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,seats};plan.transportBookingId=booking.id;plan.status='Scheduled';delete plan.needsReview;delete plan.previousTransportBookingId;
   syncTransportBuggy(hotel.state,stay,leg,journey);const roomBill=syncTransportPlanBill(hotel.state,stay,booking,sailing,leg,u.username);stay.history??=[];stay.history.unshift({date:now,by:u.username,detail:(leg==='arrival'?'Arrival':'Departure')+' transport scheduled · '+sailing.depart+' '+sailing.boat+' · USD '+(roomBill.cents/100).toFixed(2)+' added to room bill · Buggy linked automatically'});
   hotelWrite=hotel;
- } }
+ }
  else if(b.action==='plan-billing'){
   if(u.role!=='admin')return Response.json({error:'Only Admin can change room transport charges.'},{status:403});
   const hotel=await loadHotelPrimary(),stay=hotel.state.stays.find((item:any)=>item.id===String(b.stayId||'')&&['Confirmed','In House'].includes(String(item.status||'')));
