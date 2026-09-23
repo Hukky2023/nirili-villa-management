@@ -3,7 +3,8 @@ import {Bell,CheckCheck,X} from "lucide-react";
 import {useEffect,useMemo,useRef,useState} from "react";
 import {UiText} from "./ui-language";
 
-type Notice={id:string;type:string;title:string;detail:string;at:string;read:boolean};
+type Notice={id:string;type:string;title:string;detail:string;at:string;read:boolean;ref?:string};
+type NoticeTarget="Bookings"|"Guests"|"Transfers"|"Excursions"|"Buggy"|"POS";
 type Snapshot={stays?:any;services?:any;transport?:any;excursions?:any;chat?:any};
 const SNAP_KEY="nirili-admin-notification-snapshot-v1";
 const NOTICE_KEY="nirili-admin-notifications-v1";
@@ -23,8 +24,8 @@ function labelOrder(o:any){
  if(kind==="buggy")return "Buggy";
  return String(o?.kind||"Service");
 }
-function push(list:Notice[],type:string,title:string,detail:string,id:string){
- list.push({id:type+":"+id+":"+Date.now()+":"+list.length,type,title,detail,at:time(),read:false});
+function push(list:Notice[],type:string,title:string,detail:string,id:string,ref?:string){
+ list.push({id:type+":"+id+":"+Date.now()+":"+list.length,type,title,detail,at:time(),read:false,ref:ref||id});
 }
 function diffCollection(next:Notice[],oldItems:any[],newItems:any[],type:string,title:string,detail:(x:any)=>string){
  const old=mapBy(oldItems),fresh=mapBy(newItems);
@@ -69,15 +70,26 @@ function buildNotices(previous:Snapshot,current:Snapshot){
  const oldContacts=mapBy(arr(pc.contacts)),newContacts=mapBy(arr(cc.contacts));
  for(const [id,c] of newContacts){
   const old=oldContacts.get(id);
-  if(old&&c.lastGuestMessage&&c.lastGuestMessage!==old.lastGuestMessage)push(out,"message","New message",String(c.name||"Guest")+" sent a new message.",id+":message:"+String(c.lastGuestMessage));
+  if(old&&c.lastGuestMessage&&c.lastGuestMessage!==old.lastGuestMessage)push(out,"message","New message",String(c.name||"Guest")+" sent a new message.",id+":message:"+String(c.lastGuestMessage),id);
  }
  return out;
 }
 async function getJson(url:string){
  try{const r=await fetch(url,{cache:"no-store"});if(!r.ok)return undefined;return await r.json();}catch{return undefined}
 }
+function noticeTarget(n:Notice):NoticeTarget|undefined{
+ const value=(n.type+" "+n.title+" "+n.detail).toLowerCase();
+ if(n.type==="message")return undefined;
+ if(value.includes("buggy"))return "Buggy";
+ if(value.includes("excursion"))return "Excursions";
+ if(value.includes("transport")||value.includes("transfer"))return "Transfers";
+ if(value.includes("restaurant")||value.includes("food"))return "POS";
+ if(n.type==="guest")return "Guests";
+ if(n.type==="hotel"||value.includes("hotel")||value.includes("booking"))return "Bookings";
+ return undefined;
+}
 
-export default function AdminNotifications(){
+export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarget)=>void}){
  const [open,setOpen]=useState(false);
  const [notices,setNotices]=useState<Notice[]>([]);
  const started=useRef(false);
@@ -129,6 +141,7 @@ export default function AdminNotifications(){
  const save=(next:Notice[])=>{setNotices(next);try{localStorage.setItem(NOTICE_KEY,JSON.stringify(next))}catch{}};
  const markAll=()=>{save(notices.map(n=>({...n,read:true})));void fetch("/api/notifications",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({})}).catch(()=>{})};
  const markOne=(id:string)=>{save(notices.map(x=>x.id===id?{...x,read:true}:x));void fetch("/api/notifications",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:[id]})}).catch(()=>{})};
+ const openNotice=(n:Notice)=>{markOne(n.id);setOpen(false);if(n.type==="message"){window.dispatchEvent(new CustomEvent("nirili:open-chat",{detail:{contactId:n.ref||""}}));return;}const target=noticeTarget(n);if(target)onOpen?.(target)};
  const clear=()=>{save([]);void fetch("/api/notifications",{method:"DELETE"}).catch(()=>{})};
  const enablePhone=async()=>{if(typeof Notification!=="undefined")try{await Notification.requestPermission()}catch{}};
  return <div className="nv-notifications">
@@ -138,7 +151,7 @@ export default function AdminNotifications(){
   {open&&<><button className="nv-notification-backdrop" aria-label="Close notifications" onClick={()=>setOpen(false)}/><section className="nv-notification-panel">
    <header><div><strong><UiText>Notifications</UiText></strong><small><UiText>Bookings, messages, guests and system changes</UiText></small></div><button onClick={()=>setOpen(false)} aria-label="Close"><X size={18}/></button></header>
    <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button><button onClick={enablePhone}><UiText>Enable phone notifications</UiText></button><button onClick={clear}><UiText>Clear</UiText></button></div>
-   <div className="nv-notification-list">{notices.length?notices.map(n=><button key={n.id} className={n.read?"read":""} onClick={()=>markOne(n.id)}>
+   <div className="nv-notification-list">{notices.length?notices.map(n=><button key={n.id} className={n.read?"read":""} onClick={()=>openNotice(n)}>
     <i className={"type "+n.type}/><span><strong><UiText>{n.title}</UiText></strong><small><UiText>{n.detail}</UiText></small><time>{new Date(n.at).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</time></span>
    </button>):<p className="empty"><UiText>No notifications yet.</UiText></p>}</div>
   </section></>}
