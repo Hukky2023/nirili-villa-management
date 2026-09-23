@@ -6,6 +6,7 @@ import {readBill} from './restaurant-server';
 import {total} from './restaurant';
 import {reconcileRestaurantRoomBills} from './pos-room-billing';
 import {readOperationalRecordsPrimaryByPrefix} from './supabase-bridge';
+import {transferBillItems,transferBillStatus} from './transfer-billing';
 export const stayKey='hotel-stays-v1';
 export const money=(n:number)=>'$'+(n/100).toFixed(2);
 const excursionResetMarker='excursion-bookings-cleared-2026-09-17';
@@ -138,7 +139,7 @@ async function folioOverrides(room:string){
  for(const row of primary||[]){const key=String(row.key),current=byKey.get(key);if(!current||Number(row.revision||0)>=Number(current.revision||0))byKey.set(key,{revision:Number(row.revision)||0,payload:row.payload});}
  return [...byKey.values()].map(row=>row.payload).filter(Boolean);
 }
-export async function folioFor(s:any,orders?:any[]){if(!usesDemoLegacyFolio(s)){const all=orders??(await loadStays()).state.orders;let bills=[...(s.posBills||[]),{department:'Accommodation',id:s.id,items:[[s.meal+' · '+s.checkIn+' to '+s.checkOut,1,s.base/100,0]],status:'Posted',totalCents:s.base},...all.filter((o:any)=>billableOrder(o,s)).map((o:any)=>o.kind==='excursion'?excursionFolioBill(o):({department:o.kind==='food'?'Restaurant':'Transfer',id:o.id,items:[[o.name,o.quantity,o.cents/100,0]],status:o.status,totalCents:o.cents})),...s.extensions.map((e:any)=>({department:'Accommodation',id:e.id,items:[['Stay extension · '+e.from+' to '+e.to,e.nights,e.cents/100,0]],status:'Posted',totalCents:e.cents}))];
+export async function folioFor(s:any,orders?:any[]){if(!usesDemoLegacyFolio(s)){const all=orders??(await loadStays()).state.orders;let bills=[...(s.posBills||[]),{department:'Accommodation',id:s.id,items:[[s.meal+' · '+s.checkIn+' to '+s.checkOut,1,s.base/100,0]],status:'Posted',totalCents:s.base},...all.filter((o:any)=>billableOrder(o,s)).map((o:any)=>o.kind==='excursion'?excursionFolioBill(o):(o.kind==='food'?{department:'Restaurant',id:o.id,items:[[o.name,o.quantity,o.cents/100,0]],status:o.status,totalCents:o.cents}:{department:'Transfer',id:o.id,items:transferBillItems(o),status:transferBillStatus(o),totalCents:Number(o.cents)||0})),...s.extensions.map((e:any)=>({department:'Accommodation',id:e.id,items:[['Stay extension · '+e.from+' to '+e.to,e.nights,e.cents/100,0]],status:'Posted',totalCents:e.cents}))];
 const sourceExcursionIds=new Set(all.filter((o:any)=>o.kind==='excursion'&&o.stayId===s.id).map((o:any)=>String(o.id)));
 const overrides=(await folioOverrides(String(s.billRoom||s.room))).filter((o:any)=>!(o?.department==='Excursions'&&sourceExcursionIds.has(String(o?.id||''))));
 const overrideKey=(b:any)=>String(b.department)+':'+String(b.id);
@@ -151,7 +152,7 @@ const overrides=(await folioOverrides(String(s.billRoom))).filter((o:any)=>!(o?.
 const bill=(department:string,id:string,items:any[])=>overrides.find((x:any)=>x.department===department&&x.id===id)||{department,id,items,status:'Posted'};
 const bills=[bill('Accommodation',s.id,[[s.meal+' · '+s.checkIn+' to '+s.checkOut,1,s.base/100,0]]),...await Promise.all(['RES-1048','RES-1061'].map(async id=>({...await readBill(s.billRoom,id),department:'Restaurant'}))),bill('Transfer','TRF-0784',[['Airport → Dhiffushi shared speedboat',2,70,0]]),bill('Excursions','EXC-0921',[['Turtle Snorkeling',2,50,0]]),bill('Excursions','EXC-0934',[['Coral Garden + Sandbank',2,60,0]])].map((b:any)=>({...b,totalCents:b.status==='Cancelled'?0:Math.round(total({...b,items:b.items.map((i:any)=>[i[0],i[1],i[2],i[3]||0])})*100)}));
 bills.push(...(s.posBills||[]));
-bills.push(...guestOrders.filter((o:any)=>billableOrder(o,s)).map((o:any)=>o.kind==='excursion'?excursionFolioBill(o):({department:o.kind==='food'?'Restaurant':'Transfer',id:o.id,items:[[o.name,o.quantity,o.cents/100,0]],status:o.status,totalCents:o.cents})));
+bills.push(...guestOrders.filter((o:any)=>billableOrder(o,s)).map((o:any)=>o.kind==='excursion'?excursionFolioBill(o):(o.kind==='food'?{department:'Restaurant',id:o.id,items:[[o.name,o.quantity,o.cents/100,0]],status:o.status,totalCents:o.cents}:{department:'Transfer',id:o.id,items:transferBillItems(o),status:transferBillStatus(o),totalCents:Number(o.cents)||0})));
 for(const e of s.extensions)bills.push({department:'Accommodation',id:e.id,items:[['Stay extension · '+e.from+' to '+e.to,e.nights,e.cents/100,0]],status:'Posted',totalCents:e.cents});
 const totalCents=bills.reduce((n:number,b:any)=>n+b.totalCents,0),paidCents=s.initialPaid+s.payments.reduce((n:number,p:any)=>n+p.cents,0);return {bills:bills.map((b:any)=>paidBillStatus(s,b)),totalCents,paidCents,balanceCents:totalCents-paidCents};}
 export async function stayView(){const {state,revision}=await loadStays();return {...state,revision,stays:await Promise.all(state.stays.map(async(s:any)=>({...s,folio:await folioFor(s,state.orders)})))};}
