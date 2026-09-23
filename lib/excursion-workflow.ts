@@ -121,7 +121,7 @@ export function applyExcursionAction(state:any,b:any,today:string,by:string){
  }
  if(b.action==='excursion-create'){
  if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token))throw Error('Reopen the booking form.');if(state.orders.some((o:any)=>o.manualToken===b.token))return;
- const item=catalog.find(i=>i.kind==='excursion'&&i.id===b.itemId);if(!item||!Number.isInteger(b.quantity)||b.quantity<1||b.quantity>100)throw Error('Select an excursion and 1–100 guests.');
+ const item=catalog.find(i=>i.kind==='excursion'&&i.id===b.itemId);if(!item||!Number.isInteger(b.quantity)||b.quantity<1||b.quantity>100)throw Error('Select an excursion and 1–100 guests.');if(item.id==='special-package')throw Error('Special Package must be booked through the package booking flow so its excursion legs are created separately.');
  const stay=b.stayId?state.stays.find((s:any)=>s.id===b.stayId&&s.status==='In House'):null;if(b.stayId&&!stay)throw Error('Choose a checked-in room.');
  const guest=stay?.guest||b.guest,phone=String(b.phone||stay?.whatsapp||'').replace(/[ ()-]/g,'');
  if(typeof guest!=='string'||!guest.trim()||guest.length>100||!/^\+[1-9]\d{7,14}$/.test(phone)||typeof b.notes!=='string'||b.notes.length>1000||(!stay&&(typeof b.hotel!=='string'||!b.hotel.trim()||b.hotel.length>150)))throw Error('Enter guest name, contact number, hotel or meeting location, and valid notes.');

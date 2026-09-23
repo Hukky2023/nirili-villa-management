@@ -10,6 +10,7 @@ import {isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE} from '../../../lib/
 import {PRIVATE_BOAT_SURCHARGE_CENTS,isSnorkelingTrip,planSpecialPackageSchedules,scheduleCanServeRequest,scheduleMatchRank,specialPackageCoverage,suggestedTripWindow} from '../../../lib/excursion-operations';
 import {createExcursionManageToken,excursionManageUrl} from '../../../lib/excursion-manage';
 import {sendExternalExcursionBookedEmail} from '../../../lib/excursion-email';
+import {buildSpecialPackageOrders} from '../../../lib/special-package-booking';
 
 const headers={'Cache-Control':'no-store'};
 const prefix='excursion-schedule:';
@@ -146,9 +147,18 @@ export async function POST(request:Request){
    return Response.json({ok:true,booking:{id,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Pending',requiresApproval:true,requiresScheduling:false,date,quotedCents}},{status:201,headers});
   }
 
-  // Private boats need a dedicated vessel/crew assignment. Special Package is
-  // allowed through normal schedule matching and only falls back to the queue
-  // when there is no compatible open trip with enough seats.
+  if(item.id==='special-package'&&privateBoatRequested){
+   const packageBase={...common,privateBoatRequested:true,privateBoatSurchargeCents,source:'External guest website'};
+   const built=buildSpecialPackageOrders({base:packageBase,totalCents:quotedCents,plan:null,resources:excursionResources(state),sourceDate:date,pendingPrivateBoat:true});
+   state.orders.push(...built.orders);
+   const saved=await saveStayAccess(state,revision,'public-excursion-site');
+   if(!saved)return Response.json({error:'Another booking was saved at the same time. Please submit again.'},{status:409,headers});
+   const packageSegments=built.orders.map((order:any)=>({id:order.id,name:order.packageSegmentName,date:order.date,time:order.time||'',endTime:order.endTime||'',status:'Pending',matchedScheduleName:order.matchedScheduleName||''}));
+   const emailResult=await sendExternalExcursionBookedEmail({email,guest:leadGuest,reference:built.packageGroupId,excursion:item.name,date,time:'',quantity:mix.total,quotedCents,hotel,manageToken,status:'Pending',packageSegments});
+   return Response.json({ok:true,booking:{id:built.packageGroupId,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Pending',requiresApproval:true,requiresScheduling:true,date,quotedCents,privateBoatRequested:true,packageSegments}},{status:201,headers});
+  }
+
+  // Private boats need a dedicated vessel/crew assignment.
   if(privateBoatRequested){
    const fallback=suggestedTripWindow(item.name);
    state.orders.push({...common,cents:0,time:'',preferredTime:fallback.time,preferredEndTime:fallback.endTime,status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:item.id!=='special-package',unscheduledRequest:true,autoConfirmed:false,guestNotified:false});
@@ -165,6 +175,7 @@ export async function POST(request:Request){
     await ensureStandardDailyExcursions(candidateDate);
     const daySchedules=(await schedulesForDate(candidateDate)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
     for(const schedule of daySchedules){
+     if(normal(schedule.name)==='special package')continue;
      if(!specialPackageCoverage(schedule.name).length)continue;
      const load=candidateLoad(schedule,daySchedules,state.orders);
      if(load.remaining<mix.total)continue;
@@ -172,38 +183,16 @@ export async function POST(request:Request){
     }
    }
    const plan=planSpecialPackageSchedules(packageCandidates,mix.total);
-   if(plan?.length){
-    const packageGroupId='PKG-'+crypto.randomUUID().slice(0,8).toUpperCase(),resources=excursionResources(state);
-    const packageParts=plan.length,basePart=Math.floor(quotedCents/packageParts);
-    const parts:any[]=[];
-    for(let index=0;index<plan.length;index++){
-     const schedule:any=plan[index],partId='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
-     const partQuoted=index===packageParts-1?quotedCents-basePart*(packageParts-1):basePart;
-     const vessel=resources.vessels.find((value:any)=>value.id===schedule.vesselId),crew=resources.crew.filter((value:any)=>schedule.crewIds?.includes(value.id));
-     const segmentName=schedule.coverage.map((component:string)=>component.replace(/\b\w/g,(letter:string)=>letter.toUpperCase())).join(' + ');
-     const order={
-      ...common,id:partId,token,manageToken,menuItemId:item.id,name:segmentName||schedule.name,date:schedule.date,
-      cents:partQuoted,quotedCents:partQuoted,baseQuotedCents:partQuoted,unitPriceCents:mix.total?Math.round(partQuoted/mix.total):partQuoted,
-      time:schedule.time,endTime:schedule.endTime||'',returnTime:schedule.returnTime||'',scheduleId:schedule.id,
-      seatRequest:false,approvalStatus:'Approved',status:'Scheduled',requestedOverCapacity:false,autoConfirmed:true,matchedFromMenu:true,matchedScheduleName:schedule.name,
-      schedule:{date:schedule.date,time:schedule.time,endTime:schedule.endTime||'',...(schedule.returnTime?{returnTime:schedule.returnTime}:{}),vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],crew:crew.map((person:any)=>person.name)},
-      packageGroupId,packageName:item.name,packagePart:index+1,packageParts,packageTotalCents:quotedCents,packageSegmentName:segmentName||schedule.name,packageCoverage:schedule.coverage,specialPackage:true,guestNotified:false
-     };
-     state.orders.push(order);parts.push(order);
-    }
-    const saved=await saveStayAccess(state,revision,'public-excursion-site');
-    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please submit again.'},{status:409,headers});
-    const first=parts[0];
-    const packageSegments=parts.map((order:any)=>({id:order.id,name:order.packageSegmentName,date:order.date,time:order.time,endTime:order.endTime,status:'Confirmed',matchedScheduleName:order.matchedScheduleName}));
-    const emailResult=await sendExternalExcursionBookedEmail({email,guest:leadGuest,reference:packageGroupId,excursion:item.name,date:first.date,time:first.time,quantity:mix.total,quotedCents,hotel,manageToken,status:'Confirmed',packageSegments});
-    return Response.json({ok:true,booking:{id:packageGroupId,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Confirmed',requiresApproval:false,requiresScheduling:false,date:first.date,time:first.time,quotedCents,packageSegments}},{status:201,headers});
-   }
-   const fallback=suggestedTripWindow(item.name);
-   state.orders.push({...common,cents:0,time:'',preferredTime:fallback.time,preferredEndTime:fallback.endTime,status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false});
+   const resources=excursionResources(state);
+   const built=buildSpecialPackageOrders({base:{...common,source:'External guest website'},totalCents:quotedCents,plan,resources,sourceDate:date});
+   state.orders.push(...built.orders);
    const saved=await saveStayAccess(state,revision,'public-excursion-site');
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please submit again.'},{status:409,headers});
-   const emailResult=await sendExternalExcursionBookedEmail({email,guest:leadGuest,reference:id,excursion:item.name,date,time:'',quantity:mix.total,quotedCents,hotel,manageToken,status:'Pending'});
-   return Response.json({ok:true,booking:{id,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Pending',requiresApproval:true,requiresScheduling:true,date,quotedCents}},{status:201,headers});
+   const packageSegments=built.orders.map((order:any)=>({id:order.id,name:order.packageSegmentName,date:order.date,time:order.time||'',endTime:order.endTime||'',status:order.approvalStatus==='Approved'?'Confirmed':'Pending',matchedScheduleName:order.matchedScheduleName||''}));
+   const allConfirmed=built.orders.every((order:any)=>order.approvalStatus==='Approved');
+   const first=built.orders[0];
+   const emailResult=await sendExternalExcursionBookedEmail({email,guest:leadGuest,reference:built.packageGroupId,excursion:item.name,date:first?.date||date,time:first?.time||'',quantity:mix.total,quotedCents,hotel,manageToken,status:allConfirmed?'Confirmed':'Pending',packageSegments});
+   return Response.json({ok:true,booking:{id:built.packageGroupId,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:allConfirmed?'Confirmed':'Pending',requiresApproval:!allConfirmed,requiresScheduling:!allConfirmed,date:first?.date||date,time:first?.time||'',quotedCents,packageSegments}},{status:201,headers});
   }
 
   await ensureStandardDailyExcursions(date);

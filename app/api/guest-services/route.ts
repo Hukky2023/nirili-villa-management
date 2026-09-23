@@ -11,8 +11,11 @@ import {authDb,currentUser,currentGuestUser,hasPermission,sameOrigin,hashPasswor
 import {credentialStatement,mirrorCredentialRecord} from '../../../lib/credential-store';
 import {appendAccountHistory} from '../../../lib/account-history';
 import {loadStays,stayKey,folioFor} from '../../../lib/stays';
-import {catalog,plans,nightly,islandToday,validDate} from '../../../lib/guest-catalog';
+import {catalog,plans,nightly,islandToday,validDate,excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
+import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
+import {excursionScheduleLoadForOrder,planSpecialPackageSchedules,specialPackageCoverage} from '../../../lib/excursion-operations';
+import {buildSpecialPackageOrders} from '../../../lib/special-package-booking';
 import {deactivateSupabaseAccount,deleteLegacySessionsForAccount,ensureSupabaseEmployee,mirrorLegacyAccount,readOperationalRecordPrimary,restoreRestaurantOrdersPrimary,updatePublicBookingRequestStatus} from '../../../lib/supabase-bridge';
 import {updateRoomInventory} from '../../../lib/rooms';
 import {reconcileRestaurantRoomBills} from '../../../lib/pos-room-billing';
@@ -24,6 +27,26 @@ import {cancelLinkedTransportBookings,staleTransportBookingIds} from '../../../l
 import {cancelTransportPlanBills} from '../../../lib/transport-plan-billing';
 import {dismissGuestNotification,guestNotificationsForAccount} from '../../../lib/guest-notifications';
 const MIN_EXCURSION_PAX=1;
+const shiftExcursionDate=(date:string,days:number)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
+async function specialPackagePlanForState(state:any,date:string,quantity:number){
+ const candidates:any[]=[];
+ for(let offset=0;offset<7;offset++){
+  const candidateDate=shiftExcursionDate(date,offset);
+  await ensureStandardDailyExcursions(candidateDate);
+  const rows=(await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?').bind('excursion-schedule:'+candidateDate+':%').all<any>()).results||[];
+  const schedules=rows.map((row:any)=>{try{return JSON.parse(row.payload||'{}')}catch{return null}})
+   .filter((schedule:any)=>schedule&&schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
+  for(const schedule of schedules){
+   if(String(schedule.name||'').trim().toLowerCase()==='special package')continue;
+   const coverage=specialPackageCoverage(schedule.name);
+   if(!coverage.length)continue;
+   const load=excursionScheduleLoadForOrder(schedule,schedules,state.orders||[],'');
+   if(load.remaining<quantity)continue;
+   candidates.push({...schedule,coverage,remaining:load.remaining});
+  }
+ }
+ return planSpecialPackageSchedules(candidates,quantity);
+}
 import {walkInExcursionBill,walkInExcursionProfile,syncWalkInExcursionAccess} from '../../../lib/walkin-excursion-access';
 async function serviceUser(){return (await currentUser())||(await currentGuestUser());}
 function canUseManagementServices(u:any){
@@ -146,7 +169,31 @@ else if(b.action==='buggy-cancel'){
  const s=state.stays.find((stay:any)=>stay.id===ride.stayId);if(s){syncBuggyRideBill(s,ride);s.history??=[];s.history.unshift({date:ride.cancelledAt,by:'Guest',detail:'Buggy ride cancelled · '+ride.id});}
  releaseBuggyIfIdle(state,ride);
 }
-else if(b.action==='order'){if(u.role!=='guest')throw Error('Use your guest account.');const s=state.stays.find((s:any)=>s.id===b.stayId&&s.accountId===u.userId);if(!s)return Response.json({error:'This booking is not linked to your account.'},{status:403});if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token))throw Error('Invalid request.');if(state.orders.some((o:any)=>o.token===b.token&&o.accountId===u.userId))return Response.json(await view(u));const item=[...await foodCatalog(),...catalog.filter(i=>i.kind!=='food'&&i.kind!=='excursion'),...await loadExcursionMenu()].find(x=>x.id===b.itemId);if(!item||!Number.isInteger(b.quantity)||b.quantity<MIN_EXCURSION_PAX||b.quantity>20||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Check the quantity and notes.');if(!(s.status==='In House'||(item.kind==='transfer'&&s.status==='Confirmed')))return Response.json({error:'A confirmed stay is required for transfers. Food and excursions unlock after check-in.'},{status:403});if(item.kind==='transfer'&&(!validDate(b.date)||b.date<today||b.date<s.checkIn||b.date>s.checkOut||typeof b.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.time)))throw Error('Choose a transfer date within your stay and a valid departure time.');const expectedTotal=item.kind==='food'&&mealItemIncluded(s.meal,item as any)?0:item.cents*b.quantity;if(b.expectedCents!==undefined&&b.expectedCents!==expectedTotal)throw Error('Price or meal plan changed. Refresh and review the total before ordering.');if(item.kind==='excursion'&&(!validDate(b.date)||b.date<today||b.date<s.checkIn||b.date>=s.checkOut))throw Error('Choose an excursion date within your stay, before checkout.');state.orders.push({id:(item.kind==='food'?'FOOD-':item.kind==='transfer'?'TRF-':'EXC-')+crypto.randomUUID().slice(0,8).toUpperCase(),token:b.token,accountId:u.userId,stayId:s.id,guest:s.guest,room:s.room,kind:item.kind,name:item.name+(item.kind==='food'&&mealItemIncluded(s.meal,item as any)?' (meal plan included)':''),quantity:b.quantity,cents:item.kind==='food'&&mealItemIncluded(s.meal,item as any)?0:item.cents*b.quantity,notes:b.notes,date:item.kind==='food'?today:b.date,time:item.kind==='transfer'?b.time:undefined,status:'Placed',kitchen:item.kind==='food'?'Awaiting cashier':undefined,createdAt:new Date().toISOString()});}
+else if(b.action==='order'){
+ if(u.role!=='guest')throw Error('Use your guest account.');
+ const s=state.stays.find((s:any)=>s.id===b.stayId&&s.accountId===u.userId);
+ if(!s)return Response.json({error:'This booking is not linked to your account.'},{status:403});
+ if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token))throw Error('Invalid request.');
+ if(state.orders.some((o:any)=>o.token===b.token&&o.accountId===u.userId))return Response.json(await view(u));
+ const item=[...await foodCatalog(),...catalog.filter(i=>i.kind!=='food'&&i.kind!=='excursion'),...await loadExcursionMenu()].find(x=>x.id===b.itemId);
+ if(!item||!Number.isInteger(b.quantity)||b.quantity<MIN_EXCURSION_PAX||b.quantity>20||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Check the quantity and notes.');
+ if(!(s.status==='In House'||(item.kind==='transfer'&&s.status==='Confirmed')))return Response.json({error:'A confirmed stay is required for transfers. Food and excursions unlock after check-in.'},{status:403});
+ if(item.kind==='transfer'&&(!validDate(b.date)||b.date<today||b.date<s.checkIn||b.date>s.checkOut||typeof b.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.time)))throw Error('Choose a transfer date within your stay and a valid departure time.');
+ const expectedTotal=item.kind==='food'&&mealItemIncluded(s.meal,item as any)?0:item.cents*b.quantity;
+ if(b.expectedCents!==undefined&&b.expectedCents!==expectedTotal)throw Error('Price or meal plan changed. Refresh and review the total before ordering.');
+ if(item.kind==='excursion'&&(!validDate(b.date)||b.date<today||b.date<s.checkIn||b.date>=s.checkOut))throw Error('Choose an excursion date within your stay, before checkout.');
+ if(item.kind==='excursion'&&item.id==='special-package'){
+  const plan=await specialPackagePlanForState(state,b.date,b.quantity);
+  const createdAt=new Date().toISOString(),resources=excursionResources(state);
+  const built=buildSpecialPackageOrders({
+   base:{token:b.token,accountId:u.userId,stayId:s.id,guest:s.guest,room:s.room,hotel:'Nirili Villa',kind:'excursion',quantity:b.quantity,notes:b.notes,source:'Guest portal',createdBy:'Guest',createdAt},
+   totalCents:expectedTotal,plan,resources,sourceDate:b.date
+  });
+  state.orders.push(...built.orders);
+ }else{
+  state.orders.push({id:(item.kind==='food'?'FOOD-':item.kind==='transfer'?'TRF-':'EXC-')+crypto.randomUUID().slice(0,8).toUpperCase(),token:b.token,accountId:u.userId,stayId:s.id,guest:s.guest,room:s.room,kind:item.kind,name:item.name+(item.kind==='food'&&mealItemIncluded(s.meal,item as any)?' (meal plan included)':''),quantity:b.quantity,cents:item.kind==='food'&&mealItemIncluded(s.meal,item as any)?0:item.cents*b.quantity,notes:b.notes,date:item.kind==='food'?today:b.date,time:item.kind==='transfer'?b.time:undefined,status:'Placed',kitchen:item.kind==='food'?'Awaiting cashier':undefined,createdAt:new Date().toISOString()});
+ }
+}
 else if(['schedule-excursion','excursion-create','excursion-resource','excursion-status','excursion-payment','excursion-notified','excursion-vessel-condition','excursion-vessel-remove','excursion-crew-update','excursion-crew-remove','excursion-gopro-update','excursion-gopro-remove','excursion-drone-update','excursion-drone-remove'].includes(b.action)){
  if(u.role!=='admin'&&!hasPermission(u,'excursions_manager')&&!hasPermission(u,'edit_excursions'))return Response.json({error:'Excursions manager access required.'},{status:403});
  if(b.revision!==revision)return Response.json({error:'Bookings changed. Refresh and try again.'},{status:409});

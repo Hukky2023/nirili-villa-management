@@ -10,7 +10,7 @@ export const standardScheduleSuggestions=[
 
 export function excursionScheduleNameOptions(menu:any[]){
  const activeNames=(Array.isArray(menu)?menu:[])
-  .filter((item:any)=>item?.kind==='excursion'&&item?.active!==false)
+  .filter((item:any)=>item?.kind==='excursion'&&item?.active!==false&&item?.id!=='special-package')
   .map((item:any)=>String(item?.name||'').trim())
   .filter(Boolean);
  return Array.from(new Set([...standardScheduleSuggestions,...activeNames]));
