@@ -15,7 +15,7 @@ test('manual guest transfer UI and API compile',()=>{
  assert.deepEqual((routeResult.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error).map(d=>ts.flattenDiagnosticMessageText(d.messageText,'\n')),[]);
 });
 
-test('Admin manual transfer flow stays fully linked',()=>{
+test('Admin manual guest transfer flow stays fully linked',()=>{
  assert.match(panel,/Manual Guest Transfer/);
  assert.match(panel,/Create & assign guest transfer/);
  assert.match(panel,/action:'manual-guest-transfer'/);
