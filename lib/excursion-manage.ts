@@ -90,3 +90,40 @@ export function excursionLogisticsChanged(order:any,proposed:any){
   ||Number(order.quantity||0)!==Number(proposed.quantity||0)
   ||!!order.privateBoatRequested!==!!proposed.privateBoatRequested;
 }
+
+
+export function approveExternalExcursionChange(order:any,change:any,by:string){
+ if(!order||!change||change.type!=='change'||change.status!=='Pending')throw Error('This excursion change request is not available.');
+ const proposed=change.proposed||{};
+ const logisticsChanged=excursionLogisticsChanged(order,proposed);
+ Object.assign(order,proposed,{updatedAt:new Date().toISOString(),updatedBy:by});
+ if(logisticsChanged){
+  order.cents=0;
+  order.status='Awaiting scheduling';
+  order.approvalStatus='Pending';
+  order.unscheduledRequest=true;
+  order.seatRequest=false;
+  order.autoConfirmed=false;
+  order.guestNotified=false;
+  delete order.scheduleId;delete order.schedule;delete order.time;delete order.endTime;delete order.returnTime;
+  delete order.separateVessel;delete order.overflowVesselId;delete order.originalScheduleId;delete order.extraVesselTrip;
+ }else{
+  order.cents=Math.max(0,Number(order.quotedCents)||0);
+ }
+ change.status='Approved';change.decidedAt=new Date().toISOString();change.decidedBy=by;change.logisticsChanged=logisticsChanged;
+ return {order,change,logisticsChanged};
+}
+
+export function approveExternalExcursionCancellation(order:any,change:any,by:string){
+ if(!order||!change||change.type!=='cancel'||change.status!=='Pending')throw Error('This excursion cancellation request is not available.');
+ const refundRequiredCents=externalExcursionPaymentCents(order);
+ change.status='Approved';change.decidedAt=new Date().toISOString();change.decidedBy=by;change.refundRequiredCents=refundRequiredCents;
+ order.refundRequiredCents=refundRequiredCents;order.status='Cancelled';order.approvalStatus='Cancelled';order.cents=0;order.cancelledAt=new Date().toISOString();order.cancelledBy=by;order.unscheduledRequest=false;order.seatRequest=false;order.guestNotified=false;
+ return {order,change,refundRequiredCents};
+}
+
+export function rejectExternalExcursionAction(change:any,by:string,note=''){
+ if(!change||change.status!=='Pending')throw Error('This excursion request is not available.');
+ change.status='Rejected';change.decidedAt=new Date().toISOString();change.decidedBy=by;change.decisionNote=String(note||'').trim().slice(0,500);
+ return change;
+}
