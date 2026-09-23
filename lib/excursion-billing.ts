@@ -146,7 +146,10 @@ export function applyExcursionBillingAdjustment(state: any, input: any, actor: E
   if (!['free', 'discount', 'restore'].includes(input.action)) throw new Error('Choose a valid billing action.');
   if (typeof input.reason !== 'string' || input.reason.length > 500) throw new Error('Keep the reason under 500 characters.');
 
-  const currentItems=validBillingItems(order.billingItems)?order.billingItems.map((item:any)=>[String(item[0]),Number(item[1]),Number(item[2]),Number(item[3])]):defaultBillingItems(order);
+  const currentCents=Math.max(0,Math.round(Number(order.cents)||0));
+  const currentItems=validBillingItems(order.billingItems)&&billingItemsTotalCents(order.billingItems)===currentCents
+    ?order.billingItems.map((item:any)=>[String(item[0]),Number(item[1]),Number(item[2]),Number(item[3])])
+    :defaultBillingItems(order);
   const pricing = excursionPricing(order);
   if (!Number.isSafeInteger(order.cents) || order.cents < 0 || pricing.originalCents > 100000000) {
     throw new Error('The excursion amount is invalid. Review the bill before changing it.');
