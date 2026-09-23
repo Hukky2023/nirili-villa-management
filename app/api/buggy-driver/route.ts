@@ -3,6 +3,7 @@ import {islandToday,validDate} from '../../../lib/guest-catalog';
 import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {isRomanticBeachDinner} from '../../../lib/excursion-services';
+import {sendGuestPushForRide} from '../../../lib/web-push';
 
 function minusMinutes(time:string,minutes:number){
  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return '';
@@ -162,6 +163,10 @@ export async function PATCH(r:Request){
   }
   const saved=await saveStayAccess(state,revision,user?.userId||'buggy-driver');
   if(!saved)return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
+  if(guestRide&&['arrived','boarded','complete'].includes(action)){
+   const buggy=(state.buggyFleet||[]).find((x:any)=>x.id===order.buggyId),event=action==='arrived'?'arrived':action==='boarded'?'started':'completed';
+   try{await sendGuestPushForRide({...order,buggyName:buggy?.name||'',driver:order.buggyDriver||user?.displayName||user?.username||''},event)}catch{}
+  }
   return Response.json(action==='cancel'?{ok:true,cancelled:true,id}:{ok:true,pickup:manual?manualPickupFor(order,state):pickupFor(order,state)},{headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not update pickup.'},{status:400});}
 }
