@@ -34,7 +34,7 @@ export async function GET(request?: Request) {
       return Response.json({error: 'Excursion access is required.'}, {status: 403, headers});
     }
     const {state, revision} = await loadStays();state.excursionChanges??=[];
-    const canReassign=hasPermission(user,'edit_excursions')||hasPermission(user,'excursions_manager');
+    const canReassign=hasPermission(user,'excursions_manager');
     const url=request?new URL(request.url):null,bookingId=String(url?.searchParams.get('bookingId')||''),scheduleDate=String(url?.searchParams.get('scheduleDate')||'');
     if(bookingId||scheduleDate){
       if(!bookingId||!validDate(scheduleDate)||scheduleDate<islandToday())return Response.json({error:'Choose a valid booking and today or a future trip date.'},{status:400,headers});
@@ -118,7 +118,7 @@ export async function PATCH(request: Request) {
       return Response.json({error: 'Invalid excursion request.'}, {status: 400, headers});
     }
     if(input?.action==='reassign-booking'){
-      if(!hasPermission(user,'edit_excursions')&&!hasPermission(user,'excursions_manager'))return Response.json({error:'Excursion management access is required.'},{status:403,headers});
+      if(!hasPermission(user,'excursions_manager'))return Response.json({error:'Only Admin or Excursions Manager can reassign confirmed excursion bookings.'},{status:403,headers});
       const bookingId=String(input.id||''),scheduleId=String(input.scheduleId||''),scheduleDate=String(input.scheduleDate||''),note=String(input.note||'').trim().slice(0,500);
       if(!bookingId||!scheduleId||!validDate(scheduleDate)||scheduleDate<islandToday()||!Number.isSafeInteger(input.revision)||input.revision<0)return Response.json({error:'Choose a valid booking and target trip.'},{status:400,headers});
       const {state,revision}=await loadStays();
