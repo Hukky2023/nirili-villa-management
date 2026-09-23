@@ -11,6 +11,7 @@ import {loadMenu} from '../../../lib/menu-server';
 import {loadRestaurantPaymentSettingsWithDailyRates} from '../../../lib/restaurant-payment-settings';
 import {deleteRestaurantOrderPrimary,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,restoreRestaurantOrdersPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {updateRoomInventory} from '../../../lib/rooms';
+import {mealPlanIncludedOrder,restaurantPaymentStatus,syncRestaurantRoomBill} from '../../../lib/pos-room-billing';
 async function readStateForView(){
  try{
   const row=await readOperationalRecordPrimary(stayKey);
@@ -34,7 +35,7 @@ async function view(){
  }));
  const orders=(state.posOrders||[]).map((o:any)=>{
   const s=state.stays.find((s:any)=>s.id===o.stayId);
-  const paymentStatus=o.complimentary?'Complimentary':['Cash','Card','Bank transfer'].includes(o.method)?'Paid':s?.paidBills?.['Restaurant:'+o.id]===o.cents?'Paid':o.method==='Room'?'Charged to room':'Unpaid';
+  const paymentStatus=restaurantPaymentStatus(o,s);
   if(kitchenOnly)return {id:o.id,createdAt:o.createdAt,customer:o.customer,room:o.room,table:o.table,notes:o.notes,items:o.items,cents:o.cents,kitchen:o.kitchen,paymentStatus};
   return {...o,paymentStatus};
  });
@@ -54,8 +55,424 @@ if(b.action==='set_half_board_meal'){
  const s=b.stayId?state.stays.find((s:any)=>s.id===b.stayId&&s.status==='In House'):null;if(b.stayId&&!s)throw Error('Select a currently checked-in guest.');
  const menu=(await loadMenu()).items,mealPeriod=restaurantMealPeriod(),hb=halfBoardMealStatus(state,s?.id);const items=b.items.map((x:any)=>{const i=menu.find(i=>i.id===x.id);if(!i||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>100)throw Error('An item is unavailable or its quantity is invalid.');if(x.cents!==i.cents)throw Error('A menu price changed. Refresh the menu and reselect that item.');return s?waiterLine(i,x.quantity,s.meal,x.included,hb.freeOrderAvailable,hb.selectedMeal,mealPeriod):{id:i.id,name:i.category+' · '+i.name,quantity:x.quantity,unitCents:i.cents,cents:i.cents*x.quantity,included:false,menuCents:i.cents};});
  const id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0),date=new Date().toISOString(),includedMealPeriod=items.some((i:any)=>i.included===true)?mealPeriod:'';
- state.posOrders.push({id,token:b.token,by:u!.userId,createdBy:u!.username,createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||b.customer.trim()||'Walk-in guest',table:b.table,notes:b.notes.trim(),items,cents,kitchen:'Awaiting cashier',method:s?'Room':'',mealPeriod,halfBoardIncludedMeal:hb.selectedMeal,includedMealPeriod,history:[{date,by:u!.username,detail:'Order sent to cashier'}]});
- if(s){s.posBills??=[];s.posBills.push({department:'Restaurant',id,items:items.map((i:any)=>[i.name,i.quantity,i.cents/100,0]),status:'Posted',totalCents:cents});s.history.unshift({date,by:u!.username,detail:'Restaurant bill '+id+' · $'+(cents/100).toFixed(2)});}
+ const order={id,token:b.token,by:u!.userId,createdBy:u!.username,createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||b.customer.trim()||'Walk-in guest',table:b.table,notes:b.notes.trim(),items,cents,kitchen:'Awaiting cashier',method:s&&cents>0?'Room':'',mealPeriod,halfBoardIncludedMeal:hb.selectedMeal,includedMealPeriod,history:[{date,by:u!.username,detail:'Order sent to cashier'}]};
+ state.posOrders.push(order);
+ if(s){s.history??=[];const billed=syncRestaurantRoomBill(s,order);s.history.unshift({date,by:u!.username,detail:billed?'Restaurant bill '+id+' · 
+}else if(b.action==='sendguestkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.kitchen!=='Awaiting cashier'||o.status==='Cancelled')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.status='Confirmed';o.updatedBy=u!.username;}else if(b.action==='guestkitchen'){const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.status==='Completed'||o.status==='Cancelled')throw Error('Order is no longer active.');const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen||'Sent']!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.status=b.status==='Served'?'Completed':'Confirmed';o.updatedBy=u!.username;}else{
+ const o=state.posOrders.find((o:any)=>o.id===b.id);if(!o)throw Error('Bill not found.');const date=new Date().toISOString();
+ if(b.action==='sendkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});if(o.kitchen!=='Awaiting cashier')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.history.push({date,by:u!.username,detail:'Cashier sent order to kitchen'});}
+ else if(b.action==='kitchen'){const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen]!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.history.push({date,by:u!.username,detail:'Kitchen: '+b.status});}
+ else if(b.action==='delete'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});deletePOSBill(state,o,u!.username);}
+ else if(b.action==='edit'){
+ if(!canTakePayment(u))return Response.json({error:'Bill editing permission required.'},{status:403});
+ const s=state.stays.find((s:any)=>s.id===o.stayId);
+ if(['Cash','Card','Bank transfer'].includes(o.method)||s?.paidBills?.['Restaurant:'+o.id]===o.cents)throw Error('This bill is paid. Reverse the room payment before editing, or review the recorded payment with Admin.');
+ if(s?.status==='Checked Out')throw Error('Check the guest back in before editing this room bill.');
+ const nextStayId=b.stayId===undefined?(o.stayId||''):b.stayId;
+ if(typeof nextStayId!=='string')throw Error('Choose a valid guest room.');
+ const target=nextStayId?state.stays.find((x:any)=>x.id===nextStayId&&x.status==='In House'):null;
+ if(nextStayId&&!target)throw Error('Choose a checked-in room.');
+ if(o.stayId&&!s)throw Error('Original room is missing. Ask Admin to review.');
+ if(s&&!mealPlanIncludedOrder(o)&&!s.posBills?.some((x:any)=>x.id===o.id))throw Error('Linked room bill is missing. Please refresh.');
+ const changingRoom=nextStayId!==(o.stayId||'');
+ const reprice=changingRoom||b.repriceMeal===true;
+ if(!Array.isArray(b.items)||b.items.length<1||b.items.length>100||typeof b.notes!=='string'||b.notes.length>1000||!restaurantTables.includes(b.table))throw Error('Choose a table and keep at least one item.');
+ const ids=new Set();let items=b.items.map((x:any)=>{if(typeof x.id!=='string'||x.id.length>100||ids.has(x.id)||typeof x.name!=='string'||!x.name.trim()||x.name.length>200||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>100||!Number.isInteger(x.unitCents)||x.unitCents<0||x.unitCents>10000000||!Number.isFinite(x.discount)||x.discount<0||x.discount>100)throw Error('Check item names, quantities, prices and discounts.');ids.add(x.id);const old=o.items.find((i:any)=>i.id===x.id);if(!canTakePayment(u)&&x.discount!==(old?.discount||0))throw Error('Cashier access is required to change discounts.');return {id:x.id,name:x.name.trim(),quantity:x.quantity,unitCents:x.unitCents,discount:x.discount,cents:Math.round(x.unitCents*x.quantity*(1-x.discount/100))};});
+ if(reprice){const menu=(await loadMenu()).items;items=items.map((line:any)=>{const product=menu.find((i:any)=>i.id===line.id);if(product)return {...waiterLine(product,line.quantity,target?.meal),discount:0};const old=o.items.find((i:any)=>i.id===line.id);if(old?.included&&!Number.isInteger(old.menuCents))throw Error('An included item is no longer on the menu. Remove it and select a current menu item.');const unitCents=old?.menuCents??line.unitCents;return {...line,unitCents,cents:unitCents*line.quantity,discount:0,included:false};});}
+ const before={items:o.items,cents:o.cents,table:o.table,notes:o.notes};o.items=items;o.cents=items.reduce((n:number,i:any)=>n+i.cents,0);o.complimentary=items.every((i:any)=>i.discount===100);delete o.billDiscountPercent;o.table=b.table;o.notes=b.notes.trim();o.updatedAt=date;o.updatedBy=u!.username;o.history.push({date,by:u!.username,detail:'Bill edited — review updated items',before,after:{items,cents:o.cents,table:o.table,notes:o.notes}});
+ if(s){delete s.paidBills?.['Restaurant:'+o.id];s.posBills=(s.posBills||[]).filter((x:any)=>x.id!==o.id);s.history??=[];s.history.unshift({date,by:u!.username,detail:'Restaurant order '+o.id+(changingRoom?' moved out of room':' edited')+' · 
+
+ }
+ else if(b.action==='discount'||b.action==='free'){if(!canTakePayment(u))return Response.json({error:'Cashier access required to discount bills.'},{status:403});discountPOSBill(state,o,b,u!.username);}
+ else if(b.action==='pay'){
+ if(!canTakePayment(u))return Response.json({error:'Cashier access required to record payments.'},{status:403});
+ const settings=await loadRestaurantPaymentSettingsWithDailyRates();
+ if(['Cash','Card'].includes(b.method)){
+  const currency=['MVR','EUR'].includes(b.currency)?b.currency:'USD';
+  b.currency=currency;
+  if(currency==='MVR'){
+   if(!Number.isFinite(settings.usdToMvrRate)||settings.usdToMvrRate<=0)throw Error('USD to MVR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToMvrRate;
+   b.paidMvr=Math.round((o.cents/100)*settings.usdToMvrRate*100)/100;
+  }else if(currency==='EUR'){
+   if(!Number.isFinite(settings.usdToEurRate)||settings.usdToEurRate<=0)throw Error('USD to EUR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToEurRate;
+   b.paidEur=Math.round((o.cents/100)*settings.usdToEurRate*100)/100;
+  }
+ }
+ if(b.method==='Bank transfer'){
+  if(!settings.accountNumber)throw Error('Admin must set the restaurant bank account number before recording a bank transfer.');
+  b.bankName=settings.bankName;b.accountName=settings.accountName;b.accountNumber=settings.accountNumber;
+ }
+ changePOSPayment(state,o,b,u!.username);
+}
+ else throw Error('Unknown action.');
+}
+let primaryRevision=0,primaryAvailable=true;
+try{primaryRevision=await saveOperationalRecordPrimary(stayKey,state,revision,u!.userId);}catch{primaryAvailable=false;}
+if(primaryAvailable){
+ if(!primaryRevision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+ try{
+  await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),primaryRevision,u!.userId).run();
+ }catch{}
+ try{await mirrorHotelState(state);}catch{}
+ if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+ return Response.json(await view());
+}
+const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();
+if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,u!.userId)]);}catch{}
+if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+return Response.json(await view());
+}catch(e){return Response.json({error:(e as Error).message},{status:400});}}
++(cents/100).toFixed(2):'Restaurant meal-plan order '+id+' · Included · no room charge'});}
+}else if(b.action==='sendguestkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.kitchen!=='Awaiting cashier'||o.status==='Cancelled')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.status='Confirmed';o.updatedBy=u!.username;}else if(b.action==='guestkitchen'){const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.status==='Completed'||o.status==='Cancelled')throw Error('Order is no longer active.');const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen||'Sent']!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.status=b.status==='Served'?'Completed':'Confirmed';o.updatedBy=u!.username;}else{
+ const o=state.posOrders.find((o:any)=>o.id===b.id);if(!o)throw Error('Bill not found.');const date=new Date().toISOString();
+ if(b.action==='sendkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});if(o.kitchen!=='Awaiting cashier')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.history.push({date,by:u!.username,detail:'Cashier sent order to kitchen'});}
+ else if(b.action==='kitchen'){const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen]!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.history.push({date,by:u!.username,detail:'Kitchen: '+b.status});}
+ else if(b.action==='delete'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});deletePOSBill(state,o,u!.username);}
+ else if(b.action==='edit'){
+ if(!canTakePayment(u))return Response.json({error:'Bill editing permission required.'},{status:403});
+ const s=state.stays.find((s:any)=>s.id===o.stayId);
+ if(['Cash','Card','Bank transfer'].includes(o.method)||s?.paidBills?.['Restaurant:'+o.id]===o.cents)throw Error('This bill is paid. Reverse the room payment before editing, or review the recorded payment with Admin.');
+ if(s?.status==='Checked Out')throw Error('Check the guest back in before editing this room bill.');
+ const nextStayId=b.stayId===undefined?(o.stayId||''):b.stayId;
+ if(typeof nextStayId!=='string')throw Error('Choose a valid guest room.');
+ const target=nextStayId?state.stays.find((x:any)=>x.id===nextStayId&&x.status==='In House'):null;
+ if(nextStayId&&!target)throw Error('Choose a checked-in room.');
+ if(o.stayId&&!s)throw Error('Original room is missing. Ask Admin to review.');
+ if(s&&!s.posBills?.some((x:any)=>x.id===o.id))throw Error('Linked room bill is missing. Please refresh.');
+ const changingRoom=nextStayId!==(o.stayId||'');
+ const reprice=changingRoom||b.repriceMeal===true;
+ if(!Array.isArray(b.items)||b.items.length<1||b.items.length>100||typeof b.notes!=='string'||b.notes.length>1000||!restaurantTables.includes(b.table))throw Error('Choose a table and keep at least one item.');
+ const ids=new Set();let items=b.items.map((x:any)=>{if(typeof x.id!=='string'||x.id.length>100||ids.has(x.id)||typeof x.name!=='string'||!x.name.trim()||x.name.length>200||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>100||!Number.isInteger(x.unitCents)||x.unitCents<0||x.unitCents>10000000||!Number.isFinite(x.discount)||x.discount<0||x.discount>100)throw Error('Check item names, quantities, prices and discounts.');ids.add(x.id);const old=o.items.find((i:any)=>i.id===x.id);if(!canTakePayment(u)&&x.discount!==(old?.discount||0))throw Error('Cashier access is required to change discounts.');return {id:x.id,name:x.name.trim(),quantity:x.quantity,unitCents:x.unitCents,discount:x.discount,cents:Math.round(x.unitCents*x.quantity*(1-x.discount/100))};});
+ if(reprice){const menu=(await loadMenu()).items;items=items.map((line:any)=>{const product=menu.find((i:any)=>i.id===line.id);if(product)return {...waiterLine(product,line.quantity,target?.meal),discount:0};const old=o.items.find((i:any)=>i.id===line.id);if(old?.included&&!Number.isInteger(old.menuCents))throw Error('An included item is no longer on the menu. Remove it and select a current menu item.');const unitCents=old?.menuCents??line.unitCents;return {...line,unitCents,cents:unitCents*line.quantity,discount:0,included:false};});}
+ const before={items:o.items,cents:o.cents,table:o.table,notes:o.notes};o.items=items;o.cents=items.reduce((n:number,i:any)=>n+i.cents,0);o.complimentary=items.every((i:any)=>i.discount===100);delete o.billDiscountPercent;o.table=b.table;o.notes=b.notes.trim();o.updatedAt=date;o.updatedBy=u!.username;o.history.push({date,by:u!.username,detail:'Bill edited — review updated items',before,after:{items,cents:o.cents,table:o.table,notes:o.notes}});
+ if(s){delete s.paidBills?.['Restaurant:'+o.id];s.posBills=s.posBills.filter((x:any)=>x.id!==o.id);s.history.unshift({date,by:u!.username,detail:'Restaurant bill '+o.id+(changingRoom?' moved out of room':' edited')+' · $'+(before.cents/100).toFixed(2)+' → $'+(o.cents/100).toFixed(2)});}
+ if(target){target.posBills??=[];target.posBills.push({department:'Restaurant',id:o.id,items:items.map((i:any)=>[i.name,i.quantity,i.unitCents*i.quantity/100,i.discount||0]),totalCents:o.cents,status:o.complimentary?'Complimentary':'Posted',complimentary:o.complimentary});if(changingRoom){target.history??=[];target.history.unshift({date,by:u!.username,detail:'Restaurant bill '+o.id+' moved to room · $'+(o.cents/100).toFixed(2)});}}
+ o.stayId=target?.id||'';o.room=target?.room||'';o.customer=target?.guest||(changingRoom?'Walk-in guest':o.customer);if(changingRoom)o.method=target?'Room':'';
+
+ }
+ else if(b.action==='discount'||b.action==='free'){if(!canTakePayment(u))return Response.json({error:'Cashier access required to discount bills.'},{status:403});discountPOSBill(state,o,b,u!.username);}
+ else if(b.action==='pay'){
+ if(!canTakePayment(u))return Response.json({error:'Cashier access required to record payments.'},{status:403});
+ const settings=await loadRestaurantPaymentSettingsWithDailyRates();
+ if(['Cash','Card'].includes(b.method)){
+  const currency=['MVR','EUR'].includes(b.currency)?b.currency:'USD';
+  b.currency=currency;
+  if(currency==='MVR'){
+   if(!Number.isFinite(settings.usdToMvrRate)||settings.usdToMvrRate<=0)throw Error('USD to MVR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToMvrRate;
+   b.paidMvr=Math.round((o.cents/100)*settings.usdToMvrRate*100)/100;
+  }else if(currency==='EUR'){
+   if(!Number.isFinite(settings.usdToEurRate)||settings.usdToEurRate<=0)throw Error('USD to EUR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToEurRate;
+   b.paidEur=Math.round((o.cents/100)*settings.usdToEurRate*100)/100;
+  }
+ }
+ if(b.method==='Bank transfer'){
+  if(!settings.accountNumber)throw Error('Admin must set the restaurant bank account number before recording a bank transfer.');
+  b.bankName=settings.bankName;b.accountName=settings.accountName;b.accountNumber=settings.accountNumber;
+ }
+ changePOSPayment(state,o,b,u!.username);
+}
+ else throw Error('Unknown action.');
+}
+let primaryRevision=0,primaryAvailable=true;
+try{primaryRevision=await saveOperationalRecordPrimary(stayKey,state,revision,u!.userId);}catch{primaryAvailable=false;}
+if(primaryAvailable){
+ if(!primaryRevision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+ try{
+  await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),primaryRevision,u!.userId).run();
+ }catch{}
+ try{await mirrorHotelState(state);}catch{}
+ if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+ return Response.json(await view());
+}
+const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();
+if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,u!.userId)]);}catch{}
+if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+return Response.json(await view());
+}catch(e){return Response.json({error:(e as Error).message},{status:400});}}
++(before.cents/100).toFixed(2)+' → 
+
+ }
+ else if(b.action==='discount'||b.action==='free'){if(!canTakePayment(u))return Response.json({error:'Cashier access required to discount bills.'},{status:403});discountPOSBill(state,o,b,u!.username);}
+ else if(b.action==='pay'){
+ if(!canTakePayment(u))return Response.json({error:'Cashier access required to record payments.'},{status:403});
+ const settings=await loadRestaurantPaymentSettingsWithDailyRates();
+ if(['Cash','Card'].includes(b.method)){
+  const currency=['MVR','EUR'].includes(b.currency)?b.currency:'USD';
+  b.currency=currency;
+  if(currency==='MVR'){
+   if(!Number.isFinite(settings.usdToMvrRate)||settings.usdToMvrRate<=0)throw Error('USD to MVR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToMvrRate;
+   b.paidMvr=Math.round((o.cents/100)*settings.usdToMvrRate*100)/100;
+  }else if(currency==='EUR'){
+   if(!Number.isFinite(settings.usdToEurRate)||settings.usdToEurRate<=0)throw Error('USD to EUR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToEurRate;
+   b.paidEur=Math.round((o.cents/100)*settings.usdToEurRate*100)/100;
+  }
+ }
+ if(b.method==='Bank transfer'){
+  if(!settings.accountNumber)throw Error('Admin must set the restaurant bank account number before recording a bank transfer.');
+  b.bankName=settings.bankName;b.accountName=settings.accountName;b.accountNumber=settings.accountNumber;
+ }
+ changePOSPayment(state,o,b,u!.username);
+}
+ else throw Error('Unknown action.');
+}
+let primaryRevision=0,primaryAvailable=true;
+try{primaryRevision=await saveOperationalRecordPrimary(stayKey,state,revision,u!.userId);}catch{primaryAvailable=false;}
+if(primaryAvailable){
+ if(!primaryRevision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+ try{
+  await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),primaryRevision,u!.userId).run();
+ }catch{}
+ try{await mirrorHotelState(state);}catch{}
+ if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+ return Response.json(await view());
+}
+const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();
+if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,u!.userId)]);}catch{}
+if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+return Response.json(await view());
+}catch(e){return Response.json({error:(e as Error).message},{status:400});}}
++(cents/100).toFixed(2):'Restaurant meal-plan order '+id+' · Included · no room charge'});}
+}else if(b.action==='sendguestkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.kitchen!=='Awaiting cashier'||o.status==='Cancelled')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.status='Confirmed';o.updatedBy=u!.username;}else if(b.action==='guestkitchen'){const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.status==='Completed'||o.status==='Cancelled')throw Error('Order is no longer active.');const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen||'Sent']!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.status=b.status==='Served'?'Completed':'Confirmed';o.updatedBy=u!.username;}else{
+ const o=state.posOrders.find((o:any)=>o.id===b.id);if(!o)throw Error('Bill not found.');const date=new Date().toISOString();
+ if(b.action==='sendkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});if(o.kitchen!=='Awaiting cashier')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.history.push({date,by:u!.username,detail:'Cashier sent order to kitchen'});}
+ else if(b.action==='kitchen'){const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen]!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.history.push({date,by:u!.username,detail:'Kitchen: '+b.status});}
+ else if(b.action==='delete'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});deletePOSBill(state,o,u!.username);}
+ else if(b.action==='edit'){
+ if(!canTakePayment(u))return Response.json({error:'Bill editing permission required.'},{status:403});
+ const s=state.stays.find((s:any)=>s.id===o.stayId);
+ if(['Cash','Card','Bank transfer'].includes(o.method)||s?.paidBills?.['Restaurant:'+o.id]===o.cents)throw Error('This bill is paid. Reverse the room payment before editing, or review the recorded payment with Admin.');
+ if(s?.status==='Checked Out')throw Error('Check the guest back in before editing this room bill.');
+ const nextStayId=b.stayId===undefined?(o.stayId||''):b.stayId;
+ if(typeof nextStayId!=='string')throw Error('Choose a valid guest room.');
+ const target=nextStayId?state.stays.find((x:any)=>x.id===nextStayId&&x.status==='In House'):null;
+ if(nextStayId&&!target)throw Error('Choose a checked-in room.');
+ if(o.stayId&&!s)throw Error('Original room is missing. Ask Admin to review.');
+ if(s&&!s.posBills?.some((x:any)=>x.id===o.id))throw Error('Linked room bill is missing. Please refresh.');
+ const changingRoom=nextStayId!==(o.stayId||'');
+ const reprice=changingRoom||b.repriceMeal===true;
+ if(!Array.isArray(b.items)||b.items.length<1||b.items.length>100||typeof b.notes!=='string'||b.notes.length>1000||!restaurantTables.includes(b.table))throw Error('Choose a table and keep at least one item.');
+ const ids=new Set();let items=b.items.map((x:any)=>{if(typeof x.id!=='string'||x.id.length>100||ids.has(x.id)||typeof x.name!=='string'||!x.name.trim()||x.name.length>200||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>100||!Number.isInteger(x.unitCents)||x.unitCents<0||x.unitCents>10000000||!Number.isFinite(x.discount)||x.discount<0||x.discount>100)throw Error('Check item names, quantities, prices and discounts.');ids.add(x.id);const old=o.items.find((i:any)=>i.id===x.id);if(!canTakePayment(u)&&x.discount!==(old?.discount||0))throw Error('Cashier access is required to change discounts.');return {id:x.id,name:x.name.trim(),quantity:x.quantity,unitCents:x.unitCents,discount:x.discount,cents:Math.round(x.unitCents*x.quantity*(1-x.discount/100))};});
+ if(reprice){const menu=(await loadMenu()).items;items=items.map((line:any)=>{const product=menu.find((i:any)=>i.id===line.id);if(product)return {...waiterLine(product,line.quantity,target?.meal),discount:0};const old=o.items.find((i:any)=>i.id===line.id);if(old?.included&&!Number.isInteger(old.menuCents))throw Error('An included item is no longer on the menu. Remove it and select a current menu item.');const unitCents=old?.menuCents??line.unitCents;return {...line,unitCents,cents:unitCents*line.quantity,discount:0,included:false};});}
+ const before={items:o.items,cents:o.cents,table:o.table,notes:o.notes};o.items=items;o.cents=items.reduce((n:number,i:any)=>n+i.cents,0);o.complimentary=items.every((i:any)=>i.discount===100);delete o.billDiscountPercent;o.table=b.table;o.notes=b.notes.trim();o.updatedAt=date;o.updatedBy=u!.username;o.history.push({date,by:u!.username,detail:'Bill edited — review updated items',before,after:{items,cents:o.cents,table:o.table,notes:o.notes}});
+ if(s){delete s.paidBills?.['Restaurant:'+o.id];s.posBills=s.posBills.filter((x:any)=>x.id!==o.id);s.history.unshift({date,by:u!.username,detail:'Restaurant bill '+o.id+(changingRoom?' moved out of room':' edited')+' · $'+(before.cents/100).toFixed(2)+' → $'+(o.cents/100).toFixed(2)});}
+ if(target){target.posBills??=[];target.posBills.push({department:'Restaurant',id:o.id,items:items.map((i:any)=>[i.name,i.quantity,i.unitCents*i.quantity/100,i.discount||0]),totalCents:o.cents,status:o.complimentary?'Complimentary':'Posted',complimentary:o.complimentary});if(changingRoom){target.history??=[];target.history.unshift({date,by:u!.username,detail:'Restaurant bill '+o.id+' moved to room · $'+(o.cents/100).toFixed(2)});}}
+ o.stayId=target?.id||'';o.room=target?.room||'';o.customer=target?.guest||(changingRoom?'Walk-in guest':o.customer);if(changingRoom)o.method=target?'Room':'';
+
+ }
+ else if(b.action==='discount'||b.action==='free'){if(!canTakePayment(u))return Response.json({error:'Cashier access required to discount bills.'},{status:403});discountPOSBill(state,o,b,u!.username);}
+ else if(b.action==='pay'){
+ if(!canTakePayment(u))return Response.json({error:'Cashier access required to record payments.'},{status:403});
+ const settings=await loadRestaurantPaymentSettingsWithDailyRates();
+ if(['Cash','Card'].includes(b.method)){
+  const currency=['MVR','EUR'].includes(b.currency)?b.currency:'USD';
+  b.currency=currency;
+  if(currency==='MVR'){
+   if(!Number.isFinite(settings.usdToMvrRate)||settings.usdToMvrRate<=0)throw Error('USD to MVR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToMvrRate;
+   b.paidMvr=Math.round((o.cents/100)*settings.usdToMvrRate*100)/100;
+  }else if(currency==='EUR'){
+   if(!Number.isFinite(settings.usdToEurRate)||settings.usdToEurRate<=0)throw Error('USD to EUR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToEurRate;
+   b.paidEur=Math.round((o.cents/100)*settings.usdToEurRate*100)/100;
+  }
+ }
+ if(b.method==='Bank transfer'){
+  if(!settings.accountNumber)throw Error('Admin must set the restaurant bank account number before recording a bank transfer.');
+  b.bankName=settings.bankName;b.accountName=settings.accountName;b.accountNumber=settings.accountNumber;
+ }
+ changePOSPayment(state,o,b,u!.username);
+}
+ else throw Error('Unknown action.');
+}
+let primaryRevision=0,primaryAvailable=true;
+try{primaryRevision=await saveOperationalRecordPrimary(stayKey,state,revision,u!.userId);}catch{primaryAvailable=false;}
+if(primaryAvailable){
+ if(!primaryRevision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+ try{
+  await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),primaryRevision,u!.userId).run();
+ }catch{}
+ try{await mirrorHotelState(state);}catch{}
+ if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+ return Response.json(await view());
+}
+const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();
+if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,u!.userId)]);}catch{}
+if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+return Response.json(await view());
+}catch(e){return Response.json({error:(e as Error).message},{status:400});}}
++(o.cents/100).toFixed(2)});}
+ o.stayId=target?.id||'';o.room=target?.room||'';o.customer=target?.guest||(changingRoom?'Walk-in guest':o.customer);o.method=target&&o.cents>0?'Room':'';
+ if(target){target.history??=[];const billed=syncRestaurantRoomBill(target,o);if(changingRoom||!billed)target.history.unshift({date,by:u!.username,detail:billed?'Restaurant bill '+o.id+' moved to room · 
+
+ }
+ else if(b.action==='discount'||b.action==='free'){if(!canTakePayment(u))return Response.json({error:'Cashier access required to discount bills.'},{status:403});discountPOSBill(state,o,b,u!.username);}
+ else if(b.action==='pay'){
+ if(!canTakePayment(u))return Response.json({error:'Cashier access required to record payments.'},{status:403});
+ const settings=await loadRestaurantPaymentSettingsWithDailyRates();
+ if(['Cash','Card'].includes(b.method)){
+  const currency=['MVR','EUR'].includes(b.currency)?b.currency:'USD';
+  b.currency=currency;
+  if(currency==='MVR'){
+   if(!Number.isFinite(settings.usdToMvrRate)||settings.usdToMvrRate<=0)throw Error('USD to MVR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToMvrRate;
+   b.paidMvr=Math.round((o.cents/100)*settings.usdToMvrRate*100)/100;
+  }else if(currency==='EUR'){
+   if(!Number.isFinite(settings.usdToEurRate)||settings.usdToEurRate<=0)throw Error('USD to EUR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToEurRate;
+   b.paidEur=Math.round((o.cents/100)*settings.usdToEurRate*100)/100;
+  }
+ }
+ if(b.method==='Bank transfer'){
+  if(!settings.accountNumber)throw Error('Admin must set the restaurant bank account number before recording a bank transfer.');
+  b.bankName=settings.bankName;b.accountName=settings.accountName;b.accountNumber=settings.accountNumber;
+ }
+ changePOSPayment(state,o,b,u!.username);
+}
+ else throw Error('Unknown action.');
+}
+let primaryRevision=0,primaryAvailable=true;
+try{primaryRevision=await saveOperationalRecordPrimary(stayKey,state,revision,u!.userId);}catch{primaryAvailable=false;}
+if(primaryAvailable){
+ if(!primaryRevision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+ try{
+  await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),primaryRevision,u!.userId).run();
+ }catch{}
+ try{await mirrorHotelState(state);}catch{}
+ if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+ return Response.json(await view());
+}
+const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();
+if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,u!.userId)]);}catch{}
+if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+return Response.json(await view());
+}catch(e){return Response.json({error:(e as Error).message},{status:400});}}
++(cents/100).toFixed(2):'Restaurant meal-plan order '+id+' · Included · no room charge'});}
+}else if(b.action==='sendguestkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.kitchen!=='Awaiting cashier'||o.status==='Cancelled')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.status='Confirmed';o.updatedBy=u!.username;}else if(b.action==='guestkitchen'){const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.status==='Completed'||o.status==='Cancelled')throw Error('Order is no longer active.');const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen||'Sent']!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.status=b.status==='Served'?'Completed':'Confirmed';o.updatedBy=u!.username;}else{
+ const o=state.posOrders.find((o:any)=>o.id===b.id);if(!o)throw Error('Bill not found.');const date=new Date().toISOString();
+ if(b.action==='sendkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});if(o.kitchen!=='Awaiting cashier')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.history.push({date,by:u!.username,detail:'Cashier sent order to kitchen'});}
+ else if(b.action==='kitchen'){const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen]!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.history.push({date,by:u!.username,detail:'Kitchen: '+b.status});}
+ else if(b.action==='delete'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});deletePOSBill(state,o,u!.username);}
+ else if(b.action==='edit'){
+ if(!canTakePayment(u))return Response.json({error:'Bill editing permission required.'},{status:403});
+ const s=state.stays.find((s:any)=>s.id===o.stayId);
+ if(['Cash','Card','Bank transfer'].includes(o.method)||s?.paidBills?.['Restaurant:'+o.id]===o.cents)throw Error('This bill is paid. Reverse the room payment before editing, or review the recorded payment with Admin.');
+ if(s?.status==='Checked Out')throw Error('Check the guest back in before editing this room bill.');
+ const nextStayId=b.stayId===undefined?(o.stayId||''):b.stayId;
+ if(typeof nextStayId!=='string')throw Error('Choose a valid guest room.');
+ const target=nextStayId?state.stays.find((x:any)=>x.id===nextStayId&&x.status==='In House'):null;
+ if(nextStayId&&!target)throw Error('Choose a checked-in room.');
+ if(o.stayId&&!s)throw Error('Original room is missing. Ask Admin to review.');
+ if(s&&!s.posBills?.some((x:any)=>x.id===o.id))throw Error('Linked room bill is missing. Please refresh.');
+ const changingRoom=nextStayId!==(o.stayId||'');
+ const reprice=changingRoom||b.repriceMeal===true;
+ if(!Array.isArray(b.items)||b.items.length<1||b.items.length>100||typeof b.notes!=='string'||b.notes.length>1000||!restaurantTables.includes(b.table))throw Error('Choose a table and keep at least one item.');
+ const ids=new Set();let items=b.items.map((x:any)=>{if(typeof x.id!=='string'||x.id.length>100||ids.has(x.id)||typeof x.name!=='string'||!x.name.trim()||x.name.length>200||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>100||!Number.isInteger(x.unitCents)||x.unitCents<0||x.unitCents>10000000||!Number.isFinite(x.discount)||x.discount<0||x.discount>100)throw Error('Check item names, quantities, prices and discounts.');ids.add(x.id);const old=o.items.find((i:any)=>i.id===x.id);if(!canTakePayment(u)&&x.discount!==(old?.discount||0))throw Error('Cashier access is required to change discounts.');return {id:x.id,name:x.name.trim(),quantity:x.quantity,unitCents:x.unitCents,discount:x.discount,cents:Math.round(x.unitCents*x.quantity*(1-x.discount/100))};});
+ if(reprice){const menu=(await loadMenu()).items;items=items.map((line:any)=>{const product=menu.find((i:any)=>i.id===line.id);if(product)return {...waiterLine(product,line.quantity,target?.meal),discount:0};const old=o.items.find((i:any)=>i.id===line.id);if(old?.included&&!Number.isInteger(old.menuCents))throw Error('An included item is no longer on the menu. Remove it and select a current menu item.');const unitCents=old?.menuCents??line.unitCents;return {...line,unitCents,cents:unitCents*line.quantity,discount:0,included:false};});}
+ const before={items:o.items,cents:o.cents,table:o.table,notes:o.notes};o.items=items;o.cents=items.reduce((n:number,i:any)=>n+i.cents,0);o.complimentary=items.every((i:any)=>i.discount===100);delete o.billDiscountPercent;o.table=b.table;o.notes=b.notes.trim();o.updatedAt=date;o.updatedBy=u!.username;o.history.push({date,by:u!.username,detail:'Bill edited — review updated items',before,after:{items,cents:o.cents,table:o.table,notes:o.notes}});
+ if(s){delete s.paidBills?.['Restaurant:'+o.id];s.posBills=s.posBills.filter((x:any)=>x.id!==o.id);s.history.unshift({date,by:u!.username,detail:'Restaurant bill '+o.id+(changingRoom?' moved out of room':' edited')+' · $'+(before.cents/100).toFixed(2)+' → $'+(o.cents/100).toFixed(2)});}
+ if(target){target.posBills??=[];target.posBills.push({department:'Restaurant',id:o.id,items:items.map((i:any)=>[i.name,i.quantity,i.unitCents*i.quantity/100,i.discount||0]),totalCents:o.cents,status:o.complimentary?'Complimentary':'Posted',complimentary:o.complimentary});if(changingRoom){target.history??=[];target.history.unshift({date,by:u!.username,detail:'Restaurant bill '+o.id+' moved to room · $'+(o.cents/100).toFixed(2)});}}
+ o.stayId=target?.id||'';o.room=target?.room||'';o.customer=target?.guest||(changingRoom?'Walk-in guest':o.customer);if(changingRoom)o.method=target?'Room':'';
+
+ }
+ else if(b.action==='discount'||b.action==='free'){if(!canTakePayment(u))return Response.json({error:'Cashier access required to discount bills.'},{status:403});discountPOSBill(state,o,b,u!.username);}
+ else if(b.action==='pay'){
+ if(!canTakePayment(u))return Response.json({error:'Cashier access required to record payments.'},{status:403});
+ const settings=await loadRestaurantPaymentSettingsWithDailyRates();
+ if(['Cash','Card'].includes(b.method)){
+  const currency=['MVR','EUR'].includes(b.currency)?b.currency:'USD';
+  b.currency=currency;
+  if(currency==='MVR'){
+   if(!Number.isFinite(settings.usdToMvrRate)||settings.usdToMvrRate<=0)throw Error('USD to MVR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToMvrRate;
+   b.paidMvr=Math.round((o.cents/100)*settings.usdToMvrRate*100)/100;
+  }else if(currency==='EUR'){
+   if(!Number.isFinite(settings.usdToEurRate)||settings.usdToEurRate<=0)throw Error('USD to EUR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToEurRate;
+   b.paidEur=Math.round((o.cents/100)*settings.usdToEurRate*100)/100;
+  }
+ }
+ if(b.method==='Bank transfer'){
+  if(!settings.accountNumber)throw Error('Admin must set the restaurant bank account number before recording a bank transfer.');
+  b.bankName=settings.bankName;b.accountName=settings.accountName;b.accountNumber=settings.accountNumber;
+ }
+ changePOSPayment(state,o,b,u!.username);
+}
+ else throw Error('Unknown action.');
+}
+let primaryRevision=0,primaryAvailable=true;
+try{primaryRevision=await saveOperationalRecordPrimary(stayKey,state,revision,u!.userId);}catch{primaryAvailable=false;}
+if(primaryAvailable){
+ if(!primaryRevision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+ try{
+  await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),primaryRevision,u!.userId).run();
+ }catch{}
+ try{await mirrorHotelState(state);}catch{}
+ if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+ return Response.json(await view());
+}
+const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();
+if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,u!.userId)]);}catch{}
+if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+return Response.json(await view());
+}catch(e){return Response.json({error:(e as Error).message},{status:400});}}
++(o.cents/100).toFixed(2):'Restaurant meal-plan order '+o.id+' · Included · no room charge'});}
+
+ }
+ else if(b.action==='discount'||b.action==='free'){if(!canTakePayment(u))return Response.json({error:'Cashier access required to discount bills.'},{status:403});discountPOSBill(state,o,b,u!.username);}
+ else if(b.action==='pay'){
+ if(!canTakePayment(u))return Response.json({error:'Cashier access required to record payments.'},{status:403});
+ const settings=await loadRestaurantPaymentSettingsWithDailyRates();
+ if(['Cash','Card'].includes(b.method)){
+  const currency=['MVR','EUR'].includes(b.currency)?b.currency:'USD';
+  b.currency=currency;
+  if(currency==='MVR'){
+   if(!Number.isFinite(settings.usdToMvrRate)||settings.usdToMvrRate<=0)throw Error('USD to MVR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToMvrRate;
+   b.paidMvr=Math.round((o.cents/100)*settings.usdToMvrRate*100)/100;
+  }else if(currency==='EUR'){
+   if(!Number.isFinite(settings.usdToEurRate)||settings.usdToEurRate<=0)throw Error('USD to EUR exchange rate is unavailable.');
+   b.exchangeRate=settings.usdToEurRate;
+   b.paidEur=Math.round((o.cents/100)*settings.usdToEurRate*100)/100;
+  }
+ }
+ if(b.method==='Bank transfer'){
+  if(!settings.accountNumber)throw Error('Admin must set the restaurant bank account number before recording a bank transfer.');
+  b.bankName=settings.bankName;b.accountName=settings.accountName;b.accountNumber=settings.accountNumber;
+ }
+ changePOSPayment(state,o,b,u!.username);
+}
+ else throw Error('Unknown action.');
+}
+let primaryRevision=0,primaryAvailable=true;
+try{primaryRevision=await saveOperationalRecordPrimary(stayKey,state,revision,u!.userId);}catch{primaryAvailable=false;}
+if(primaryAvailable){
+ if(!primaryRevision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+ try{
+  await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),primaryRevision,u!.userId).run();
+ }catch{}
+ try{await mirrorHotelState(state);}catch{}
+ if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+ return Response.json(await view());
+}
+const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();
+if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
+try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,u!.userId)]);}catch{}
+if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+return Response.json(await view());
+}catch(e){return Response.json({error:(e as Error).message},{status:400});}}
++(cents/100).toFixed(2):'Restaurant meal-plan order '+id+' · Included · no room charge'});}
 }else if(b.action==='sendguestkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.kitchen!=='Awaiting cashier'||o.status==='Cancelled')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.status='Confirmed';o.updatedBy=u!.username;}else if(b.action==='guestkitchen'){const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.status==='Completed'||o.status==='Cancelled')throw Error('Order is no longer active.');const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen||'Sent']!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.status=b.status==='Served'?'Completed':'Confirmed';o.updatedBy=u!.username;}else{
  const o=state.posOrders.find((o:any)=>o.id===b.id);if(!o)throw Error('Bill not found.');const date=new Date().toISOString();
  if(b.action==='sendkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});if(o.kitchen!=='Awaiting cashier')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.history.push({date,by:u!.username,detail:'Cashier sent order to kitchen'});}
