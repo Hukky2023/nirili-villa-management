@@ -135,3 +135,10 @@
  .buggy-booking-dialog footer{flex-direction:column-reverse}
  .buggy-booking-dialog footer button{width:100%}
 }
+
+.buggy-status.requested{background:#f2f4f7;color:#475467}
+.buggy-status.driver-on-the-way{background:#eef7fb;color:#176080}
+.buggy-status.on-trip,.buggy-status.completed{background:#eaf7ef;color:#176742}
+.buggy-pickup-card.requested{border-color:#d8e5ec;background:#fff}
+.buggy-pickup-card.driver-on-the-way{border-color:#b8d9e8;background:#f8fcfe}
+.buggy-pickup-card.on-trip,.buggy-pickup-card.completed{border-color:#bcdccc;background:#fbfffd}
