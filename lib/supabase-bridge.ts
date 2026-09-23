@@ -635,6 +635,12 @@ export async function readOperationalRecordPrimary(key:string){
   return rows[0]||null;
 }
 
+export async function readOperationalRecordsPrimaryByPrefix(prefix:string){
+  if(!supabaseBridgeConfigured())return [];
+  const rows=await restSelect('operational_records','select=key,payload,revision,updated_by&key=like.'+encodeURIComponent(prefix+'*')+'&order=key.asc');
+  return rows||[];
+}
+
 export async function readExcursionSchedulesPrimary(date:string){
   if(!supabaseBridgeConfigured())return [];
   const pattern='excursion-schedule:'+date+':*';
