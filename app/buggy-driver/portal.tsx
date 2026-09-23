@@ -115,21 +115,3 @@ export default function BuggyDriverPortal(){
   </section>
  </main>;
 }
-+(p.fareCents/100).toFixed(2):'No configured fare'}</span>}</p>
-     <div className="buggy-meta"><span><MapPin size={16}/><b>Pickup: {p.location}</b>{p.room?' · Room '+p.room:''}</span>{p.destination&&<span><MapPin size={16}/>Destination: {p.destination}</span>}<span><Users size={16}/>{p.quantity} guest{p.quantity===1?'':'s'}</span>{p.buggyName&&<span>Buggy: {p.buggyName}</span>}{p.driver&&<span>Driver: {p.driver}</span>}{p.phone&&<a href={'tel:'+p.phone}><Phone size={16}/>{p.phone}</a>}</div>
-     {p.notes&&<p className="buggy-notes">{p.notes}</p>}
-    </div>
-    <div className="buggy-actions">
-     {p.status==='Pending pickup'&&<><button type="button" className="arrived" disabled={busy===p.id+'arrived'} onClick={()=>update(p.id,'arrived')}><BellRing size={18}/>{busy===p.id+'arrived'?'Notifying…':'I arrived · Notify guest'}</button>{p.manual&&<button type="button" className="cancel-manual" disabled={busy===p.id+'cancel'} onClick={()=>{if(confirm('Cancel this manual buggy booking?'))void update(p.id,'cancel')}}><Trash2 size={18}/>{busy===p.id+'cancel'?'Cancelling…':'Cancel'}</button>}</>}
-     {p.status==='Arrived'&&<><div className="buggy-arrived-note"><BellRing size={17}/>Guest notified that the buggy has arrived.</div><button type="button" className="boarded" disabled={busy===p.id+'boarded'} onClick={()=>update(p.id,'boarded')}><CheckCircle2 size={18}/>{busy===p.id+'boarded'?'Saving…':p.roundTrip?'Guests on buggy · To dinner':'Guests on buggy'}</button></>}
-     {!p.roundTrip&&p.status==='Boarded'&&<div className="buggy-boarded"><CheckCircle2 size={20}/><strong>Pickup complete</strong><span>Guests are on the buggy.</span></div>}
-     {p.roundTrip&&p.status==='Going to dinner'&&<button type="button" className="boarded" disabled={busy===p.id+'dinner-dropoff'} onClick={()=>update(p.id,'dinner-dropoff')}><MapPin size={18}/>{busy===p.id+'dinner-dropoff'?'Saving…':'Dropped guests at dinner'}</button>}
-     {p.roundTrip&&p.status==='Waiting for dinner to finish'&&<><div className="buggy-arrived-note"><Clock3 size={17}/>Return pickup is required after dinner.</div><button type="button" className="arrived" disabled={busy===p.id+'return-arrived'} onClick={()=>update(p.id,'return-arrived')}><BellRing size={18}/>{busy===p.id+'return-arrived'?'Notifying…':'I arrived for return · Notify guest'}</button></>}
-     {p.roundTrip&&p.status==='Return pickup arrived'&&<><div className="buggy-arrived-note"><BellRing size={17}/>Guest notified for the return pickup.</div><button type="button" className="boarded" disabled={busy===p.id+'return-boarded'} onClick={()=>update(p.id,'return-boarded')}><CheckCircle2 size={18}/>{busy===p.id+'return-boarded'?'Saving…':'Guests on buggy · Returning'}</button></>}
-     {p.roundTrip&&p.status==='Returning'&&<button type="button" className="boarded" disabled={busy===p.id+'return-complete'} onClick={()=>update(p.id,'return-complete')}><CheckCircle2 size={18}/>{busy===p.id+'return-complete'?'Saving…':'Returned guests to hotel'}</button>}
-     {p.roundTrip&&p.status==='Round trip complete'&&<div className="buggy-boarded"><CheckCircle2 size={20}/><strong>Round trip complete</strong><span>Guests were taken to dinner and returned to their hotel.</span></div>}
-    </div>
-   </article>)}</div>}
-  </section>
- </main>;
-}
