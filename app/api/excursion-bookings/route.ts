@@ -1,9 +1,12 @@
 import {authDb, currentUser, hasPermission, sameOrigin} from '../../../lib/auth';
 import {loadStays, stayKey} from '../../../lib/stays';
+import {saveStayAccess} from '../../../lib/stay-login';
 import {excursionPaid, excursionResources} from '../../../lib/excursion-workflow';
 import {isConfirmedExcursion, toConfirmedExcursionBooking} from '../../../lib/excursion-bookings';
 import {applyExcursionBillingAdjustment, excursionPricing} from '../../../lib/excursion-billing';
 import {mirrorHotelState,mirrorOperationalRecord,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {approveExternalExcursionCancellation,approveExternalExcursionChange,ensureExcursionManageState,rejectExternalExcursionAction} from '../../../lib/excursion-manage';
+import {sendExternalExcursionCancelledEmail,sendExternalExcursionRejectedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
 
 const headers = {'Cache-Control': 'private, no-store', 'Vary': 'Cookie'};
 const normal = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -16,7 +19,7 @@ export async function GET() {
     if (!hasPermission(user, 'edit_excursions') && !hasPermission(user, 'excursions_manager')) {
       return Response.json({error: 'Excursion access is required.'}, {status: 403, headers});
     }
-    const {state, revision} = await loadStays();
+    const {state, revision} = await loadStays();ensureExcursionManageState(state);
     const rows = await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?')
       .bind('excursion-schedule:%').all<any>();
     const schedules = (rows.results || []).map((row: any) => JSON.parse(row.payload));
@@ -49,7 +52,11 @@ export async function GET() {
         billingHistory: user!.role === 'admin' ? (order.billingHistory || []) : undefined};
     });
     bookings.sort((a: any, b: any) => (a.date || '9999').localeCompare(b.date || '9999') || a.time.localeCompare(b.time) || a.id.localeCompare(b.id));
-    return Response.json({bookings, revision, canAdjustBilling: user!.role === 'admin'}, {headers});
+    const manageRequests=(state.excursionChanges||[]).filter((change:any)=>change.status==='Pending').map((change:any)=>{
+      const order=(state.orders||[]).find((item:any)=>item.id===change.bookingId&&item.kind==='excursion');
+      return {id:change.id,type:change.type,bookingId:change.bookingId,requestedAt:change.requestedAt,current:change.current||null,proposed:change.proposed||null,guest:order?.guest||change.current?.guest||'',excursion:order?.name||change.current?.name||'',date:order?.date||change.current?.date||'',time:order?.time||order?.schedule?.time||'',quantity:Number(order?.quantity||change.current?.quantity||0),hotel:order?.hotel||'',email:order?.email||'',phone:order?.phone||''};
+    });
+    return Response.json({bookings,manageRequests, revision, canAdjustBilling: user!.role === 'admin',canReviewManageRequests:true}, {headers});
   } catch {
     return Response.json({error: 'Could not load confirmed excursion bookings. Please try again.'}, {status: 503, headers});
   }
@@ -59,12 +66,46 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const user = await currentUser();
-    if (!user || user.role !== 'admin' || !sameOrigin(request)) {
-      return Response.json({error: 'Only Admin can make excursions free or change discounts.'}, {status: 403, headers});
+    if (!user || !sameOrigin(request)) {
+      return Response.json({error: 'Excursion access is required.'}, {status: 403, headers});
     }
     let input: any;
     try { input = await request.json(); } catch {
-      return Response.json({error: 'Invalid billing request.'}, {status: 400, headers});
+      return Response.json({error: 'Invalid excursion request.'}, {status: 400, headers});
+    }
+    if (typeof input?.action === 'string' && input.action.startsWith('manage-')) {
+      if (!hasPermission(user,'edit_excursions') && !hasPermission(user,'excursions_manager')) {
+        return Response.json({error:'Excursion management access is required.'},{status:403,headers});
+      }
+      if(typeof input.id!=='string'||!Number.isSafeInteger(input.revision)||input.revision<0)return Response.json({error:'Refresh excursion bookings and try again.'},{status:400,headers});
+      const {state,revision}=await loadStays();ensureExcursionManageState(state);
+      if(input.revision!==revision)return Response.json({error:'Excursion bookings changed. Refresh and review the request again.'},{status:409,headers});
+      const change=(state.excursionChanges||[]).find((item:any)=>item.id===input.id&&item.status==='Pending');
+      if(!change)return Response.json({error:'This guest request has already been handled.'},{status:404,headers});
+      const order=(state.orders||[]).find((item:any)=>item.id===change.bookingId&&item.kind==='excursion'&&item.source==='External guest website');
+      if(!order)return Response.json({error:'The external excursion booking is no longer active.'},{status:404,headers});
+      if(['Departed','Completed'].includes(String(order.status||'')))return Response.json({error:'A departed or completed excursion cannot be changed or cancelled here.'},{status:409,headers});
+      const note=String(input.note||'').trim().slice(0,500);
+      let decision:any=null,mail:any=null;
+      if(input.action.endsWith('-reject')){
+        rejectExternalExcursionAction(change,user.username,note);decision={status:'Rejected',type:change.type};
+      }else if(change.type==='cancel'){
+        decision=approveExternalExcursionCancellation(order,change,user.username);
+      }else{
+        decision=approveExternalExcursionChange(order,change,user.username);
+      }
+      const saved=await saveStayAccess(state,revision,user.userId);
+      if(!saved)return Response.json({error:'Another excursion update was saved. Refresh and try again.'},{status:409,headers});
+      const mailBase={email:order.email,guest:order.guest,reference:order.id,excursion:order.name,date:order.date,time:order.time||order.schedule?.time||'',endTime:order.endTime||order.schedule?.endTime||'',quantity:Number(order.quantity)||0,quotedCents:Number(order.quotedCents)||Number(order.cents)||0,hotel:order.hotel,manageToken:order.manageToken,eventId:change.id};
+      try{
+        if(change.status==='Rejected')mail=await sendExternalExcursionRejectedEmail({...mailBase,requestType:change.type,reason:note});
+        else if(change.type==='cancel')mail=await sendExternalExcursionCancelledEmail({...mailBase,refundRequiredCents:Number(change.refundRequiredCents)||0});
+        else mail=await sendExternalExcursionUpdatedEmail(mailBase);
+      }catch{mail={sent:false,error:'Guest email could not be sent.'};}
+      return Response.json({ok:true,revision:revision+1,decision:{id:change.id,type:change.type,status:change.status,logisticsChanged:!!change.logisticsChanged,refundRequiredCents:Number(change.refundRequiredCents)||0},email:mail},{headers});
+    }
+    if (user.role !== 'admin') {
+      return Response.json({error: 'Only Admin can make excursions free or change discounts.'}, {status: 403, headers});
     }
     if (!input || typeof input.id !== 'string' || !Number.isSafeInteger(input.revision) || input.revision < 0) {
       return Response.json({error: 'Refresh bookings and reopen the billing action.'}, {status: 400, headers});
