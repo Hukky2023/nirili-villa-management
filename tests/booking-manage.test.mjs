@@ -56,3 +56,25 @@ test('confirmed guest cancellation is automatic through the day before check-in'
  assert.equal(bookingCancellationNeedsApproval('2026-09-25','2026-09-25'),true);
  assert.equal(bookingCancellationNeedsApproval('2026-09-25','2026-09-26'),true);
 });
+
+
+test('Manage Booking shows the linked arrival buggy status and driver',()=>{
+ const state=base();
+ state.buggyBookings=[];
+ state.buggyFleet=[];
+ state.stays.push({
+  id:'NV-0099',manageToken:token,guest:'Guest',email:'g@example.com',whatsapp:'+9607000000',room:'101',
+  checkIn:'2026-10-01',checkOut:'2026-10-04',pax:2,meal:'Bed & Breakfast',status:'Confirmed',base:18000,
+  transportPlan:{
+   arrival:{needTransfer:'yes',date:'2026-10-01',launch:{scheduleId:'s1',date:'2026-10-01',depart:'11:30',arrive:'12:25',boat:'Launch A',from:'Velana Airport',to:'Dhiffushi'}},
+   departure:{needTransfer:'later',date:'2026-10-04'}
+  }
+ });
+ state.buggyFleet.push({id:'BG-1',name:'Buggy One',driver:'Ahmed'});
+ state.buggyBookings.push({id:'TPBUG-NV-0099-arrival',bookingType:'stay-transfer',transportLeg:'arrival',stayId:'NV-0099',date:'2026-10-01',pickupTime:'12:25',location:'Dhiffushi Harbour',destination:'Nirili Villa',buggyStatus:'Driver on the way',buggyId:'BG-1',buggyDriver:'Ahmed',cancelled:false});
+ const view=bookingManageSnapshot(state,bookingForManageToken(state,token));
+ assert.equal(view.transportPlan.arrival.buggy.status,'Driver on the way');
+ assert.equal(view.transportPlan.arrival.buggy.pickupTime,'12:25');
+ assert.equal(view.transportPlan.arrival.buggy.buggyName,'Buggy One');
+ assert.equal(view.transportPlan.arrival.buggy.driver,'Ahmed');
+});
