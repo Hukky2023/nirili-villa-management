@@ -35,6 +35,12 @@ function removeGuestRideBill(state:any,item:any){
  stay.posBills=Array.isArray(stay.posBills)?stay.posBills:[];
  stay.posBills=stay.posBills.filter((bill:any)=>!(bill?.department==='Buggy'&&String(bill?.id||'')===String(item.id)));
 }
+function recordGuestRideEvent(state:any,item:any,type:string,at:string,by:string){
+ if(item?.bookingType!=='guest-ride')return;
+ state.buggyTripHistory??=[];
+ const buggy=(state.buggyFleet||[]).find((x:any)=>x.id===item.buggyId);
+ state.buggyTripHistory.push({id:'buggy-history-'+crypto.randomUUID(),at,type,buggyId:item.buggyId||'',buggyName:buggy?.name||'',bookingId:item.id,guest:item.guest||'',driver:item.buggyDriver||buggy?.driver||'',by});
+}
 
 function pickupFor(order:any,state:any){
  const stay=order.stayId?(state.stays||[]).find((s:any)=>s.id===order.stayId):null;
@@ -127,14 +133,14 @@ export async function PATCH(r:Request){
   const roundTrip=!manual&&isRomanticBeachDinner(order)&&!!order.buggyRoundTrip,guestRide=!!manual&&order.bookingType==='guest-ride';
   if(action==='cancel'){
    if(!manual)throw Error('Only manual buggy bookings can be cancelled from the Buggy Driver screen.');
-   order.cancelled=true;order.cancelledAt=now;order.cancelledBy=user?.username||user?.displayName||'buggy-driver';order.buggyStatus='Cancelled';if(guestRide){removeGuestRideBill(state,order);releaseBuggy(state,order);}
+   order.cancelled=true;order.cancelledAt=now;order.cancelledBy=user?.username||user?.displayName||'buggy-driver';order.buggyStatus='Cancelled';if(guestRide){removeGuestRideBill(state,order);releaseBuggy(state,order);recordGuestRideEvent(state,order,'Cancelled',now,user?.username||user?.displayName||'buggy-driver');}
   }else if(action==='on-the-way'){
    if(!guestRide)throw Error('On the way is only used for in-house guest rides.');
    if(!order.buggyId)throw Error('This guest ride is waiting for buggy assignment.');
    if(!['Assigned','Driver on the way'].includes(String(order.buggyStatus||'')))throw Error('This ride is not ready to start pickup.');
    order.buggyPickupStartedAt=order.buggyPickupStartedAt||now;
    order.buggyPickupStartedBy=user?.username||user?.displayName||'buggy-driver';
-   order.buggyStatus='Driver on the way';
+   order.buggyStatus='Driver on the way';recordGuestRideEvent(state,order,'Driver on the way',now,user?.username||user?.displayName||'buggy-driver');
   }else if(action==='arrived'){
    if(guestRide&&!order.buggyId)throw Error('This guest ride is waiting for buggy assignment.');
    if(guestRide&&String(order.buggyStatus||'')!=='Driver on the way')throw Error('Start the pickup before marking that you arrived.');
@@ -142,20 +148,20 @@ export async function PATCH(r:Request){
     order.buggyArrivedAt=now;
     order.buggyArrivedBy=user?.username||user?.displayName||'buggy-driver';
     order.buggyStatus='Arrived';
-    order.buggyGuestNotifiedAt=now;
+    order.buggyGuestNotifiedAt=now;recordGuestRideEvent(state,order,'Arrived',now,user?.username||user?.displayName||'buggy-driver');
    }
   }else if(action==='boarded'){
    if(!order.buggyArrivedAt)throw Error('Notify the guest that you have arrived before marking them onboard.');
    if(!order.buggyBoardedAt){
     order.buggyBoardedAt=now;
     order.buggyBoardedBy=user?.username||user?.displayName||'buggy-driver';
-    order.buggyStatus=guestRide?'On trip':roundTrip?'Going to dinner':'Boarded';
+    order.buggyStatus=guestRide?'On trip':roundTrip?'Going to dinner':'Boarded';if(guestRide)recordGuestRideEvent(state,order,'On trip',now,user?.username||user?.displayName||'buggy-driver');
    }
   }else if(action==='complete'){
    if(!guestRide)throw Error('Complete is only used for in-house guest rides.');
    if(!order.buggyBoardedAt)throw Error('Mark the guest onboard before completing the ride.');
    order.buggyCompletedAt=order.buggyCompletedAt||now;order.buggyCompletedBy=user?.username||user?.displayName||'buggy-driver';order.buggyStatus='Completed';releaseBuggy(state,order);
-   state.buggyTripHistory??=[];const buggy=(state.buggyFleet||[]).find((x:any)=>x.id===order.buggyId);state.buggyTripHistory.push({id:'buggy-history-'+crypto.randomUUID(),at:now,type:'Completed',buggyId:order.buggyId||'',buggyName:buggy?.name||'',bookingId:order.id,guest:order.guest||'',driver:order.buggyDriver||user?.displayName||user?.username||'',by:user?.username||user?.displayName||'buggy-driver'});
+   recordGuestRideEvent(state,order,'Completed',now,user?.username||user?.displayName||'buggy-driver');
   }else if(action==='dinner-dropoff'){
    if(!roundTrip)throw Error('This is not a romantic dinner round-trip booking.');
    if(!order.buggyBoardedAt)throw Error('Mark the guests onboard before recording dinner drop-off.');
