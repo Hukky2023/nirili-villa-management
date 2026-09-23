@@ -32,7 +32,7 @@ export function pendingExcursionChange(state:any,bookingId:string){
 }
 
 export function externalExcursionPaymentCents(order:any){
- return (order?.excursionPayments||[]).reduce((sum:number,payment:any)=>sum+Math.max(0,Number(payment?.cents)||0),0);
+ return Math.max(0,(order?.excursionPayments||[]).reduce((sum:number,payment:any)=>sum+(Number(payment?.cents)||0),0));
 }
 
 function text(value:any){return String(value??'').trim();}
