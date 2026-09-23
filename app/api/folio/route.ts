@@ -3,7 +3,8 @@ import {discountsUnchanged} from "../../../lib/discounts";
 import {authDb,currentUser,hasPermission,sameOrigin} from "../../../lib/auth";
 import {loadStays,stayKey} from '../../../lib/stays';
 import {applyExcursionBillEdit} from '../../../lib/excursion-billing';
-import {deleteOperationalRecordPrimary,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,readOperationalRecordsPrimaryByPrefix,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {applyTransferBillEdit} from '../../../lib/transfer-billing';
+import {deleteOperationalRecordPrimary,mirrorHotelState,mirrorOperationalRecord,mirrorTransportState,readOperationalRecordPrimary,readOperationalRecordsPrimaryByPrefix,saveOperationalPairPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 
 function prefix(room:string){return "folio:"+room+":";}
 function parsePayload(value:any){if(value&&typeof value==='object')return value;try{return JSON.parse(String(value||'{}'))}catch{return {}}}
@@ -85,6 +86,68 @@ export async function PUT(r:Request){
     try{await deleteOperationalRecordPrimary(staleKey);}catch{}
     try{await authDb().prepare("DELETE FROM operation_records WHERE key=?").bind(staleKey).run();}catch{}
     return Response.json({bill:result.bill,revision:nextRevision,source:'excursion-booking'});
+   }
+  }
+  if(x?.department==="Transfer"){
+   if(!/^(?:10[1-6]|20[1-4]|30[1-4])$/.test(String(b.room)))return Response.json({error:"Invalid room"},{status:400});
+   let state:any,revision=0;
+   try{const primary=await readOperationalRecordPrimary(stayKey);if(primary?.payload){state=primary.payload;revision=Number(primary.revision)||0;}}catch{}
+   if(!state){const loaded=await loadStays();state=loaded.state;revision=loaded.revision;}
+   state.orders??=[];state.stays??=[];
+   const source=state.orders.find((o:any)=>o.id===x.id&&o.kind==='transfer');
+   if(source){
+    const stay=state.stays.find((s:any)=>s.id===source.stayId);
+    if(stay&&String(stay.billRoom||stay.room)!==String(b.room))return Response.json({error:"This transfer bill belongs to another room."},{status:409});
+    let result:any;try{result=applyTransferBillEdit(state,{id:x.id,date:x.date,status:x.status,items:x.items},user!.username||user!.userId);}catch(error){return Response.json({error:error instanceof Error?error.message:"Check the transfer bill."},{status:400});}
+
+    const transportKey='transport-bookings-v1';
+    let transportRow:any=null;try{transportRow=await readOperationalRecordPrimary(transportKey)}catch{}
+    const transportState=transportRow?.payload,transportRevision=Number(transportRow?.revision)||0;
+    const linked=transportState?.bookings?.find((booking:any)=>booking.id===x.id);
+    if(linked){
+     linked.roomCents=result.totalCents;
+     linked.roomFree=result.totalCents===0;
+     linked.roomBillStatus=result.bill.status;
+     linked.updatedAt=new Date().toISOString();
+     if(result.bill.status==='Cancelled'){linked.status='Cancelled';linked.checked=[];}
+    }
+
+    let nextHotelRevision=0,nextTransportRevision=0,primaryAvailable=true;
+    try{
+     if(linked){
+      const pair=await saveOperationalPairPrimary(stayKey,state,revision,transportKey,transportState,transportRevision,user!.userId);
+      nextHotelRevision=Number(pair?.revisionA)||0;nextTransportRevision=Number(pair?.revisionB)||0;
+     }else nextHotelRevision=await saveOperationalRecordPrimary(stayKey,state,revision,user!.userId);
+    }catch{primaryAvailable=false;}
+
+    if(primaryAvailable){
+     if(!nextHotelRevision||(linked&&!nextTransportRevision))return Response.json({error:"Transfer data changed. Reopen the bill and try again."},{status:409});
+     try{
+      const writes=[
+       authDb().prepare("INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by").bind(stayKey,JSON.stringify(state),nextHotelRevision,user!.userId)
+      ];
+      if(linked)writes.push(authDb().prepare("INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by").bind(transportKey,JSON.stringify(transportState),nextTransportRevision,user!.userId));
+      await authDb().batch(writes);
+     }catch{}
+     try{await Promise.all([mirrorHotelState(state),...(linked?[mirrorTransportState(transportState)]:[])])}catch{}
+    }else{
+     const hotelWrite=revision===0
+      ?authDb().prepare("INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)").bind(stayKey,JSON.stringify(state),user!.userId)
+      :authDb().prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?").bind(JSON.stringify(state),user!.userId,stayKey,revision);
+     const writes:any[]=[hotelWrite];
+     if(linked)writes.push(transportRevision===0
+      ?authDb().prepare("INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)").bind(transportKey,JSON.stringify(transportState),user!.userId)
+      :authDb().prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?").bind(JSON.stringify(transportState),user!.userId,transportKey,transportRevision));
+     const saved=await authDb().batch(writes);
+     if(saved.some((entry:any)=>!entry.meta.changes))return Response.json({error:"Transfer data changed. Reopen the bill and try again."},{status:409});
+     nextHotelRevision=revision+1;nextTransportRevision=transportRevision+1;
+     try{await Promise.all([mirrorOperationalRecord(stayKey,state,nextHotelRevision,user!.userId),mirrorHotelState(state),...(linked?[mirrorOperationalRecord(transportKey,transportState,nextTransportRevision,user!.userId),mirrorTransportState(transportState)]:[])])}catch{}
+    }
+
+    const staleKey=prefix(String(b.room))+"Transfer:"+x.id;
+    try{await deleteOperationalRecordPrimary(staleKey)}catch{}
+    try{await authDb().prepare("DELETE FROM operation_records WHERE key=?").bind(staleKey).run()}catch{}
+    return Response.json({bill:{...result.bill,revision:0},revision:nextHotelRevision,source:'transfer-booking'});
    }
   }
   if(!/^(?:10[1-6]|20[1-4]|30[1-4])$/.test(String(b.room))||!x||!["Accommodation","Transfer","Excursions"].includes(x.department)||typeof x.id!=="string"||!/^[-A-Z0-9]{1,40}$/.test(x.id)||!Number.isInteger(x.revision)||x.revision<0||typeof x.date!=="string"||!x.date.trim()||x.date.length>100||!["Posted","Pending","Paid","Unpaid","Cancelled"].includes(x.status)||!Array.isArray(x.items)||x.items.length>100||x.items.some((i:any)=>!Array.isArray(i)||i.length!==4||typeof i[0]!=="string"||!i[0].trim()||i[0].length>200||!Number.isInteger(i[1])||i[1]<1||i[1]>10000||!Number.isFinite(i[2])||i[2]<0||i[2]>1000000||!Number.isFinite(i[3])||i[3]<0||i[3]>100))return Response.json({error:"Check bill items, amounts and discounts."},{status:400});
