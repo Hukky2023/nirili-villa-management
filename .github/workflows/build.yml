@@ -25,6 +25,8 @@ jobs:
         run: node --experimental-strip-types --test tests/dashboard-data.test.mjs
       - name: Account history and access regression tests
         run: node --test tests/account-history.test.mjs
+      - name: Restaurant meal-plan regression tests
+        run: node --experimental-strip-types --test tests/meal-access.test.mjs
       - name: Excursion billing regression tests
         run: node --experimental-strip-types --test tests/excursion-billing.test.mjs
       - name: External excursion self-service regression tests
