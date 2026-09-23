@@ -53,7 +53,8 @@ export async function PUT(r:Request){
 
   let nextRevision=0,primaryAvailable=true;
   try{
-   if(!await readOperationalRecordPrimary(key)&&current&&x.revision>0)await mirrorOperationalRecord(key,current.payload,x.revision,String(current.updated_by||''));
+   const primary=await readOperationalRecordPrimary(key);
+   if(current&&x.revision>0&&Number(primary?.revision||0)<x.revision)await mirrorOperationalRecord(key,current.payload,x.revision,String(current.updated_by||''));
    nextRevision=await saveOperationalRecordPrimary(key,bill,x.revision,user!.userId);
   }catch{primaryAvailable=false;}
 
