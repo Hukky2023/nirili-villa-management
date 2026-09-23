@@ -60,7 +60,7 @@ async function cleanProposal(body:any,items:any[]){
 }
 function currentRecord(order:any){return {guest:order.guest,email:order.email,phone:order.phone,hotel:order.hotel,externalRoom:order.externalRoom,groupName:order.groupName,date:order.date,menuItemId:order.menuItemId,name:order.name,quantity:order.quantity,adults:order.adults,children:order.children,infants:order.infants,guestNames:order.guestNames,guestCategories:order.guestCategories,footSizes:order.footSizes,privateBoatRequested:!!order.privateBoatRequested,buggyRequested:!!order.buggyRequested,notes:order.notes,quotedCents:order.quotedCents};}
 function changeRecord(order:any,type:'change'|'cancel',proposed:any=null){return {id:'ECH-'+crypto.randomUUID().slice(0,8).toUpperCase(),bookingId:order.id,...(order.packageGroupId?{packageGroupId:order.packageGroupId}:{}),type,status:'Pending',requestedAt:new Date().toISOString(),current:currentRecord(order),proposed};}
-function mailFrom(order:any,eventId?:string){return {email:order.email,guest:order.guest,reference:order.id,excursion:order.name,date:order.date,time:order.time||order.schedule?.time||'',endTime:order.endTime||order.schedule?.endTime||'',quantity:Number(order.quantity)||0,quotedCents:Number(order.quotedCents)||Number(order.cents)||0,hotel:order.hotel,manageToken:order.manageToken,eventId};}
+function mailFrom(order:any,eventId?:string){const edited=Number(order.billingRevision)>0||!!order.billingEditedAt;return {email:order.email,guest:order.guest,reference:order.id,excursion:order.name,date:order.date,time:order.time||order.schedule?.time||'',endTime:order.endTime||order.schedule?.endTime||'',quantity:Number(order.quantity)||0,quotedCents:edited?(Number(order.cents)||0):(Number(order.quotedCents)||Number(order.cents)||0),hotel:order.hotel,manageToken:order.manageToken,eventId};}
 
 export async function POST(request:Request){
  if(!sameOrigin(request))return Response.json({error:'Invalid request.'},{status:403,headers});
@@ -100,7 +100,7 @@ export async function POST(request:Request){
    if(isSplitPackage){
     const change=changeRecord(order,'cancel');state.excursionChanges.push(change);
     const saved=await saveStayAccess(state,revision,'public-excursion-manage');if(!saved)throw Error('The package changed while you were cancelling it. Refresh and try again.');
-    const first=packageOrders[0],packageTotal=Math.max(0,Number(first.packageTotalCents)||packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.quotedCents)||0),0));
+    const first=packageOrders[0],packageEdited=packageOrders.some((item:any)=>Number(item.billingRevision)>0||!!item.billingEditedAt),packageTotal=packageEdited?packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.cents)||0),0):Math.max(0,Number(first.packageTotalCents)||packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.quotedCents)||0),0));
     const email=await sendExternalExcursionRequestEmail({email:first.email,guest:first.guest,reference:first.packageGroupId,excursion:first.packageName||'Special Package',date:first.date,time:first.time||first.schedule?.time||'',quantity:Number(first.quantity)||0,quotedCents:packageTotal,hotel:first.hotel,manageToken:first.manageToken,eventId:change.id,requestType:'cancel'});
     return Response.json({ok:true,pending:true,email,booking:excursionManageSnapshot(state,order,null),items},{headers});
    }
