@@ -146,7 +146,7 @@ export async function PATCH(request: Request) {
       if(order.source==='External guest website'&&order.email&&order.manageToken)try{
         email=await sendExternalExcursionUpdatedEmail({email:order.email,guest:order.guest,reference:order.packageGroupId||order.id,excursion:order.packageName||order.name,date:order.date,time:order.time,endTime:order.endTime,quantity:Number(order.quantity)||0,quotedCents:Math.max(0,Number(order.cents)||Number(order.quotedCents)||0),hotel:order.hotel,manageToken:order.manageToken,eventId:'manual-reassign-'+order.id+'-'+now});
       }catch{email={sent:false,error:'Booking moved, but the guest email could not be sent.'};}
-      return Response.json({ok:true,revision:revision+1,assignment:{id:order.id,date:order.date,time:order.time,endTime:order.endTime,scheduleId:order.scheduleId,scheduleName:target.name,vessel:vessel?.name||target.vessel||'',compatible,manualOverride:!compatible},email},{headers});
+      return Response.json({ok:true,revision:revision+1,assignment:{id:order.id,date:order.date,time:order.time,endTime:order.endTime,scheduleId:order.scheduleId,scheduleName:target.name,vessel:vessel||target.vessel||'',compatible,manualOverride:!compatible},email},{headers});
     }
     if (typeof input?.action === 'string' && input.action.startsWith('manage-')) {
       if (!hasPermission(user,'edit_excursions') && !hasPermission(user,'excursions_manager')) {
