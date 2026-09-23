@@ -33,3 +33,6 @@
 .nv-direct-login-badge strong{
  font-size:14px;
 }
+
+
+.nv-guest-auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin:0 0 20px;border-radius:10px;background:#f0f5f6}.nv-guest-auth-tabs button{min-height:42px;border:0;border-radius:7px;background:transparent;color:#637a82;font:inherit;font-size:14px;font-weight:700;cursor:pointer}.nv-guest-auth-tabs button.active{background:#fff;color:#086f7d;box-shadow:0 2px 7px #143f5010}.nv-guest-auth-tabs button:disabled{opacity:.6;cursor:wait}
