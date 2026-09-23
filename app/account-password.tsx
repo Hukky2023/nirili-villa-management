@@ -33,6 +33,18 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
   finally{setBusy(false);}
  }
 
+ async function resetGuestPassword(){
+  if(!isGuest||busy)return;
+  if(!window.confirm('Reset this guest password? The current password will stop working immediately and all guest sessions will be signed out.'))return;
+  setBusy(true);setMessage('');
+  try{
+   const d=await request({action:'guest-reset-code'});
+   setAvailable(true);setPassword(d.setupCode||'');setShow(true);setOpen(true);
+   setMessage('Password reset. Share this new one-time setup code with the guest. Their previous password no longer works.');
+  }catch(e){setMessage((e as Error).message)}
+  finally{setBusy(false);}
+ }
+
  useEffect(()=>{if(autoReveal)void reveal();},[user.id,autoReveal]);
 
  function text(){
@@ -61,10 +73,11 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
   <div className="account-password-actions">
    {!unavailableGuest&&<button type="button" disabled={busy} onClick={()=>show?setShow(false):reveal()}><UiText>{show?(isGuest?'Hide setup code':'Hide password'):(isGuest?'Show setup code':'Show password')}</UiText></button>}
    {!unavailableGuest&&<button disabled={busy} onClick={()=>password?(setOpen(true),setMessage('')):reveal(true)}><UiText>{isGuest?'Share setup details':'Share login details'}</UiText></button>}
+   {isGuest&&unavailableGuest&&<button type="button" disabled={busy} onClick={resetGuestPassword}><UiText>{busy?'Resetting…':'Reset guest password'}</UiText></button>}
    {user.role!=='guest'&&<button onClick={()=>{setOpen(true);setMode('reset');setCurrentPassword('');setDraft('');setMessage('');}}><UiText>Manage password</UiText></button>}
   </div>
 
-  {isGuest&&unavailableGuest&&<p role="status"><UiText>Guest chose their own password. Reception cannot view or share it.</UiText></p>}
+  {isGuest&&unavailableGuest&&<p role="status"><UiText>Guest chose their own password. Reception cannot view it. If the guest forgets it, use Reset guest password to issue a new one-time setup code.</UiText></p>}
   {message&&!open&&<p role="status"><UiText>{message}</UiText></p>}
 
   {open&&<div className="account-password-overlay"><UiField as="section" className="account-password-dialog" role="dialog" aria-modal="true" aria-label={isGuest?'Share guest setup':'Share account login'}>

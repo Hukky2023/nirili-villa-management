@@ -48,7 +48,7 @@ export default function GuestStayLogin(){
 
   <div className="nv-guest-auth-tabs" role="tablist" aria-label="Guest access">
    <button type="button" role="tab" aria-selected={mode==='login'} className={mode==='login'?'active':''} onClick={()=>switchMode('login')}><UiText>Sign in</UiText></button>
-   <button type="button" role="tab" aria-selected={mode==='setup'} className={mode==='setup'?'active':''} onClick={()=>switchMode('setup')}><UiText>Create password</UiText></button>
+   <button type="button" role="tab" aria-selected={mode==='setup'} className={mode==='setup'?'active':''} onClick={()=>switchMode('setup')}><UiText>Create / reset password</UiText></button>
   </div>
 
   {mode==='login'?<form className="nv-login-form" onSubmit={submitLogin}>
@@ -56,7 +56,7 @@ export default function GuestStayLogin(){
    <label><UiText>Your password</UiText><span className="nv-password"><UiField as="input" required type={show?'text':'password'} autoComplete="current-password" maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your private password"/><UiField as="button" type="button" aria-label={show?'Hide password':'Show password'} onClick={()=>setShow(!show)}><UiText>{show?<EyeOff size={20}/>:<Eye size={20}/>}</UiText></UiField></span></label>
    {error&&<p className="nv-login-error" role="alert"><UiText>{error}</UiText></p>}
    <button className="nv-submit" disabled={busy}><UiText>{busy?'Signing in…':'Open my stay'}</UiText><ArrowRight size={18}/></button>
-   <p className="nv-phone-note"><UiText>First time here? Choose Create password and use the 5-digit setup code from reception.</UiText></p>
+   <p className="nv-phone-note"><UiText>First time here? Choose Create / reset password and use the 5-digit setup code from reception. Forgot your password? Ask Reception for a new one-time reset code.</UiText></p>
   </form>:<form className="nv-login-form" onSubmit={submitSetup}>
    <label><UiText>Room number</UiText><UiField as="input" required inputMode="numeric" pattern="[0-9]*" autoComplete="username" value={username} onChange={e=>setUsername(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="e.g. 201"/></label>
    <label><UiText>5-digit setup code</UiText><UiField as="input" required inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" maxLength={5} value={setupCode} onChange={e=>setSetupCode(e.target.value.replace(/\D/g,'').slice(0,5))} placeholder="Code from reception"/></label>
@@ -64,7 +64,7 @@ export default function GuestStayLogin(){
    <label><UiText>Confirm password</UiText><UiField as="input" required minLength={8} maxLength={128} type={showNew?'text':'password'} autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Enter it again"/></label>
    {error&&<p className="nv-login-error" role="alert"><UiText>{error}</UiText></p>}
    <button className="nv-submit" disabled={busy||newPassword.length<8||newPassword!==confirmPassword}><UiText>{busy?'Creating password…':'Create password & open my stay'}</UiText><ArrowRight size={18}/></button>
-   <p className="nv-phone-note"><UiText>Your setup code works only until you create your private password. Reception does not need to know your new password.</UiText></p>
+   <p className="nv-phone-note"><UiText>Your setup or reset code works only until you create your private password. Reception does not need to know your new password.</UiText></p>
   </form>}
  </AuthShell>;
 }
