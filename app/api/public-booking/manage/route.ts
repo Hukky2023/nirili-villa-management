@@ -7,6 +7,7 @@ import {sendBookingCancelledEmail,sendBookingChangeRequestedEmail,sendBookingUpd
 import {deleteBooking} from '../../../../lib/booking-admin';
 import {folioFor} from '../../../../lib/stays';
 import {autoPushBookingComAvailability} from '../../../../lib/channels';
+import {normalizeTransportPlan} from '../../../../lib/transport-plan';
 
 const headers={'Cache-Control':'private, no-store, max-age=0'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
@@ -23,13 +24,13 @@ async function hotelState(){
 function proposal(body:any){
  const guest=safe(body.guest,100),email=safe(body.email,254).toLowerCase(),whatsapp=cleanPhone(body.whatsapp);
  const checkIn=String(body.checkIn||''),checkOut=String(body.checkOut||''),meal=String(body.meal||'');
- const adults=Number(body.adults),children=Number(body.children),pax=adults+children,notes=safe(body.notes,1000);
+ const adults=Number(body.adults),children=Number(body.children),pax=adults+children,notes=safe(body.notes,1000),transportPlan=normalizeTransportPlan(body.transportPlan,checkIn,checkOut);
  const today=islandToday(),nights=(Date.parse(checkOut)-Date.parse(checkIn))/86400000;
  if(!guest||!emailPattern.test(email)||!phonePattern.test(whatsapp))throw Error('Enter a valid guest name, email and WhatsApp number with country code.');
  if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||!Number.isInteger(nights)||nights<1||nights>365)throw Error('Choose valid stay dates.');
  if(!Number.isInteger(adults)||adults<1||adults>3||!Number.isInteger(children)||children<0||children>2||pax<1||pax>3)throw Error('A room can accommodate up to 3 guests.');
  if(!plans.includes(meal))throw Error('Choose a valid meal plan.');
- return {guest,email,whatsapp,checkIn,checkOut,meal,adults,children,pax,notes,nights,estimate:nightly(meal,pax)*nights};
+ return {guest,email,whatsapp,checkIn,checkOut,meal,adults,children,pax,notes,transportPlan,nights,estimate:nightly(meal,pax)*nights};
 }
 
 function actionRecord(type:string,bookingId:string,current:any,proposed:any=null,status='Pending'){
@@ -38,7 +39,7 @@ function actionRecord(type:string,bookingId:string,current:any,proposed:any=null
   type,bookingId,status,requestedAt:new Date().toISOString(),
   current:{
    guest:current.guest,email:current.email||'',whatsapp:current.whatsapp||'',checkIn:current.checkIn,checkOut:current.checkOut,
-   meal:current.meal,pax:current.pax,adults:current.adults??current.pax,children:current.children??0,room:current.room||'',totalCents:current.base??current.estimate??0
+   meal:current.meal,pax:current.pax,adults:current.adults??current.pax,children:current.children??0,room:current.room||'',totalCents:current.base??current.estimate??0,transportPlan:current.transportPlan||null
   },
   proposed
  };
