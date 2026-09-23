@@ -55,7 +55,7 @@ export default function KitchenBoard(){
     <h2>{o.customer||'Guest'}</h2>
     {o.table&&<div className="pos-table-badge">{tableLabel(o.table)}</div>}
     {o.room&&<p className="kitchen-room">Room {o.room}</p>}
-    <p className="kitchen-time">{o.createdAt?new Date(o.createdAt).toLocaleString():''}</p>
+    <p className="kitchen-time">{o.createdAt?new Date(o.createdAt).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false}):''}</p>
     <div className="kitchen-lines">{(o.items||[]).map((item:any,index:number)=><p key={index}><span><b>{item.quantity}×</b> {item.name}</span>{!o.guestOrder&&<strong>{money(item.cents)}</strong>}</p>)}</div>
     {o.notes&&<div className="kitchen-notes"><b>Kitchen notes</b><span>{o.notes}</span></div>}
     {!o.guestOrder&&<div className="kitchen-total"><span>Total USD</span><strong>{money(o.cents)}</strong><em>{o.paymentStatus||'Unpaid'}</em></div>}

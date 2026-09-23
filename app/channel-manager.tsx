@@ -121,7 +121,7 @@ export default function ChannelManager(){
 
     <div className="channel-two channel-logs">
       <article className="channel-card"><header><Database/><div><h2>Recent reservations</h2></div></header>{data.recentReservations.length===0&&<p>No Booking.com reservations yet.</p>}{data.recentReservations.map((x:any)=><div className="channel-log" key={x.id}><span><b>{x.guest_name||'Guest'}</b><small>{x.check_in||'—'} → {x.check_out||'—'} · {x.booking_reference||'not imported'}</small></span><i>{x.status}</i></div>)}</article>
-      <article className="channel-card"><header><CloudCog/><div><h2>Channel events</h2></div></header>{data.recentEvents.length===0&&<p>No channel events yet.</p>}{data.recentEvents.map((x:any)=><div className="channel-log" key={x.id}><span><b>{x.event_type}</b><small>{new Date(x.created_at).toLocaleString()} · {x.error||x.direction}</small></span><i>{x.status}</i></div>)}</article>
+      <article className="channel-card"><header><CloudCog/><div><h2>Channel events</h2></div></header>{data.recentEvents.length===0&&<p>No channel events yet.</p>}{data.recentEvents.map((x:any)=><div className="channel-log" key={x.id}><span><b>{x.event_type}</b><small>{new Date(x.created_at).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})} · {x.error||x.direction}</small></span><i>{x.status}</i></div>)}</article>
     </div>
   </section>;
 }

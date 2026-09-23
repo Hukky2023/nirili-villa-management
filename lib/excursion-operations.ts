@@ -156,7 +156,7 @@ export function fridayExcursionBlackout(date:any,time:any,endTime:any){
  return start<blackoutEnd&&end>blackoutStart;
 }
 
-export const fridayExcursionBlackoutMessage='Friday 11:00 AM–1:30 PM is blocked for excursion operations. Choose a trip that finishes by 11:00 AM or starts at/after 1:30 PM.';
+export const fridayExcursionBlackoutMessage='Friday 11:00–13:30 is blocked for excursion operations. Choose a trip that finishes by 11:00 or starts at/after 13:30.';
 
 export function validClockTime(value:any){
  return typeof value==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(value);

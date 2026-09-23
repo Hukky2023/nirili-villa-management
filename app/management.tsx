@@ -70,7 +70,7 @@ function GuestFolio({room,onAction,onSaved}:{room:any;onAction?:(a:string)=>void
     setEditing({
       id:prefix+"-"+Date.now().toString().slice(-8),
       department:activeCategory,
-      date:new Date().toLocaleString("en-GB",{dateStyle:"medium",timeStyle:"short"}),
+      date:new Date().toLocaleString("en-GB",{timeZone:"Indian/Maldives",dateStyle:"medium",timeStyle:"short",hour12:false}),
       status:"Posted",
       items:[[label,1,0,0]],
       total:0,

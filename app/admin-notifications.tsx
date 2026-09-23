@@ -139,7 +139,7 @@ export default function AdminNotifications(){
    <header><div><strong><UiText>Notifications</UiText></strong><small><UiText>Bookings, messages, guests and system changes</UiText></small></div><button onClick={()=>setOpen(false)} aria-label="Close"><X size={18}/></button></header>
    <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button><button onClick={enablePhone}><UiText>Enable phone notifications</UiText></button><button onClick={clear}><UiText>Clear</UiText></button></div>
    <div className="nv-notification-list">{notices.length?notices.map(n=><button key={n.id} className={n.read?"read":""} onClick={()=>markOne(n.id)}>
-    <i className={"type "+n.type}/><span><strong><UiText>{n.title}</UiText></strong><small><UiText>{n.detail}</UiText></small><time>{new Date(n.at).toLocaleString()}</time></span>
+    <i className={"type "+n.type}/><span><strong><UiText>{n.title}</UiText></strong><small><UiText>{n.detail}</UiText></small><time>{new Date(n.at).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</time></span>
    </button>):<p className="empty"><UiText>No notifications yet.</UiText></p>}</div>
   </section></>}
   <style jsx>{`

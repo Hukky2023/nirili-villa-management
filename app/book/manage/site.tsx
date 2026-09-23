@@ -67,7 +67,7 @@ export default function ManageBookingSite(){
   {(message||error)&&<p className={'manage-message '+(error?'error':'success')} role="status">{error||message}</p>}
 
   {pending&&<section className="pending-banner">
-   <CheckCircle2/><div><strong>{pending.type==='cancel'?'Cancellation requested':'Change requested'}</strong><p>Reception is reviewing this request. Your current confirmed booking remains active until a decision is made.</p><small>Request {pending.id} · {new Date(pending.requestedAt).toLocaleString()}</small></div>
+   <CheckCircle2/><div><strong>{pending.type==='cancel'?'Cancellation requested':'Change requested'}</strong><p>Reception is reviewing this request. Your current confirmed booking remains active until a decision is made.</p><small>Request {pending.id} · {new Date(pending.requestedAt).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</small></div>
   </section>}
 
   <section className="booking-summary">

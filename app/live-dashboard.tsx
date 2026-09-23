@@ -6,7 +6,7 @@ import type {DashboardData,DashboardTrip} from '../lib/dashboard-data';
 import './live-dashboard.css';
 type Module='Bookings'|'Rooms'|'Guests'|'Transfers'|'Excursions'|'POS'|'Reports';
 const money=(cents:number,currency='USD')=>new Intl.NumberFormat('en-US',{style:'currency',currency,maximumFractionDigits:2}).format(cents/100);
-const localTime=(value:string)=>new Date(value).toLocaleTimeString('en-GB',{timeZone:'Indian/Maldives',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const localTime=(value:string)=>new Date(value).toLocaleTimeString('en-GB',{timeZone:'Indian/Maldives',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
 const dayLabel=(date:string)=>new Date(date+'T12:00:00+05:00').toLocaleDateString('en-GB',{timeZone:'Indian/Maldives',day:'2-digit',month:'short'});
 function useDashboard(){
  const [data,setData]=useState<DashboardData|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);

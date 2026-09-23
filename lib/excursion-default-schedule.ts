@@ -91,7 +91,7 @@ async function seedStandardDailyExcursions(date:string){
      order.guestNotified=false;
      order.preferredTime='';
      order.preferredEndTime='';
-     order.rescheduleReason='Friday 11:00 AM–1:30 PM excursion blackout';
+     order.rescheduleReason='Friday 11:00–13:30 excursion blackout';
      delete order.scheduleId;
      delete order.schedule;
      delete order.time;
