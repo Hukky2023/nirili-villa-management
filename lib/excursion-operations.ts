@@ -252,7 +252,7 @@ function autoAssignmentMatches(order:any,schedule:any){
 function autoAssignmentSharedKey(schedule:any){
  return schedule.sharedGroup?schedule.date+'|'+schedule.time+'|group:'+schedule.sharedGroup:schedule.vesselId?schedule.date+'|'+schedule.time+'|vessel:'+schedule.vesselId:'';
 }
-function autoAssignmentCandidateLoad(schedule:any,allSchedules:any[],orders:any[],excludeOrderId=''){
+export function excursionScheduleLoadForOrder(schedule:any,allSchedules:any[],orders:any[],excludeOrderId=''){
  const key=autoAssignmentSharedKey(schedule);
  const groupSchedules=key?allSchedules.filter((item:any)=>autoAssignmentSharedKey(item)===key):[schedule];
  const groupIds=new Set(groupSchedules.map((item:any)=>item.id));
@@ -267,7 +267,7 @@ export function chooseAutoAssignmentCandidate(order:any,allSchedules:any[],order
  const quantity=Math.max(1,Number(order.quantity)||1);
  const candidates=allSchedules
   .filter((schedule:any)=>schedule.status==='Open'&&scheduleCanServeRequest(order.name,schedule.name))
-  .map((schedule:any)=>({schedule,...autoAssignmentCandidateLoad(schedule,allSchedules,orders||[],order.id),rank:scheduleMatchRank(order.name,schedule.name)}))
+  .map((schedule:any)=>({schedule,...excursionScheduleLoadForOrder(schedule,allSchedules,orders||[],order.id),rank:scheduleMatchRank(order.name,schedule.name)}))
   .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
  return candidates.find((candidate:any)=>candidate.remaining>=quantity)||null;
 }
