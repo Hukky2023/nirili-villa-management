@@ -5,7 +5,7 @@ import {excursionPaid, excursionResources} from '../../../lib/excursion-workflow
 import {isConfirmedExcursion, toConfirmedExcursionBooking} from '../../../lib/excursion-bookings';
 import {applyExcursionBillingAdjustment, excursionPricing} from '../../../lib/excursion-billing';
 import {mirrorHotelState,mirrorOperationalRecord,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
-import {approveExternalExcursionCancellation,approveExternalExcursionChange,ensureExcursionManageState,rejectExternalExcursionAction} from '../../../lib/excursion-manage';
+import {approveExternalExcursionCancellation,approveExternalExcursionChange,approveExternalExcursionPackageCancellation,ensureExcursionManageState,externalPackageOrders,rejectExternalExcursionAction} from '../../../lib/excursion-manage';
 import {sendExternalExcursionCancelledEmail,sendExternalExcursionRejectedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
 
 const headers = {'Cache-Control': 'private, no-store', 'Vary': 'Cookie'};
@@ -54,7 +54,7 @@ export async function GET() {
     bookings.sort((a: any, b: any) => (a.date || '9999').localeCompare(b.date || '9999') || a.time.localeCompare(b.time) || a.id.localeCompare(b.id));
     const manageRequests=(state.excursionChanges||[]).filter((change:any)=>change.status==='Pending').map((change:any)=>{
       const order=(state.orders||[]).find((item:any)=>item.id===change.bookingId&&item.kind==='excursion');
-      return {id:change.id,type:change.type,bookingId:change.bookingId,requestedAt:change.requestedAt,current:change.current||null,proposed:change.proposed||null,guest:order?.guest||change.current?.guest||'',excursion:order?.name||change.current?.name||'',date:order?.date||change.current?.date||'',time:order?.time||order?.schedule?.time||'',quantity:Number(order?.quantity||change.current?.quantity||0),hotel:order?.hotel||'',email:order?.email||'',phone:order?.phone||''};
+      return {id:change.id,type:change.type,bookingId:change.packageGroupId||change.bookingId,internalBookingId:change.bookingId,packageGroupId:change.packageGroupId||'',requestedAt:change.requestedAt,current:change.current||null,proposed:change.proposed||null,guest:order?.guest||change.current?.guest||'',excursion:change.packageGroupId?(order?.packageName||'Special Package'):(order?.name||change.current?.name||''),date:order?.date||change.current?.date||'',time:order?.time||order?.schedule?.time||'',quantity:Number(order?.quantity||change.current?.quantity||0),hotel:order?.hotel||'',email:order?.email||'',phone:order?.phone||''};
     });
     return Response.json({bookings,manageRequests, revision, canAdjustBilling: user!.role === 'admin',canReviewManageRequests:true}, {headers});
   } catch {
@@ -90,13 +90,14 @@ export async function PATCH(request: Request) {
       if(input.action.endsWith('-reject')){
         rejectExternalExcursionAction(change,user.username,note);decision={status:'Rejected',type:change.type};
       }else if(change.type==='cancel'){
-        decision=approveExternalExcursionCancellation(order,change,user.username);
+        decision=change.packageGroupId?approveExternalExcursionPackageCancellation(state,order,change,user.username):approveExternalExcursionCancellation(order,change,user.username);
       }else{
         decision=approveExternalExcursionChange(order,change,user.username);
       }
       const saved=await saveStayAccess(state,revision,user.userId);
       if(!saved)return Response.json({error:'Another excursion update was saved. Refresh and try again.'},{status:409,headers});
-      const mailBase={email:order.email,guest:order.guest,reference:order.id,excursion:order.name,date:order.date,time:order.time||order.schedule?.time||'',endTime:order.endTime||order.schedule?.endTime||'',quantity:Number(order.quantity)||0,quotedCents:Number(order.quotedCents)||Number(order.cents)||0,hotel:order.hotel,manageToken:order.manageToken,eventId:change.id};
+      const packageOrders=change.packageGroupId?externalPackageOrders(state,order):[order],first=packageOrders[0]||order;
+      const mailBase={email:first.email,guest:first.guest,reference:change.packageGroupId||first.id,excursion:change.packageGroupId?(first.packageName||'Special Package'):first.name,date:first.date,time:first.time||first.schedule?.time||'',endTime:first.endTime||first.schedule?.endTime||'',quantity:Number(first.quantity)||0,quotedCents:change.packageGroupId?(Math.max(0,Number(first.packageTotalCents)||packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.quotedCents)||0),0))):(Number(first.quotedCents)||Number(first.cents)||0),hotel:first.hotel,manageToken:first.manageToken,eventId:change.id};
       try{
         if(change.status==='Rejected')mail=await sendExternalExcursionRejectedEmail({...mailBase,requestType:change.type,reason:note});
         else if(change.type==='cancel')mail=await sendExternalExcursionCancelledEmail({...mailBase,refundRequiredCents:Number(change.refundRequiredCents)||0});

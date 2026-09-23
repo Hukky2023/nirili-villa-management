@@ -6,6 +6,7 @@ export type ExcursionMail={
  email:string;guest:string;reference:string;excursion:string;date:string;time?:string;endTime?:string;
  quantity:number;quotedCents:number;hotel?:string;manageToken?:string;eventId?:string;status?:string;
  requestType?:'change'|'cancel';reason?:string;refundRequiredCents?:number;
+ packageSegments?:Array<{name:string;date:string;time:string;endTime?:string;matchedScheduleName?:string}>;
 };
 
 const money=(cents:number)=>'$'+(Math.max(0,Math.round(Number(cents)||0))/100).toFixed(2);
@@ -23,13 +24,22 @@ async function send(input:{to:string;subject:string;html:string;text:string;key:
 }
 function shell(title:string,body:string){return `<!doctype html><html><body style="margin:0;background:#f2f8f9;font-family:Arial,sans-serif;color:#153645"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:28px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#fff;border:1px solid #dce9eb;border-radius:20px;overflow:hidden"><tr><td style="background:#0b536c;color:#fff;padding:28px 32px"><div style="font-size:12px;letter-spacing:2px;opacity:.85">NIRILI TOURS · DHIFFUSHI · MALDIVES</div><h1 style="margin:10px 0 0;font-size:30px">${esc(title)}</h1></td></tr><tr><td style="padding:30px 32px">${body}<p style="margin:30px 0 0;color:#71858e;font-size:12px">Arrive as a Guest, Leave as a Friend.</p></td></tr></table></td></tr></table></body></html>`;}
 function table(mail:ExcursionMail){return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:24px 0;background:#eef9f7;border-radius:14px;padding:18px"><tr><td style="padding:6px 0;color:#6a7f88">Booking reference</td><td align="right" style="font-weight:700">${esc(mail.reference)}</td></tr><tr><td style="padding:6px 0;color:#6a7f88">Excursion</td><td align="right">${esc(mail.excursion)}</td></tr><tr><td style="padding:6px 0;color:#6a7f88">Date</td><td align="right">${esc(mail.date)}</td></tr>${mail.time?`<tr><td style="padding:6px 0;color:#6a7f88">Departure</td><td align="right">${esc(mail.time)} Maldives time</td></tr>`:''}<tr><td style="padding:6px 0;color:#6a7f88">Guests</td><td align="right">${mail.quantity}</td></tr><tr><td style="padding:6px 0;color:#6a7f88">Total</td><td align="right" style="font-weight:700">${money(mail.quotedCents)}</td></tr></table>`;}
+function packageItinerary(mail:ExcursionMail){
+ const segments=Array.isArray(mail.packageSegments)?mail.packageSegments:[];
+ if(!segments.length)return '';
+ return '<div style="margin:20px 0"><div style="font-size:11px;letter-spacing:1.4px;color:#5f7b84;font-weight:700;margin-bottom:8px">PACKAGE ITINERARY</div>'+segments.map((segment,index)=>'<div style="padding:10px 0;border-top:1px solid #dce9eb"><strong>'+String(index+1)+'. '+esc(segment.name)+'</strong><br><span style="font-size:13px;color:#5f737a">'+esc(segment.date)+' · '+esc(segment.time)+(segment.endTime?'–'+esc(segment.endTime):'')+' · Maldives time</span>'+(segment.matchedScheduleName&&segment.matchedScheduleName!==segment.name?'<br><span style="font-size:12px;color:#788b91">Scheduled on: '+esc(segment.matchedScheduleName)+'</span>':'')+'</div>').join('')+'</div>';
+}
+function packagePlain(mail:ExcursionMail){
+ const segments=Array.isArray(mail.packageSegments)?mail.packageSegments:[];
+ return segments.length?'\nPackage itinerary:\n'+segments.map((segment,index)=>(index+1)+'. '+segment.name+' · '+segment.date+' · '+segment.time+(segment.endTime?'–'+segment.endTime:'')+' Maldives time').join('\n')+'\n':'';
+}
 function manageButton(token?:string){if(!token)return '';const url=excursionManageUrl(token);return `<p style="margin:26px 0"><a href="${esc(url)}" style="display:inline-block;background:#0b536c;color:#fff;text-decoration:none;font-weight:700;padding:13px 18px;border-radius:10px">View / Manage Excursion</a></p><p style="font-size:12px;color:#71858e">This is your private excursion-management link. Do not forward it.</p>`;}
 function managePlain(token?:string){return token?'\nView / manage excursion: '+excursionManageUrl(token)+'\n':'';}
 
 export async function sendExternalExcursionBookedEmail(mail:ExcursionMail):Promise<MailResult>{
  const confirmed=mail.status==='Confirmed';
- const html=shell(confirmed?'Your excursion is booked':'We received your excursion booking',`<p>Dear ${esc(mail.guest)},</p><p>${confirmed?'Your seats are reserved.':'Our excursions team will confirm the trip time, vessel and pickup details.'}</p>${table(mail)}${manageButton(mail.manageToken)}`);
- const plain=`Nirili Tours - ${confirmed?'excursion booked':'booking received'}\n\nReference: ${mail.reference}\nExcursion: ${mail.excursion}\nDate: ${mail.date}\n${mail.time?'Departure: '+mail.time+' Maldives time\n':''}Guests: ${mail.quantity}\nTotal: ${money(mail.quotedCents)}\n${managePlain(mail.manageToken)}`;
+ const html=shell(confirmed?'Your excursion is booked':'We received your excursion booking',`<p>Dear ${esc(mail.guest)},</p><p>${confirmed?'Your seats are reserved.':'Our excursions team will confirm the trip time, vessel and pickup details.'}</p>${table(mail)}${packageItinerary(mail)}${manageButton(mail.manageToken)}`);
+ const plain=`Nirili Tours - ${confirmed?'excursion booked':'booking received'}\n\nReference: ${mail.reference}\nExcursion: ${mail.excursion}\nDate: ${mail.date}\n${mail.time?'Departure: '+mail.time+' Maldives time\n':''}Guests: ${mail.quantity}\nTotal: ${money(mail.quotedCents)}\n${packagePlain(mail)}${managePlain(mail.manageToken)}`;
  return send({to:mail.email,subject:(confirmed?'Excursion confirmed · ':'Excursion booking received · ')+mail.reference,html,text:plain,key:'external-excursion-booked/'+mail.reference});
 }
 export async function sendExternalExcursionRequestEmail(mail:ExcursionMail):Promise<MailResult>{

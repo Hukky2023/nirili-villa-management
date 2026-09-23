@@ -74,7 +74,7 @@ export default function ExcursionBookings() {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return bookings.filter(b => (!date || b.date === date) && (!payment || (b.pricing?.complimentary ? 'Complimentary' : b.paymentStatus) === payment) && (!needle ||
-      [b.id, b.guest, b.groupName, b.phone, b.excursion, b.hotel, b.room, b.vessel, ...b.crew].join(' ').toLowerCase().includes(needle)));
+      [b.id, b.packageGroupId, b.packageName, b.guest, b.groupName, b.phone, b.excursion, b.hotel, b.room, b.vessel, ...b.crew].join(' ').toLowerCase().includes(needle)));
   }, [bookings, query, date, payment]);
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize)), currentPage = Math.min(page, pages);
   const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -117,7 +117,7 @@ export default function ExcursionBookings() {
         <span><strong>{guests}</strong> guests</span><span><strong>{money(total)}</strong> total booking value (USD)</span>
       </div>
       {visible.length ? <div className="excursion-booking-list">{visible.map(b => <article className="excursion-confirmed-booking" key={b.id}>
-        <header className="excursion-booking-card-head"><div><small>{b.id}</small><h4>{b.excursion}</h4></div><div className="excursion-booking-badges"><span className="confirmed">Confirmed</span><span className={b.pricing?.complimentary ? 'confirmed' : b.paymentStatus.toLowerCase()}>{b.pricing?.complimentary ? 'Complimentary / Free' : b.paymentStatus}</span>{b.privateBoatRequested&&<span className="buggy">Private boat +$50</span>}{b.buggyRequested&&<span className="buggy">{b.guestType==='In-house'?'Buggy included':'Buggy requested'}</span>}</div></header>
+        <header className="excursion-booking-card-head"><div><small>{b.id}{b.packageGroupId?' · '+b.packageGroupId+' · Part '+b.packagePart+'/'+b.packageParts:''}</small><h4>{b.packageName||b.excursion}</h4>{b.packageGroupId&&<p className="excursion-package-leg">{b.excursion}</p>}</div><div className="excursion-booking-badges">{b.packageGroupId&&<span className="buggy">Special Package {b.packagePart}/{b.packageParts}</span>}<span className="confirmed">Confirmed</span><span className={b.pricing?.complimentary ? 'confirmed' : b.paymentStatus.toLowerCase()}>{b.pricing?.complimentary ? 'Complimentary / Free' : b.paymentStatus}</span>{b.privateBoatRequested&&<span className="buggy">Private boat +$50</span>}{b.buggyRequested&&<span className="buggy">{b.guestType==='In-house'?'Buggy included':'Buggy requested'}</span>}</div></header>
         <dl className="excursion-booking-overview">
           <div><dt>Lead guest</dt><dd>{b.guest}<small>{b.guestType}</small>{b.groupName&&<small>Group: {b.groupName}</small>}<small>Phone / WhatsApp: {b.phone ? <a href={'tel:'+b.phone}>{b.phone}</a> : 'Not recorded'}</small></dd></div>
           <div><dt>Hotel / room</dt><dd>{b.hotel || 'Hotel not recorded'}<small>{b.room ? 'Room ' + b.room : 'Room not recorded'}</small></dd></div>
@@ -128,7 +128,7 @@ export default function ExcursionBookings() {
         <ExcursionBillingActions booking={b} canAdjust={canAdjustBilling} revision={revision} onUpdated={() => load()}/>
         <details className="excursion-booking-details"><summary>View details<span className="excursion-booking-sr-only"> for {b.guest}, booking {b.id}</span></summary>
           <dl>
-            {b.groupName&&<div><dt>Family / group</dt><dd>{b.groupName}<small>{b.guests} guests under one booking</small></dd></div>}<div><dt>Phone / WhatsApp</dt><dd>{b.phone ? <a href={'tel:'+b.phone}>{b.phone}</a> : 'Not recorded'}</dd></div>{b.email&&<div><dt>Email</dt><dd>{b.email}</dd></div>}
+            {b.packageGroupId&&<div><dt>Package</dt><dd>{b.packageName||'Special Package'}<small>{b.packageGroupId} · Part {b.packagePart} of {b.packageParts}</small></dd></div>}{b.groupName&&<div><dt>Family / group</dt><dd>{b.groupName}<small>{b.guests} guests under one booking</small></dd></div>}<div><dt>Phone / WhatsApp</dt><dd>{b.phone ? <a href={'tel:'+b.phone}>{b.phone}</a> : 'Not recorded'}</dd></div>{b.email&&<div><dt>Email</dt><dd>{b.email}</dd></div>}
             <div><dt>Vessel</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.vessel}{b.separateVessel && <small>Extra vessel booking</small>}</dd></div>
             <div><dt>Assigned crew</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.crew.length ? b.crew.join(', ') : 'Not assigned'}</dd></div>
             <div><dt>Trip status</dt><dd>{b.tripStatus}{b.endTime&&<small>Trip end: {b.endTime} · Maldives time</small>}{b.returnTime&&<small>Return pickup: {b.returnTime} · Maldives time</small>}{b.privateBoatRequested&&<small>Private boat surcharge: {money(b.privateBoatSurchargeCents)}</small>}</dd></div>

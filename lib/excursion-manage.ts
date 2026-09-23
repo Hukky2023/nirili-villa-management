@@ -24,6 +24,13 @@ export function externalExcursionForToken(state:any,token:string){
  return state.orders.find((order:any)=>order?.kind==='excursion'&&order?.source==='External guest website'&&order?.manageToken===token)||null;
 }
 
+export function externalPackageOrders(state:any,order:any){
+ ensureExcursionManageState(state);
+ if(!order?.packageGroupId)return order?[order]:[];
+ return state.orders.filter((item:any)=>item?.kind==='excursion'&&item?.source==='External guest website'&&item.packageGroupId===order.packageGroupId)
+  .sort((a:any,b:any)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.time||a.schedule?.time||'').localeCompare(String(b.time||b.schedule?.time||''))||String(a.id||'').localeCompare(String(b.id||'')));
+}
+
 export function pendingExcursionChange(state:any,bookingId:string){
  ensureExcursionManageState(state);
  return state.excursionChanges
@@ -38,6 +45,44 @@ export function externalExcursionPaymentCents(order:any){
 function text(value:any){return String(value??'').trim();}
 
 export function excursionManageSnapshot(state:any,order:any,liveSchedule:any=null){
+ const packageOrders=externalPackageOrders(state,order);
+ if(packageOrders.length>1){
+  const first=packageOrders[0],ids=new Set(packageOrders.map((item:any)=>item.id));
+  const pending=state.excursionChanges
+   .filter((change:any)=>change.status==='Pending'&&(change.packageGroupId===first.packageGroupId||ids.has(change.bookingId)))
+   .sort((a:any,b:any)=>String(b.requestedAt||'').localeCompare(String(a.requestedAt||'')))[0]||null;
+  const paidCents=packageOrders.reduce((sum:number,item:any)=>sum+externalExcursionPaymentCents(item),0);
+  const quotedCents=Math.max(0,Number(first.packageTotalCents)||packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.quotedCents)||0),0));
+  const activeCents=packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.cents)||0),0);
+  const balanceCents=Math.max(0,activeCents-paidCents);
+  const cancelled=packageOrders.every((item:any)=>String(item.status||'')==='Cancelled'||['Cancelled','Declined'].includes(String(item.approvalStatus||'')));
+  const completed=packageOrders.every((item:any)=>['Completed','Cancelled'].includes(String(item.status||'')));
+  const hasPending=packageOrders.some((item:any)=>String(item.approvalStatus||'')==='Pending'||String(item.status||'').toLowerCase().includes('awaiting'));
+  const allConfirmed=packageOrders.every((item:any)=>item.approvalStatus==='Approved'&&!['Cancelled'].includes(String(item.status||'')));
+  const status=cancelled?'Cancelled':completed?'Completed':hasPending?'Pending':allConfirmed?'Confirmed':'Pending';
+  const segments=packageOrders.map((item:any)=>{
+   const schedule=item.schedule||{};
+   const segmentPaid=externalExcursionPaymentCents(item),segmentDue=Math.max(0,Math.max(0,Number(item.cents)||0)-segmentPaid);
+   return {
+    id:text(item.id),name:text(item.packageSegmentName||item.name),date:text(item.date||schedule.date),time:text(item.time||schedule.time),endTime:text(item.endTime||schedule.endTime),
+    status:String(item.status||''),approvalStatus:String(item.approvalStatus||''),matchedScheduleName:text(item.matchedScheduleName||schedule.name),
+    vessel:text(schedule.vessel),crew:Array.isArray(schedule.crew)?schedule.crew.map(text).filter(Boolean):[],
+    quotedCents:Math.max(0,Number(item.quotedCents)||0),paymentStatus:segmentPaid>0&&segmentDue===0?'Paid':segmentPaid>0?'Partially paid':'Unpaid'
+   };
+  });
+  return {
+   reference:text(first.packageGroupId),excursion:text(first.packageName||'Special Package'),menuItemId:'special-package',
+   guest:text(first.guest),email:text(first.email),phone:text(first.phone),hotel:text(first.hotel||first.pickupLocation),room:text(first.externalRoom||first.room),groupName:text(first.groupName),
+   date:text(first.date),time:text(first.time||first.schedule?.time),endTime:text(packageOrders[packageOrders.length-1]?.endTime||packageOrders[packageOrders.length-1]?.schedule?.endTime),
+   returnTime:'',status,paymentStatus:cancelled?'Cancelled':quotedCents===0?'No payment due':paidCents>0&&balanceCents===0?'Paid':paidCents>0?'Partially paid':'Unpaid',
+   paidCents,balanceCents,quotedCents,adults:Math.max(0,Number(first.adults)||0),children:Math.max(0,Number(first.children)||0),infants:Math.max(0,Number(first.infants)||0),quantity:Math.max(0,Number(first.quantity)||0),
+   guestNames:Array.isArray(first.guestNames)?first.guestNames:[],guestCategories:Array.isArray(first.guestCategories)?first.guestCategories:[],footSizes:Array.isArray(first.footSizes)?first.footSizes:[],
+   buggyRequested:packageOrders.some((item:any)=>item.buggyRequested===true),privateBoatRequested:false,vessel:'Multiple trips',crew:[],notes:text(first.notes),
+   refundRequiredCents:packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.refundRequiredCents)||0),0),packageSegments:segments,
+   pendingAction:pending?{id:pending.id,type:pending.type,status:pending.status,requestedAt:pending.requestedAt,proposed:pending.proposed||null}:null,
+   canEdit:false,canCancel:!cancelled&&!completed&&!pending&&!packageOrders.some((item:any)=>['Departed','Completed'].includes(String(item.status||'')))
+  };
+ }
  const pending=pendingExcursionChange(state,order.id);
  const schedule=['Departed','Completed'].includes(String(order.status||''))?(order.schedule||{}):{...(order.schedule||{}),...(liveSchedule||{})};
  const paidCents=externalExcursionPaymentCents(order);
@@ -129,4 +174,17 @@ export function rejectExternalExcursionAction(change:any,by:string,note=''){
  if(!change||change.status!=='Pending')throw Error('This excursion request is not available.');
  change.status='Rejected';change.decidedAt=new Date().toISOString();change.decidedBy=by;change.decisionNote=String(note||'').trim().slice(0,500);
  return change;
+}
+
+
+export function approveExternalExcursionPackageCancellation(state:any,order:any,change:any,by:string){
+ const packageOrders=externalPackageOrders(state,order);
+ if(packageOrders.length<2||!change||change.type!=='cancel'||change.status!=='Pending')throw Error('This package cancellation request is not available.');
+ const refundRequiredCents=packageOrders.reduce((sum:number,item:any)=>sum+externalExcursionPaymentCents(item),0);
+ const now=new Date().toISOString();
+ change.status='Approved';change.decidedAt=now;change.decidedBy=by;change.refundRequiredCents=refundRequiredCents;
+ for(const item of packageOrders){
+  item.refundRequiredCents=externalExcursionPaymentCents(item);item.status='Cancelled';item.approvalStatus='Cancelled';item.cents=0;item.cancelledAt=now;item.cancelledBy=by;item.unscheduledRequest=false;item.seatRequest=false;item.guestNotified=false;
+ }
+ return {orders:packageOrders,change,refundRequiredCents};
 }

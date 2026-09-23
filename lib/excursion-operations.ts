@@ -73,6 +73,79 @@ export function scheduleMatchRank(requestName:any,scheduleName:any){
  return Math.max(0,offered.length-wanted.length);
 }
 
+
+export const SPECIAL_PACKAGE_COMPONENTS=['turtle','shark','sandbank','coral garden','dolphin','fishing'] as const;
+export type SpecialPackageComponent=typeof SPECIAL_PACKAGE_COMPONENTS[number];
+export type SpecialPackageScheduleCandidate={
+ id:string;date:string;time:string;endTime:string;name:string;remaining:number;[key:string]:any
+};
+
+export function specialPackageCoverage(name:any):SpecialPackageComponent[]{
+ const offered=new Set(excursionComponents(name));
+ return SPECIAL_PACKAGE_COMPONENTS.filter(component=>offered.has(component));
+}
+
+/**
+ * Find the smallest set of non-overlapping departures that covers every Special Package component.
+ * The caller supplies only open/future schedules and current remaining capacity.
+ */
+export function planSpecialPackageSchedules(candidates:SpecialPackageScheduleCandidate[],quantity:number){
+ const pax=Math.max(1,Math.trunc(Number(quantity)||1));
+ const bitFor=new Map(SPECIAL_PACKAGE_COMPONENTS.map((component,index)=>[component,1<<index]));
+ const allMask=(1<<SPECIAL_PACKAGE_COMPONENTS.length)-1;
+ const prepared=candidates.map(candidate=>{
+  const coverage=specialPackageCoverage(candidate.name);
+  const mask=coverage.reduce((value,component)=>value|(bitFor.get(component)||0),0);
+  return {...candidate,coverage,mask};
+ }).filter(candidate=>candidate.mask&&Number(candidate.remaining)>=pax&&validClockTime(candidate.time)&&validClockTime(candidate.endTime))
+   .sort((a,b)=>{
+    const ac=a.coverage.length,bc=b.coverage.length;
+    return bc-ac||String(a.date).localeCompare(String(b.date))||String(a.time).localeCompare(String(b.time))||String(a.id).localeCompare(String(b.id));
+   });
+ if(!prepared.length)return null;
+
+ const conflicts=(candidate:any,selected:any[])=>selected.some(other=>
+  candidate.date===other.date&&timeRangesOverlap(candidate.time,candidate.endTime,other.time,other.endTime)
+ );
+ const finishKey=(selected:any[])=>selected.reduce((max,item)=>Math.max(max,Date.parse(item.date+'T'+item.endTime+':00Z')||0),0);
+ const startKey=(selected:any[])=>selected.reduce((min,item)=>Math.min(min,Date.parse(item.date+'T'+item.time+':00Z')||Number.MAX_SAFE_INTEGER),Number.MAX_SAFE_INTEGER);
+ let best:any[]|null=null;
+
+ function better(next:any[]){
+  if(!best)return true;
+  if(next.length!==best.length)return next.length<best.length;
+  const nf=finishKey(next),bf=finishKey(best);if(nf!==bf)return nf<bf;
+  const ns=startKey(next),bs=startKey(best);if(ns!==bs)return ns<bs;
+  return next.map(item=>item.id).sort().join('|')<best.map(item=>item.id).sort().join('|');
+ }
+
+ function search(mask:number,selected:any[]){
+  if(mask===allMask){if(better(selected))best=[...selected];return;}
+  if(best&&selected.length>=best.length)return;
+
+  const uncovered=SPECIAL_PACKAGE_COMPONENTS.map((component,index)=>({component,index,bit:1<<index}))
+   .filter(item=>(mask&item.bit)===0);
+  let choice:any=null,options:any[]=[];
+  for(const item of uncovered){
+   const available=prepared.filter(candidate=>(candidate.mask&item.bit)!==0&&(candidate.mask&~mask)!==0&&!selected.some(value=>value.id===candidate.id)&&!conflicts(candidate,selected));
+   if(!available.length)return;
+   if(!choice||available.length<options.length){choice=item;options=available;if(available.length===1)break;}
+  }
+  options.sort((a,b)=>{
+   const anew=a.coverage.filter((component:any)=>(mask&(bitFor.get(component)||0))===0).length;
+   const bnew=b.coverage.filter((component:any)=>(mask&(bitFor.get(component)||0))===0).length;
+   return bnew-anew||String(a.date).localeCompare(String(b.date))||String(a.time).localeCompare(String(b.time));
+  });
+  for(const candidate of options)search(mask|candidate.mask,[...selected,candidate]);
+ }
+ search(0,[]);
+ if(!best)return null;
+ return [...best].sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.time).localeCompare(String(b.time))).map(item=>({
+  ...item,
+  coverage:item.coverage as SpecialPackageComponent[]
+ }));
+}
+
 export function fridayExcursionBlackout(date:any,time:any,endTime:any){
  if(typeof date!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date))return false;
  const day=new Date(date+'T00:00:00Z');

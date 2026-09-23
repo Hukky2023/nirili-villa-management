@@ -85,9 +85,10 @@ export default function ExternalExcursionBooking(){
    <div className="success-ref"><small>BOOKING REFERENCE</small><strong>{success.id}</strong></div>
    <div className="success-details">
     <span><Sparkles/> {selected?.name}</span>
-    <span><CalendarDays/> {success.date||date}{success.time?' · '+success.time:''}</span>
+    <span><CalendarDays/> {success.packageSegments?.length?success.packageSegments.length+' scheduled trips':(success.date||date)+(success.time?' · '+success.time:'')}</span>
     <span><Users/> {guests.length} {guests.length===1?'guest':'guests'}</span>
    </div>
+   {success.packageSegments?.length>0&&<div className="external-package-itinerary"><small>AUTOMATIC PACKAGE ITINERARY</small>{success.packageSegments.map((segment:any,index:number)=><div key={segment.id||index}><b>{index+1}</b><span><strong>{segment.name}</strong><small>{segment.date} · {segment.time}{segment.endTime?'–'+segment.endTime:''} · Maldives time</small>{segment.matchedScheduleName&&segment.matchedScheduleName!==segment.name&&<em>Scheduled on: {segment.matchedScheduleName}</em>}</span><i>Confirmed</i></div>)}</div>}
    <p className="success-note">{success.email?.sent?'Reserve now, pay later. We sent your private View / Manage Excursion link to '+email+'.':'Your excursion booking is saved. Email delivery could not be confirmed, so use the private View / Manage Excursion button below and keep the link.'} No Nirili Villa room booking or management-system login is required.</p>
    <div className="external-success-actions">
     {success.manageUrl&&<a className="primary" href={success.manageUrl}>View / Manage Excursion <ArrowRight/></a>}
@@ -170,7 +171,7 @@ export default function ExternalExcursionBooking(){
      </select>
     </label>
     <div className="form-grid">
-     <label><span>Excursion date</span><input required type="date" min={data.today||undefined} value={date} onChange={event=>setDate(event.target.value)}/></label>
+     <label><span>{selected?.id==='special-package'?'Package start date':'Excursion date'}</span><input required type="date" min={data.today||undefined} value={date} onChange={event=>setDate(event.target.value)}/>{selected?.id==='special-package'&&<small>We’ll automatically split the package across compatible available trips from this date onward. If every included activity cannot be covered safely, it stays pending for our excursions team.</small>}</label>
      <label><span>Family / group name (optional)</span><input maxLength={100} value={groupName} onChange={event=>setGroupName(event.target.value)} placeholder="e.g. Ahmed family"/></label>
     </div>
 

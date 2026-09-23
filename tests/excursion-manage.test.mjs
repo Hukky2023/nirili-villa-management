@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   approveExternalExcursionCancellation,
   approveExternalExcursionChange,
+  approveExternalExcursionPackageCancellation,
   createExcursionManageToken,
   excursionLogisticsChanged,
   excursionManageSnapshot,
@@ -59,4 +60,25 @@ test('approved cancellation closes booking and records net refund required',()=>
 test('pending action lookup only returns current pending request',()=>{
  const s=state();s.excursionChanges=[{id:'old',bookingId:'EXC',status:'Rejected',requestedAt:'2026-09-20'},{id:'new',bookingId:'EXC',status:'Pending',requestedAt:'2026-09-21'}];
  assert.equal(pendingExcursionChange(s,'EXC').id,'new');
+});
+
+
+test('split Special Package appears as one manage booking with all departures',()=>{
+ const s=state(),group='PKG-ABC';
+ const first={id:'EXC-A',packageGroupId:group,packageName:'Special Package',packagePart:1,packageParts:2,packageTotalCents:22000,manageToken:token,source:'External guest website',kind:'excursion',guest:'Guest',email:'g@example.com',phone:'+9607000000',hotel:'Hotel',externalRoom:'5',menuItemId:'special-package',name:'Shark + Turtle',packageSegmentName:'Shark + Turtle',date:'2026-10-01',time:'11:00',endTime:'14:30',quantity:2,adults:2,children:0,infants:0,quotedCents:11000,cents:11000,status:'Scheduled',approvalStatus:'Approved',schedule:{vessel:'Boat A',crew:['Crew One']}};
+ const second={...structuredClone(first),id:'EXC-B',packagePart:2,name:'Dolphin + Fishing',packageSegmentName:'Dolphin + Fishing',date:'2026-10-02',time:'16:30',endTime:'19:30',quotedCents:11000,cents:11000,schedule:{vessel:'Boat B',crew:['Crew Two']}};
+ s.orders.push(first,second);
+ const view=excursionManageSnapshot(s,first,null);
+ assert.equal(view.reference,group);assert.equal(view.excursion,'Special Package');assert.equal(view.packageSegments.length,2);
+ assert.equal(view.quotedCents,22000);assert.equal(view.canEdit,false);assert.equal(view.canCancel,true);assert.equal(view.vessel,'Multiple trips');
+});
+
+test('split package cancellation cancels all linked departures and sums refunds',()=>{
+ const s=state(),group='PKG-REFUND';
+ const a={id:'EXC-A',packageGroupId:group,packageName:'Special Package',manageToken:token,source:'External guest website',kind:'excursion',status:'Scheduled',approvalStatus:'Approved',cents:11000,quotedCents:11000,excursionPayments:[{cents:5000}]};
+ const b={id:'EXC-B',packageGroupId:group,packageName:'Special Package',manageToken:token,source:'External guest website',kind:'excursion',status:'Scheduled',approvalStatus:'Approved',cents:11000,quotedCents:11000,excursionPayments:[{cents:3000}]};
+ s.orders.push(a,b);
+ const change={id:'ECH-PKG',bookingId:a.id,packageGroupId:group,type:'cancel',status:'Pending'};
+ const result=approveExternalExcursionPackageCancellation(s,a,change,'manager');
+ assert.equal(result.refundRequiredCents,8000);assert.equal(a.status,'Cancelled');assert.equal(b.status,'Cancelled');assert.equal(a.cents,0);assert.equal(b.cents,0);assert.equal(change.status,'Approved');
 });
