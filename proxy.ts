@@ -3,6 +3,7 @@ import {NextResponse,NextRequest} from 'next/server';
 const guestBookingHost='booking.nirilihotels.com';
 const publicHotelHost='nirilihotels.com';
 const publicHotelWwwHost='www.nirilihotels.com';
+const tabPattern=/^[a-f0-9]{32}$/;
 
 function bookingSiteResponse(url:URL){
  const guestApi=new Set(['/api/public-booking','/api/public-booking/manage','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/guest-excursion-schedules']);
@@ -58,6 +59,23 @@ function hotelSiteResponse(url:URL){
  return NextResponse.redirect(url);
 }
 
+function requestTab(request:NextRequest,url:URL){
+ const direct=url.searchParams.get('tab')||'';
+ if(tabPattern.test(direct))return direct;
+
+ // Client-side fetches call /api/* without repeating the page's ?tab= value.
+ // Same-origin Referer keeps the API request tied to the tab-specific session.
+ if(url.pathname.startsWith('/api/')){
+  const referer=request.headers.get('referer');
+  if(referer)try{
+   const source=new URL(referer);
+   const fromPage=source.searchParams.get('tab')||'';
+   if(source.origin===url.origin&&tabPattern.test(fromPage))return fromPage;
+  }catch{}
+ }
+ return '';
+}
+
 export function proxy(request:NextRequest){
  const url=new URL(request.url);
  const host=(request.headers.get('host')||'').split(':')[0].toLowerCase();
@@ -74,7 +92,7 @@ export function proxy(request:NextRequest){
  if(host===publicHotelHost)return hotelSiteResponse(url);
  if(host===guestBookingHost)return bookingSiteResponse(url);
 
- const id=url.searchParams.get('tab')||'',valid=/^[a-f0-9]{32}$/.test(id);
+ const id=requestTab(request,url),valid=tabPattern.test(id);
  if(!valid&&!url.pathname.startsWith('/api/')&&request.method==='GET'){
   url.searchParams.set('tab',crypto.randomUUID().replace(/-/g,''));
   const response=NextResponse.redirect(url);
