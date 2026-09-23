@@ -75,9 +75,6 @@ export function setHalfBoardMealSelection(state:any,stayId:string,meal:any,by:st
  return meal as HalfBoardIncludedMeal;
 }
 
-export const mealItemCoveredByPackage=(meal:string|undefined,item:{fullBoard?:boolean})=>
- item.fullBoard===true&&(meal==='Full Board'||meal==='Half Board');
-
 export const mealItemIncluded=(
  meal:string|undefined,
  item:{fullBoard?:boolean},
