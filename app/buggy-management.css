@@ -7,3 +7,5 @@
 .buggy-dispatch-status.requested{background:#f2f4f7;color:#475467}.buggy-dispatch-status.driver-on-the-way{background:#eff8ff;color:#175cd3}.buggy-dispatch-status.on-trip{background:#ecfdf3;color:#027a48}
 @media(max-width:800px){.buggy-price-editor{grid-template-columns:1fr 1fr}.buggy-price-editor>button{grid-column:1/-1}}
 @media(max-width:520px){.buggy-price-editor{grid-template-columns:1fr}.buggy-price-editor>button{grid-column:auto}}
+
+.buggy-dispatch-status.assigned{background:#f1f5ff;color:#3557a5}
