@@ -13,8 +13,9 @@ import {appendAccountHistory} from '../../../lib/account-history';
 import {loadStays,stayKey,folioFor} from '../../../lib/stays';
 import {catalog,plans,nightly,islandToday,validDate} from '../../../lib/guest-catalog';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
-import {deactivateSupabaseAccount,deleteLegacySessionsForAccount,ensureSupabaseEmployee,mirrorLegacyAccount,readOperationalRecordPrimary,updatePublicBookingRequestStatus} from '../../../lib/supabase-bridge';
+import {deactivateSupabaseAccount,deleteLegacySessionsForAccount,ensureSupabaseEmployee,mirrorLegacyAccount,readOperationalRecordPrimary,restoreRestaurantOrdersPrimary,updatePublicBookingRequestStatus} from '../../../lib/supabase-bridge';
 import {updateRoomInventory} from '../../../lib/rooms';
+import {reconcileRestaurantRoomBills} from '../../../lib/pos-room-billing';
 import {autoPushBookingComAvailability} from '../../../lib/channels';
 import {sendBookingConfirmationEmail,sendBookingUpdatedEmail,sendBookingCancelledEmail,sendBookingRequestRejectedEmail} from '../../../lib/booking-email';
 import {sendGuestPushForRide} from '../../../lib/web-push';
@@ -30,7 +31,7 @@ function canUseManagementServices(u:any){
  return u.permissions.some((p:string)=>['guesthouse_reception','excursions_manager','edit_bills','edit_excursions','edit_transfers'].includes(p));
 }
 
-async function loadViewState(){try{const row=await readOperationalRecordPrimary(stayKey);if(row?.payload){const state=row.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.rooms??=[];state.bookingChanges??=[];state.excursionChanges??=[];state.buggyBookings??=[];state.buggyFleet??=[];state.buggyTripHistory??=[];state.buggySettings??={guestRideFareCents:0};state.guestNotifications??=[];updateRoomInventory(state);return {state,revision:Number(row.revision)||0};}}catch{}return loadStays();}
+async function loadViewState(){try{const row=await readOperationalRecordPrimary(stayKey);if(row?.payload){const state=row.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.rooms??=[];state.bookingChanges??=[];state.excursionChanges??=[];state.buggyBookings??=[];state.buggyFleet??=[];state.buggyTripHistory??=[];state.buggySettings??={guestRideFareCents:0};state.guestNotifications??=[];try{await restoreRestaurantOrdersPrimary(state);}catch{}reconcileRestaurantRoomBills(state);updateRoomInventory(state);return {state,revision:Number(row.revision)||0};}}catch{}return loadStays();}
 function maldivesClock(){
  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Indian/Maldives',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
  const get=(type:string)=>parts.find((part:any)=>part.type===type)?.value||'00';
