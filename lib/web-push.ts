@@ -5,8 +5,13 @@ type StoredSubscription={endpoint:string;expirationTime?:number|null;keys:PushKe
 type VapidPair={publicKey:string;privateKey:string;createdAt:string};
 
 const vapidRecordKey='guest-web-push-vapid-v1';
-const subscriptionPrefix='guest-web-push:';
 const enc=new TextEncoder();
+
+async function ensureTables(){
+ const db=authDb();
+ await db.prepare('CREATE TABLE IF NOT EXISTS guest_push_config (key TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at TEXT NOT NULL)').run();
+ await db.prepare('CREATE TABLE IF NOT EXISTS guest_push_subscriptions (account_id TEXT NOT NULL, endpoint TEXT NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(account_id,endpoint))').run();
+}
 
 function concat(...parts:Uint8Array[]){
  const size=parts.reduce((n,p)=>n+p.byteLength,0),out=new Uint8Array(size);
@@ -30,30 +35,36 @@ async function hkdfExpand(prk:Uint8Array,info:Uint8Array,length:number){
  return block.slice(0,length);
 }
 async function storedVapid():Promise<VapidPair>{
- const db=authDb(),existing=await db.prepare('SELECT payload FROM operation_records WHERE key=?').bind(vapidRecordKey).first<any>();
+ await ensureTables();
+ const db=authDb(),existing=await db.prepare('SELECT payload FROM guest_push_config WHERE key=?').bind(vapidRecordKey).first<any>();
  if(existing?.payload){
   try{const parsed=JSON.parse(existing.payload);if(parsed?.publicKey&&parsed?.privateKey)return parsed;}catch{}
  }
  const pair:any=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
  const created:VapidPair={publicKey:b64url(await crypto.subtle.exportKey('raw',pair.publicKey)),privateKey:b64url(await crypto.subtle.exportKey('pkcs8',pair.privateKey)),createdAt:new Date().toISOString()};
- await db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(vapidRecordKey,JSON.stringify(created),'system:web-push').run();
- const row=await db.prepare('SELECT payload FROM operation_records WHERE key=?').bind(vapidRecordKey).first<any>();
+ await db.prepare('INSERT OR IGNORE INTO guest_push_config(key,payload,updated_at) VALUES(?,?,?)').bind(vapidRecordKey,JSON.stringify(created),new Date().toISOString()).run();
+ const row=await db.prepare('SELECT payload FROM guest_push_config WHERE key=?').bind(vapidRecordKey).first<any>();
  if(!row?.payload)throw Error('Could not initialize web push.');
  const saved=JSON.parse(row.payload);if(!saved?.publicKey||!saved?.privateKey)throw Error('Web push keys are unavailable.');
  return saved;
 }
-function subscriptionKey(accountId:string){return subscriptionPrefix+accountId;}
 async function readSubscriptions(accountId:string):Promise<StoredSubscription[]>{
- const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(subscriptionKey(accountId)).first<any>();
- if(!row?.payload)return [];
- try{const parsed=JSON.parse(row.payload),items=Array.isArray(parsed?.subscriptions)?parsed.subscriptions:[];return items.filter((x:any)=>x?.endpoint&&x?.keys?.p256dh&&x?.keys?.auth);}catch{return [];}
+ await ensureTables();
+ const rows=(await authDb().prepare('SELECT payload FROM guest_push_subscriptions WHERE account_id=? ORDER BY updated_at DESC LIMIT 5').bind(accountId).all<any>()).results||[];
+ return rows.map((row:any)=>{try{return JSON.parse(row.payload)}catch{return null}}).filter((x:any)=>x?.endpoint&&x?.keys?.p256dh&&x?.keys?.auth);
 }
-async function writeSubscriptions(accountId:string,subscriptions:StoredSubscription[]){
- const db=authDb(),key=subscriptionKey(accountId),payload=JSON.stringify({subscriptions:subscriptions.slice(-5),updatedAt:new Date().toISOString()});
- const row=await db.prepare('SELECT key FROM operation_records WHERE key=?').bind(key).first<any>();
- if(row)await db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=?').bind(payload,accountId,key).run();
- else await db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(key,payload,accountId).run();
+async function writeSubscription(accountId:string,subscription:StoredSubscription){
+ await ensureTables();
+ await authDb().prepare('INSERT INTO guest_push_subscriptions(account_id,endpoint,payload,updated_at) VALUES(?,?,?,?) ON CONFLICT(account_id,endpoint) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(accountId,subscription.endpoint,JSON.stringify(subscription),subscription.updatedAt).run();
+ const extras=(await authDb().prepare('SELECT endpoint FROM guest_push_subscriptions WHERE account_id=? ORDER BY updated_at DESC LIMIT -1 OFFSET 5').bind(accountId).all<any>()).results||[];
+ if(extras.length)await authDb().batch(extras.map((row:any)=>authDb().prepare('DELETE FROM guest_push_subscriptions WHERE account_id=? AND endpoint=?').bind(accountId,String(row.endpoint))));
 }
+async function deleteSubscription(accountId:string,endpoint?:string){
+ await ensureTables();
+ if(endpoint)await authDb().prepare('DELETE FROM guest_push_subscriptions WHERE account_id=? AND endpoint=?').bind(accountId,endpoint).run();
+ else await authDb().prepare('DELETE FROM guest_push_subscriptions WHERE account_id=?').bind(accountId).run();
+}
+
 function cleanSubscription(raw:any):StoredSubscription{
  const endpoint=String(raw?.endpoint||'').trim(),p256dh=String(raw?.keys?.p256dh||'').trim(),auth=String(raw?.keys?.auth||'').trim();
  let url:URL;try{url=new URL(endpoint)}catch{throw Error('Invalid push subscription endpoint.')}
@@ -67,13 +78,12 @@ export async function guestPushPublicKey(){return (await storedVapid()).publicKe
 export async function saveGuestPushSubscription(accountId:string,raw:any){
  const next=cleanSubscription(raw),items=await readSubscriptions(accountId),old=items.find(x=>x.endpoint===next.endpoint);
  const merged={...next,createdAt:old?.createdAt||next.createdAt};
- await writeSubscriptions(accountId,[...items.filter(x=>x.endpoint!==next.endpoint),merged]);
+ await writeSubscription(accountId,merged);
  return merged;
 }
 
 export async function removeGuestPushSubscription(accountId:string,endpoint?:string){
- if(!endpoint){await writeSubscriptions(accountId,[]);return true;}
- const items=await readSubscriptions(accountId);await writeSubscriptions(accountId,items.filter(x=>x.endpoint!==endpoint));return true;
+ await deleteSubscription(accountId,endpoint);return true;
 }
 
 async function vapidAuthorization(endpoint:string,pair:VapidPair){
@@ -124,6 +134,6 @@ export async function sendGuestPushForRide(ride:any,event:'assigned'|'arrived'|'
  const pair=await storedVapid(),message=rideMessage(ride,event),payload=JSON.stringify({...message,tag:'buggy:'+String(ride.id||''),url:'/stay?service=buggy',rideId:String(ride.id||''),event});
  const results=await Promise.allSettled(subscriptions.map(subscription=>sendOne(subscription,payload,pair)));
  const stale=new Set<string>(),sent=results.filter((result,index)=>{if(result.status==='fulfilled'&&result.value.gone)stale.add(subscriptions[index].endpoint);return result.status==='fulfilled'&&result.value.ok;}).length;
- if(stale.size)await writeSubscriptions(accountId,subscriptions.filter(x=>!stale.has(x.endpoint)));
+ if(stale.size)for(const endpoint of stale)await deleteSubscription(accountId,endpoint);
  return {sent,total:subscriptions.length};
 }
