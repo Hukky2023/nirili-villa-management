@@ -107,6 +107,8 @@ export function approveExternalExcursionChange(order:any,change:any,by:string){
   order.guestNotified=false;
   delete order.scheduleId;delete order.schedule;delete order.time;delete order.endTime;delete order.returnTime;
   delete order.separateVessel;delete order.overflowVesselId;delete order.originalScheduleId;delete order.extraVesselTrip;
+  delete order.preferredTime;delete order.preferredEndTime;delete order.preferredScheduleId;delete order.matchedScheduleName;
+  delete order.serviceType;delete order.serviceRequest;delete order.dinnerTime;delete order.buggyRoundTrip;
  }else{
   order.cents=Math.max(0,Number(order.quotedCents)||0);
  }
