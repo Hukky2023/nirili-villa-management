@@ -80,7 +80,7 @@ export async function POST(r:Request){
    const conflict=assignmentConflict(state,id,buggyId,String(row?.date||item.date||item.schedule?.date||''),String(row?.pickupTime||item.pickupTime||''));
    if(conflict)throw Error(buggy.name+' is already assigned near this pickup time. Choose another buggy.');
    item.buggyId=buggyId;item.buggyDriver=driver||buggy.driver||'';item.buggyAssignedAt=now;item.buggyAssignedBy=actor;
-   if(item.bookingType==='guest-ride'&&!['Arrived','On trip','Completed','Cancelled'].includes(String(item.buggyStatus||'')))item.buggyStatus='Driver on the way';
+   if(item.bookingType==='guest-ride'&&!['Driver on the way','Arrived','On trip','Completed','Cancelled'].includes(String(item.buggyStatus||'')))item.buggyStatus='Assigned';
    buggy.status='Assigned';if(driver)buggy.driver=driver;buggy.updatedAt=now;buggy.updatedBy=actor;
    state.buggyTripHistory.push({id:'buggy-history-'+crypto.randomUUID(),at:now,type:'Assigned',buggyId,buggyName:buggy.name,bookingId:id,guest:item.guest||'',driver:item.buggyDriver||'',by:actor});
    if(item.bookingType==='guest-ride')pushRide={...item,buggyName:buggy.name,driver:item.buggyDriver||''};
