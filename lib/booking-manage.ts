@@ -1,3 +1,4 @@
+import {defaultTransportPlan} from './transport-plan';
 export const bookingManageHost='https://booking.nirilihotels.com';
 
 export function createBookingManageToken(){
@@ -64,6 +65,7 @@ export function bookingManageSnapshot(state:any,target:any){
   pax:Number(booking.pax??1),
   meal:String(booking.meal||''),
   notes:String(booking.notes||''),
+  transportPlan:booking.transportPlan||defaultTransportPlan(String(booking.checkIn||''),String(booking.checkOut||'')),
   room:target.kind==='request'?'':String(booking.room||''),
   status:target.kind==='archived'?'Cancelled':String(booking.status||''),
   totalCents:Number(booking.base??booking.estimate??0),

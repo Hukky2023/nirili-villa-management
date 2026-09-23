@@ -3,6 +3,7 @@ import {islandToday,nightly,plans,validDate} from '../../../lib/guest-catalog';
 import {readOperationalRecordPrimary,submitPublicBookingRequest} from '../../../lib/supabase-bridge';
 import {sendBookingReceivedEmail} from '../../../lib/booking-email';
 import {createBookingManageToken} from '../../../lib/booking-manage';
+import {normalizeTransportPlan} from '../../../lib/transport-plan';
 
 const headers={'Cache-Control':'no-store'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
@@ -52,7 +53,7 @@ export async function POST(request:Request){
   const guest=safeText(body.guest,100),phone=cleanPhone(body.phone),email=safeText(body.email,254).toLowerCase();
   const checkIn=String(body.checkIn||''),checkOut=String(body.checkOut||''),meal=String(body.meal||'');
   const adults=Number(body.adults),children=Number(body.children),pax=adults+children;
-  const notes=safeText(body.notes,1000),token=String(body.token||'');
+  const notes=safeText(body.notes,1000),token=String(body.token||''),transportPlan=normalizeTransportPlan(body.transportPlan,checkIn,checkOut);
   const today=islandToday(),nights=nightsBetween(checkIn,checkOut);
   if(!guest||!phonePattern.test(phone)||!email||!emailPattern.test(email))throw Error('Enter your name, WhatsApp number with country code, and a valid email address.');
   if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||!Number.isInteger(nights)||nights<1||nights>365)throw Error('Choose valid check-in and check-out dates.');
@@ -67,7 +68,7 @@ export async function POST(request:Request){
   const estimate=nightly(meal,pax)*nights;
   const id='REQ-'+crypto.randomUUID().slice(0,8).toUpperCase(),manageToken=createBookingManageToken();
   const booking={
-   id,token,manageToken,guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes,
+   id,token,manageToken,guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes,transportPlan,
    status:'Pending',source:'Guest booking website',createdAt:new Date().toISOString(),estimate
   };
   const result:any=await submitPublicBookingRequest(booking);

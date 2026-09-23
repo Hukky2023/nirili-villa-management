@@ -10,6 +10,8 @@ import {updateRoomInventory} from '../../../lib/rooms';
 import {readOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {appendAccountHistory} from '../../../lib/account-history';
 import {autoPushBookingComAvailability} from '../../../lib/channels';
+import {syncTransportBuggy} from '../../../lib/transport-plan';
+import {cancelLinkedTransportBookings,staleTransportBookingIds} from '../../../lib/linked-transport-bookings';
 function canViewHotel(u:any){
  if(!u)return false;
  if(u.role==='admin')return true;
@@ -49,6 +51,7 @@ if(b.action==='create'){
  const details=b.guests===undefined?null:await bookingGuests(b.guests,b.pax,[],b.adults??b.pax,b.children??0);
  const booking=createDirectBooking(state,{...b,guest:details?.guests[0].name??b.guest},u.username);
  if(details)Object.assign(booking,{guests:details.guests,adults:details.adults,children:details.children,whatsapp:details.guests[0].phone});
+ syncTransportBuggy(state,booking,'arrival',booking.transportPlan?.arrival?.launch);syncTransportBuggy(state,booking,'departure',booking.transportPlan?.departure?.launch);
  if(!await saveStayAccess(state,revision,u.userId,null,[],details?.documents||[]))return Response.json({error:'Another booking changed room availability. Review the rooms and try again.'},{status:409});
  await autoPushBookingComAvailability();
  return Response.json({booking},{status:201});
@@ -69,6 +72,7 @@ if(b.action==='editbooking'||b.action==='deletebooking'){
   if(booking.status==='In House'&&previous.room!==booking.room)plan=await prepareStayLogin(state,booking);
  }
  if(!await saveStayAccess(state,revision,u.userId,plan,revoke,details?.documents||[],details?.removed||[]))return Response.json({error:'Booking changed. Reopen it and try again.'},{status:409});
+ try{if(b.action==='deletebooking')await cancelLinkedTransportBookings({stayId:booking.id,by:u.userId});else{const stale=staleTransportBookingIds(booking.transportPlan);if(stale.length)await cancelLinkedTransportBookings({ids:stale,by:u.userId});}}catch{}
  await autoPushBookingComAvailability();
  return Response.json({booking:b.action==='editbooking'?booking:null,deleted:b.action==='deletebooking'});
 }

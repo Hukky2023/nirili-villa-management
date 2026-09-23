@@ -13,3 +13,10 @@
 @media(max-width:600px){.modal.direct-booking-dialog>.form{grid-template-columns:1fr;padding:14px;gap:14px}.direct-booking-dialog .booking-adults-grid{grid-template-columns:1fr}.direct-booking-dialog .booking-adult-count{max-width:none}.direct-booking-dialog>header,.direct-booking-dialog>footer{padding:12px 14px}.direct-booking-dialog>footer button{flex:1}}
 
 .direct-booking-dialog .booking-adult-count,.direct-booking-dialog .booking-child-count{grid-column:auto;max-width:none;width:100%}
+
+.booking-transport-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.booking-transport-card{display:grid;gap:10px;margin:0;padding:14px;border:1px solid var(--line,#dce5e8);border-radius:14px;background:#f8fbfc}
+.booking-transport-card legend{padding:0 5px;font-weight:800}
+.booking-transport-card label{display:grid;gap:6px}
+.booking-transport-card small{line-height:1.4;color:#61747c}
+@media(max-width:720px){.booking-transport-grid{grid-template-columns:1fr}}

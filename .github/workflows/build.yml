@@ -3,6 +3,8 @@ name: Build check
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -25,6 +27,8 @@ jobs:
         run: node --experimental-strip-types --test tests/dashboard-data.test.mjs
       - name: Account history and access regression tests
         run: node --test tests/account-history.test.mjs
+      - name: Guest transport plan regression tests
+        run: node --experimental-strip-types --test tests/transport-plan.test.mjs
       - name: Restaurant meal-plan regression tests
         run: node --experimental-strip-types --test tests/meal-access.test.mjs
       - name: Restaurant room-billing regression tests

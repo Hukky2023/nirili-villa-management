@@ -1,5 +1,6 @@
 import {nextBookingReference} from './booking-reference';
 import {plans,validDate} from './guest-catalog';
+import {normalizeTransportPlan} from './transport-plan';
 
 export function createDirectBooking(state:any,b:any,by:string){
  if(typeof b.requestId!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.requestId))throw Error('Invalid booking request. Reopen the form.');
@@ -15,7 +16,8 @@ export function createDirectBooking(state:any,b:any,by:string){
  const room=state.rooms.find((r:any)=>r.number===b.room);
  if(!room||room.status==='Maintenance'||b.pax>room.capacity||state.stays.some((s:any)=>s.room===b.room&&s.status!=='Checked Out'&&s.checkIn<b.checkOut&&s.checkOut>b.checkIn))throw Error('That room is unavailable for these dates or guest count. Choose another room.');
  const id=nextBookingReference(state);
- const stay={id,creationRequest:b.requestId,createdBy:by,guest:b.guest.trim(),room:b.room,billRoom:id,checkIn:b.checkIn,checkOut:b.checkOut,pax:b.pax,meal:b.meal,source:b.source,rateCents:b.rateCents,status:'Confirmed',legacyFolio:false,base:nights*b.rateCents,initialPaid:0,payments:[],extensions:[],history:[{date:new Date().toISOString(),by,detail:'Booking confirmed · Room '+b.room+' assigned · '+nights+(nights===1?' night':' nights')}]};
+ const transportPlan=normalizeTransportPlan(b.transportPlan,b.checkIn,b.checkOut);
+ const stay={id,creationRequest:b.requestId,createdBy:by,guest:b.guest.trim(),room:b.room,billRoom:id,checkIn:b.checkIn,checkOut:b.checkOut,pax:b.pax,adults:b.adults??b.pax,children:b.children??0,meal:b.meal,source:b.source,transportPlan,rateCents:b.rateCents,status:'Confirmed',legacyFolio:false,base:nights*b.rateCents,initialPaid:0,payments:[],extensions:[],history:[{date:new Date().toISOString(),by,detail:'Booking confirmed · Room '+b.room+' assigned · '+nights+(nights===1?' night':' nights')}]};
  state.stays.push(stay);
  return stay;
 }
