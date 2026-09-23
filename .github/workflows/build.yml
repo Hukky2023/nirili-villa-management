@@ -33,7 +33,7 @@ jobs:
         run: node --experimental-strip-types --test tests/excursion-manage.test.mjs
       - name: Special Package auto-scheduling regression tests
         run: node --experimental-strip-types --test tests/special-package-auto-schedule.test.mjs
-      - name: Excursion timetable and guest-list consistency regression tests
-        run: node --test tests/excursion-trip-counts.test.cjs
       - name: Build production worker
         run: pnpm run build && node self-host-config.mjs dc69f294-de1e-4cd4-8322-93da8739eb73
+      - name: Excursion timetable and guest-list consistency regression tests
+        run: node --test tests/excursion-trip-counts.test.cjs
