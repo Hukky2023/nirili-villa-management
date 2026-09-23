@@ -15,7 +15,8 @@ type BookingMail={
 
 const money=(cents:number)=>'$'+(Math.max(0,Math.round(Number(cents)||0))/100).toFixed(2);
 const text=(value:any)=>String(value??'').trim();
-const escapeHtml=(value:any)=>text(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]||char));
+const htmlEscapes:Record<string,string>={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+const escapeHtml=(value:any)=>text(value).replace(/[&<>"']/g,char=>htmlEscapes[char]||char);
 
 function config(){
  const e=env as unknown as Record<string,string|undefined>;
