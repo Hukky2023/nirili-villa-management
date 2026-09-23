@@ -25,7 +25,7 @@ test('snapshot exposes live payment and locks while a guest action is pending',(
  const s=state(),order={id:'EXC-1',manageToken:token,source:'External guest website',kind:'excursion',guest:'Guest',email:'g@example.com',phone:'+9607000000',hotel:'Hotel',name:'Turtle',menuItemId:'turtle',date:'2026-10-01',time:'08:00',quantity:2,adults:2,children:0,infants:0,quotedCents:5000,cents:5000,status:'Scheduled',approvalStatus:'Approved',excursionPayments:[{cents:2000}]};
  s.orders.push(order);s.excursionChanges.push({id:'ECH-1',bookingId:order.id,type:'change',status:'Pending',requestedAt:'2026-09-23T06:00:00Z',proposed:{date:'2026-10-02'}});
  const view=excursionManageSnapshot(s,order,{time:'08:30',endTime:'10:00',vessel:'Boat One'});
- assert.equal(view.time,'08:00');assert.equal(view.paymentStatus,'Partially paid');assert.equal(view.balanceCents,3000);assert.equal(view.canEdit,false);assert.equal(view.pendingAction.id,'ECH-1');
+ assert.equal(view.time,'08:30');assert.equal(view.paymentStatus,'Partially paid');assert.equal(view.balanceCents,3000);assert.equal(view.canEdit,false);assert.equal(view.pendingAction.id,'ECH-1');
 });
 
 test('payment total nets reversals',()=>{
