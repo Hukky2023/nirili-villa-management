@@ -44,6 +44,16 @@ export function externalExcursionPaymentCents(order:any){
 
 function text(value:any){return String(value??'').trim();}
 
+function currentExcursionChargeCents(order:any){
+ const edited=Number(order?.billingRevision)>0||!!order?.billingEditedAt;
+ return Math.max(0,Number(edited?order?.cents:(order?.quotedCents??order?.cents))||0);
+}
+function clearCustomExcursionBilling(order:any){
+ delete order.billingItems;delete order.billingStatus;delete order.billingDate;
+ delete order.billingEditedAt;delete order.billingEditedBy;delete order.billingAdjustment;
+ order.billingRevision=0;
+}
+
 export function excursionManageSnapshot(state:any,order:any,liveSchedule:any=null){
  const packageOrders=externalPackageOrders(state,order);
  if(packageOrders.length>1){
@@ -52,8 +62,10 @@ export function excursionManageSnapshot(state:any,order:any,liveSchedule:any=nul
    .filter((change:any)=>change.status==='Pending'&&(change.packageGroupId===first.packageGroupId||ids.has(change.bookingId)))
    .sort((a:any,b:any)=>String(b.requestedAt||'').localeCompare(String(a.requestedAt||'')))[0]||null;
   const paidCents=packageOrders.reduce((sum:number,item:any)=>sum+externalExcursionPaymentCents(item),0);
-  const quotedCents=Math.max(0,Number(first.packageTotalCents)||packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.quotedCents)||0),0));
+  const originalQuotedCents=Math.max(0,Number(first.packageTotalCents)||packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.quotedCents)||0),0));
   const activeCents=packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.cents)||0),0);
+  const hasEditedBill=packageOrders.some((item:any)=>Number(item.billingRevision)>0||!!item.billingEditedAt);
+  const quotedCents=hasEditedBill?activeCents:originalQuotedCents;
   const balanceCents=Math.max(0,activeCents-paidCents);
   const cancelled=packageOrders.every((item:any)=>String(item.status||'')==='Cancelled'||['Cancelled','Declined'].includes(String(item.approvalStatus||'')));
   const completed=packageOrders.every((item:any)=>['Completed','Cancelled'].includes(String(item.status||'')));
@@ -67,7 +79,7 @@ export function excursionManageSnapshot(state:any,order:any,liveSchedule:any=nul
     id:text(item.id),name:text(item.packageSegmentName||item.name),date:text(item.date||schedule.date),time:text(item.time||schedule.time),endTime:text(item.endTime||schedule.endTime),
     status:String(item.status||''),approvalStatus:String(item.approvalStatus||''),matchedScheduleName:text(item.matchedScheduleName||schedule.name),
     vessel:text(schedule.vessel),crew:Array.isArray(schedule.crew)?schedule.crew.map(text).filter(Boolean):[],
-    quotedCents:Math.max(0,Number(item.quotedCents)||0),paymentStatus:segmentPaid>0&&segmentDue===0?'Paid':segmentPaid>0?'Partially paid':'Unpaid'
+    quotedCents:currentExcursionChargeCents(item),originalQuotedCents:Math.max(0,Number(item.quotedCents)||0),paymentStatus:segmentPaid>0&&segmentDue===0?'Paid':segmentPaid>0?'Partially paid':'Unpaid'
    };
   });
   return {
@@ -75,7 +87,7 @@ export function excursionManageSnapshot(state:any,order:any,liveSchedule:any=nul
    guest:text(first.guest),email:text(first.email),phone:text(first.phone),hotel:text(first.hotel||first.pickupLocation),room:text(first.externalRoom||first.room),groupName:text(first.groupName),
    date:text(first.date),time:text(first.time||first.schedule?.time),endTime:text(packageOrders[packageOrders.length-1]?.endTime||packageOrders[packageOrders.length-1]?.schedule?.endTime),
    returnTime:'',status,paymentStatus:cancelled?'Cancelled':quotedCents===0?'No payment due':paidCents>0&&balanceCents===0?'Paid':paidCents>0?'Partially paid':'Unpaid',
-   paidCents,balanceCents,quotedCents,adults:Math.max(0,Number(first.adults)||0),children:Math.max(0,Number(first.children)||0),infants:Math.max(0,Number(first.infants)||0),quantity:Math.max(0,Number(first.quantity)||0),
+   paidCents,balanceCents,quotedCents,originalQuotedCents,adults:Math.max(0,Number(first.adults)||0),children:Math.max(0,Number(first.children)||0),infants:Math.max(0,Number(first.infants)||0),quantity:Math.max(0,Number(first.quantity)||0),
    guestNames:Array.isArray(first.guestNames)?first.guestNames:[],guestCategories:Array.isArray(first.guestCategories)?first.guestCategories:[],footSizes:Array.isArray(first.footSizes)?first.footSizes:[],
    buggyRequested:packageOrders.some((item:any)=>item.buggyRequested===true),privateBoatRequested:false,vessel:'Multiple trips',crew:[],notes:text(first.notes),
    refundRequiredCents:packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.refundRequiredCents)||0),0),packageSegments:segments,
@@ -86,8 +98,9 @@ export function excursionManageSnapshot(state:any,order:any,liveSchedule:any=nul
  const pending=pendingExcursionChange(state,order.id);
  const schedule=['Departed','Completed'].includes(String(order.status||''))?(order.schedule||{}):{...(order.schedule||{}),...(liveSchedule||{})};
  const paidCents=externalExcursionPaymentCents(order);
- const quotedCents=Math.max(0,Number(order.quotedCents)||Number(order.cents)||0);
- const dueCents=Math.max(0,Number(order.cents||order.quotedCents||0)-paidCents);
+ const originalQuotedCents=Math.max(0,Number(order.quotedCents)||Number(order.cents)||0);
+ const quotedCents=currentExcursionChargeCents(order);
+ const dueCents=Math.max(0,Math.max(0,Number(order.cents)||0)-paidCents);
  const closed=['Completed','Departed','Cancelled'].includes(String(order.status||''));
  const cancelled=String(order.status||'')==='Cancelled'||String(order.approvalStatus||'')==='Cancelled'||String(order.approvalStatus||'')==='Declined';
  const awaiting=String(order.approvalStatus||'')==='Pending'||String(order.status||'').toLowerCase().includes('awaiting');
@@ -111,6 +124,7 @@ export function excursionManageSnapshot(state:any,order:any,liveSchedule:any=nul
   paidCents,
   balanceCents:dueCents,
   quotedCents,
+  originalQuotedCents,
   adults:Math.max(0,Number(order.adults)||0),
   children:Math.max(0,Number(order.children)||0),
   infants:Math.max(0,Number(order.infants)||0),
@@ -144,6 +158,7 @@ export function approveExternalExcursionChange(order:any,change:any,by:string){
  const logisticsChanged=excursionLogisticsChanged(order,proposed);
  Object.assign(order,proposed,{updatedAt:new Date().toISOString(),updatedBy:by});
  if(logisticsChanged){
+  clearCustomExcursionBilling(order);
   order.cents=0;
   order.status='Awaiting scheduling';
   order.approvalStatus='Pending';
@@ -155,7 +170,7 @@ export function approveExternalExcursionChange(order:any,change:any,by:string){
   delete order.separateVessel;delete order.overflowVesselId;delete order.originalScheduleId;delete order.extraVesselTrip;
   delete order.preferredTime;delete order.preferredEndTime;delete order.preferredScheduleId;delete order.matchedScheduleName;
   delete order.serviceType;delete order.serviceRequest;delete order.dinnerTime;delete order.buggyRoundTrip;
- }else{
+ }else if(!(Number(order.billingRevision)>0||order.billingEditedAt)){
   order.cents=Math.max(0,Number(order.quotedCents)||0);
  }
  change.status='Approved';change.decidedAt=new Date().toISOString();change.decidedBy=by;change.logisticsChanged=logisticsChanged;
