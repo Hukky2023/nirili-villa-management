@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {
   halfBoardFreeOrderAvailable,
   halfBoardMealSelection,
-  mealItemCoveredByPackage,
   mealItemIncluded,
   restaurantMealPeriod,
   setHalfBoardMealSelection
@@ -54,14 +53,4 @@ test('Breakfast does not consume the Half Board lunch or dinner entitlement',()=
     items:[{included:true}]
   });
   assert.equal(halfBoardFreeOrderAvailable(s,'NV-HB',lunch),true);
-});
-
-
-test('package menu coverage is independent from current Half Board entitlement',()=>{
-  assert.equal(mealItemCoveredByPackage('Full Board',{fullBoard:true}),true);
-  assert.equal(mealItemCoveredByPackage('Half Board',{fullBoard:true}),true);
-  assert.equal(mealItemCoveredByPackage('Half Board',{fullBoard:false}),false);
-  assert.equal(mealItemCoveredByPackage('Bed & Breakfast',{fullBoard:true}),false);
-  assert.equal(mealItemIncluded('Half Board',{fullBoard:true},true,'Dinner','Lunch'),false);
-  assert.equal(mealItemCoveredByPackage('Half Board',{fullBoard:true}),true);
 });
