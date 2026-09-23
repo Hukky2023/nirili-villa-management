@@ -1,6 +1,6 @@
 import {deletePOSBill} from '../../../lib/pos-bill-delete';
 import {waiterLine} from '../../../lib/waiter-pricing';
-import {halfBoardFreeOrderAvailable} from '../../../lib/meal-access';
+import {halfBoardMealStatus,restaurantMealPeriod,setHalfBoardMealSelection} from '../../../lib/meal-access';
 import {discountPOSBill} from '../../../lib/pos-discount';
 import {changePOSPayment} from '../../../lib/pos-payment';
 import {restaurantTables} from '../../../lib/restaurant-tables';
@@ -39,20 +39,22 @@ async function view(){
   return {...o,paymentStatus};
  });
  if(kitchenOnly)return {revision,kitchenOnly:true,guestOrders,orders};
- const paymentSettings=await loadRestaurantPaymentSettingsWithDailyRates();
- return {revision,canPay:canTakePayment(actor),canEdit:canTakePayment(actor),canDiscount:canTakePayment(actor),canSetExchange:actor?.role==='admin',paymentSettings,guestOrders,rooms:state.stays.filter((s:any)=>s.status==='In House').map((s:any)=>({id:s.id,room:s.room,guest:s.guest,meal:s.meal,halfBoardFreeOrderAvailable:halfBoardFreeOrderAvailable(state,s.id)})),orders};
+ const paymentSettings=await loadRestaurantPaymentSettingsWithDailyRates(),mealPeriod=restaurantMealPeriod();
+ return {revision,canPay:canTakePayment(actor),canEdit:canTakePayment(actor),canDiscount:canTakePayment(actor),canSetExchange:actor?.role==='admin',paymentSettings,mealPeriod,guestOrders,rooms:state.stays.filter((s:any)=>s.status==='In House').map((s:any)=>{const hb=halfBoardMealStatus(state,s.id);return {id:s.id,room:s.room,guest:s.guest,meal:s.meal,halfBoardFreeOrderAvailable:hb.freeOrderAvailable,halfBoardIncludedMeal:hb.selectedMeal,halfBoardMealLocked:hb.locked};}),orders};
 }
 export async function GET(){if(!canKitchen(await currentUser()))return Response.json({error:'Restaurant kitchen access required.'},{status:403});return Response.json(await view(),{headers:{'Cache-Control':'no-store'}});}
 export async function POST(r:Request){const u=await currentUser();if(!canKitchen(u)||!sameOrigin(r))return Response.json({error:'Restaurant kitchen access required.'},{status:403});try{const b=await r.json();const kitchenOnly=!canPOS(u);if(kitchenOnly&&!['kitchen','guestkitchen'].includes(String(b.action||'')))return Response.json({error:'Kitchen accounts can only update kitchen order status.'},{status:403});const {state,revision}=await readStateForView();state.posOrders??=[];
 if(b.action==='create'&&state.posOrders.some((o:any)=>o.token===b.token&&o.by===u!.userId))return Response.json(await view());
 if(b.revision!==revision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
-if(b.action==='create'){
+if(b.action==='set_half_board_meal'){
+ setHalfBoardMealSelection(state,String(b.stayId||''),b.meal,u!.username);
+}else if(b.action==='create'){
  if(!restaurantTables.includes(b.table))throw Error('Select a table before preparing the bill or sending it to the kitchen.');
  if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token)||!Array.isArray(b.items)||!b.items.length||b.items.length>100||typeof b.table!=='string'||b.table.length>40||typeof b.customer!=='string'||b.customer.length>100||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Check the order details.');
  const s=b.stayId?state.stays.find((s:any)=>s.id===b.stayId&&s.status==='In House'):null;if(b.stayId&&!s)throw Error('Select a currently checked-in guest.');
- const menu=(await loadMenu()).items;const halfBoardAvailable=halfBoardFreeOrderAvailable(state,s?.id);const items=b.items.map((x:any)=>{const i=menu.find(i=>i.id===x.id);if(!i||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>100)throw Error('An item is unavailable or its quantity is invalid.');if(x.cents!==i.cents)throw Error('A menu price changed. Refresh the menu and reselect that item.');return !canTakePayment(u)?waiterLine(i,x.quantity,s?.meal,x.included,halfBoardAvailable):{id:i.id,name:i.category+' · '+i.name,quantity:x.quantity,unitCents:i.cents,cents:i.cents*x.quantity};});
- const id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0),date=new Date().toISOString();
- state.posOrders.push({id,token:b.token,by:u!.userId,createdBy:u!.username,createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||b.customer.trim()||'Walk-in guest',table:b.table,notes:b.notes.trim(),items,cents,kitchen:'Awaiting cashier',method:s&&!canTakePayment(u)?'Room':'',history:[{date,by:u!.username,detail:'Order sent to cashier'}]});
+ const menu=(await loadMenu()).items,mealPeriod=restaurantMealPeriod(),hb=halfBoardMealStatus(state,s?.id);const items=b.items.map((x:any)=>{const i=menu.find(i=>i.id===x.id);if(!i||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>100)throw Error('An item is unavailable or its quantity is invalid.');if(x.cents!==i.cents)throw Error('A menu price changed. Refresh the menu and reselect that item.');return s?waiterLine(i,x.quantity,s.meal,x.included,hb.freeOrderAvailable,hb.selectedMeal,mealPeriod):{id:i.id,name:i.category+' · '+i.name,quantity:x.quantity,unitCents:i.cents,cents:i.cents*x.quantity,included:false,menuCents:i.cents};});
+ const id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0),date=new Date().toISOString(),includedMealPeriod=items.some((i:any)=>i.included===true)?mealPeriod:'';
+ state.posOrders.push({id,token:b.token,by:u!.userId,createdBy:u!.username,createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||b.customer.trim()||'Walk-in guest',table:b.table,notes:b.notes.trim(),items,cents,kitchen:'Awaiting cashier',method:s?'Room':'',mealPeriod,halfBoardIncludedMeal:hb.selectedMeal,includedMealPeriod,history:[{date,by:u!.username,detail:'Order sent to cashier'}]});
  if(s){s.posBills??=[];s.posBills.push({department:'Restaurant',id,items:items.map((i:any)=>[i.name,i.quantity,i.cents/100,0]),status:'Posted',totalCents:cents});s.history.unshift({date,by:u!.username,detail:'Restaurant bill '+id+' · $'+(cents/100).toFixed(2)});}
 }else if(b.action==='sendguestkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.kitchen!=='Awaiting cashier'||o.status==='Cancelled')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.status='Confirmed';o.updatedBy=u!.username;}else if(b.action==='guestkitchen'){const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.status==='Completed'||o.status==='Cancelled')throw Error('Order is no longer active.');const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen||'Sent']!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.status=b.status==='Served'?'Completed':'Confirmed';o.updatedBy=u!.username;}else{
  const o=state.posOrders.find((o:any)=>o.id===b.id);if(!o)throw Error('Bill not found.');const date=new Date().toISOString();
