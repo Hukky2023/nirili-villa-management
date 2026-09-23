@@ -1,6 +1,7 @@
 import {authDb,currentUser,hashPassword,hasPermission,limit,roomLoginActive,sameOrigin,validPassword,verifyPassword} from '../../../lib/auth';
 import {credentialStatement,mirrorCredentialRecord,readCredential} from '../../../lib/credential-store';
 import {deleteLegacySessionsForAccount,mirrorLegacyAccount,updateSupabaseEmployeePassword} from '../../../lib/supabase-bridge';
+import {appendAccountHistory} from '../../../lib/account-history';
 
 function canHandleGuestAccess(user:any,target:any){
  return user?.role==='admin'||(target?.role==='guest'&&user?.role==='staff'&&(user.permissions.length===0||hasPermission(user,'guesthouse_reception')));
@@ -50,6 +51,7 @@ export async function POST(r:Request){
     if(row)await mirrorLegacyAccount(row);
     await mirrorCredentialRecord(target.id);
    }catch{}
+   try{await appendAccountHistory(target.id,{at:new Date().toISOString(),action:'Guest password reset',by:u.username,detail:'One-time reset code issued. Previous guest password and active sessions invalidated.'});}catch{}
 
    return Response.json({ok:true,setupCode,requiresNewPassword:true},{headers});
   }
