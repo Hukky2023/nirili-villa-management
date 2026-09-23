@@ -138,9 +138,10 @@ export async function POST(request:Request){
    return Response.json({ok:true,booking:{id,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Pending',requiresApproval:true,requiresScheduling:false,date,quotedCents}},{status:201,headers});
   }
 
-  // Multi-part packages and private boats always go to the scheduling queue so
-  // the excursions manager can choose the right departure(s), vessel and crew.
-  if(item.id==='special-package'||privateBoatRequested){
+  // Private boats need a dedicated vessel/crew assignment. Special Package is
+  // allowed through normal schedule matching and only falls back to the queue
+  // when there is no compatible open trip with enough seats.
+  if(privateBoatRequested){
    const fallback=suggestedTripWindow(item.name);
    state.orders.push({...common,cents:0,time:'',preferredTime:fallback.time,preferredEndTime:fallback.endTime,status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:item.id!=='special-package',unscheduledRequest:true,autoConfirmed:false,guestNotified:false});
    const saved=await saveStayAccess(state,revision,'public-excursion-site');

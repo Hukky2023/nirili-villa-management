@@ -25,6 +25,8 @@ const aliases:[RegExp,string][]=[
 export const normalizeExcursionName=(value:any)=>String(value||'').trim().replace(/\s+/g,' ').toLowerCase();
 
 export function excursionComponents(value:any){
+ const raw=normalizeExcursionName(value);
+ if(raw==='special package')return ['turtle','shark','sandbank','coral garden','dolphin','fishing'];
  const source=String(value||'').toLowerCase().replace(/\([^)]*\)/g,' ');
  const parts=source.split('+').map(part=>part.trim()).filter(Boolean);
  const found:string[]=[];
