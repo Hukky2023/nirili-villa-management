@@ -20,6 +20,7 @@ import {autoPushBookingComAvailability} from '../../../lib/channels';
 import {sendBookingConfirmationEmail,sendBookingUpdatedEmail,sendBookingCancelledEmail,sendBookingRequestRejectedEmail} from '../../../lib/booking-email';
 import {sendGuestPushForRide} from '../../../lib/web-push';
 import {defaultTransportPlan,mergeTransportPlanInternal,normalizeTransportPlan,syncTransportBuggy} from '../../../lib/transport-plan';
+import {cancelLinkedTransportBookings,staleTransportBookingIds} from '../../../lib/linked-transport-bookings';
 import {dismissGuestNotification,guestNotificationsForAccount} from '../../../lib/guest-notifications';
 const MIN_EXCURSION_PAX=1;
 import {walkInExcursionBill,walkInExcursionProfile,syncWalkInExcursionAccess} from '../../../lib/walkin-excursion-access';
@@ -66,7 +67,7 @@ async function view(u:any){const {state,revision}=await loadViewState();const ex
  return {catalog:currentCatalog,requests:[],stays:guestStays,orders:[...ownOrders,...dining],guestNotifications:guestNotificationsForAccount(state,u.userId),buggyFareCents:Math.max(0,Number(state.buggySettings?.guestRideFareCents)||0),buggyRides};
  }const canManageExcursions=u.role==='admin'||hasPermission(u,'excursions_manager')||hasPermission(u,'edit_excursions');const crewOptions=canManageExcursions?(await authDb().prepare("SELECT name FROM accounts WHERE active=1 AND role='staff'").all<any>()).results.map((x:any)=>x.name):[];return {canSchedule:canManageExcursions,resources:excursionResources(state),crewOptions,catalog:currentCatalog,revision,requests:state.requests,bookingChanges:state.bookingChanges||[],excursionChanges:state.excursionChanges||[],rooms:state.rooms,stays:state.stays,orders};}
 export async function GET(){const u=await serviceUser();if(!canUseManagementServices(u)||restaurantOnly(u))return Response.json({error:'This account cannot access hotel management services.'},{status:403});try{return Response.json(await view(u),{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({error:'Could not load bookings. Please retry.'},{status:503})}}
-export async function POST(r:Request){const u=await serviceUser();if(!u||!sameOrigin(r)||(!canUseManagementServices(u)&&u.role!=='guest'))return Response.json({error:'This account cannot access hotel management services.'},{status:403});let generatedCrewAccountId='',generatedCrewLogin:any=null,generatedCrewCommitted=false;try{const b=await r.json(),{state,revision}=await loadViewState();let resultId='';let loginPlan:any=null;let revokeAccounts:string[]=[];let publicBookingUpdate:any=null;let confirmationEmailInput:any=null;let bookingConfirmation:any=null;let bookingDecisionEmailInput:any=null;let bookingDecisionKind='';let bookingDecision:any=null;let buggyPush:any=null;state.bookingChanges??=[];const today=islandToday();
+export async function POST(r:Request){const u=await serviceUser();if(!u||!sameOrigin(r)||(!canUseManagementServices(u)&&u.role!=='guest'))return Response.json({error:'This account cannot access hotel management services.'},{status:403});let generatedCrewAccountId='',generatedCrewLogin:any=null,generatedCrewCommitted=false;try{const b=await r.json(),{state,revision}=await loadViewState();let resultId='';let loginPlan:any=null;let revokeAccounts:string[]=[];let publicBookingUpdate:any=null;let confirmationEmailInput:any=null;let bookingConfirmation:any=null;let bookingDecisionEmailInput:any=null;let bookingDecisionKind='';let bookingDecision:any=null;let buggyPush:any=null;let linkedTransportStayToCancel='',linkedTransportIdsToCancel:string[]=[];state.bookingChanges??=[];const today=islandToday();
 if(b.action==='guest-notification-dismiss'){
  if(u.role!=='guest')return Response.json({error:'Guest access required.'},{status:403});
  const id=String(b.id||'').slice(0,120);
@@ -100,14 +101,14 @@ else if(['booking-change-approve','booking-change-reject','booking-cancel-approv
   bookingDecisionKind='cancelled';
   bookingDecisionEmailInput={email:s.email,guest:s.guest,reference:s.id,room:s.room,checkIn:s.checkIn,checkOut:s.checkOut,meal:s.meal,pax:s.pax,totalCents:s.base||0,manageToken:s.manageToken,eventId:change.id,refundRequiredCents};
   if(s.accountId)revokeAccounts.push(s.accountId);
-  const sourceRequest=state.requests.find((request:any)=>request.stayId===s.id);
+  const sourceRequest=state.requests.find((request:any)=>request.stayId===s.id);linkedTransportStayToCancel=s.id;
   deleteBooking(state,s,u.username);
   if(sourceRequest){sourceRequest.status='Cancelled';sourceRequest.cancelledAt=new Date().toISOString();sourceRequest.reviewedBy=u.username;if(sourceRequest.source==='Guest booking website')publicBookingUpdate={id:sourceRequest.id,status:'Cancelled',stayId:s.id,room:s.room};}
  }else{
   const p=change.proposed||{},room=String(b.room||s.room),rateCents=Number(b.rateCents),approvedTransport=mergeTransportPlanInternal(s.transportPlan,p.transportPlan||defaultTransportPlan(p.checkIn||s.checkIn,p.checkOut||s.checkOut));
   if(!Number.isInteger(rateCents)||rateCents<0||rateCents>1000000)throw Error('Enter a valid nightly rate.');
   editBooking(state,s,{guest:p.guest,room,checkIn:p.checkIn,checkOut:p.checkOut,pax:p.pax,meal:p.meal,source:s.source,rateCents},u.username);
-  Object.assign(s,{email:p.email,whatsapp:p.whatsapp,adults:p.adults,children:p.children,notes:p.notes||'',transportPlan:approvedTransport,rateCents});syncTransportBuggy(state,s,'arrival',approvedTransport.arrival?.launch);syncTransportBuggy(state,s,'departure',approvedTransport.departure?.launch);
+  Object.assign(s,{email:p.email,whatsapp:p.whatsapp,adults:p.adults,children:p.children,notes:p.notes||'',transportPlan:approvedTransport,rateCents});linkedTransportIdsToCancel=staleTransportBookingIds(approvedTransport);syncTransportBuggy(state,s,'arrival',approvedTransport.arrival?.launch);syncTransportBuggy(state,s,'departure',approvedTransport.departure?.launch);
   change.status='Approved';change.decidedAt=new Date().toISOString();change.decidedBy=u.username;change.decisionNote=note;change.approvedRoom=room;change.approvedRateCents=rateCents;
   s.history.unshift({date:change.decidedAt,detail:'Guest-requested booking changes approved · '+change.id,by:u.username});
   const sourceRequest=state.requests.find((request:any)=>request.stayId===s.id);if(sourceRequest)Object.assign(sourceRequest,{guest:s.guest,email:s.email,whatsapp:s.whatsapp,checkIn:s.checkIn,checkOut:s.checkOut,pax:s.pax,adults:s.adults,children:s.children,meal:s.meal,notes:s.notes,transportPlan:s.transportPlan,room:s.room});
@@ -207,6 +208,7 @@ if(!saved){
  }
  return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
 }
+if(linkedTransportStayToCancel||linkedTransportIdsToCancel.length)try{await cancelLinkedTransportBookings({stayId:linkedTransportStayToCancel,ids:linkedTransportIdsToCancel,by:u.userId})}catch{}
 if(buggyPush)try{await sendGuestPushForRide(buggyPush,'assigned')}catch{}
 if(publicBookingUpdate)try{await updatePublicBookingRequestStatus(publicBookingUpdate.id,publicBookingUpdate.status,publicBookingUpdate);}catch{}
 if(['booking-change-approve','booking-cancel-approve'].includes(b.action))try{await autoPushBookingComAvailability();}catch{}
