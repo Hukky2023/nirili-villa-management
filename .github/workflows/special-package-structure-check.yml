@@ -1,0 +1,35 @@
+name: Special Package structure check
+
+on:
+  push:
+    branches: [fix/special-package-always-split]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --experimental-strip-types --test tests/special-package-structure.test.mjs
+      - run: node --experimental-strip-types --test tests/special-package-auto-schedule.test.mjs
+      - run: node --experimental-strip-types --test tests/excursion-manage.test.mjs
+      - run: node --experimental-strip-types --test tests/excursion-change-autoassign.test.mjs
+      - run: node --experimental-strip-types --test tests/excursion-reassignment.test.mjs
+      - run: node --experimental-strip-types --test tests/excursion-time-change-notifications.test.mjs
+      - run: node --experimental-strip-types --test tests/excursion-schedule-options.test.mjs
+      - run: node --experimental-strip-types --test tests/excursion-billing.test.mjs
+      - run: node --experimental-strip-types --test tests/pos-room-billing.test.mjs
+      - run: node --experimental-strip-types --test tests/meal-access.test.mjs
+      - run: node --test tests/room-workspace.test.mjs
+      - run: node --experimental-strip-types --test tests/dashboard-data.test.mjs
+      - run: node --test tests/account-history.test.mjs
+      - run: node --test tests/excursion-trip-counts.test.cjs
+      - run: pnpm run build
