@@ -21,6 +21,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Nirili Villa Management",
   description: "Hotel operations, guest bookings, transfers and excursions for Nirili Villa in Dhiffushi, Maldives.",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon-new.svg",
     shortcut: "/favicon-new.svg",
