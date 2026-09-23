@@ -49,8 +49,8 @@ function planRows(state:TransportState,hotelState:any){
    const eligible=state.sailings.filter(s=>s.active&&canonicalLocation(s.from)===from&&canonicalLocation(s.to)===to&&s.capacity-bookedPax(state,s.id,date,plan.transportBookingId||plan.previousTransportBookingId||'')>=pax).sort((a,b)=>a.depart.localeCompare(b.depart));
    const flight=minutes(String(plan.flightTime||''));let recommended:Sailing|undefined;
    if(eligible.length){
-    if(leg==='arrival'&&flight!=null)recommended=eligible.find(s=>(minutes(s.depart)??0)>=flight+90)||eligible[0];
-    else if(leg==='departure'&&flight!=null)recommended=[...eligible].reverse().find(s=>(minutes(s.arrive)??1440)<=flight-120)||eligible[eligible.length-1];
+    if(leg==='arrival'&&flight!=null)recommended=eligible.find(s=>(minutes(s.depart)??0)>=flight+90);
+    else if(leg==='departure'&&flight!=null)recommended=[...eligible].reverse().find(s=>(minutes(s.arrive)??1440)<=flight-120);
     else recommended=leg==='arrival'?eligible[0]:eligible[eligible.length-1];
    }
    rows.push({stayId:stay.id,leg,guest:stay.guest,phone:stay.whatsapp||'',room:stay.room||'',pax,adults:Number(stay.adults??stay.pax??1),children:Number(stay.children??0),date,needTransfer:plan.needTransfer||'later',from,to,flightNumber:plan.flightNumber||'',flightTime:plan.flightTime||'',ownTransport:plan.ownTransport||'',ownTime:leg==='arrival'?plan.dhiffushiArrivalTime||'':plan.ownDepartureTime||'',status:plan.status||'',launch:plan.launch||null,transportBookingId:plan.transportBookingId||'',needsReview:!!plan.needsReview,recommendedScheduleId:recommended?.id||'',eligibleScheduleIds:eligible.map(s=>s.id)});
