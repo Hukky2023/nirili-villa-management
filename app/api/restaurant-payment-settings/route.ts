@@ -23,5 +23,5 @@ export async function POST(r:Request){
  const user=await currentUser();
  if(user?.role!=='admin'||!sameOrigin(r))return Response.json({error:'Admin access required.'},{status:403});
  try{return Response.json({settings:await refreshRestaurantFxRates(true)});}
- catch{return Response.json({error:'Could not refresh online exchange rates.'},{status:503});}
+ catch{return Response.json({error:'Could not refresh the EUR exchange rate.'},{status:503});}
 }
