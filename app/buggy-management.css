@@ -9,3 +9,7 @@
 @media(max-width:520px){.buggy-price-editor{grid-template-columns:1fr}.buggy-price-editor>button{grid-column:auto}}
 
 .buggy-dispatch-status.assigned{background:#f1f5ff;color:#3557a5}
+
+.buggy-title-actions{display:flex;align-items:center;gap:8px}.buggy-title-actions>button{display:inline-flex;align-items:center;gap:6px;min-height:42px}.buggy-title-actions svg{width:17px;height:17px}
+@media(max-width:700px){.buggy-title-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.buggy-title-actions>button{width:100%;justify-content:center}}
+@media(max-width:460px){.buggy-title-actions{grid-template-columns:1fr}}
