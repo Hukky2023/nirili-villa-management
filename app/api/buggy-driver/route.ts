@@ -4,6 +4,7 @@ import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {isRomanticBeachDinner} from '../../../lib/excursion-services';
 import {sendGuestPushForRide} from '../../../lib/web-push';
+import {sendTransportBuggyEmail} from '../../../lib/booking-email';
 
 function minusMinutes(time:string,minutes:number){
  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return '';
@@ -20,8 +21,8 @@ function confirmed(order:any){
   &&(!!(order.time||order.schedule?.time)||isRomanticBeachDinner(order));
 }
 function manualPickupFor(item:any,state:any){
- const guestRide=item.bookingType==='guest-ride',buggy=(state.buggyFleet||[]).find((x:any)=>x.id===item.buggyId);
- return {...item,manual:true,guestRide,excursion:guestRide?'Guest buggy ride':item.excursion||'Manual buggy booking',excursionTime:item.pickupTime||'',pickupTimingNote:guestRide?'Requested now':'Manual booking',inHouse:guestRide||!!item.stayId,hotel:guestRide?'Nirili Villa':'',room:item.room||'',buggyRequested:true,roundTrip:false,romanticDinner:false,status:item.cancelled?'Cancelled':guestRide?(item.buggyStatus||'Requested'):(item.buggyBoardedAt?'Boarded':item.buggyArrivedAt?'Arrived':'Pending pickup'),buggyName:buggy?.name||'',driver:item.buggyDriver||buggy?.driver||'',fareCents:Math.max(0,Number(item.fareCents)||0),chargeToRoom:item.chargeToRoom===true,arrivedAt:item.buggyArrivedAt||'',arrivedBy:item.buggyArrivedBy||'',boardedAt:item.buggyBoardedAt||'',boardedBy:item.buggyBoardedBy||''};
+ const guestRide=item.bookingType==='guest-ride',transportRide=item.bookingType==='stay-transfer',buggy=(state.buggyFleet||[]).find((x:any)=>x.id===item.buggyId);
+ return {...item,manual:true,guestRide,transportRide,excursion:guestRide?'Guest buggy ride':transportRide?(item.excursion||'Guest transport buggy'):item.excursion||'Manual buggy booking',excursionTime:item.pickupTime||'',pickupTimingNote:guestRide?'Requested now':transportRide?'Linked guest transport':'Manual booking',inHouse:guestRide||transportRide||!!item.stayId,hotel:guestRide||transportRide?'Nirili Villa':'',room:item.room||'',buggyRequested:true,roundTrip:false,romanticDinner:false,status:item.cancelled?'Cancelled':guestRide||transportRide?(item.buggyStatus||'Scheduled'):(item.buggyBoardedAt?'Boarded':item.buggyArrivedAt?'Arrived':'Pending pickup'),buggyName:buggy?.name||'',driver:item.buggyDriver||buggy?.driver||'',fareCents:Math.max(0,Number(item.fareCents)||0),chargeToRoom:item.chargeToRoom===true,arrivedAt:item.buggyArrivedAt||'',arrivedBy:item.buggyArrivedBy||'',boardedAt:item.buggyBoardedAt||'',boardedBy:item.buggyBoardedBy||''};
 }
 function activeGuestRide(item:any){return item?.bookingType==='guest-ride'&&item.cancelled!==true&&!['Completed','Cancelled'].includes(String(item.buggyStatus||''));}
 function releaseBuggy(state:any,item:any){
@@ -130,20 +131,20 @@ export async function PATCH(r:Request){
   const order=manual||(state.orders||[]).find((o:any)=>o.id===id&&confirmed(o)&&(!!o.stayId||o.buggyRequested===true));
   if(!order)throw Error('Pickup booking not found or no longer active.');
   const now=new Date().toISOString();
-  const roundTrip=!manual&&isRomanticBeachDinner(order)&&!!order.buggyRoundTrip,guestRide=!!manual&&order.bookingType==='guest-ride';
+  const roundTrip=!manual&&isRomanticBeachDinner(order)&&!!order.buggyRoundTrip,guestRide=!!manual&&order.bookingType==='guest-ride',transportRide=!!manual&&order.bookingType==='stay-transfer',liveRide=guestRide||transportRide;
   if(action==='cancel'){
    if(!manual)throw Error('Only manual buggy bookings can be cancelled from the Buggy Driver screen.');
    order.cancelled=true;order.cancelledAt=now;order.cancelledBy=user?.username||user?.displayName||'buggy-driver';order.buggyStatus='Cancelled';if(guestRide){removeGuestRideBill(state,order);releaseBuggy(state,order);recordGuestRideEvent(state,order,'Cancelled',now,user?.username||user?.displayName||'buggy-driver');}
   }else if(action==='on-the-way'){
-   if(!guestRide)throw Error('On the way is only used for in-house guest rides.');
+   if(!liveRide)throw Error('On the way is only used for guest rides and linked guest transport.');
    if(!order.buggyId)throw Error('This guest ride is waiting for buggy assignment.');
    if(!['Assigned','Driver on the way'].includes(String(order.buggyStatus||'')))throw Error('This ride is not ready to start pickup.');
    order.buggyPickupStartedAt=order.buggyPickupStartedAt||now;
    order.buggyPickupStartedBy=user?.username||user?.displayName||'buggy-driver';
    order.buggyStatus='Driver on the way';recordGuestRideEvent(state,order,'Driver on the way',now,user?.username||user?.displayName||'buggy-driver');
   }else if(action==='arrived'){
-   if(guestRide&&!order.buggyId)throw Error('This guest ride is waiting for buggy assignment.');
-   if(guestRide&&String(order.buggyStatus||'')!=='Driver on the way')throw Error('Start the pickup before marking that you arrived.');
+   if(liveRide&&!order.buggyId)throw Error('This ride is waiting for buggy assignment.');
+   if(liveRide&&String(order.buggyStatus||'')!=='Driver on the way')throw Error('Start the pickup before marking that you arrived.');
    if(!order.buggyArrivedAt){
     order.buggyArrivedAt=now;
     order.buggyArrivedBy=user?.username||user?.displayName||'buggy-driver';
@@ -155,10 +156,10 @@ export async function PATCH(r:Request){
    if(!order.buggyBoardedAt){
     order.buggyBoardedAt=now;
     order.buggyBoardedBy=user?.username||user?.displayName||'buggy-driver';
-    order.buggyStatus=guestRide?'On trip':roundTrip?'Going to dinner':'Boarded';if(guestRide)recordGuestRideEvent(state,order,'On trip',now,user?.username||user?.displayName||'buggy-driver');
+    order.buggyStatus=liveRide?'On trip':roundTrip?'Going to dinner':'Boarded';if(guestRide)recordGuestRideEvent(state,order,'On trip',now,user?.username||user?.displayName||'buggy-driver');
    }
   }else if(action==='complete'){
-   if(!guestRide)throw Error('Complete is only used for in-house guest rides.');
+   if(!liveRide)throw Error('Complete is only used for guest rides and linked guest transport.');
    if(!order.buggyBoardedAt)throw Error('Mark the guest onboard before completing the ride.');
    order.buggyCompletedAt=order.buggyCompletedAt||now;order.buggyCompletedBy=user?.username||user?.displayName||'buggy-driver';order.buggyStatus='Completed';releaseBuggy(state,order);
    recordGuestRideEvent(state,order,'Completed',now,user?.username||user?.displayName||'buggy-driver');
@@ -178,9 +179,11 @@ export async function PATCH(r:Request){
   }
   const saved=await saveStayAccess(state,revision,user?.userId||'buggy-driver');
   if(!saved)return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
-  if(guestRide&&['on-the-way','arrived','boarded','complete'].includes(action)){
+  if(liveRide&&['on-the-way','arrived','boarded','complete'].includes(action)){
    const buggy=(state.buggyFleet||[]).find((x:any)=>x.id===order.buggyId),event=action==='on-the-way'?'on-the-way':action==='arrived'?'arrived':action==='boarded'?'started':'completed';
-   try{await sendGuestPushForRide({...order,buggyName:buggy?.name||'',driver:order.buggyDriver||user?.displayName||user?.username||''},event)}catch{}
+   const stay=order.stayId?(state.stays||[]).find((s:any)=>s.id===order.stayId):null,notifyRide={...order,accountId:order.accountId||stay?.accountId||'',buggyName:buggy?.name||'',driver:order.buggyDriver||user?.displayName||user?.username||''};
+   try{await sendGuestPushForRide(notifyRide,event)}catch{}
+   if(transportRide&&stay?.email&&['on-the-way','arrived'].includes(action))try{await sendTransportBuggyEmail({email:stay.email,guest:stay.guest,reference:stay.id,room:stay.room,manageToken:stay.manageToken,leg:order.transportLeg==='departure'?'departure':'arrival',date:order.date,pickupTime:order.pickupTime,location:order.location,destination:order.destination,buggyName:buggy?.name||'',driver:order.buggyDriver||user?.displayName||user?.username||'',event:action==='on-the-way'?'on-the-way':'arrived'})}catch{}
   }
   return Response.json(action==='cancel'?{ok:true,cancelled:true,id}:{ok:true,pickup:manual?manualPickupFor(order,state):pickupFor(order,state)},{headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not update pickup.'},{status:400});}
