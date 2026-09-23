@@ -54,7 +54,7 @@ export default function BuggyDriverPortal(){
   finally{setBusy('');}
  }
 
- async function update(id:string,action:'arrived'|'boarded'|'complete'|'cancel'|'dinner-dropoff'|'return-arrived'|'return-boarded'|'return-complete'){
+ async function update(id:string,action:'on-the-way'|'arrived'|'boarded'|'complete'|'cancel'|'dinner-dropoff'|'return-arrived'|'return-boarded'|'return-complete'){
   if(busy)return;setBusy(id+action);setError('');
   try{
    const r=await fetch('/api/buggy-driver',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,action})}),d=await r.json();
@@ -65,7 +65,7 @@ export default function BuggyDriverPortal(){
   finally{setBusy('');}
  }
 
- const pending=pickups.filter(p=>['Requested','Driver on the way','Pending pickup','Waiting for dinner to finish'].includes(p.status)).length,arrived=pickups.filter(p=>['Arrived','Return pickup arrived'].includes(p.status)).length,boarded=pickups.filter(p=>['Boarded','On trip','Going to dinner','Returning','Round trip complete','Completed'].includes(p.status)).length;
+ const pending=pickups.filter(p=>['Requested','Assigned','Driver on the way','Pending pickup','Waiting for dinner to finish'].includes(p.status)).length,arrived=pickups.filter(p=>['Arrived','Return pickup arrived'].includes(p.status)).length,boarded=pickups.filter(p=>['Boarded','On trip','Going to dinner','Returning','Round trip complete','Completed'].includes(p.status)).length;
 
  return <main className="buggy-driver">
   <header className="buggy-driver-header"><div><small>NIRILI TOURS · DHIFFUSHI</small><h1>Buggy Driver</h1><p>{driver} · Guest pickup list</p></div><SessionButton signedIn inline/></header>
@@ -100,6 +100,7 @@ export default function BuggyDriverPortal(){
     </div>
     <div className="buggy-actions">
      {p.status==='Requested'&&p.guestRide&&<div className="buggy-arrived-note"><Clock3 size={17}/>Waiting for dispatch to assign a buggy.</div>}
+     {p.status==='Assigned'&&p.guestRide&&<><button type="button" className="arrived" disabled={busy===p.id+'on-the-way'} onClick={()=>update(p.id,'on-the-way')}><Clock3 size={18}/>{busy===p.id+'on-the-way'?'Starting…':'Start pickup · Driver on the way'}</button>{p.manual&&<button type="button" className="cancel-manual" disabled={busy===p.id+'cancel'} onClick={()=>{if(confirm('Cancel this buggy booking?'))void update(p.id,'cancel')}}><Trash2 size={18}/>{busy===p.id+'cancel'?'Cancelling…':'Cancel'}</button>}</>}
      {['Pending pickup','Driver on the way'].includes(p.status)&&<><button type="button" className="arrived" disabled={busy===p.id+'arrived'} onClick={()=>update(p.id,'arrived')}><BellRing size={18}/>{busy===p.id+'arrived'?'Notifying…':'I arrived · Notify guest'}</button>{p.manual&&<button type="button" className="cancel-manual" disabled={busy===p.id+'cancel'} onClick={()=>{if(confirm('Cancel this buggy booking?'))void update(p.id,'cancel')}}><Trash2 size={18}/>{busy===p.id+'cancel'?'Cancelling…':'Cancel'}</button>}</>}
      {p.status==='Arrived'&&<><div className="buggy-arrived-note"><BellRing size={17}/>Guest notified that the buggy has arrived.</div><button type="button" className="boarded" disabled={busy===p.id+'boarded'} onClick={()=>update(p.id,'boarded')}><CheckCircle2 size={18}/>{busy===p.id+'boarded'?'Saving…':p.roundTrip?'Guests on buggy · To dinner':'Guests on buggy'}</button></>}
      {!p.guestRide&&!p.roundTrip&&p.status==='Boarded'&&<div className="buggy-boarded"><CheckCircle2 size={20}/><strong>Pickup complete</strong><span>Guests are on the buggy.</span></div>}
