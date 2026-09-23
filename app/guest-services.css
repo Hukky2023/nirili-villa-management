@@ -76,3 +76,5 @@
 }
 
 .guest-push{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:14px 16px;border:1px solid #d5e4ea;border-radius:14px;background:#fff}.guest-push-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#eef7fb;color:#087cad}.guest-push.enabled .guest-push-icon{background:#eaf7ef;color:#176742}.guest-push.blocked .guest-push-icon,.guest-push.unsupported .guest-push-icon{background:#f4f5f6;color:#66717a}.guest-push-copy{display:grid;gap:3px}.guest-push-copy strong{color:#14394d}.guest-push-copy span,.guest-push-copy small{color:#607c8b;font-size:12px;line-height:1.45}.guest-push>button{min-height:42px;padding:9px 13px;border:1px solid #c8dce5;border-radius:10px;background:#fff;color:#174158;font-weight:800}.guest-push>button.primary{background:#087cad;border-color:#087cad;color:#fff}@media(max-width:650px){.guest-push{grid-template-columns:auto 1fr}.guest-push>button{grid-column:1/-1;width:100%}}
+
+.guest-buggy-status.assigned{background:#f1f5ff;color:#3557a5}
