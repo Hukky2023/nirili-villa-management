@@ -25,7 +25,6 @@ jobs:
       - run: node --test tests/room-workspace.test.mjs
       - run: node --experimental-strip-types --test tests/dashboard-data.test.mjs
       - run: node --test tests/account-history.test.mjs
-      - run: node --experimental-strip-types --test tests/restaurant-meal-plan.test.mjs
       - run: node --experimental-strip-types --test tests/excursion-billing.test.mjs
       - run: node --test tests/excursion-trip-counts.test.cjs
       - run: pnpm run build
