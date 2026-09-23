@@ -18,9 +18,9 @@ import ExcursionGuidePicker from './excursion-guide-picker';
 import {assignedGuideCount,requiredExcursionGuides} from '../lib/excursion-guides';
 import {isPrivateResortVisit,isRomanticBeachDinner} from '../lib/excursion-services';
 import {inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,suggestedTripWindow} from '../lib/excursion-operations';
+import {excursionScheduleNameOptions} from '../lib/excursion-schedule-options';
 
 type ExcursionTab='Bookings'|'Schedule'|'Excursion menu'|'Crew members'|'Vessels'|'Accessories';
-const standardSuggestions=['Fish Tank Snorkeling + Sandbank Trip','Turtle Snorkeling + Coral Garden Snorkeling','Sandbank Trip + Turtle Snorkeling','Shark Snorkeling (Nurse Shark) + Turtle Snorkeling','Clown Fish Snorkeling + Manta Snorkeling','Dolphin Watching + Fishing with Dinner','Dolphin Watching only'];
 function maldivesToday(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=(type:string)=>parts.find(p=>p.type===type)?.value||'';return `${get('year')}-${get('month')}-${get('day')}`;}
 const shiftDate=(date:string,days:number)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 const displayDate=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)?value.split('-').reverse().join('-'):value;
@@ -36,7 +36,7 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
  const crewPool=(resources.crew||[]).filter((crew:any)=>!crew.removed);
  const tabs:ExcursionTab[]=['Bookings','Schedule','Excursion menu','Crew members','Vessels','Accessories'];
  const money=(cents:number)=>'$'+((Number(cents)||0)/100).toFixed(2);
- const nameSuggestions=useMemo(()=>Array.from(new Set([...standardSuggestions,...menu.map((x:any)=>x.name)])),[menu]);
+ const nameSuggestions=useMemo(()=>excursionScheduleNameOptions(menu),[menu]);
  const availableVessels=(resources.vessels||[]).filter((v:any)=>(v.condition||'Available')==='Available');
  const availableGoPros=(resources.gopros||[]).filter((g:any)=>(g.condition||'Available')==='Available');
  const availableDrones=(resources.drones||[]).filter((d:any)=>(d.condition||'Available')==='Available');
@@ -61,8 +61,16 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
  async function loadCrewTripRequests(silent=false){try{const r=await fetch('/api/crew-trip-requests',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not load crew requests');setCrewTripRequests((d.requests||[]).filter((request:any)=>request.status==='Pending'));}catch(e){if(!silent)setMessage((e as Error).message);}}
  async function load(selected=date,silent=false){if(!silent){setLoading(true);setMessage('');}try{const [scheduleResponse]=await Promise.all([fetch('/api/excursion-schedules?date='+encodeURIComponent(selected),{cache:'no-store'}),loadCrewTripRequests(true)]),d=await scheduleResponse.json();if(!scheduleResponse.ok)throw Error(d.error||'Could not load schedule');setSchedules(d.schedules||[]);setSharedBoatGroups(d.sharedBoatGroups||{});setUnscheduledRequests(d.unscheduledRequests||[]);}catch(e){if(!silent)setMessage((e as Error).message);}finally{if(!silent)setLoading(false);}}
  async function loadMenu(silent=false){if(!silent)setMessage('');try{const r=await fetch('/api/excursion-menu',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not load excursion menu');setMenu(d.items||[]);}catch(e){if(!silent)setMessage((e as Error).message);}}
- useEffect(()=>{if(tab==='Schedule')load(date);if(tab==='Crew members')void loadCrewTripRequests(true);if(tab==='Excursion menu')loadMenu()},[date,tab]);
- useEffect(()=>{const onRefresh=()=>{if(tab==='Schedule')void load(date,true);if(tab==='Crew members')void loadCrewTripRequests(true);if(tab==='Excursion menu')void loadMenu(true)};window.addEventListener('nirili:auto-refresh',onRefresh);return()=>window.removeEventListener('nirili:auto-refresh',onRefresh)},[date,tab]);
+ useEffect(()=>{
+  const catalogExcursions=(data?.catalog||[]).filter((item:any)=>item?.kind==='excursion'&&item?.active!==false);
+  if(catalogExcursions.length)setMenu(catalogExcursions);
+ },[data?.catalog]);
+ useEffect(()=>{
+  if(tab==='Schedule'){void load(date);void loadMenu(true);}
+  if(tab==='Crew members')void loadCrewTripRequests(true);
+  if(tab==='Excursion menu')void loadMenu();
+ },[date,tab]);
+ useEffect(()=>{const onRefresh=()=>{if(tab==='Schedule'){void load(date,true);void loadMenu(true)}if(tab==='Crew members')void loadCrewTripRequests(true);if(tab==='Excursion menu')void loadMenu(true)};window.addEventListener('nirili:auto-refresh',onRefresh);return()=>window.removeEventListener('nirili:auto-refresh',onRefresh)},[date,tab]);
  useEffect(()=>{
   if(tab!=='Schedule'||date!==maldivesToday()||loading||!schedules.length)return;
   const scheduledTrips=schedules.filter((item:any)=>item.status!=='Cancelled');
