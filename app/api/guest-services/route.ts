@@ -37,6 +37,7 @@ async function specialPackagePlanForState(state:any,date:string,quantity:number)
   const schedules=rows.map((row:any)=>{try{return JSON.parse(row.payload||'{}')}catch{return null}})
    .filter((schedule:any)=>schedule&&schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
   for(const schedule of schedules){
+   if(String(schedule.name||'').trim().toLowerCase()==='special package')continue;
    const coverage=specialPackageCoverage(schedule.name);
    if(!coverage.length)continue;
    const load=excursionScheduleLoadForOrder(schedule,schedules,state.orders||[],'');
