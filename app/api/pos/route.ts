@@ -30,14 +30,15 @@ async function view(){
  const {state,revision}=await readStateForView();
  const actor=await currentUser();
  const kitchenOnly=!!actor&&canKitchen(actor)&&!canPOS(actor);
- const guestOrders=state.orders.filter((o:any)=>o.kind==='food'&&o.status!=='Cancelled').map((o:any)=>({
-  id:o.id,createdAt:o.createdAt,customer:o.guest,room:state.stays.find((s:any)=>s.id===o.stayId)?.room||o.room,notes:o.notes,name:o.name,quantity:o.quantity,kitchen:o.status==='Completed'?'Served':o.kitchen||'Sent'
- }));
+ const guestOrders=state.orders.filter((o:any)=>o.kind==='food'&&o.status!=='Cancelled').map((o:any)=>{
+  const stay=state.stays.find((s:any)=>s.id===o.stayId);
+  return {id:o.id,createdAt:o.createdAt,customer:o.guest,room:stay?.room||o.room,mealPlan:stay?.meal||'',notes:o.notes,name:o.name,quantity:o.quantity,kitchen:o.status==='Completed'?'Served':o.kitchen||'Sent'};
+ });
  const orders=(state.posOrders||[]).map((o:any)=>{
   const s=state.stays.find((s:any)=>s.id===o.stayId);
   const paymentStatus=restaurantPaymentStatus(o,s);
-  if(kitchenOnly)return {id:o.id,createdAt:o.createdAt,customer:o.customer,room:o.room,table:o.table,notes:o.notes,items:o.items,cents:o.cents,kitchen:o.kitchen,paymentStatus};
-  return {...o,paymentStatus};
+  if(kitchenOnly)return {id:o.id,createdAt:o.createdAt,customer:o.customer,room:o.room,table:o.table,mealPlan:s?.meal||'',notes:o.notes,items:o.items,cents:o.cents,kitchen:o.kitchen,paymentStatus};
+  return {...o,mealPlan:s?.meal||'',paymentStatus};
  });
  if(kitchenOnly)return {revision,kitchenOnly:true,guestOrders,orders};
  const paymentSettings=await loadRestaurantPaymentSettingsWithDailyRates(),mealPeriod=restaurantMealPeriod();
