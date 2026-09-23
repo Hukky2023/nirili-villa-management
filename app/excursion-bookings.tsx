@@ -30,6 +30,7 @@ export default function ExcursionBookings() {
   const [date, setDate] = useState(''), [payment, setPayment] = useState('');
   const [page, setPage] = useState(1);
   const [canAdjustBilling, setCanAdjustBilling] = useState(false), [revision, setRevision] = useState(0);
+  const [manageRequests,setManageRequests]=useState<any[]>([]),[manageBusy,setManageBusy]=useState(''),[manageMessage,setManageMessage]=useState('');
   const request = useRef<AbortController | null>(null);
 
   const load = useCallback(async (background = false) => {
@@ -48,7 +49,7 @@ export default function ExcursionBookings() {
         throw new Error(result.error || 'Could not load confirmed excursion bookings.');
       }
       if (!Array.isArray(result.bookings)) throw new Error('The booking list could not be read. Please refresh.');
-      if (!controller.signal.aborted) {setBookings(result.bookings); setRevision(result.revision); setCanAdjustBilling(result.canAdjustBilling === true); setLoaded(true); setError('');}
+      if (!controller.signal.aborted) {setBookings(result.bookings); setManageRequests(Array.isArray(result.manageRequests)?result.manageRequests:[]); setRevision(result.revision); setCanAdjustBilling(result.canAdjustBilling === true); setLoaded(true); setError('');}
     } catch (reason) {
       if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load bookings. Please try again.');
     } finally {
@@ -81,12 +82,28 @@ export default function ExcursionBookings() {
   const total = filtered.reduce((sum, b) => sum + b.totalCents, 0);
   const hasFilters = !!(query || date || payment);
   function clearFilters() {setQuery(''); setDate(''); setPayment(''); setPage(1);}
+  async function decideManageRequest(item:any,approve:boolean){
+    if(manageBusy)return;
+    const note=prompt(approve?'Optional note for the guest:':'Optional reason for rejecting this request:','')||'';
+    const action='manage-'+item.type+'-'+(approve?'approve':'reject');
+    if(approve&&!confirm((item.type==='cancel'?'Approve cancellation for ':'Approve requested changes for ')+item.bookingId+'?'))return;
+    setManageBusy(item.id);setManageMessage('');
+    try{
+      const response=await fetch('/api/excursion-bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,id:item.id,revision,note})}),result=await response.json();
+      if(!response.ok)throw Error(result.error||'Could not review guest request.');
+      setManageMessage(item.type==='cancel'&&approve?'Cancellation approved.'+(result.decision?.refundRequiredCents?' Refund required: '+money(result.decision.refundRequiredCents)+'.':''):(approve?'Guest changes approved.':'Guest request rejected.')+(result.email?.sent?' Email sent.':''));
+      await load();
+      window.dispatchEvent(new Event('services-updated'));
+    }catch(e){setManageMessage(e instanceof Error?e.message:'Could not review guest request.');}
+    finally{setManageBusy('');}
+  }
 
   return <section className="excursion-panel excursion-bookings-panel" aria-labelledby="excursion-bookings-heading">
     <div className="excursion-panel-head">
       <div><h3 id="excursion-bookings-heading">Confirmed excursion bookings</h3><p>All confirmed bookings, across all dates. Pending, declined and cancelled requests are not included.</p></div>
       <button type="button" className="excursion-secondary-btn" disabled={loading} onClick={() => void load()}>{loading ? 'Loading…' : 'Refresh bookings'}</button>
     </div>
+    {manageRequests.length>0&&<section className="excursion-manage-requests"><div className="excursion-manage-requests-head"><div><small>GUEST SELF-SERVICE</small><h4>Change & cancellation requests</h4><p>Confirmed external excursion bookings stay unchanged until you approve a guest request.</p></div><strong>{manageRequests.length}</strong></div>{manageMessage&&<p className="excursion-manage-message" role="status">{manageMessage}</p>}<div className="excursion-manage-request-list">{manageRequests.map(item=><article key={item.id}><div><small>{item.id} · {item.bookingId}</small><h5>{item.type==='cancel'?'Cancellation request':'Change request'} · {item.guest}</h5><p><strong>Current:</strong> {item.excursion} · {dateLabel(item.date)}{item.time?' · '+item.time:''} · {item.quantity} guests</p>{item.type==='change'&&item.proposed&&<p><strong>Requested:</strong> {item.proposed.name} · {dateLabel(item.proposed.date)} · {item.proposed.quantity} guests · {item.proposed.hotel}</p>}<small>{item.email}{item.phone?' · '+item.phone:''}</small></div><div className="excursion-manage-request-actions"><button type="button" className="excursion-secondary-btn" disabled={manageBusy===item.id} onClick={()=>decideManageRequest(item,false)}>Reject</button><button type="button" className="excursion-primary-btn" disabled={manageBusy===item.id} onClick={()=>decideManageRequest(item,true)}>{manageBusy===item.id?'Saving…':item.type==='cancel'?'Approve cancellation':'Approve changes'}</button></div></article>)}</div></section>}
     <div className="excursion-booking-filters">
       <label>Search bookings<input type="search" value={query} placeholder="Guest, room, booking reference or excursion" onChange={e => {setQuery(e.target.value); setPage(1);}}/></label>
       <label>Trip date<DateFieldDMY value={date} onChange={value => {setDate(value); setPage(1);}} ariaLabel="Trip date"/></label>
@@ -111,7 +128,7 @@ export default function ExcursionBookings() {
         <ExcursionBillingActions booking={b} canAdjust={canAdjustBilling} revision={revision} onUpdated={() => load()}/>
         <details className="excursion-booking-details"><summary>View details<span className="excursion-booking-sr-only"> for {b.guest}, booking {b.id}</span></summary>
           <dl>
-            {b.groupName&&<div><dt>Family / group</dt><dd>{b.groupName}<small>{b.guests} guests under one booking</small></dd></div>}<div><dt>Phone / WhatsApp</dt><dd>{b.phone ? <a href={'tel:'+b.phone}>{b.phone}</a> : 'Not recorded'}</dd></div>
+            {b.groupName&&<div><dt>Family / group</dt><dd>{b.groupName}<small>{b.guests} guests under one booking</small></dd></div>}<div><dt>Phone / WhatsApp</dt><dd>{b.phone ? <a href={'tel:'+b.phone}>{b.phone}</a> : 'Not recorded'}</dd></div>{b.email&&<div><dt>Email</dt><dd>{b.email}</dd></div>}
             <div><dt>Vessel</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.vessel}{b.separateVessel && <small>Extra vessel booking</small>}</dd></div>
             <div><dt>Assigned crew</dt><dd>{b.serviceType==='romantic-beach-dinner'?'Not required':b.crew.length ? b.crew.join(', ') : 'Not assigned'}</dd></div>
             <div><dt>Trip status</dt><dd>{b.tripStatus}{b.endTime&&<small>Trip end: {b.endTime} · Maldives time</small>}{b.returnTime&&<small>Return pickup: {b.returnTime} · Maldives time</small>}{b.privateBoatRequested&&<small>Private boat surcharge: {money(b.privateBoatSurchargeCents)}</small>}</dd></div>
