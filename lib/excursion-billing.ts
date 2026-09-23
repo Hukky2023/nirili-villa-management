@@ -84,7 +84,7 @@ export function applyExcursionBillEdit(state:any,input:any,actor:ExcursionBillin
   if(input.revision!==revision)throw new Error('This excursion bill changed elsewhere. Reopen it before saving.');
   if(!validBillingItems(input.items))throw new Error('Check excursion bill items, quantities, amounts and discounts.');
   if(typeof input.date!=='string'||!input.date.trim()||input.date.length>100)throw new Error('Enter a valid bill date.');
-  if(!['Posted','Pending','Paid','Unpaid','Cancelled'].includes(String(input.status||'')))throw new Error('Choose a valid bill status.');
+  if(!['Posted','Pending','Unpaid'].includes(String(input.status||'')))throw new Error('Use the payment or cancellation workflow to change paid/cancelled status.');
 
   const items=input.items.map((item:any)=>[String(item[0]).trim(),Number(item[1]),Number(item[2]),Number(item[3])]);
   const totalCents=billingItemsTotalCents(items),originalCents=billingItemsOriginalCents(items);
