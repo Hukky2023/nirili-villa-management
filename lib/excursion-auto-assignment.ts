@@ -34,16 +34,21 @@ async function schedulesForDate(date:string){
  return (rows.results||[]).map((row:any)=>JSON.parse(row.payload)).sort((a:any,b:any)=>String(a.time||'').localeCompare(String(b.time||''))||String(a.name||'').localeCompare(String(b.name||'')));
 }
 
+export function chooseAutoAssignmentCandidate(order:any,allSchedules:any[],orders:any[]){
+ if(!order||order.kind!=='excursion'||!order.date||order.privateBoatRequested===true||order.specialPackage===true||order.packageGroupId)return null;
+ const quantity=Math.max(1,Number(order.quantity)||1);
+ const candidates=allSchedules
+  .filter((schedule:any)=>schedule.status==='Open'&&scheduleCanServeRequest(order.name,schedule.name))
+  .map((schedule:any)=>({schedule,...candidateLoad(schedule,allSchedules,orders||[],order.id),rank:scheduleMatchRank(order.name,schedule.name)}))
+  .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
+ return candidates.find((candidate:any)=>candidate.remaining>=quantity)||null;
+}
+
 export async function autoAssignExcursionOrder(state:any,order:any){
  if(!order||order.kind!=='excursion'||!order.date||order.privateBoatRequested===true||order.specialPackage===true||order.packageGroupId)return null;
  await ensureStandardDailyExcursions(order.date);
  const allSchedules=(await schedulesForDate(order.date)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
- const quantity=Math.max(1,Number(order.quantity)||1);
- const candidates=allSchedules
-  .filter((schedule:any)=>scheduleCanServeRequest(order.name,schedule.name))
-  .map((schedule:any)=>({schedule,...candidateLoad(schedule,allSchedules,state.orders||[],order.id),rank:scheduleMatchRank(order.name,schedule.name)}))
-  .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
- const chosen=candidates.find((candidate:any)=>candidate.remaining>=quantity);
+ const chosen=chooseAutoAssignmentCandidate(order,allSchedules,state.orders||[]);
  if(!chosen)return null;
 
  const schedule=chosen.schedule,resources=excursionResources(state);
