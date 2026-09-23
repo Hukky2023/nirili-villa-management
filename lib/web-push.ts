@@ -121,14 +121,15 @@ async function sendOne(subscription:StoredSubscription,payload:string,pair:Vapid
 function rideMessage(ride:any,event:string){
  const buggy=String(ride.buggyName||ride.buggyId||'Your buggy'),driver=String(ride.buggyDriver||ride.driver||'Your driver'),pickup=String(ride.location||'your pickup point'),destination=String(ride.destination||'your destination'),room=String(ride.room||'');
  const fare=Math.max(0,Number(ride.fareCents)||0);
- if(event==='assigned')return {title:'Buggy assigned',body:buggy+(driver?' · '+driver:'')+' is on the way to '+pickup+'.'};
+ if(event==='assigned')return {title:'Buggy assigned',body:buggy+(driver?' · '+driver:'')+' has been assigned to your ride.'};
+ if(event==='on-the-way')return {title:'Driver on the way',body:driver+' is now on the way to '+pickup+'.'};
  if(event==='arrived')return {title:'Your buggy has arrived',body:driver+' is waiting at '+pickup+'.'};
  if(event==='started')return {title:'Buggy ride started',body:pickup+' → '+destination+'.'};
  if(event==='completed')return {title:'Ride completed',body:fare>0&&ride.chargeToRoom===true?'You have arrived. USD '+(fare/100).toFixed(2)+' was added to Room '+room+'.':'You have arrived at '+destination+'.'};
  return {title:'Buggy ride update',body:'Your buggy ride was updated.'};
 }
 
-export async function sendGuestPushForRide(ride:any,event:'assigned'|'arrived'|'started'|'completed'){
+export async function sendGuestPushForRide(ride:any,event:'assigned'|'on-the-way'|'arrived'|'started'|'completed'){
  const accountId=String(ride?.accountId||'');if(!accountId)return {sent:0,total:0};
  const subscriptions=await readSubscriptions(accountId);if(!subscriptions.length)return {sent:0,total:0};
  const pair=await storedVapid(),message=rideMessage(ride,event),payload=JSON.stringify({...message,tag:'buggy:'+String(ride.id||''),url:'/stay?service=buggy',rideId:String(ride.id||''),event});
