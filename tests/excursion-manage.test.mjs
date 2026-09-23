@@ -82,3 +82,35 @@ test('split package cancellation cancels all linked departures and sums refunds'
  const result=approveExternalExcursionPackageCancellation(s,a,change,'manager');
  assert.equal(result.refundRequiredCents,8000);assert.equal(a.status,'Cancelled');assert.equal(b.status,'Cancelled');assert.equal(a.cents,0);assert.equal(b.cents,0);assert.equal(change.status,'Approved');
 });
+
+
+test('guest manage snapshot shows the current admin-edited excursion charge',()=>{
+ const s=state(),order={id:'EXC-BILL',manageToken:token,source:'External guest website',kind:'excursion',guest:'Guest',email:'g@example.com',phone:'+9607000000',hotel:'Hotel',name:'Turtle',menuItemId:'turtle',date:'2026-10-01',quantity:2,adults:2,children:0,infants:0,quotedCents:5000,cents:4200,billingRevision:1,billingEditedAt:'2026-09-23T10:00:00Z',status:'Scheduled',approvalStatus:'Approved'};
+ s.orders.push(order);
+ const view=excursionManageSnapshot(s,order,null);
+ assert.equal(view.originalQuotedCents,5000);
+ assert.equal(view.quotedCents,4200);
+ assert.equal(view.balanceCents,4200);
+});
+
+test('contact-only guest change does not overwrite an admin-edited excursion bill',()=>{
+ const order={id:'EXC-BILL-CONTACT',menuItemId:'turtle',name:'Turtle',date:'2026-10-01',quantity:2,privateBoatRequested:false,quotedCents:5000,cents:4200,billingRevision:1,billingEditedAt:'2026-09-23T10:00:00Z',billingItems:[['Turtle',2,42,0]],status:'Scheduled',approvalStatus:'Approved',scheduleId:'trip2',time:'08:00',schedule:{date:'2026-10-01',time:'08:00',vessel:'Boat'}};
+ const proposed={...order,email:'new@example.com',phone:'+9607111111',hotel:'New Hotel',quotedCents:5000};
+ const change={id:'ECH-BILL-CONTACT',type:'change',status:'Pending',proposed};
+ const result=approveExternalExcursionChange(order,change,'manager');
+ assert.equal(result.logisticsChanged,false);
+ assert.equal(order.cents,4200);
+ assert.equal(order.billingRevision,1);
+ assert.deepEqual(order.billingItems,[['Turtle',2,42,0]]);
+});
+
+test('logistics-changing guest change clears stale custom bill metadata before repricing',()=>{
+ const order={id:'EXC-BILL-MOVE',menuItemId:'turtle',name:'Turtle',date:'2026-10-01',quantity:2,privateBoatRequested:false,quotedCents:5000,cents:4200,billingRevision:1,billingEditedAt:'2026-09-23T10:00:00Z',billingItems:[['Turtle',2,42,0]],billingStatus:'Posted',billingDate:'23 Sep',billingAdjustment:{action:'edit'},status:'Scheduled',approvalStatus:'Approved',scheduleId:'trip2',time:'08:00',schedule:{date:'2026-10-01',time:'08:00',vessel:'Boat'}};
+ const proposed={...order,menuItemId:'shark',name:'Shark',date:'2026-10-02',quantity:3,quotedCents:30000,guest:'Guest',email:'g@example.com',phone:'+9607000000',hotel:'Hotel',externalRoom:'2',groupName:'',notes:'',adults:3,children:0,infants:0,guestNames:['A','B','C'],guestCategories:['adult','adult','adult'],footSizes:[40,41,42],buggyRequested:false,privateBoatRequested:false,pricingUnit:'guest',unitPriceCents:10000,baseQuotedCents:30000,privateBoatSurchargeCents:0,excursionGuestRoster:[]};
+ const change={id:'ECH-BILL-MOVE',type:'change',status:'Pending',proposed};
+ approveExternalExcursionChange(order,change,'manager');
+ assert.equal(order.cents,0);
+ assert.equal(order.billingRevision,0);
+ assert.equal(order.billingItems,undefined);
+ assert.equal(order.billingAdjustment,undefined);
+});
