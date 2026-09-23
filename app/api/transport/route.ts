@@ -4,6 +4,7 @@ import {canTransport,isTransportAgent,transportRole} from '../../../lib/transpor
 import {authDb,currentUser,currentGuestUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {restaurantOnly} from '../../../lib/pos-access';
 import {createTransfer,initialTransport,TransportState,Sailing} from '../../../lib/transport';
+import {minutes,syncTransportBuggy} from '../../../lib/transport-plan';
 import {mirrorTransportState,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 const key='transport-bookings-v1';
 async function transportUser(){return (await currentUser())||(await currentGuestUser());}
@@ -25,14 +26,72 @@ async function loadHotelPrimary(){
  }catch{}
  return loadStays();
 }
-async function visible(state:TransportState,revision:number,u:any){const canEdit=hasPermission(u,'edit_transfers');const hotel=await loadHotelPrimary();const eligible=u.role==='guest'&&!isTransportAgent(u)?hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&s.checkOut>=new Date(Date.now()+5*3600000).toISOString().slice(0,10)):[];const ownRoom=eligible.length===1?{id:eligible[0].id,room:eligible[0].room,checkIn:eligible[0].checkIn,checkOut:eligible[0].checkOut}:null;return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.filter(b=>b.status!=='Cancelled').flatMap(b=>b.journeys.map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };}
+function canonicalLocation(value:any){
+ const raw=String(value||'').trim(),lower=raw.toLowerCase();
+ if(lower.includes('velana')||lower==='mle'||lower.includes('airport'))return 'Velana Airport';
+ if(lower==='male'||lower==="male'"||lower==='malé')return "Male'";
+ if(lower.includes('dhiffushi'))return 'Dhiffushi';
+ return raw;
+}
+function bookedPax(state:TransportState,scheduleId:string,date:string,excludeId=''){
+ return state.bookings.filter(b=>b.id!==excludeId&&b.status!=='Cancelled'&&b.journeys.some(j=>j.scheduleId===scheduleId&&j.date===date)).reduce((sum,b)=>sum+b.adults+b.children+b.infants,0);
+}
+function planRows(state:TransportState,hotelState:any){
+ const rows:any[]=[];
+ for(const stay of hotelState.stays||[]){
+  if(!['Confirmed','In House'].includes(String(stay.status||'')))continue;
+  for(const leg of ['arrival','departure'] as const){
+   const plan=stay.transportPlan?.[leg];if(!plan)continue;
+   const from=leg==='arrival'?canonicalLocation(plan.from||'Velana Airport'):'Dhiffushi';
+   const to=leg==='arrival'?'Dhiffushi':canonicalLocation(plan.destination||'Velana Airport');
+   const date=String(plan.date||(leg==='arrival'?stay.checkIn:stay.checkOut)||'');
+   const pax=Math.max(1,Number(stay.pax)||1);
+   const eligible=state.sailings.filter(s=>s.active&&canonicalLocation(s.from)===from&&canonicalLocation(s.to)===to&&s.capacity-bookedPax(state,s.id,date,plan.transportBookingId||plan.previousTransportBookingId||'')>=pax).sort((a,b)=>a.depart.localeCompare(b.depart));
+   const flight=minutes(String(plan.flightTime||''));let recommended:Sailing|undefined;
+   if(eligible.length){
+    if(leg==='arrival'&&flight!=null)recommended=eligible.find(s=>(minutes(s.depart)??0)>=flight+90)||eligible[0];
+    else if(leg==='departure'&&flight!=null)recommended=[...eligible].reverse().find(s=>(minutes(s.arrive)??1440)<=flight-120)||eligible[eligible.length-1];
+    else recommended=leg==='arrival'?eligible[0]:eligible[eligible.length-1];
+   }
+   rows.push({stayId:stay.id,leg,guest:stay.guest,phone:stay.whatsapp||'',room:stay.room||'',pax,adults:Number(stay.adults??stay.pax??1),children:Number(stay.children??0),date,needTransfer:plan.needTransfer||'later',from,to,flightNumber:plan.flightNumber||'',flightTime:plan.flightTime||'',ownTransport:plan.ownTransport||'',ownTime:leg==='arrival'?plan.dhiffushiArrivalTime||'':plan.ownDepartureTime||'',status:plan.status||'',launch:plan.launch||null,transportBookingId:plan.transportBookingId||'',needsReview:!!plan.needsReview,recommendedScheduleId:recommended?.id||'',eligibleScheduleIds:eligible.map(s=>s.id)});
+  }
+ }
+ return rows.sort((a,b)=>a.date.localeCompare(b.date)||a.leg.localeCompare(b.leg)||String(a.guest).localeCompare(String(b.guest)));
+}
+async function visible(state:TransportState,revision:number,u:any){
+ const canEdit=hasPermission(u,'edit_transfers'),hotel=await loadHotelPrimary();
+ const eligible=u.role==='guest'&&!isTransportAgent(u)?hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&s.checkOut>=new Date(Date.now()+5*3600000).toISOString().slice(0,10)):[];
+ const ownRoom=eligible.length===1?{id:eligible[0].id,room:eligible[0].room,checkIn:eligible[0].checkIn,checkOut:eligible[0].checkOut}:null;
+ return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,transportPlans:canEdit?planRows(state,hotel.state):[],sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.filter(b=>b.status!=='Cancelled').flatMap(b=>b.journeys.map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };
+}
 export async function GET(){const u=await transportUser();if(!u||!canTransport(u))return Response.json({error:'Sign in to access transfers.'},{status:403});try{const {state,revision}=await loadForRead();return Response.json(await visible(state,revision,u),{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Unable to load transfers. Please retry.'},{status:503});}}
 export async function POST(r:Request){const u=await transportUser();if(!u||!canTransport(u)||!sameOrigin(r))return Response.json({error:'Not allowed.'},{status:403});try{
  const b=await r.json();const {state,revision}=await loadForRead();const canEdit=hasPermission(u,'edit_transfers');
  if(b.action==='book'&&state.bookings.some(x=>x.token===b.token&&x.owner===u.userId))return Response.json(await visible(state,revision,u));
  if(b.revision!==revision)return Response.json({error:'Transfers changed on another device. Refresh and review before saving.'},{status:409});
  let hotelWrite:any=null;
- if(b.action==='book'){
+ if(b.action==='plan-schedule'){
+  if(!canEdit)return Response.json({error:'Transfer editing permission required.'},{status:403});
+  const hotel=await loadHotelPrimary(),stay=hotel.state.stays.find((item:any)=>item.id===String(b.stayId||'')&&['Confirmed','In House'].includes(String(item.status||'')));
+  const leg=b.leg==='arrival'||b.leg==='departure'?b.leg:null;if(!stay||!leg)throw Error('Guest transport plan not found.');
+  const plan=stay.transportPlan?.[leg];if(!plan||plan.needTransfer!=='yes')throw Error('This guest has not asked Nirili Villa to arrange this launch.');
+  const sailing=state.sailings.find(s=>s.id===String(b.scheduleId||'')&&s.active);if(!sailing)throw Error('Choose an active speedboat departure.');
+  const date=String(plan.date||(leg==='arrival'?stay.checkIn:stay.checkOut)||''),expectedFrom=leg==='arrival'?canonicalLocation(plan.from||'Velana Airport'):'Dhiffushi',expectedTo=leg==='arrival'?'Dhiffushi':canonicalLocation(plan.destination||'Velana Airport');
+  if(canonicalLocation(sailing.from)!==expectedFrom||canonicalLocation(sailing.to)!==expectedTo)throw Error('That launch does not match the guest transport route.');
+  if(Date.parse(date+'T'+sailing.depart+':00+05:00')<=Date.now())throw Error('Choose a future launch departure.');
+  const oldId=String(plan.transportBookingId||plan.previousTransportBookingId||''),old=oldId?state.bookings.find(item=>item.id===oldId):undefined;
+  const adults=Math.max(1,Number(stay.adults??stay.pax??1)),children=Math.max(0,Number(stay.children??0)),infants=0,seatCount=adults+children;
+  const used=state.bookings.filter(item=>item.id!==oldId&&item.status!=='Cancelled').flatMap(item=>item.journeys.filter(j=>j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
+  const seats=Array.from({length:sailing.capacity},(_,i)=>i+1).filter(n=>!used.includes(n)).slice(0,seatCount);if(seats.length!==seatCount)throw Error('This launch no longer has enough seats. Choose another departure.');
+  const journey={scheduleId:sailing.id,date,seats,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,fare:sailing.fare},total=sailing.fare*adults+Math.round(sailing.fare/2)*children,now=new Date().toISOString();
+  const booking:any=old||{id:'NT-'+crypto.randomUUID().slice(0,8).toUpperCase(),token:crypto.randomUUID(),owner:'stay:'+stay.id,created:now,paid:false};
+  Object.assign(booking,{name:stay.guest,phone:stay.whatsapp||'',traveller:'Tourist',adults,children,infants,journeys:[journey],total,status:'Confirmed',checked:[],notes:'Room transport plan · '+leg+(plan.flightNumber?' · Flight '+plan.flightNumber:'')+(plan.flightTime?' · '+plan.flightTime:''),stayId:stay.id,room:stay.room,transportPlanLeg:leg});
+  if(!old)state.bookings.push(booking);
+  plan.launch={scheduleId:sailing.id,date,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,seats};plan.transportBookingId=booking.id;plan.status='Scheduled';delete plan.needsReview;delete plan.previousTransportBookingId;
+  syncTransportBuggy(hotel.state,stay,leg,journey);stay.history??=[];stay.history.unshift({date:now,by:u.username,detail:(leg==='arrival'?'Arrival':'Departure')+' transport scheduled · '+sailing.depart+' '+sailing.boat+' · Buggy linked automatically'});
+  hotelWrite=hotel;
+ }
+ else if(b.action==='book'){
  const booking=createTransfer(state,b,u.userId);
  if(b.payment==='room'){
  if(u.role!=='guest'||isTransportAgent(u))return Response.json({error:'Only a linked guest login can charge transport to a room.'},{status:403});
@@ -56,7 +115,7 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
  const sailing:Sailing={id:previous?.id||crypto.randomUUID(),boat:s.boat.trim(),from:s.from.trim(),to:s.to.trim(),depart:s.depart,arrive:s.arrive,capacity:s.capacity,fare:s.fare,roomFare:s.roomFare,active:s.active};state.sailings=previous?state.sailings.map(x=>x.id===s.id?sailing:x):[...state.sailings,sailing];
  }else if(b.action==='status'){
  if(!canEdit)return Response.json({error:'Transfer editing permission required.'},{status:403});const booking=state.bookings.find(x=>x.id===b.id);if(!booking)throw Error('Booking not found.');
- if(booking.stayId&&['cancel','paid'].includes(b.operation))throw Error('This ticket is charged to a room. Manage payment through the guest room bill; contact Admin for cancellation.');
+ if(booking.stayId&&Number.isInteger(booking.roomCents)&&['cancel','paid'].includes(b.operation))throw Error('This ticket is charged to a room. Manage payment through the guest room bill; contact Admin for cancellation.');
  if(b.operation==='cancel'){booking.status='Cancelled';booking.checked=[];}
  else if(booking.status==='Cancelled')throw Error('This booking is cancelled.');
  else if(b.operation==='paid')toggleTransferPayment(booking,u.username);
