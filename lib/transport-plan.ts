@@ -80,9 +80,14 @@ export function mergeTransportPlanInternal(current:any,next:any){
    after.transportBookingId=before.transportBookingId;
    after.status=before.status||'Scheduled';
   }else if(before.transportBookingId||before.launch){
-   after.needsReview=true;
-   after.previousTransportBookingId=before.transportBookingId||'';
-   after.status=after.needTransfer==='yes'?'Needs transport review':after.status;
+   if(after.needTransfer==='yes'){
+    after.needsReview=true;
+    after.previousTransportBookingId=before.transportBookingId||'';
+    after.status='Needs transport review';
+   }else{
+    after.cancelTransportBookingId=before.transportBookingId||'';
+    after.status=after.needTransfer==='no'?'Own transport':'Details required';
+   }
   }
  }
  return result;
