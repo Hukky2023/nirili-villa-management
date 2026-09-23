@@ -448,7 +448,7 @@ export async function PATCH(r:Request){
       const confirmedPax=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&!o.separateVessel&&isConfirmed(o)&&(groupIds.has(o.scheduleId)||groupSchedules.some((x:any)=>matches(o,x)))).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
       return {schedule,capacity,confirmedPax,remaining:Math.max(0,capacity-confirmedPax),rank:scheduleMatchRank(item.name,schedule.name)};
     })
-    .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
+    .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||String(a.schedule.time).localeCompare(String(b.schedule.time))||a.rank-b.rank||b.remaining-a.remaining);
    const preferred=candidates.find((candidate:any)=>candidate.remaining>=quantity)?.schedule;
    const chosen=b.forceUnscheduled===true||privateBoatRequested?undefined:candidates.find((candidate:any)=>candidate.remaining>=quantity);
    let stay:any=null,guest='',phone='',hotel='',room='',accountId:any=undefined,stayId:any=undefined;

@@ -226,7 +226,7 @@ export async function POST(r:Request){
      const candidates=allSchedules
       .filter((s:any)=>scheduleCanServe(spec.matchName,s.name))
       .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,orders),rank:scheduleRank(spec.matchName,s)}))
-      .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
+      .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||String(a.schedule.time).localeCompare(String(b.schedule.time))||a.rank-b.rank||b.remaining-a.remaining);
      const chosen=candidates.find((candidate:any)=>candidate.remaining>=quantity),id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase();
      const operationalPriceCents=operationalPrices[index]||0;
      const quotedCents=index===specialPackageSegments.length-1?packageTotalCents-allocatedSoFar:Math.round(packageTotalCents*(operationalPriceCents||1)/operationalTotal);
@@ -255,7 +255,7 @@ export async function POST(r:Request){
    const candidates=allSchedules
     .filter((s:any)=>scheduleCanServe(item.name,s.name))
     .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,orders),rank:scheduleRank(item.name,s)}))
-    .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
+    .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||String(a.schedule.time).localeCompare(String(b.schedule.time))||a.rank-b.rank||b.remaining-a.remaining);
 
    const chosen=candidates.find((candidate:any)=>candidate.remaining>=quantity),fallback=suggestedTripWindow(item.name);
    const unitPriceCents=Math.max(0,Number(item.cents)||0),pricingUnit=item.pricingUnit==='couple'?'couple':'guest';
@@ -398,7 +398,7 @@ export async function PATCH(r:Request){
   const candidates=allSchedules
    .filter((s:any)=>scheduleCanServe(requestedName,s.name))
    .map((s:any)=>({schedule:s,...candidateLoad(s,allSchedules,availabilityOrders),rank:scheduleRank(requestedName,s)}))
-   .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
+   .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||String(a.schedule.time).localeCompare(String(b.schedule.time))||a.rank-b.rank||b.remaining-a.remaining);
 
   const chosen=candidates.find((candidate:any)=>candidate.remaining>=quantity),resources=excursionResources(state),fallback=suggestedTripWindow(requestedName);
   order.date=newDate;order.separateVessel=false;
