@@ -16,6 +16,7 @@ export default function GuestChat(){
  useEffect(()=>{if(open&&!older.length)end.current?.scrollIntoView({block:'nearest'});},[open,data?.messages?.at(-1)?.id,older.length]);
  useEffect(()=>{if(!data?.actor?.id)return;try{setSeen(JSON.parse(localStorage.getItem('nv-chat-seen:'+data.actor.id)||'{}'));}catch{setSeen({})}},[data?.actor?.id]);
  useEffect(()=>{if(!open||!data)return;const admin=data.actor.role==='admin';const latest=data.messages.filter((m:any)=>m.fromAdmin!==admin).at(-1)?.createdAt;if(!latest)return;const key=admin?target:'reception';setSeen(old=>{if((old[key]||'')>=latest)return old;const next={...old,[key]:latest};try{localStorage.setItem('nv-chat-seen:'+data.actor.id,JSON.stringify(next));}catch{}return next;});},[open,target,data?.messages?.at(-1)?.id]);
+ useEffect(()=>{const openFromNotification=(event:Event)=>{const contactId=String((event as CustomEvent<{contactId?:string}>).detail?.contactId||'');if(contactId)setTarget(contactId);setOpen(true);setTick(v=>v+1)};window.addEventListener('nirili:open-chat',openFromNotification);return()=>window.removeEventListener('nirili:open-chat',openFromNotification)},[]);
  if(!data)return null;
  const admin=data.actor.role==='admin',broadcast=admin&&!target,contact=data.contacts.find((c:any)=>c.id===target),next=olderCursor===undefined?data.next:olderCursor;
  const unread=admin?data.contacts.filter((c:any)=>c.lastGuestMessage>(seen[c.id]||'')).length:data.messages.filter((m:any)=>m.fromAdmin&&m.createdAt>(seen.reception||'')).length;
