@@ -47,6 +47,7 @@ export async function PUT(r:Request){
   const b=await r.json(),x=b.bill;
 
   if(x?.department==="Excursions"){
+   if(!/^(?:10[1-6]|20[1-4]|30[1-4])$/.test(String(b.room)))return Response.json({error:"Invalid room"},{status:400});
    if(user?.role!=="admin")return Response.json({error:"Only Admin can edit excursion bills."},{status:403});
    let state:any,revision=0;
    try{
