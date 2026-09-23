@@ -1,6 +1,6 @@
 import {diningRoom,diningOrderRoom} from '../../../lib/dining-room';
 import {sessionCookieName} from '../../../lib/tab-session';
-import {mealItemIncluded,halfBoardMealStatus,restaurantMealPeriod,setHalfBoardMealSelection} from '../../../lib/meal-access';
+import {mealItemIncluded,halfBoardMealStatus,restaurantMealPeriod} from '../../../lib/meal-access';
 import {cookies} from 'next/headers';
 import {currentGuestUser,authDb,randomToken,digest,sameOrigin,limit} from '../../../lib/auth';
 import {loadStays,stayKey} from '../../../lib/stays';
@@ -125,14 +125,6 @@ export async function POST(r:Request){
   if(!await limit('dining:'+who.key,30,900000)||!await limit('dining-ip:'+(r.headers.get('cf-connecting-ip')||'unknown'),100,900000))throw Error('Please contact the cashier to place another order.');
   const {state,revision}=await restaurantState();
   state.posOrders??=[];
-  if(b.action==='set_half_board_meal'){
-   if(who.mode!=='inhouse'||!who.user)throw Error('Half Board meal selection is only available to checked-in guests.');
-   const s=diningOrderRoom(state.stays,who.user,b.stayId);
-   if(!s)throw Error('Your checked-in room could not be found.');
-   setHalfBoardMealSelection(state,s.id,b.meal,'Guest');
-   if(!await saveRestaurantState(state,revision,who.key))return Response.json({error:'The room meal plan changed. Refresh and choose again.'},{status:409});
-   return Response.json(await view(who));
-  }
   if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token))throw Error('Refresh the menu and try again.');
   if(state.posOrders.some((o:any)=>o.guestKey===who.key&&o.token===b.token))return Response.json(await view(who));
   if(!restaurantTables.includes(b.table)||!Array.isArray(b.items)||!b.items.length||b.items.length>40||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Select a table and menu items.');
@@ -143,7 +135,7 @@ export async function POST(r:Request){
    if(!i||seen.has(x.id)||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>20)throw Error('Check the selected items and quantities.');
    if(x.cents!==i.cents)throw Error('A price changed. Refresh the menu before ordering.');
    seen.add(x.id);
-   const included=mealItemIncluded(s?.meal,i,hb.freeOrderAvailable,hb.selectedMeal,mealPeriod);
+   const included=mealItemIncluded(s?.meal,i,hb.freeOrderAvailable,'',mealPeriod);
    if(typeof x.included==='boolean'&&x.included!==included)throw Error('Meal plan availability changed. Refresh the menu and review the charges before ordering.');
    return {id:i.id,name:i.category+' · '+i.name+(included?' (meal plan included)':''),quantity:x.quantity,unitCents:included?0:i.cents,cents:included?0:i.cents*x.quantity,included,menuCents:i.cents};
   });
@@ -152,7 +144,7 @@ export async function POST(r:Request){
    id,token:b.token,guestKey:who.key,by:who.key,
    createdBy:who.mode==='inhouse'?'In-house guest':who.mode==='account'?'Walk-in guest account':'Walk-in customer',
    createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||who.user?.displayName||walkName,table:b.table,notes:b.notes.trim(),items,cents,
-   kitchen:'Awaiting cashier',method:s&&cents>0?'Room':'',mealPeriod,halfBoardIncludedMeal:hb.selectedMeal,includedMealPeriod,history:[{date,by:who.mode,detail:'Guest order sent to cashier'}]
+   kitchen:'Awaiting cashier',method:s&&cents>0?'Room':'',mealPeriod,halfBoardIncludedMeal:s?.meal==='Half Board'&&includedMealPeriod?mealPeriod:'',includedMealPeriod,history:[{date,by:who.mode,detail:'Guest order sent to cashier'}]
   };
   state.posOrders.push(order);
   if(s){
