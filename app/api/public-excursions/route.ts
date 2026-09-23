@@ -175,6 +175,7 @@ export async function POST(request:Request){
     await ensureStandardDailyExcursions(candidateDate);
     const daySchedules=(await schedulesForDate(candidateDate)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
     for(const schedule of daySchedules){
+     if(normal(schedule.name)==='special package')continue;
      if(!specialPackageCoverage(schedule.name).length)continue;
      const load=candidateLoad(schedule,daySchedules,state.orders);
      if(load.remaining<mix.total)continue;
