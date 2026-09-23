@@ -194,8 +194,9 @@ export async function POST(request:Request){
     const saved=await saveStayAccess(state,revision,'public-excursion-site');
     if(!saved)return Response.json({error:'Another booking was saved at the same time. Please submit again.'},{status:409,headers});
     const first=parts[0];
-    const emailResult=await sendExternalExcursionBookedEmail({email,guest:leadGuest,reference:packageGroupId,excursion:item.name,date:first.date,time:first.time,quantity:mix.total,quotedCents,hotel,manageToken,status:'Confirmed'});
-    return Response.json({ok:true,booking:{id:packageGroupId,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Confirmed',requiresApproval:false,requiresScheduling:false,date:first.date,time:first.time,quotedCents,packageSegments:parts.map((order:any)=>({id:order.id,name:order.packageSegmentName,date:order.date,time:order.time,endTime:order.endTime,status:'Confirmed',matchedScheduleName:order.matchedScheduleName}))}},{status:201,headers});
+    const packageSegments=parts.map((order:any)=>({id:order.id,name:order.packageSegmentName,date:order.date,time:order.time,endTime:order.endTime,status:'Confirmed',matchedScheduleName:order.matchedScheduleName}));
+    const emailResult=await sendExternalExcursionBookedEmail({email,guest:leadGuest,reference:packageGroupId,excursion:item.name,date:first.date,time:first.time,quantity:mix.total,quotedCents,hotel,manageToken,status:'Confirmed',packageSegments});
+    return Response.json({ok:true,booking:{id:packageGroupId,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Confirmed',requiresApproval:false,requiresScheduling:false,date:first.date,time:first.time,quotedCents,packageSegments}},{status:201,headers});
    }
    const fallback=suggestedTripWindow(item.name);
    state.orders.push({...common,cents:0,time:'',preferredTime:fallback.time,preferredEndTime:fallback.endTime,status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false});
