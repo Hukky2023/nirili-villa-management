@@ -21,6 +21,7 @@ export function deleteBooking(state:any,s:any,by:string){
  state.stays=state.stays.filter((x:any)=>x.id!==s.id);
  state.orders=(state.orders||[]).filter((o:any)=>o.stayId!==s.id);
  state.posOrders=(state.posOrders||[]).filter((o:any)=>o.stayId!==s.id);
+ for(const ride of state.buggyBookings||[])if(ride.stayId===s.id&&ride.bookingType==='stay-transfer'&&!['Completed','Cancelled'].includes(String(ride.buggyStatus||''))){ride.cancelled=true;ride.cancelledAt=new Date().toISOString();ride.cancelledBy=by;ride.buggyStatus='Cancelled';}
  for(const q of state.requests||[])if(q.stayId===s.id)q.status='Deleted';
  if(s.status==='In House'&&!state.stays.some((x:any)=>x.room===s.room&&x.status==='In House'))state.rooms.find((r:any)=>r.number===s.room).status='Cleaning';
 }
