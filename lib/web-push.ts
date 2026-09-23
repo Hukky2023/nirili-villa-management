@@ -138,3 +138,46 @@ export async function sendGuestPushForRide(ride:any,event:'assigned'|'on-the-way
  if(stale.size)for(const endpoint of stale)await deleteSubscription(accountId,endpoint);
  return {sent,total:subscriptions.length};
 }
+
+
+function shortExcursionDate(value:any){
+ const date=String(value||'').slice(0,10);
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return date||'your excursion date';
+ const parsed=new Date(date+'T00:00:00Z');
+ return new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'}).format(parsed);
+}
+
+export async function sendGuestPushForExcursionTimeChange(
+ order:any,
+ before:{date?:string;time?:string},
+ after:{date?:string;time?:string},
+){
+ const accountId=String(order?.accountId||'');
+ if(!accountId)return {sent:0,total:0};
+ const subscriptions=await readSubscriptions(accountId);
+ if(!subscriptions.length)return {sent:0,total:0};
+ const excursion=String(order?.packageName||order?.name||'Your excursion');
+ const oldDate=String(before?.date||order?.date||''),newDate=String(after?.date||order?.date||'');
+ const oldTime=String(before?.time||''),newTime=String(after?.time||'');
+ const dateChanged=oldDate&&newDate&&oldDate!==newDate;
+ const timeChanged=oldTime&&newTime&&oldTime!==newTime;
+ let body='';
+ if(dateChanged&&timeChanged)body=excursion+' changed from '+shortExcursionDate(oldDate)+' '+oldTime+' to '+shortExcursionDate(newDate)+' '+newTime+'.';
+ else if(dateChanged)body=excursion+' changed from '+shortExcursionDate(oldDate)+' to '+shortExcursionDate(newDate)+'.';
+ else body=excursion+' departure changed from '+(oldTime||'the previous time')+' to '+(newTime||'a new time')+' on '+shortExcursionDate(newDate||oldDate)+'.';
+ const pair=await storedVapid(),payload=JSON.stringify({
+  title:'Excursion time changed',
+  body,
+  tag:'excursion-time:'+String(order?.packageGroupId||order?.id||''),
+  url:'/stay?service=excursion',
+  bookingId:String(order?.packageGroupId||order?.id||''),
+  event:'excursion-time-changed'
+ });
+ const results=await Promise.allSettled(subscriptions.map(subscription=>sendOne(subscription,payload,pair)));
+ const stale=new Set<string>(),sent=results.filter((result,index)=>{
+  if(result.status==='fulfilled'&&result.value.gone)stale.add(subscriptions[index].endpoint);
+  return result.status==='fulfilled'&&result.value.ok;
+ }).length;
+ if(stale.size)for(const endpoint of stale)await deleteSubscription(accountId,endpoint);
+ return {sent,total:subscriptions.length};
+}
