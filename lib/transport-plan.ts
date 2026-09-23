@@ -74,7 +74,8 @@ export function mergeTransportPlanInternal(current:any,next:any){
   const sameRoute=leg==='arrival'
    ?String(before.from||'')===String(after.from||'')
    :String(before.destination||'')===String(after.destination||'');
-  if(sameNeed&&sameDate&&sameRoute&&before.launch&&before.transportBookingId){
+  const sameTiming=String(before.flightTime||'')===String(after.flightTime||'')&&String(leg==='arrival'?before.dhiffushiArrivalTime||'':before.ownDepartureTime||'')===String(leg==='arrival'?after.dhiffushiArrivalTime||'':after.ownDepartureTime||'');
+  if(sameNeed&&sameDate&&sameRoute&&sameTiming&&before.launch&&before.transportBookingId){
    after.launch=before.launch;
    after.transportBookingId=before.transportBookingId;
    after.status=before.status||'Scheduled';
