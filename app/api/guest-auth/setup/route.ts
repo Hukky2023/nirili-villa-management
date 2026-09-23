@@ -1,7 +1,6 @@
 import {authDb,hashPassword,issueGuestSession,limit,roomLoginActive,sameOrigin,validPassword,verifyPassword} from '../../../../lib/auth';
 import {readCredential} from '../../../../lib/credential-store';
-import {deleteLegacySessionsForAccount,mirrorLegacyAccount} from '../../../../lib/supabase-bridge';
-import {deleteOperationalRecordPrimary} from '../../../../lib/supabase-bridge';
+import {deleteLegacySessionsForAccount,deleteOperationalRecordPrimary,mirrorLegacyAccount} from '../../../../lib/supabase-bridge';
 
 function guestHostAllowed(r:Request){
  const host=(r.headers.get('host')||new URL(r.url).host).split(':')[0].toLowerCase();
