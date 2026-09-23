@@ -27,3 +27,11 @@
 .excursion-price-dialog button{min-height:44px}
 .excursion-price-dialog button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:480px){.excursion-price-dialog{padding:18px}.excursion-price-dialog footer button{flex:1 1 140px}.excursion-price-buttons button{flex:1 1 130px}.excursion-price-summary{align-items:flex-start;flex-direction:column;gap:7px}}
+
+.excursion-bill-edit-dialog{max-width:760px;width:min(94vw,760px)}
+.excursion-bill-edit-items{display:grid;gap:12px;margin:12px 0}
+.excursion-bill-edit-line{border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px;display:grid;gap:10px}
+.excursion-bill-edit-line>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.excursion-bill-edit-line label{display:grid;gap:6px}
+.excursion-bill-edit-line input,.excursion-bill-edit-dialog select{width:100%}
+@media(max-width:700px){.excursion-bill-edit-line>div{grid-template-columns:1fr}}
