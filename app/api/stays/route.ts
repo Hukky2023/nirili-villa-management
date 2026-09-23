@@ -11,6 +11,7 @@ import {readOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {appendAccountHistory} from '../../../lib/account-history';
 import {autoPushBookingComAvailability} from '../../../lib/channels';
 import {syncTransportBuggy} from '../../../lib/transport-plan';
+import {cancelLinkedTransportBookings,staleTransportBookingIds} from '../../../lib/linked-transport-bookings';
 function canViewHotel(u:any){
  if(!u)return false;
  if(u.role==='admin')return true;
@@ -71,6 +72,7 @@ if(b.action==='editbooking'||b.action==='deletebooking'){
   if(booking.status==='In House'&&previous.room!==booking.room)plan=await prepareStayLogin(state,booking);
  }
  if(!await saveStayAccess(state,revision,u.userId,plan,revoke,details?.documents||[],details?.removed||[]))return Response.json({error:'Booking changed. Reopen it and try again.'},{status:409});
+ try{if(b.action==='deletebooking')await cancelLinkedTransportBookings({stayId:booking.id,by:u.userId});else{const stale=staleTransportBookingIds(booking.transportPlan);if(stale.length)await cancelLinkedTransportBookings({ids:stale,by:u.userId});}}catch{}
  await autoPushBookingComAvailability();
  return Response.json({booking:b.action==='editbooking'?booking:null,deleted:b.action==='deletebooking'});
 }
