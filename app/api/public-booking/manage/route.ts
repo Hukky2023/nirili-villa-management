@@ -1,9 +1,12 @@
 import {limit,sameOrigin} from '../../../../lib/auth';
 import {islandToday,nightly,plans,validDate} from '../../../../lib/guest-catalog';
-import {bookingForManageToken,bookingManageSnapshot,ensureBookingManageState,roomAvailability,validBookingManageToken} from '../../../../lib/booking-manage';
+import {bookingCancellationNeedsApproval,bookingForManageToken,bookingManageSnapshot,ensureBookingManageState,roomAvailability,validBookingManageToken} from '../../../../lib/booking-manage';
 import {saveStayAccess} from '../../../../lib/stay-login';
 import {readOperationalRecordPrimary,updatePublicBookingRequestStatus} from '../../../../lib/supabase-bridge';
 import {sendBookingCancelledEmail,sendBookingChangeRequestedEmail,sendBookingUpdatedEmail} from '../../../../lib/booking-email';
+import {deleteBooking} from '../../../../lib/booking-admin';
+import {folioFor} from '../../../../lib/stays';
+import {autoPushBookingComAvailability} from '../../../../lib/channels';
 
 const headers={'Cache-Control':'private, no-store, max-age=0'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
@@ -96,6 +99,26 @@ export async function POST(request:Request){
     return Response.json({ok:true,cancelled:true,email:mail,booking:bookingManageSnapshot(state,{kind:'request',item:booking})},{headers});
    }
    if(booking.status!=='Confirmed')throw Error('Only confirmed future stays can be cancelled online.');
+   if(!bookingCancellationNeedsApproval(booking.checkIn,islandToday())){
+    const folio=await folioFor(booking,state.orders),refundRequiredCents=Math.max(0,Number(folio.paidCents)||0);
+    const change=actionRecord('cancel',booking.id,booking,null,'Approved');
+    Object.assign(change,{decidedAt:new Date().toISOString(),decidedBy:'Guest',decision:'Automatically cancelled by guest before the cancellation cutoff',refundRequiredCents});
+    state.bookingChanges.push(change);
+    booking.refundRequiredCents=refundRequiredCents;booking.cancelledAt=new Date().toISOString();booking.cancelledBy='Guest';booking.status='Cancelled';
+    booking.history??=[];booking.history.unshift({date:booking.cancelledAt,detail:'Booking cancelled by guest before check-in cutoff'+(refundRequiredCents?' · Refund required USD '+(refundRequiredCents/100).toFixed(2):''),by:'Guest'});
+    const sourceRequest=state.requests.find((request:any)=>request.stayId===booking.id);
+    const revoke=booking.accountId?[booking.accountId]:[];
+    deleteBooking(state,booking,'Guest');
+    if(sourceRequest){
+     sourceRequest.status='Cancelled';sourceRequest.cancelledAt=new Date().toISOString();sourceRequest.reviewedBy='Guest';
+    }
+    if(!await saveStayAccess(state,revision,'public-booking-manage',null,revoke))throw Error('The booking changed while you were cancelling it. Refresh and try again.');
+    if(sourceRequest?.source==='Guest booking website')try{await updatePublicBookingRequestStatus(sourceRequest.id,'Cancelled',{id:sourceRequest.id,status:'Cancelled',stayId:booking.id,room:booking.room});}catch{}
+    try{await autoPushBookingComAvailability();}catch{}
+    const mail=await sendBookingCancelledEmail({email:booking.email,guest:booking.guest,reference:booking.id,room:booking.room,checkIn:booking.checkIn,checkOut:booking.checkOut,meal:booking.meal,pax:booking.pax,totalCents:booking.base||0,manageToken:token,eventId:change.id,refundRequiredCents});
+    const archived=bookingForManageToken(state,token);
+    return Response.json({ok:true,cancelled:true,autoApproved:true,email:mail,booking:bookingManageSnapshot(state,archived)},{headers});
+   }
    const change=actionRecord('cancel',booking.id,booking,null,'Pending');
    state.bookingChanges.push(change);
    if(!await saveStayAccess(state,revision,'public-booking-manage'))throw Error('The booking changed while you were cancelling it. Refresh and try again.');
