@@ -15,10 +15,14 @@ const state=()=>({
 
 test('restaurant meal periods follow Maldives service hours',()=>{
   assert.equal(restaurantMealPeriod('2026-09-23T02:30:00Z'),'Breakfast');
-  assert.equal(restaurantMealPeriod('2026-09-23T07:30:00Z'),'Lunch');
+  assert.equal(restaurantMealPeriod('2026-09-23T09:59:00Z'),'Lunch');
+  assert.equal(restaurantMealPeriod('2026-09-23T10:00:00Z'),'');
   assert.equal(restaurantMealPeriod('2026-09-23T14:00:00Z'),'Dinner');
+  assert.equal(restaurantMealPeriod('2026-09-23T17:59:00Z'),'Dinner');
+  assert.equal(restaurantMealPeriod('2026-09-23T18:00:00Z'),'');
   assert.equal(restaurantMealPeriod('2026-09-25T08:00:00Z'),'');
   assert.equal(restaurantMealPeriod('2026-09-25T08:30:00Z'),'Lunch');
+  assert.equal(restaurantMealPeriod('2026-09-25T10:00:00Z'),'');
 });
 
 test('Half Board first lunch is automatically included',()=>{
