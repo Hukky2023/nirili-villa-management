@@ -385,7 +385,7 @@ export async function PATCH(r:Request){
     return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
    }
    try{await mirrorExcursionScheduleRecord(key,{...record,revision:1,updatedBy:user.userId});}catch{}
-   if(order.source==='External guest website'&&order.email&&order.manageToken)try{await sendExternalExcursionUpdatedEmail({email:order.email,guest:order.guest,reference:order.id,excursion:order.name,date:order.date,time:order.time,endTime:order.endTime,quantity:Number(order.quantity)||0,quotedCents:Number(order.quotedCents)||0,hotel:order.hotel,manageToken:order.manageToken,eventId:'schedule-'+scheduleId});}catch{}
+   if(order.source==='External guest website'&&order.email&&order.manageToken)try{await sendExternalExcursionUpdatedEmail({email:order.email,guest:order.guest,reference:order.packageGroupId||order.id,excursion:order.packageName||order.name,date:order.date,time:order.time,endTime:order.endTime,quantity:Number(order.quantity)||0,quotedCents:Number(order.packageTotalCents)||Number(order.quotedCents)||0,hotel:order.hotel,manageToken:order.manageToken,eventId:'schedule-'+scheduleId});}catch{}
    return Response.json({ok:true,booking:{id:order.id,status:'Confirmed'},schedule:{...record,revision:1}},{status:201});
   }
 
@@ -395,6 +395,7 @@ export async function PATCH(r:Request){
    const {state,revision}=await loadStays();
    const order=(state.orders||[]).find((o:any)=>o.id===requestId&&o.kind==='excursion'&&o.unscheduledRequest===true&&o.approvalStatus==='Pending'&&o.status!=='Cancelled');
    if(!order)throw Error('This scheduling request has already been handled.');
+   if(order.specialPackage===true&&order.packageGroupId)throw Error('A Special Package leg cannot be rejected individually. Reschedule this leg or cancel the full package.');
    order.approvalStatus='Declined';
    order.status='Cancelled';
    order.unscheduledRequest=false;
