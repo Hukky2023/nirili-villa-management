@@ -15,7 +15,7 @@ export function discountPOSBill(state:any,o:any,b:any,username:string){
  o.history??=[];o.history.push({date,by:username,detail,before,after:{items:o.items,cents:o.cents}});
  if(s){
   s.posBills??=[];s.history??=[];if(!bill){bill={department:'Restaurant',id:o.id};s.posBills.push(bill);}
-  bill.items=o.items.map((i:any)=>[i.name,i.quantity,i.unitCents*i.quantity/100,i.discount]);bill.totalCents=o.cents;bill.status=percent===100?'Complimentary':'Posted';bill.complimentary=percent===100;bill.discountPercent=percent;bill.settledAtPOS=false;
+  bill.items=o.items.map((i:any)=>[i.name,i.quantity,i.unitCents/100,i.discount]);bill.totalCents=o.cents;bill.status=percent===100?'Complimentary':'Posted';bill.complimentary=percent===100;bill.discountPercent=percent;bill.settledAtPOS=false;
   delete s.paidBills?.['Restaurant:'+o.id];o.stayId=s.id;o.room=s.room;o.customer=s.guest;if(percent===100)o.method='Room';
   s.history.unshift({date,by:username,detail:'Restaurant bill '+o.id+' · '+detail});
  }
