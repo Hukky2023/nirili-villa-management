@@ -4,6 +4,7 @@ import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {isRomanticBeachDinner} from '../../../lib/excursion-services';
 import {sendGuestPushForRide} from '../../../lib/web-push';
+import {sendTransportBuggyEmail} from '../../../lib/booking-email';
 
 const fleetStatuses=['Available','Assigned','Charging','Maintenance','Out of Service'] as const;
 const clean=(value:any,max=120)=>String(value||'').trim().slice(0,max);
@@ -55,7 +56,7 @@ export async function POST(r:Request){
  const {user,ok}=await allowed();if(!ok||!sameOrigin(r))return Response.json({error:'Buggy management access required.'},{status:403});
  try{
   const body=await r.json(),action=clean(body.action,40),{state,revision}=await loadStays();state.buggyFleet??=[];state.buggyMaintenance??=[];state.buggyTripHistory??=[];state.buggyBookings??=[];state.buggySettings??={guestRideFareCents:0};
-  const actor=user?.username||user?.displayName||'management',now=new Date().toISOString();let pushRide:any=null;
+  const actor=user?.username||user?.displayName||'management',now=new Date().toISOString();let pushRide:any=null,transportBuggyMail:any=null;
   if(action==='save-settings'){
    if(user?.role!=='admin')throw Error('Only Admin can change buggy pricing.');
    const fareCents=Math.max(0,Math.min(100000,Math.round(Number(body.guestRideFareCents)||0)));
@@ -80,10 +81,11 @@ export async function POST(r:Request){
    const conflict=assignmentConflict(state,id,buggyId,String(row?.date||item.date||item.schedule?.date||''),String(row?.pickupTime||item.pickupTime||''));
    if(conflict)throw Error(buggy.name+' is already assigned near this pickup time. Choose another buggy.');
    item.buggyId=buggyId;item.buggyDriver=driver||buggy.driver||'';item.buggyAssignedAt=now;item.buggyAssignedBy=actor;
-   if(item.bookingType==='guest-ride'&&!['Driver on the way','Arrived','On trip','Completed','Cancelled'].includes(String(item.buggyStatus||'')))item.buggyStatus='Assigned';
+   if(['guest-ride','stay-transfer'].includes(String(item.bookingType||''))&&!['Driver on the way','Arrived','On trip','Completed','Cancelled'].includes(String(item.buggyStatus||'')))item.buggyStatus='Assigned';
    buggy.status='Assigned';if(driver)buggy.driver=driver;buggy.updatedAt=now;buggy.updatedBy=actor;
    state.buggyTripHistory.push({id:'buggy-history-'+crypto.randomUUID(),at:now,type:'Assigned',buggyId,buggyName:buggy.name,bookingId:id,guest:item.guest||'',driver:item.buggyDriver||'',by:actor});
    if(item.bookingType==='guest-ride')pushRide={...item,buggyName:buggy.name,driver:item.buggyDriver||''};
+    if(item.bookingType==='stay-transfer'){const stay=(state.stays||[]).find((s:any)=>s.id===item.stayId);if(stay?.email)transportBuggyMail={email:stay.email,guest:stay.guest,reference:stay.id,room:stay.room,manageToken:stay.manageToken,leg:item.transportLeg==='departure'?'departure':'arrival',date:item.date,pickupTime:item.pickupTime,location:item.location,destination:item.destination,buggyName:buggy.name,driver:item.buggyDriver||'',event:'assigned'};}
   }else if(action==='set-status'){
    const id=clean(body.id,100),status=clean(body.status,30) as any,buggy=state.buggyFleet.find((x:any)=>x.id===id);
    if(!buggy||!fleetStatuses.includes(status))throw Error('Choose a valid buggy and status.');buggy.status=status;buggy.updatedAt=now;buggy.updatedBy=actor;
@@ -95,6 +97,7 @@ export async function POST(r:Request){
   }else throw Error('Choose a valid buggy management action.');
   const saved=await saveStayAccess(state,revision,user?.userId||'buggy-management');if(!saved)return Response.json({error:'Another update was saved. Refresh and try again.'},{status:409});
   if(pushRide)try{await sendGuestPushForRide(pushRide,'assigned')}catch{}
+   if(transportBuggyMail)try{await sendTransportBuggyEmail(transportBuggyMail)}catch{}
   return Response.json({ok:true});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not update buggy management.'},{status:400});}
 }
