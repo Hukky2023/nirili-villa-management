@@ -7,6 +7,7 @@ import {applyExcursionBillingAdjustment, excursionPricing} from '../../../lib/ex
 import {mirrorHotelState,mirrorOperationalRecord,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {approveExternalExcursionCancellation,approveExternalExcursionChange,approveExternalExcursionPackageCancellation,ensureExcursionManageState,externalPackageOrders,rejectExternalExcursionAction} from '../../../lib/excursion-manage';
 import {sendExternalExcursionCancelledEmail,sendExternalExcursionRejectedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
+import {autoAssignExcursionOrder} from '../../../lib/excursion-auto-assignment';
 
 const headers = {'Cache-Control': 'private, no-store', 'Vary': 'Cookie'};
 const normal = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -93,6 +94,21 @@ export async function PATCH(request: Request) {
         decision=change.packageGroupId?approveExternalExcursionPackageCancellation(state,order,change,user.username):approveExternalExcursionCancellation(order,change,user.username);
       }else{
         decision=approveExternalExcursionChange(order,change,user.username);
+        if(decision.logisticsChanged&&order.approvalStatus==='Pending'&&!order.privateBoatRequested&&!order.packageGroupId){
+          const assignment=await autoAssignExcursionOrder(state,order);
+          if(assignment){
+            change.autoAssignedScheduleId=order.scheduleId;
+            change.autoAssignedScheduleName=order.matchedScheduleName;
+            change.autoAssignedAt=new Date().toISOString();
+            decision.autoAssigned=true;
+            decision.scheduleId=order.scheduleId;
+            decision.scheduleName=order.matchedScheduleName;
+            decision.time=order.time;
+            decision.endTime=order.endTime;
+          }else{
+            decision.autoAssigned=false;
+          }
+        }
       }
       const saved=await saveStayAccess(state,revision,user.userId);
       if(!saved)return Response.json({error:'Another excursion update was saved. Refresh and try again.'},{status:409,headers});
@@ -103,7 +119,7 @@ export async function PATCH(request: Request) {
         else if(change.type==='cancel')mail=await sendExternalExcursionCancelledEmail({...mailBase,refundRequiredCents:Number(change.refundRequiredCents)||0});
         else mail=await sendExternalExcursionUpdatedEmail(mailBase);
       }catch{mail={sent:false,error:'Guest email could not be sent.'};}
-      return Response.json({ok:true,revision:revision+1,decision:{id:change.id,type:change.type,status:change.status,logisticsChanged:!!change.logisticsChanged,refundRequiredCents:Number(change.refundRequiredCents)||0},email:mail},{headers});
+      return Response.json({ok:true,revision:revision+1,decision:{id:change.id,type:change.type,status:change.status,logisticsChanged:!!change.logisticsChanged,autoAssigned:!!decision?.autoAssigned,scheduleId:decision?.scheduleId||'',scheduleName:decision?.scheduleName||'',time:decision?.time||'',endTime:decision?.endTime||'',refundRequiredCents:Number(change.refundRequiredCents)||0},email:mail},{headers});
     }
     if (user.role !== 'admin') {
       return Response.json({error: 'Only Admin can make excursions free or change discounts.'}, {status: 403, headers});
