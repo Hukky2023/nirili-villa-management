@@ -25,7 +25,7 @@ if(!row){
  const match=await verifyPassword(b.password,row?.salt||"00000000000000000000000000000000",row?.password_hash||"0".repeat(64));
  if(!row||!match||!await roomLoginActive(row.id))return Response.json({error:"Incorrect username or password."},{status:401});
  if(['admin','staff'].includes(row.role))try{
-  await Promise.race([ensureSupabaseEmployee(row,b.password),new Promise(resolve=>setTimeout(resolve,700))]);
+  await ensureSupabaseEmployee(row,b.password);
  }catch{}
 }else if(!await roomLoginActive(row.id))return Response.json({error:"Incorrect username or password."},{status:401});
 if(row.role==='guest')return Response.json({error:"Guest login access has been disabled."},{status:403});
