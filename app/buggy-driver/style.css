@@ -142,3 +142,5 @@
 .buggy-pickup-card.requested{border-color:#d8e5ec;background:#fff}
 .buggy-pickup-card.driver-on-the-way{border-color:#b8d9e8;background:#f8fcfe}
 .buggy-pickup-card.on-trip,.buggy-pickup-card.completed{border-color:#bcdccc;background:#fbfffd}
+
+.buggy-status.assigned{background:#f1f5ff;color:#3557a5}.buggy-pickup-card.assigned{border-color:#cbd7f3;background:#fbfcff}
