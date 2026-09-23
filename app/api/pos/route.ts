@@ -1,6 +1,6 @@
 import {deletePOSBill} from '../../../lib/pos-bill-delete';
 import {waiterLine} from '../../../lib/waiter-pricing';
-import {halfBoardMealStatus,mealPlanOrderStatus,restaurantMealPeriod} from '../../../lib/meal-access';
+import {mealPlanOrderStatus,restaurantMealPeriod} from '../../../lib/meal-access';
 import {discountPOSBill} from '../../../lib/pos-discount';
 import {changePOSPayment} from '../../../lib/pos-payment';
 import {restaurantTables} from '../../../lib/restaurant-tables';
