@@ -8,6 +8,7 @@ export const maldivesDay=(value:string|Date=new Date())=>{
  return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
 };
 
+// Kept as informational metadata only. Meal-plan inclusion no longer depends on service time.
 export function restaurantMealPeriod(value:string|Date=new Date()):RestaurantMealPeriod|''{
  const d=value instanceof Date?value:new Date(value);
  if(Number.isNaN(d.getTime()))return '';
@@ -23,68 +24,81 @@ export function restaurantMealPeriod(value:string|Date=new Date()):RestaurantMea
 
 function stayFor(state:any,stayId?:string){return stayId?(state?.stays||[]).find((stay:any)=>stay.id===stayId):null;}
 
-export function halfBoardIncludedMealPeriod(state:any,stayId?:string,now:string|Date=new Date()):HalfBoardIncludedMeal|''{
+export function mealPlanDailyOrderLimit(meal?:string){
+ return meal==='Full Board'?2:meal==='Half Board'?1:0;
+}
+
+export function mealPlanIncludedOrderCount(
+ state:any,
+ stayId?:string,
+ now:string|Date=new Date(),
+ excludeOrderId=''
+){
  const stay=stayFor(state,stayId);
- if(stay?.meal!=='Half Board')return '';
- const today=maldivesDay(now);
- const order=(state?.posOrders||[]).find((order:any)=>{
-  if(order.stayId!==stayId||maldivesDay(order.createdAt)!==today||!Array.isArray(order.items)||!order.items.some((item:any)=>item.included===true))return false;
-  const period=String(order.includedMealPeriod||order.mealPeriod||'');
-  return period==='Lunch'||period==='Dinner'||period==='';
- });
- if(!order)return '';
- const period=String(order.includedMealPeriod||order.mealPeriod||'');
- return period==='Dinner'?'Dinner':'Lunch';
+ if(!stay||!hasMealPlan(stay.meal))return 0;
+ const day=maldivesDay(now);
+ return (state?.posOrders||[]).filter((order:any)=>{
+  if(!order||String(order.id||'')===String(excludeOrderId||''))return false;
+  if(order.stayId!==stayId||maldivesDay(order.createdAt)!==day)return false;
+  return Array.isArray(order.items)&&order.items.some((item:any)=>item?.included===true);
+ }).length;
 }
 
-export function halfBoardMealSelection(state:any,stayId?:string,now:string|Date=new Date()):HalfBoardIncludedMeal|''{
- return halfBoardIncludedMealPeriod(state,stayId,now);
+export function mealPlanOrderStatus(
+ state:any,
+ stayId?:string,
+ now:string|Date=new Date(),
+ excludeOrderId=''
+){
+ const stay=stayFor(state,stayId);
+ const limit=mealPlanDailyOrderLimit(stay?.meal);
+ const used=limit?mealPlanIncludedOrderCount(state,stayId,now,excludeOrderId):0;
+ const remaining=Math.max(0,limit-used);
+ return {meal:stay?.meal||'',limit,used,remaining,available:remaining>0,date:maldivesDay(now)};
 }
 
+// Compatibility helpers used by older UI/API fields.
+export function halfBoardIncludedMealPeriod(_state:any,_stayId?:string,_now:string|Date=new Date()):HalfBoardIncludedMeal|''{return '';}
+export function halfBoardMealSelection(_state:any,_stayId?:string,_now:string|Date=new Date()):HalfBoardIncludedMeal|''{return '';}
 export function halfBoardIncludedMealUsed(state:any,stayId?:string,now:string|Date=new Date()){
- return halfBoardIncludedMealPeriod(state,stayId,now)!=='';
+ const stay=stayFor(state,stayId);
+ return stay?.meal==='Half Board'&&mealPlanOrderStatus(state,stayId,now).used>=1;
 }
-
 export function halfBoardFreeOrderAvailable(state:any,stayId?:string,now:string|Date=new Date()){
  const stay=stayFor(state,stayId);
  if(stay?.meal!=='Half Board')return true;
- return !halfBoardIncludedMealUsed(state,stayId,now);
+ return mealPlanOrderStatus(state,stayId,now).available;
 }
-
 export function halfBoardMealStatus(state:any,stayId?:string,now:string|Date=new Date()){
- const includedMeal=halfBoardIncludedMealPeriod(state,stayId,now);
- const freeOrderAvailable=halfBoardFreeOrderAvailable(state,stayId,now);
+ const status=mealPlanOrderStatus(state,stayId,now);
  return {
-  selectedMeal:includedMeal,
-  includedMeal,
-  freeOrderAvailable,
-  locked:!freeOrderAvailable,
+  selectedMeal:'',
+  includedMeal:'',
+  freeOrderAvailable:status.available,
+  locked:!status.available,
   period:restaurantMealPeriod(now),
-  date:maldivesDay(now)
+  date:status.date,
+  limit:status.limit,
+  used:status.used,
+  remaining:status.remaining
  };
 }
-
-// Kept for compatibility with older callers/data. Half Board meal choice is now automatic.
-export function setHalfBoardMealSelection(state:any,stayId:string,meal:any,by:string,now:string|Date=new Date()){
+export function setHalfBoardMealSelection(state:any,stayId:string,_meal:any,_by:string,now:string|Date=new Date()){
  const stay=stayFor(state,stayId);
  if(!stay||stay.status!=='In House')throw Error('Select a checked-in Half Board room.');
  if(stay.meal!=='Half Board')throw Error('This room is not on Half Board.');
- return halfBoardIncludedMealPeriod(state,stayId,now);
+ return halfBoardMealSelection(state,stayId,now);
 }
 
 export const mealItemCoveredByPackage=(meal:string|undefined,item:{fullBoard?:boolean})=>
- item.fullBoard===true&&(meal==='Full Board'||meal==='Half Board');
+ item.fullBoard===true&&hasMealPlan(meal);
 
 export const mealItemIncluded=(
  meal:string|undefined,
  item:{fullBoard?:boolean},
- halfBoardAvailable=true,
+ freeOrderAvailable=true,
  _halfBoardMeal:HalfBoardIncludedMeal|''='',
- period:RestaurantMealPeriod|''=restaurantMealPeriod()
+ _period:RestaurantMealPeriod|''=''
 )=>{
- if(item.fullBoard!==true)return false;
- if(meal==='Full Board')return true;
- if(meal!=='Half Board')return false;
- if(period==='Breakfast')return true;
- return halfBoardAvailable&&(period==='Lunch'||period==='Dinner');
+ return item.fullBoard===true&&hasMealPlan(meal)&&freeOrderAvailable;
 };
