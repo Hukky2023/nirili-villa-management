@@ -10,6 +10,7 @@ import {updateRoomInventory} from '../../../lib/rooms';
 import {readOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {appendAccountHistory} from '../../../lib/account-history';
 import {autoPushBookingComAvailability} from '../../../lib/channels';
+import {syncTransportBuggy} from '../../../lib/transport-plan';
 function canViewHotel(u:any){
  if(!u)return false;
  if(u.role==='admin')return true;
@@ -49,6 +50,7 @@ if(b.action==='create'){
  const details=b.guests===undefined?null:await bookingGuests(b.guests,b.pax,[],b.adults??b.pax,b.children??0);
  const booking=createDirectBooking(state,{...b,guest:details?.guests[0].name??b.guest},u.username);
  if(details)Object.assign(booking,{guests:details.guests,adults:details.adults,children:details.children,whatsapp:details.guests[0].phone});
+ syncTransportBuggy(state,booking,'arrival',booking.transportPlan?.arrival?.launch);syncTransportBuggy(state,booking,'departure',booking.transportPlan?.departure?.launch);
  if(!await saveStayAccess(state,revision,u.userId,null,[],details?.documents||[]))return Response.json({error:'Another booking changed room availability. Review the rooms and try again.'},{status:409});
  await autoPushBookingComAvailability();
  return Response.json({booking},{status:201});
