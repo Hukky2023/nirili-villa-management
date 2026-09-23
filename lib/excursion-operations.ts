@@ -108,13 +108,13 @@ export function planSpecialPackageSchedules(candidates:SpecialPackageScheduleCan
   candidate.date===other.date&&timeRangesOverlap(candidate.time,candidate.endTime,other.time,other.endTime)
  );
  const finishKey=(selected:any[])=>selected.reduce((max,item)=>Math.max(max,Date.parse(item.date+'T'+item.endTime+':00Z')||0),0);
- const startKey=(selected:any[])=>selected.reduce((min,item)=>Math.min(min,Date.parse(item.date+'T'+item.time+':00Z')||Number.MAX_SAFE_INTEGER),Number.MAX_SAFE_INTEGER);
+ const itineraryKey=(selected:any[])=>[...selected].sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.time).localeCompare(String(b.time))).map(item=>String(item.date)+'T'+String(item.time)).join('|');
  let best:any[]|null=null;
 
  function better(next:any[]){
   if(!best)return true;
   if(next.length!==best.length)return next.length<best.length;
-  const ns=startKey(next),bs=startKey(best);if(ns!==bs)return ns<bs;
+  const nk=itineraryKey(next),bk=itineraryKey(best);if(nk!==bk)return nk<bk;
   const nf=finishKey(next),bf=finishKey(best);if(nf!==bf)return nf<bf;
   return next.map(item=>item.id).sort().join('|')<best.map(item=>item.id).sort().join('|');
  }
