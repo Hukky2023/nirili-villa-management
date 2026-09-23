@@ -139,16 +139,18 @@ async function folioOverrides(room:string){
  return [...byKey.values()].map(row=>row.payload).filter(Boolean);
 }
 export async function folioFor(s:any,orders?:any[]){if(!usesDemoLegacyFolio(s)){const all=orders??(await loadStays()).state.orders;let bills=[...(s.posBills||[]),{department:'Accommodation',id:s.id,items:[[s.meal+' · '+s.checkIn+' to '+s.checkOut,1,s.base/100,0]],status:'Posted',totalCents:s.base},...all.filter((o:any)=>billableOrder(o,s)).map((o:any)=>o.kind==='excursion'?excursionFolioBill(o):({department:o.kind==='food'?'Restaurant':'Transfer',id:o.id,items:[[o.name,o.quantity,o.cents/100,0]],status:o.status,totalCents:o.cents})),...s.extensions.map((e:any)=>({department:'Accommodation',id:e.id,items:[['Stay extension · '+e.from+' to '+e.to,e.nights,e.cents/100,0]],status:'Posted',totalCents:e.cents}))];
-const overrides=await folioOverrides(String(s.billRoom||s.room));
+const sourceExcursionIds=new Set(all.filter((o:any)=>o.kind==='excursion'&&o.stayId===s.id).map((o:any)=>String(o.id)));
+const overrides=(await folioOverrides(String(s.billRoom||s.room))).filter((o:any)=>!(o?.department==='Excursions'&&sourceExcursionIds.has(String(o?.id||''))));
 const overrideKey=(b:any)=>String(b.department)+':'+String(b.id);
 const byKey=new Map(overrides.map((b:any)=>[overrideKey(b),b]));
 bills=bills.map((b:any)=>{const o:any=byKey.get(overrideKey(b));if(!o)return b;byKey.delete(overrideKey(b));return {...b,...o,totalCents:o.status==='Cancelled'?0:Math.round(Number(o.total||0)*100)};});
 for(const o of byKey.values() as any){bills.push({...o,totalCents:o.status==='Cancelled'?0:Math.round(Number(o.total||0)*100)});}
-const totalCents=bills.reduce((n:number,b:any)=>n+Number(b.totalCents||0),0),paidCents=s.initialPaid+s.payments.reduce((n:number,p:any)=>n+p.cents,0);return {bills:bills.map((b:any)=>paidBillStatus(s,b)),totalCents,paidCents,balanceCents:totalCents-paidCents};}const overrides=await folioOverrides(String(s.billRoom));
+const totalCents=bills.reduce((n:number,b:any)=>n+Number(b.totalCents||0),0),paidCents=s.initialPaid+s.payments.reduce((n:number,p:any)=>n+p.cents,0);return {bills:bills.map((b:any)=>paidBillStatus(s,b)),totalCents,paidCents,balanceCents:totalCents-paidCents};}const guestOrders=orders??(await loadStays()).state.orders;
+const sourceExcursionIds=new Set(guestOrders.filter((o:any)=>o.kind==='excursion'&&o.stayId===s.id).map((o:any)=>String(o.id)));
+const overrides=(await folioOverrides(String(s.billRoom))).filter((o:any)=>!(o?.department==='Excursions'&&sourceExcursionIds.has(String(o?.id||''))));
 const bill=(department:string,id:string,items:any[])=>overrides.find((x:any)=>x.department===department&&x.id===id)||{department,id,items,status:'Posted'};
 const bills=[bill('Accommodation',s.id,[[s.meal+' · '+s.checkIn+' to '+s.checkOut,1,s.base/100,0]]),...await Promise.all(['RES-1048','RES-1061'].map(async id=>({...await readBill(s.billRoom,id),department:'Restaurant'}))),bill('Transfer','TRF-0784',[['Airport → Dhiffushi shared speedboat',2,70,0]]),bill('Excursions','EXC-0921',[['Turtle Snorkeling',2,50,0]]),bill('Excursions','EXC-0934',[['Coral Garden + Sandbank',2,60,0]])].map((b:any)=>({...b,totalCents:b.status==='Cancelled'?0:Math.round(total({...b,items:b.items.map((i:any)=>[i[0],i[1],i[2],i[3]||0])})*100)}));
 bills.push(...(s.posBills||[]));
-const guestOrders=orders??(await loadStays()).state.orders;
 bills.push(...guestOrders.filter((o:any)=>billableOrder(o,s)).map((o:any)=>o.kind==='excursion'?excursionFolioBill(o):({department:o.kind==='food'?'Restaurant':'Transfer',id:o.id,items:[[o.name,o.quantity,o.cents/100,0]],status:o.status,totalCents:o.cents})));
 for(const e of s.extensions)bills.push({department:'Accommodation',id:e.id,items:[['Stay extension · '+e.from+' to '+e.to,e.nights,e.cents/100,0]],status:'Posted',totalCents:e.cents});
 const totalCents=bills.reduce((n:number,b:any)=>n+b.totalCents,0),paidCents=s.initialPaid+s.payments.reduce((n:number,p:any)=>n+p.cents,0);return {bills:bills.map((b:any)=>paidBillStatus(s,b)),totalCents,paidCents,balanceCents:totalCents-paidCents};}
