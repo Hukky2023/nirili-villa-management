@@ -11,6 +11,8 @@ import {autoAssignExcursionOrder} from '../../../lib/excursion-auto-assignment';
 import {excursionDeparturePassed,islandToday,validDate} from '../../../lib/guest-catalog';
 import {excursionScheduleLoadForOrder,scheduleCanServeRequest} from '../../../lib/excursion-operations';
 import {applyExcursionReassignment} from '../../../lib/excursion-reassignment';
+import {sendGuestPushForExcursionTimeChange} from '../../../lib/web-push';
+import {addGuestNotification} from '../../../lib/guest-notifications';
 
 const headers = {'Cache-Control': 'private, no-store', 'Vary': 'Cookie'};
 const normal = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -141,13 +143,19 @@ export async function PATCH(request: Request) {
       const resources=excursionResources(state),now=new Date().toISOString();
       const moved=applyExcursionReassignment(order,target,resources,user.username,note,compatible,now);
       const vessel=moved.after.vessel;
+      if(order.accountId)addGuestNotification(state,{
+        accountId:String(order.accountId),type:'excursion-time-change',title:'Excursion time changed',
+        message:String(order.packageName||order.name||'Excursion')+' departure changed from '+(moved.before.time||'the previous time')+' to '+moved.after.time+' on '+moved.after.date+'.',
+        url:'/stay?service=excursion',bookingId:String(order.packageGroupId||order.id||''),metadata:{from:{date:moved.before.date,time:moved.before.time},to:{date:moved.after.date,time:moved.after.time},scheduleId:target.id}
+      });
       const saved=await saveStayAccess(state,revision,user.userId);
       if(!saved)return Response.json({error:'Another excursion update was saved. Refresh and try again.'},{status:409,headers});
-      let email:any=null;
+      let email:any=null,push:any=null;
       if(order.source==='External guest website'&&order.email&&order.manageToken)try{
         email=await sendExternalExcursionUpdatedEmail({email:order.email,guest:order.guest,reference:order.packageGroupId||order.id,excursion:order.packageName||order.name,date:order.date,time:order.time,endTime:order.endTime,quantity:Number(order.quantity)||0,quotedCents:Math.max(0,Number(order.cents)||Number(order.quotedCents)||0),hotel:order.hotel,manageToken:order.manageToken,eventId:'manual-reassign-'+order.id+'-'+now});
       }catch{email={sent:false,error:'Booking moved, but the guest email could not be sent.'};}
-      return Response.json({ok:true,revision:revision+1,assignment:{id:order.id,date:order.date,time:order.time,endTime:order.endTime,scheduleId:order.scheduleId,scheduleName:target.name,vessel:vessel||target.vessel||'',compatible,manualOverride:!compatible},email},{headers});
+      if(order.accountId)try{push=await sendGuestPushForExcursionTimeChange(order,{date:moved.before.date,time:moved.before.time},{date:moved.after.date,time:moved.after.time});}catch{push={sent:0,total:0};}
+      return Response.json({ok:true,revision:revision+1,assignment:{id:order.id,date:order.date,time:order.time,endTime:order.endTime,scheduleId:order.scheduleId,scheduleName:target.name,vessel:vessel||target.vessel||'',compatible,manualOverride:!compatible},email,push},{headers});
     }
     if (typeof input?.action === 'string' && input.action.startsWith('manage-')) {
       if (!hasPermission(user,'edit_excursions') && !hasPermission(user,'excursions_manager')) {
