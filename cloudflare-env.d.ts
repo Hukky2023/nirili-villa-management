@@ -10,5 +10,8 @@ declare namespace Cloudflare {
     CHANNEX_API_KEY?: string;
     CHANNEX_WEBHOOK_TOKEN?: string;
     CHANNEX_API_BASE_URL?: string;
+    RESEND_API_KEY?: string;
+    BOOKING_EMAIL_FROM?: string;
+    BOOKING_EMAIL_REPLY_TO?: string;
   }
 }
