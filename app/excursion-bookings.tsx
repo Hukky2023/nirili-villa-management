@@ -29,8 +29,10 @@ export default function ExcursionBookings() {
   const [error, setError] = useState(''), [query, setQuery] = useState('');
   const [date, setDate] = useState(''), [payment, setPayment] = useState('');
   const [page, setPage] = useState(1);
-  const [canAdjustBilling, setCanAdjustBilling] = useState(false), [revision, setRevision] = useState(0);
+  const [canAdjustBilling, setCanAdjustBilling] = useState(false), [canReassign,setCanReassign]=useState(false), [revision, setRevision] = useState(0);
   const [manageRequests,setManageRequests]=useState<any[]>([]),[manageBusy,setManageBusy]=useState(''),[manageMessage,setManageMessage]=useState('');
+  const [moveBooking,setMoveBooking]=useState<BillingBooking|null>(null),[moveDate,setMoveDate]=useState(''),[moveSchedules,setMoveSchedules]=useState<any[]>([]),[moveScheduleId,setMoveScheduleId]=useState('');
+  const [moveRevision,setMoveRevision]=useState(0),[moveBusy,setMoveBusy]=useState(false),[moveLoading,setMoveLoading]=useState(false),[moveError,setMoveError]=useState(''),[moveNote,setMoveNote]=useState('');
   const request = useRef<AbortController | null>(null);
 
   const load = useCallback(async (background = false) => {
@@ -45,11 +47,11 @@ export default function ExcursionBookings() {
       const result = await response.json();
       if (controller.signal.aborted) return;
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {setBookings([]); setLoaded(false); setCanAdjustBilling(false);}
+        if (response.status === 401 || response.status === 403) {setBookings([]); setLoaded(false); setCanAdjustBilling(false); setCanReassign(false);}
         throw new Error(result.error || 'Could not load confirmed excursion bookings.');
       }
       if (!Array.isArray(result.bookings)) throw new Error('The booking list could not be read. Please refresh.');
-      if (!controller.signal.aborted) {setBookings(result.bookings); setManageRequests(Array.isArray(result.manageRequests)?result.manageRequests:[]); setRevision(result.revision); setCanAdjustBilling(result.canAdjustBilling === true); setLoaded(true); setError('');}
+      if (!controller.signal.aborted) {setBookings(result.bookings); setManageRequests(Array.isArray(result.manageRequests)?result.manageRequests:[]); setRevision(result.revision); setCanAdjustBilling(result.canAdjustBilling === true); setCanReassign(result.canReassign === true); setLoaded(true); setError('');}
     } catch (reason) {
       if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load bookings. Please try again.');
     } finally {
@@ -82,6 +84,51 @@ export default function ExcursionBookings() {
   const total = filtered.reduce((sum, b) => sum + b.totalCents, 0);
   const hasFilters = !!(query || date || payment);
   function clearFilters() {setQuery(''); setDate(''); setPayment(''); setPage(1);}
+  function bookingCanMove(b:BillingBooking){
+    return canReassign&&b.serviceType!=='romantic-beach-dinner'&&!b.privateBoatRequested&&!b.separateVessel&&!/(Departed|Completed|Arrived)/i.test(String(b.tripStatus||''));
+  }
+  async function loadMoveOptions(booking:BillingBooking,targetDate:string){
+    setMoveLoading(true);setMoveError('');setMoveScheduleId('');
+    try{
+      const response=await fetch('/api/excursion-bookings?bookingId='+encodeURIComponent(booking.id)+'&scheduleDate='+encodeURIComponent(targetDate),{cache:'no-store'});
+      const result=await response.json();
+      if(!response.ok)throw Error(result.error||'Could not load available trips.');
+      setMoveSchedules(Array.isArray(result.schedules)?result.schedules:[]);
+      setMoveRevision(Number(result.revision)||revision);
+    }catch(e){setMoveSchedules([]);setMoveError(e instanceof Error?e.message:'Could not load available trips.');}
+    finally{setMoveLoading(false);}
+  }
+  async function openMove(booking:BillingBooking){
+    setMoveBooking(booking);setMoveDate(booking.date);setMoveNote('');setMoveError('');setMoveSchedules([]);setMoveScheduleId('');setMoveRevision(revision);
+    await loadMoveOptions(booking,booking.date);
+  }
+  async function changeMoveDate(value:string){
+    setMoveDate(value);
+    if(moveBooking&&value)await loadMoveOptions(moveBooking,value);
+  }
+  async function submitMove(){
+    if(!moveBooking||!moveScheduleId||moveBusy)return;
+    const target=moveSchedules.find((item:any)=>item.id===moveScheduleId);
+    if(!target){setMoveError('Choose an available trip.');return;}
+    if(target.current){setMoveError('These guests are already assigned to this trip. Choose another trip.');return;}
+    let allowIncompatible=false;
+    if(!target.compatible){
+      allowIncompatible=window.confirm('This trip does not normally serve '+moveBooking.excursion+'. Move these guests there as a manual override?');
+      if(!allowIncompatible)return;
+    }
+    if(!window.confirm('Move '+moveBooking.guests+' guest'+(moveBooking.guests===1?'':'s')+' from '+dateLabel(moveBooking.date)+' '+moveBooking.time+' to '+dateLabel(target.date)+' '+target.time+' · '+target.name+'?'))return;
+    setMoveBusy(true);setMoveError('');
+    try{
+      const response=await fetch('/api/excursion-bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reassign-booking',id:moveBooking.id,revision:moveRevision,scheduleId:target.id,scheduleDate:target.date,note:moveNote,allowIncompatible})});
+      const result=await response.json();
+      if(!response.ok)throw Error(result.error||'Could not reassign this booking.');
+      setManageMessage('Moved '+moveBooking.guests+' guest'+(moveBooking.guests===1?'':'s')+' to '+result.assignment.time+' · '+result.assignment.scheduleName+'.'+(result.email?.sent?' Guest email sent.':''));
+      setMoveBooking(null);setMoveSchedules([]);setMoveScheduleId('');setMoveNote('');
+      await load();window.dispatchEvent(new Event('services-updated'));
+    }catch(e){setMoveError(e instanceof Error?e.message:'Could not reassign this booking.');}
+    finally{setMoveBusy(false);}
+  }
+
   async function decideManageRequest(item:any,approve:boolean){
     if(manageBusy)return;
     const note=prompt(approve?'Optional note for the guest:':'Optional reason for rejecting this request:','')||'';
@@ -134,6 +181,7 @@ export default function ExcursionBookings() {
           <div><dt>Guests / total</dt><dd>{b.guests} {b.guests === 1 ? 'guest' : 'guests'}<small>{b.adults} adult{b.adults===1?'':'s'} · {b.children} child{b.children===1?'':'ren'} · {b.infants} under 3</small><small>{money(b.totalCents)} USD</small></dd></div>
         </dl>
         <ExcursionBillingActions booking={b} canAdjust={canAdjustBilling} revision={revision} onUpdated={() => load()}/>
+        {bookingCanMove(b)&&<div className="excursion-booking-reassign-bar"><button type="button" className="excursion-secondary-btn" onClick={()=>void openMove(b)}>Move guests to another trip</button><small>Admin & Excursions Manager</small></div>}
         <details className="excursion-booking-details"><summary>View details<span className="excursion-booking-sr-only"> for {b.guest}, booking {b.id}</span></summary>
           <dl>
             {b.packageGroupId&&<div><dt>Package</dt><dd>{b.packageName||'Special Package'}<small>{b.packageGroupId} · Part {b.packagePart} of {b.packageParts}</small></dd></div>}{b.groupName&&<div><dt>Family / group</dt><dd>{b.groupName}<small>{b.guests} guests under one booking</small></dd></div>}<div><dt>Phone / WhatsApp</dt><dd>{b.phone ? <a href={'tel:'+b.phone}>{b.phone}</a> : 'Not recorded'}</dd></div>{b.email&&<div><dt>Email</dt><dd>{b.email}</dd></div>}
@@ -152,5 +200,23 @@ export default function ExcursionBookings() {
       </article>)}</div> : <div className="excursion-empty-state"><strong>{hasFilters ? 'No bookings match your filters' : 'No confirmed excursion bookings yet'}</strong><p>{hasFilters ? 'Clear the filters to see all confirmed bookings.' : 'Confirmed excursion bookings will appear here automatically.'}</p></div>}
       {pages > 1 && <nav className="excursion-booking-pagination" aria-label="Confirmed booking pages"><button type="button" className="excursion-secondary-btn" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Previous</button><span>Page {currentPage} of {pages} · {filtered.length} bookings</span><button type="button" className="excursion-secondary-btn" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}>Next</button></nav>}
     </>}
+    {moveBooking&&<div className="excursion-reassign-overlay" role="dialog" aria-modal="true" aria-labelledby="excursion-reassign-title">
+      <div className="excursion-reassign-dialog">
+        <header><div><small>MOVE CONFIRMED BOOKING</small><h3 id="excursion-reassign-title">{moveBooking.excursion}</h3><p>{moveBooking.id} · {moveBooking.guests} guest{moveBooking.guests===1?'':'s'}</p></div><button type="button" aria-label="Close" disabled={moveBusy} onClick={()=>setMoveBooking(null)}>×</button></header>
+        <section className="excursion-reassign-current"><strong>Currently assigned</strong><span>{dateLabel(moveBooking.date)} · {moveBooking.time}{moveBooking.endTime?'–'+moveBooking.endTime:''}</span><small>{moveBooking.vessel||'Vessel not assigned'}</small></section>
+        <section className="excursion-reassign-guests"><strong>Guests being moved</strong><div>{moveBooking.people?.length?moveBooking.people.map(person=><span key={person.id}>{person.nameRecorded?person.name:'Guest '+person.slot}</span>):<span>{moveBooking.guest}</span>}</div></section>
+        <label className="excursion-reassign-date">Trip date<DateFieldDMY value={moveDate} onChange={value=>void changeMoveDate(value)} ariaLabel="Target trip date"/></label>
+        {moveError&&<p className="excursion-reassign-error" role="alert">{moveError}</p>}
+        <div className="excursion-reassign-options">
+          {moveLoading?<p>Loading available trips…</p>:moveSchedules.length?moveSchedules.map((trip:any)=><label key={trip.id} className={'excursion-reassign-option '+(trip.current?'current ':'')+(!trip.canFit?'full ':'')}>
+            <input type="radio" name="reassign-trip" value={trip.id} checked={moveScheduleId===trip.id} disabled={!trip.canFit||moveBusy} onChange={()=>setMoveScheduleId(trip.id)}/>
+            <span><strong>{trip.time}{trip.endTime?'–'+trip.endTime:''} · {trip.name}</strong><small>{trip.vessel} · {trip.confirmedPax}/{trip.capacity} confirmed · {trip.remainingSeats} seats available</small></span>
+            <em>{trip.current?'Current':trip.compatible?'Compatible':'Other trip'}</em>
+          </label>):<p>No open trips are available on this date.</p>}
+        </div>
+        <label className="excursion-reassign-note">Reason / note (optional)<textarea rows={3} maxLength={500} value={moveNote} onChange={e=>setMoveNote(e.target.value)} placeholder="e.g. Guest requested later departure"/></label>
+        <footer><button type="button" className="excursion-secondary-btn" disabled={moveBusy} onClick={()=>setMoveBooking(null)}>Cancel</button><button type="button" className="excursion-primary-btn" disabled={moveBusy||!moveScheduleId} onClick={()=>void submitMove()}>{moveBusy?'Moving…':'Move guests'}</button></footer>
+      </div>
+    </div>}
   </section>;
 }
