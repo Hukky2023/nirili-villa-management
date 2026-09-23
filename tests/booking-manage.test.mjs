@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {bookingManageUrl,bookingForManageToken,bookingManageSnapshot,createBookingManageToken,roomAvailability,validBookingManageToken} from '../lib/booking-manage.ts';
+import {bookingCancellationNeedsApproval,bookingManageUrl,bookingForManageToken,bookingManageSnapshot,createBookingManageToken,roomAvailability,validBookingManageToken} from '../lib/booking-manage.ts';
 
 const token='a'.repeat(48);
 const base=()=>({
@@ -47,4 +47,12 @@ test('room availability blocks overlaps and maintenance but ignores cancelled an
  ];
  assert.deepEqual(roomAvailability(state,'2026-10-03','2026-10-04',2).map(r=>r.number),['102']);
  assert.deepEqual(roomAvailability(state,'2026-10-03','2026-10-04',2,'live').map(r=>r.number),['101','102']);
+});
+
+
+test('confirmed guest cancellation is automatic through the day before check-in',()=>{
+ assert.equal(bookingCancellationNeedsApproval('2026-09-25','2026-09-23'),false);
+ assert.equal(bookingCancellationNeedsApproval('2026-09-25','2026-09-24'),false);
+ assert.equal(bookingCancellationNeedsApproval('2026-09-25','2026-09-25'),true);
+ assert.equal(bookingCancellationNeedsApproval('2026-09-25','2026-09-26'),true);
 });
