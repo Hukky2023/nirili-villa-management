@@ -6,7 +6,7 @@ import {loadExcursionMenu} from '../../../../lib/excursion-menu';
 import {excursionPriceCents} from '../../../../lib/excursion-children';
 import {PRIVATE_BOAT_SURCHARGE_CENTS,isSnorkelingTrip} from '../../../../lib/excursion-operations';
 import {isRomanticBeachDinner} from '../../../../lib/excursion-services';
-import {externalExcursionForToken,externalExcursionPaymentCents,excursionManageSnapshot,ensureExcursionManageState,pendingExcursionChange,validExcursionManageToken} from '../../../../lib/excursion-manage';
+import {externalExcursionForToken,externalExcursionPaymentCents,externalPackageOrders,excursionManageSnapshot,ensureExcursionManageState,pendingExcursionChange,validExcursionManageToken} from '../../../../lib/excursion-manage';
 import {sendExternalExcursionCancelledEmail,sendExternalExcursionRequestEmail,sendExternalExcursionUpdatedEmail} from '../../../../lib/excursion-email';
 
 const headers={'Cache-Control':'private, no-store, max-age=0'};
@@ -59,7 +59,7 @@ async function cleanProposal(body:any,items:any[]){
  return {guest:guestNames[0],email,phone,hotel,pickupLocation:hotel,externalRoom,groupName,notes,date,menuItemId:item.id,name:item.name,quantity:guestMix.total,adults:guestMix.adults,children:guestMix.children,infants:guestMix.infants,guestNames,guestCategories:categories,excursionGuestRoster:roster('',guestNames,categories),footSizes,pricingUnit:item.pricingUnit,unitPriceCents:item.cents,baseQuotedCents,privateBoatRequested,privateBoatSurchargeCents,buggyRequested,quotedCents};
 }
 function currentRecord(order:any){return {guest:order.guest,email:order.email,phone:order.phone,hotel:order.hotel,externalRoom:order.externalRoom,groupName:order.groupName,date:order.date,menuItemId:order.menuItemId,name:order.name,quantity:order.quantity,adults:order.adults,children:order.children,infants:order.infants,guestNames:order.guestNames,guestCategories:order.guestCategories,footSizes:order.footSizes,privateBoatRequested:!!order.privateBoatRequested,buggyRequested:!!order.buggyRequested,notes:order.notes,quotedCents:order.quotedCents};}
-function changeRecord(order:any,type:'change'|'cancel',proposed:any=null){return {id:'ECH-'+crypto.randomUUID().slice(0,8).toUpperCase(),bookingId:order.id,type,status:'Pending',requestedAt:new Date().toISOString(),current:currentRecord(order),proposed};}
+function changeRecord(order:any,type:'change'|'cancel',proposed:any=null){return {id:'ECH-'+crypto.randomUUID().slice(0,8).toUpperCase(),bookingId:order.id,...(order.packageGroupId?{packageGroupId:order.packageGroupId}:{}),type,status:'Pending',requestedAt:new Date().toISOString(),current:currentRecord(order),proposed};}
 function mailFrom(order:any,eventId?:string){return {email:order.email,guest:order.guest,reference:order.id,excursion:order.name,date:order.date,time:order.time||order.schedule?.time||'',endTime:order.endTime||order.schedule?.endTime||'',quantity:Number(order.quantity)||0,quotedCents:Number(order.quotedCents)||Number(order.cents)||0,hotel:order.hotel,manageToken:order.manageToken,eventId};}
 
 export async function POST(request:Request){
@@ -72,12 +72,13 @@ export async function POST(request:Request){
   const {state,revision}=await loadStays();ensureExcursionManageState(state);
   const order=externalExcursionForToken(state,token);
   if(!order)return Response.json({error:'This manage-excursion link is no longer valid.'},{status:404,headers});
-  const items=await publicItems(),schedule=await liveSchedule(order);
+  const items=await publicItems(),schedule=await liveSchedule(order),packageOrders=externalPackageOrders(state,order),isSplitPackage=packageOrders.length>1;
   if(action==='view')return Response.json({booking:excursionManageSnapshot(state,order,schedule),items},{headers});
   if(['Departed','Completed','Cancelled'].includes(String(order.status||''))||['Cancelled','Declined'].includes(String(order.approvalStatus||'')))return Response.json({error:'This excursion can no longer be changed online. Please contact Nirili Tours.'},{status:409,headers});
   if(pendingExcursionChange(state,order.id))return Response.json({error:'A change or cancellation is already waiting for our excursions team.',booking:excursionManageSnapshot(state,order,schedule)},{status:409,headers});
 
   if(action==='update'){
+   if(isSplitPackage)return Response.json({error:'Special Package trip changes are managed by Nirili Tours. You can request cancellation here or contact us to change individual package departures.'},{status:409,headers});
    const proposed=await cleanProposal(body,items);
    proposed.excursionGuestRoster=roster(order.id,proposed.guestNames,proposed.guestCategories);
    const pendingUnscheduled=order.approvalStatus==='Pending'&&order.unscheduledRequest===true&&!order.scheduleId;
@@ -96,6 +97,13 @@ export async function POST(request:Request){
   }
 
   if(action==='cancel'){
+   if(isSplitPackage){
+    const change=changeRecord(order,'cancel');state.excursionChanges.push(change);
+    const saved=await saveStayAccess(state,revision,'public-excursion-manage');if(!saved)throw Error('The package changed while you were cancelling it. Refresh and try again.');
+    const first=packageOrders[0],packageTotal=Math.max(0,Number(first.packageTotalCents)||packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.quotedCents)||0),0));
+    const email=await sendExternalExcursionRequestEmail({email:first.email,guest:first.guest,reference:first.packageGroupId,excursion:first.packageName||'Special Package',date:first.date,time:first.time||first.schedule?.time||'',quantity:Number(first.quantity)||0,quotedCents:packageTotal,hotel:first.hotel,manageToken:first.manageToken,eventId:change.id,requestType:'cancel'});
+    return Response.json({ok:true,pending:true,email,booking:excursionManageSnapshot(state,order,null),items},{headers});
+   }
    const paid=externalExcursionPaymentCents(order),pendingUnscheduled=order.approvalStatus==='Pending'&&order.unscheduledRequest===true&&!order.scheduleId;
    if(pendingUnscheduled&&paid===0){
     order.status='Cancelled';order.approvalStatus='Cancelled';order.cents=0;order.cancelledAt=new Date().toISOString();order.cancelledBy='External guest';order.unscheduledRequest=false;order.seatRequest=false;order.guestNotified=false;
