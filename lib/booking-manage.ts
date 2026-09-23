@@ -43,6 +43,27 @@ export function bookingForManageToken(state:any,token:string){
  return null;
 }
 
+function transportPlanForManage(state:any,booking:any){
+ const source=booking.transportPlan||defaultTransportPlan(String(booking.checkIn||''),String(booking.checkOut||''));
+ const result={arrival:{...(source.arrival||{})},departure:{...(source.departure||{})}};
+ for(const leg of ['arrival','departure'] as const){
+  const ride=(state.buggyBookings||[]).find((item:any)=>item.stayId===booking.id&&item.bookingType==='stay-transfer'&&item.transportLeg===leg&&item.cancelled!==true);
+  if(!ride)continue;
+  const buggy=(state.buggyFleet||[]).find((item:any)=>item.id===ride.buggyId);
+  result[leg].buggy={
+   id:ride.id,
+   status:String(ride.buggyStatus||'Scheduled'),
+   date:String(ride.date||''),
+   pickupTime:String(ride.pickupTime||''),
+   location:String(ride.location||''),
+   destination:String(ride.destination||''),
+   buggyName:String(buggy?.name||ride.buggyName||ride.buggyId||''),
+   driver:String(ride.buggyDriver||buggy?.driver||'')
+  };
+ }
+ return result;
+}
+
 export function bookingManageSnapshot(state:any,target:any){
  ensureBookingManageState(state);
  const booking=target?.item;
@@ -65,7 +86,7 @@ export function bookingManageSnapshot(state:any,target:any){
   pax:Number(booking.pax??1),
   meal:String(booking.meal||''),
   notes:String(booking.notes||''),
-  transportPlan:booking.transportPlan||defaultTransportPlan(String(booking.checkIn||''),String(booking.checkOut||'')),
+  transportPlan:transportPlanForManage(state,booking),
   room:target.kind==='request'?'':String(booking.room||''),
   status:target.kind==='archived'?'Cancelled':String(booking.status||''),
   totalCents:Number(booking.base??booking.estimate??0),
