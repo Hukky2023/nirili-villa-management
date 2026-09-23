@@ -4,6 +4,7 @@ import {excursionFolioBill} from './excursion-billing';
 import {authDb} from './auth';
 import {readBill} from './restaurant-server';
 import {total} from './restaurant';
+import {reconcileRestaurantRoomBills} from './pos-room-billing';
 export const stayKey='hotel-stays-v1';
 export const money=(n:number)=>'$'+(n/100).toFixed(2);
 const excursionResetMarker='excursion-bookings-cleared-2026-09-17';
@@ -112,7 +113,7 @@ function clearAllExcursionBookingsThrough20260919(state:any){
 function billableOrder(o:any,s:any){return o.stayId===s.id&&o.status!=='Cancelled'&&o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined';}
 export async function loadStays(){
  const row=await authDb().prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(stayKey).first<any>();
- const state=row?JSON.parse(row.payload):seedStays();state.requests??=[];state.orders??=[];
+ const state=row?JSON.parse(row.payload):seedStays();state.requests??=[];state.orders??=[];state.posOrders??=[];
  let revision=row?.revision||0;
  const clearedOldExcursions=clearExistingExcursions(state),clearedSeatRequests=clearPreviousGuestExcursionRequests(state),clearedExcursions20260919=clearAllExcursionBookingsThrough20260919(state);
  if(clearedOldExcursions||clearedSeatRequests||clearedExcursions20260919){
@@ -122,7 +123,7 @@ export async function loadStays(){
   if(saved.meta.changes)revision+=1;
  }
  revision=await keepOnlyDhaainAndSifaahCrew(state,revision);
- updateRoomInventory(state);return {state,revision};
+ reconcileRestaurantRoomBills(state);updateRoomInventory(state);return {state,revision};
 }
 function usesDemoLegacyFolio(s:any){return ['NV-1260','NV-1261','NV-1262','NV-1263'].includes(String(s?.id||''))&&['101','102','103','104'].includes(String(s?.billRoom||''));}
 export async function folioFor(s:any,orders?:any[]){if(!usesDemoLegacyFolio(s)){const all=orders??(await loadStays()).state.orders;let bills=[...(s.posBills||[]),{department:'Accommodation',id:s.id,items:[[s.meal+' · '+s.checkIn+' to '+s.checkOut,1,s.base/100,0]],status:'Posted',totalCents:s.base},...all.filter((o:any)=>billableOrder(o,s)).map((o:any)=>o.kind==='excursion'?excursionFolioBill(o):({department:o.kind==='food'?'Restaurant':'Transfer',id:o.id,items:[[o.name,o.quantity,o.cents/100,0]],status:o.status,totalCents:o.cents})),...s.extensions.map((e:any)=>({department:'Accommodation',id:e.id,items:[['Stay extension · '+e.from+' to '+e.to,e.nights,e.cents/100,0]],status:'Posted',totalCents:e.cents}))];
