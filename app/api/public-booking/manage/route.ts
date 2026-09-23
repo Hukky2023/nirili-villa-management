@@ -8,6 +8,7 @@ import {deleteBooking} from '../../../../lib/booking-admin';
 import {folioFor} from '../../../../lib/stays';
 import {autoPushBookingComAvailability} from '../../../../lib/channels';
 import {normalizeTransportPlan} from '../../../../lib/transport-plan';
+import {cancelLinkedTransportBookings} from '../../../../lib/linked-transport-bookings';
 
 const headers={'Cache-Control':'private, no-store, max-age=0'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
@@ -114,6 +115,7 @@ export async function POST(request:Request){
      sourceRequest.status='Cancelled';sourceRequest.cancelledAt=new Date().toISOString();sourceRequest.reviewedBy='Guest';
     }
     if(!await saveStayAccess(state,revision,'public-booking-manage',null,revoke))throw Error('The booking changed while you were cancelling it. Refresh and try again.');
+    try{await cancelLinkedTransportBookings({stayId:booking.id,by:'public-booking-manage'})}catch{}
     if(sourceRequest?.source==='Guest booking website')try{await updatePublicBookingRequestStatus(sourceRequest.id,'Cancelled',{id:sourceRequest.id,status:'Cancelled',stayId:booking.id,room:booking.room});}catch{}
     try{await autoPushBookingComAvailability();}catch{}
     const mail=await sendBookingCancelledEmail({email:booking.email,guest:booking.guest,reference:booking.id,room:booking.room,checkIn:booking.checkIn,checkOut:booking.checkOut,meal:booking.meal,pax:booking.pax,totalCents:booking.base||0,manageToken:token,eventId:change.id,refundRequiredCents});
