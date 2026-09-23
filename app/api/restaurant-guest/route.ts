@@ -9,6 +9,7 @@ import {restaurantTables} from '../../../lib/restaurant-tables';
 import {walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
 import {mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,restoreRestaurantOrdersPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {updateRoomInventory} from '../../../lib/rooms';
+import {restaurantPaymentStatus,syncRestaurantRoomBill} from '../../../lib/pos-room-billing';
 
 async function identity(r:Request,create=false){
  const diningCookie=await sessionCookieName('nirili_dining');
@@ -87,7 +88,7 @@ async function view(id:any){
   guest:id.user?.displayName||profile?.name||'',
   orders:(state.posOrders||[]).filter((o:any)=>o.guestKey===id.key).map((o:any)=>({
    id:o.id,table:o.table,items:o.items,cents:o.cents,kitchen:o.kitchen,createdAt:o.createdAt,
-   paymentStatus:['Cash','Card','Bank transfer'].includes(o.method)||state.stays.find((s:any)=>s.id===o.stayId)?.paidBills?.['Restaurant:'+o.id]===o.cents?'Paid':o.method==='Room'?'Charged to room':'Pay at cashier'
+   paymentStatus:restaurantPaymentStatus(o,state.stays.find((s:any)=>s.id===o.stayId))
   }))
  };
 }
@@ -147,15 +148,21 @@ export async function POST(r:Request){
    return {id:i.id,name:i.category+' · '+i.name+(included?' (meal plan included)':''),quantity:x.quantity,unitCents:included?0:i.cents,cents:included?0:i.cents*x.quantity,included,menuCents:i.cents};
   });
   const date=new Date().toISOString(),id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0),includedMealPeriod=items.some((i:any)=>i.included===true)?mealPeriod:'';
-  state.posOrders.push({
+  const order={
    id,token:b.token,guestKey:who.key,by:who.key,
    createdBy:who.mode==='inhouse'?'In-house guest':who.mode==='account'?'Walk-in guest account':'Walk-in customer',
    createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||who.user?.displayName||walkName,table:b.table,notes:b.notes.trim(),items,cents,
-   kitchen:'Awaiting cashier',method:s?'Room':'',mealPeriod,halfBoardIncludedMeal:hb.selectedMeal,includedMealPeriod,history:[{date,by:who.mode,detail:'Guest order sent to cashier'}]
-  });
+   kitchen:'Awaiting cashier',method:s&&cents>0?'Room':'',mealPeriod,halfBoardIncludedMeal:hb.selectedMeal,includedMealPeriod,history:[{date,by:who.mode,detail:'Guest order sent to cashier'}]
+  };
+  state.posOrders.push(order);
   if(s){
-   s.posBills??=[];s.posBills.push({department:'Restaurant',id,items:items.map((i:any)=>[i.name,i.quantity,i.cents/100,0]),status:'Posted',totalCents:cents});
-   s.history.unshift({date,by:'Guest',detail:'Restaurant order '+id+' charged to room · $'+(cents/100).toFixed(2)});
+   s.history??=[];const billed=syncRestaurantRoomBill(s,order);
+   s.history.unshift({date,by:'Guest',detail:billed?'Restaurant order '+id+' charged to room · 
+  if(!await saveRestaurantState(state,revision,who.key))return Response.json({error:'Another order arrived. Please tap Send again.'},{status:409});
+  return Response.json(await view(who));
+ }catch(e){return Response.json({error:(e as Error).message},{status:400});}
+}
++(cents/100).toFixed(2):'Restaurant meal-plan order '+id+' · Included · no room charge'});
   }
   if(!await saveRestaurantState(state,revision,who.key))return Response.json({error:'Another order arrived. Please tap Send again.'},{status:409});
   return Response.json(await view(who));
