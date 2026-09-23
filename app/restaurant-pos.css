@@ -51,3 +51,9 @@
 .restaurant-fx-status strong{color:#8ee8cc}
 .restaurant-fx-status span{color:#a8bac6;font-size:12px;line-height:1.4}
 .restaurant-fx-status button{margin-top:5px}
+
+.pos-order-badges{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.pos-order-badges .pos-table-badge{margin:0}
+.pos-meal-plan-badge{display:inline-flex;align-items:center;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.45px;text-transform:uppercase;border:1px solid transparent;margin:8px 0}
+.pos-meal-plan-badge.full{background:#173f35;color:#a6f3d3;border-color:#2f7661}
+.pos-meal-plan-badge.half{background:#493a1f;color:#ffe0a1;border-color:#80652f}
