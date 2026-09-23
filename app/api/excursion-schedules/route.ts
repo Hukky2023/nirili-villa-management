@@ -12,6 +12,7 @@ import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE
 import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,PRIVATE_BOAT_SURCHARGE_CENTS,scheduleCanServeRequest,scheduleMatchRank,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
 import {mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 import {sendExternalExcursionDeclinedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
+import {autoAssignExcursionOrder} from '../../../lib/excursion-auto-assignment';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -131,7 +132,27 @@ export async function GET(r:Request){
   const rawAll=await schedulesForDate(date);
   // Cancelled trips remain stored for history/audit, but are removed from the live admin schedule screen.
   const raw=rawAll.filter((schedule:any)=>schedule.status!=='Cancelled');
-  const {state}=await loadStays(),orders=Array.isArray(state.orders)?state.orders:[];
+  const loaded=await loadStays(),state=loaded.state;
+  const recoveredOrders:any[]=[];
+  for(const order of state.orders||[]){
+   if(order?.kind!=='excursion'||order.date!==date||order.status==='Cancelled'||order.approvalStatus!=='Pending'||order.unscheduledRequest!==true)continue;
+   if(await autoAssignExcursionOrder(state,order))recoveredOrders.push(order);
+  }
+  if(recoveredOrders.length){
+   const saved=await saveStayAccess(state,loaded.revision,'system:excursion-auto-reconcile');
+   if(!saved)throw Error('Excursion bookings changed during automatic schedule recovery. Refresh and try again.');
+   for(const order of recoveredOrders){
+    if(order.source==='External guest website'&&order.email&&order.manageToken)try{
+     await sendExternalExcursionUpdatedEmail({
+      email:order.email,guest:order.guest,reference:order.packageGroupId||order.id,excursion:order.packageName||order.name,
+      date:order.date,time:order.time||'',endTime:order.endTime||'',quantity:Number(order.quantity)||0,
+      quotedCents:Number(order.packageTotalCents)||Number(order.quotedCents)||Number(order.cents)||0,
+      hotel:order.hotel,manageToken:order.manageToken,eventId:'auto-reconcile-'+order.id+'-'+order.date+'-'+order.scheduleId
+     });
+    }catch{}
+   }
+  }
+  const orders=Array.isArray(state.orders)?state.orders:[];
   const resources=excursionResources(state);
   const schedules=raw.map((s:any)=>{
    // Use the same manifest resolver as View Guests and Share Timetable so schedule

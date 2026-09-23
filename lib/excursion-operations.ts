@@ -240,3 +240,34 @@ export function droneConflict(
   return timeRangesOverlap(input.time,input.endTime,other.time,otherEnd);
  })||null;
 }
+
+
+function autoAssignmentNormal(value:any){return String(value||'').trim().replace(/\s+/g,' ').toLowerCase();}
+function autoAssignmentMatches(order:any,schedule:any){
+ if(order.kind!=='excursion'||order.status==='Cancelled'||order.approvalStatus==='Declined'||order.approvalStatus==='Cancelled')return false;
+ if(order.scheduleId)return order.scheduleId===schedule.id&&(order.date||order.schedule?.date)===schedule.date;
+ const stored=order.schedule||{};
+ return (stored.date||order.date)===schedule.date&&stored.time===schedule.time&&(!schedule.vesselId||stored.vesselId===schedule.vesselId)&&autoAssignmentNormal(order.name)===autoAssignmentNormal(schedule.name);
+}
+function autoAssignmentSharedKey(schedule:any){
+ return schedule.sharedGroup?schedule.date+'|'+schedule.time+'|group:'+schedule.sharedGroup:schedule.vesselId?schedule.date+'|'+schedule.time+'|vessel:'+schedule.vesselId:'';
+}
+function autoAssignmentCandidateLoad(schedule:any,allSchedules:any[],orders:any[],excludeOrderId=''){
+ const key=autoAssignmentSharedKey(schedule);
+ const groupSchedules=key?allSchedules.filter((item:any)=>autoAssignmentSharedKey(item)===key):[schedule];
+ const groupIds=new Set(groupSchedules.map((item:any)=>item.id));
+ const capacity=Math.min(...groupSchedules.map((item:any)=>Math.max(1,Number(item.capacity)||1)));
+ const confirmedPax=orders
+  .filter((order:any)=>order.id!==excludeOrderId&&order.kind==='excursion'&&!order.separateVessel&&order.status!=='Cancelled'&&order.approvalStatus!=='Pending'&&order.approvalStatus!=='Declined'&&order.approvalStatus!=='Cancelled'&&(groupIds.has(order.scheduleId)||groupSchedules.some((item:any)=>autoAssignmentMatches(order,item))))
+  .reduce((sum:number,order:any)=>sum+Math.max(0,Number(order.quantity)||0),0);
+ return {capacity,confirmedPax,remaining:Math.max(0,capacity-confirmedPax)};
+}
+export function chooseAutoAssignmentCandidate(order:any,allSchedules:any[],orders:any[]){
+ if(!order||order.kind!=='excursion'||!order.date||order.privateBoatRequested===true||order.specialPackage===true||order.packageGroupId)return null;
+ const quantity=Math.max(1,Number(order.quantity)||1);
+ const candidates=allSchedules
+  .filter((schedule:any)=>schedule.status==='Open'&&scheduleCanServeRequest(order.name,schedule.name))
+  .map((schedule:any)=>({schedule,...autoAssignmentCandidateLoad(schedule,allSchedules,orders||[],order.id),rank:scheduleMatchRank(order.name,schedule.name)}))
+  .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
+ return candidates.find((candidate:any)=>candidate.remaining>=quantity)||null;
+}
