@@ -42,7 +42,7 @@ export default function GuestBookingSite(){
    const r=await fetch('/api/public-booking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     token:token.current,guest,phone,email,checkIn,checkOut,adults,children,meal,notes
    })});
-   const d=await r.json();if(!r.ok)throw Error(d.error||'Could not send booking request.');
+   const d=await r.json();if(!r.ok)throw Error(d.error||'Could not complete your booking.');
    setSuccess(d);
    window.scrollTo({top:0,behavior:'smooth'});
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
@@ -61,7 +61,7 @@ export default function GuestBookingSite(){
     <span><Sparkles/> {meal}</span>
    </div>
    <p className="success-note">{success.email?.sent?'We sent a booking received email to '+email+'. Final confirmation will follow after room allocation.':'Your booking is saved, but the confirmation email could not be sent yet. Please keep this booking reference and contact reception if you do not receive an email.'}</p>
-   <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();setGuest('');setPhone('');setEmail('');setNotes('')}}>Make another request <ArrowRight/></button>
+   <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();setGuest('');setPhone('');setEmail('');setNotes('')}}>Make another booking <ArrowRight/></button>
   </section>
  </main>;
 
