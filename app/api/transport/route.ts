@@ -6,6 +6,7 @@ import {restaurantOnly} from '../../../lib/pos-access';
 import {createTransfer,initialTransport,TransportState,Sailing} from '../../../lib/transport';
 import {minutes,syncTransportBuggy} from '../../../lib/transport-plan';
 import {syncTransportPlanBill} from '../../../lib/transport-plan-billing';
+import {sendTransportScheduleEmail} from '../../../lib/booking-email';
 import {mirrorTransportState,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 const key='transport-bookings-v1';
 async function transportUser(){return (await currentUser())||(await currentGuestUser());}
@@ -71,7 +72,7 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
  const b=await r.json();const {state,revision}=await loadForRead();const canEdit=hasPermission(u,'edit_transfers');
  if(b.action==='book'&&state.bookings.some(x=>x.token===b.token&&x.owner===u.userId))return Response.json(await visible(state,revision,u));
  if(b.revision!==revision)return Response.json({error:'Transfers changed on another device. Refresh and review before saving.'},{status:409});
- let hotelWrite:any=null;
+ let hotelWrite:any=null,transportMail:any=null;
  if(b.action==='plan-schedule'){
   if(!canEdit)return Response.json({error:'Transfer editing permission required.'},{status:403});
   const hotel=await loadHotelPrimary(),stay=hotel.state.stays.find((item:any)=>item.id===String(b.stayId||'')&&['Confirmed','In House'].includes(String(item.status||'')));
@@ -82,7 +83,7 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   const date=String(plan.date||(leg==='arrival'?stay.checkIn:stay.checkOut)||''),expectedFrom=leg==='arrival'?canonicalLocation(plan.from||'Velana Airport'):'Dhiffushi',expectedTo=leg==='arrival'?'Dhiffushi':canonicalLocation(plan.destination||'Velana Airport');
   if(canonicalLocation(sailing.from)!==expectedFrom||canonicalLocation(sailing.to)!==expectedTo)throw Error('That launch does not match the guest transport route.');
   if(Date.parse(date+'T'+sailing.depart+':00+05:00')<=Date.now())throw Error('Choose a future launch departure.');
-  const oldId=String(plan.transportBookingId||plan.previousTransportBookingId||''),old=oldId?state.bookings.find(item=>item.id===oldId):undefined;
+  const oldId=String(plan.transportBookingId||plan.previousTransportBookingId||''),old=oldId?state.bookings.find(item=>item.id===oldId):undefined,wasScheduled=!!old&&!!plan.launch;
   const adults=Math.max(1,Number(stay.adults??stay.pax??1)),children=Math.max(0,Number(stay.children??0)),infants=0,seatCount=adults+children;
   const used=state.bookings.filter(item=>item.id!==oldId&&item.status!=='Cancelled').flatMap(item=>item.journeys.filter(j=>j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
   const seats=Array.from({length:sailing.capacity},(_,i)=>i+1).filter(n=>!used.includes(n)).slice(0,seatCount);if(seats.length!==seatCount)throw Error('This launch no longer has enough seats. Choose another departure.');
@@ -91,7 +92,7 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   Object.assign(booking,{name:stay.guest,phone:stay.whatsapp||'',traveller:'Tourist',adults,children,infants,journeys:[journey],total,status:'Confirmed',checked:[],notes:'Room transport plan · '+leg+(plan.flightNumber?' · Flight '+plan.flightNumber:'')+(plan.flightTime?' · '+plan.flightTime:''),stayId:stay.id,room:stay.room,transportPlanLeg:leg});
   if(!old)state.bookings.push(booking);
   plan.launch={scheduleId:sailing.id,date,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,seats};plan.transportBookingId=booking.id;plan.status='Scheduled';delete plan.needsReview;delete plan.previousTransportBookingId;
-  syncTransportBuggy(hotel.state,stay,leg,journey);const roomBill=syncTransportPlanBill(hotel.state,stay,booking,sailing,leg,u.username);stay.history??=[];stay.history.unshift({date:now,by:u.username,detail:(leg==='arrival'?'Arrival':'Departure')+' transport scheduled · '+sailing.depart+' '+sailing.boat+' · USD '+(roomBill.cents/100).toFixed(2)+' added to room bill · Buggy linked automatically'});
+  syncTransportBuggy(hotel.state,stay,leg,journey);const roomBill=syncTransportPlanBill(hotel.state,stay,booking,sailing,leg,u.username);stay.history??=[];stay.history.unshift({date:now,by:u.username,detail:(leg==='arrival'?'Arrival':'Departure')+' transport scheduled · '+sailing.depart+' '+sailing.boat+' · USD '+(roomBill.cents/100).toFixed(2)+' added to room bill · Buggy linked automatically'});if(stay.email)transportMail={email:stay.email,guest:stay.guest,reference:stay.id,room:stay.room,manageToken:stay.manageToken,leg,boat:sailing.boat,from:sailing.from,to:sailing.to,date,depart:sailing.depart,arrive:sailing.arrive,seats,chargeCents:roomBill.cents,changed:wasScheduled};
   hotelWrite=hotel;
  }
  else if(b.action==='plan-billing'){
@@ -157,6 +158,7 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
    ]);
   }catch{}
   try{await Promise.all([mirrorTransportState(state),mirrorHotelState(hotelWrite.state)]);}catch{}
+  if(transportMail)try{await sendTransportScheduleEmail(transportMail)}catch{}
   return Response.json(await visible(state,pair.revisionA,u));
  }
  const writeToken=crypto.randomUUID();const payload=JSON.stringify({...state,writeToken});
@@ -170,6 +172,7 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   mirrorHotelState(hotelWrite.state),
   mirrorOperationalRecord(stayKey,hotelWrite.state,hotelWrite.revision+1,u.userId)
  ]);}catch{}
+ if(transportMail)try{await sendTransportScheduleEmail(transportMail)}catch{}
  return Response.json(await visible(state,revision+1,u));
  }
  let primaryRevision=0,primaryAvailable=true;
