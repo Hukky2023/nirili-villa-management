@@ -56,6 +56,7 @@ export async function POST(r:Request){
    return Response.json({ok:true,setupCode,requiresNewPassword:true},{headers});
   }
 
+  if(target.role==='guest')return Response.json({error:'Guest passwords are private. Use Reset guest password to issue a one-time reset code.'},{status:400,headers});
   if(u.role!=='admin')return Response.json({error:'Only Admin can manage account passwords.'},{status:403,headers});
   if(!validPassword(b.password))return Response.json({error:'Use a password of 8–128 characters.'},{status:400,headers});
 
