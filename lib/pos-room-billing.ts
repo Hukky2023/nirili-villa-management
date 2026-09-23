@@ -5,7 +5,7 @@ export function mealPlanIncludedOrder(order:any){
 
 export function restaurantRoomBillItems(items:any[]){
  return (Array.isArray(items)?items:[])
-  .filter((item:any)=>Math.max(0,Number(item?.cents)||0)>0)
+  .filter((item:any)=>item?.included!==true&&(Math.max(0,Number(item?.cents)||0)>0||Number(item?.discount)===100))
   .map((item:any)=>[
    String(item?.name||'Restaurant item'),
    Math.max(1,Number(item?.quantity)||1),
