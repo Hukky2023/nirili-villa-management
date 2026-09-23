@@ -285,7 +285,7 @@ export async function mirrorOperationalSnapshot(records:any[],bills:any[]){
     updated_by:bill.updated_by||null,
     synced_at:now,
     sync_batch_id:batch
-  })).filter((row:any)=>row.key&&(!billRevisions.has(row.key)||row.revision>(billRevisions.get(row.key)||0));
+  })).filter((row:any)=>row.key&&(!billRevisions.has(row.key)||row.revision>(billRevisions.get(row.key)||0)));
   await restUpsert('restaurant_bills',billRows,'key');
 
   const transport=opRows.find((row:any)=>row.key==='transport-bookings-v1');
