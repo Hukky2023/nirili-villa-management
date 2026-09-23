@@ -15,3 +15,9 @@
 .nt-plan-billing{display:grid;gap:10px;margin-top:12px;padding:14px;border:1px solid #d8e5e9;border-radius:13px;background:#f8fbfc}
 .nt-plan-billing h4{margin:0}
 .nt-plan-billing>small{color:#607781;line-height:1.4}
+
+.nt-manual-guest{display:grid;gap:16px}
+.nt-manual-guest .nt-seat-map{margin:0}
+.nt-free-check{display:flex!important;align-items:center;gap:8px!important;margin:0!important}
+.nt-free-check input{width:auto}
+.nt-help{font-size:13px;line-height:1.5;color:#607781}
