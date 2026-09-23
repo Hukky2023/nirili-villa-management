@@ -157,12 +157,7 @@ export async function POST(r:Request){
   state.posOrders.push(order);
   if(s){
    s.history??=[];const billed=syncRestaurantRoomBill(s,order);
-   s.history.unshift({date,by:'Guest',detail:billed?'Restaurant order '+id+' charged to room · 
-  if(!await saveRestaurantState(state,revision,who.key))return Response.json({error:'Another order arrived. Please tap Send again.'},{status:409});
-  return Response.json(await view(who));
- }catch(e){return Response.json({error:(e as Error).message},{status:400});}
-}
-+(cents/100).toFixed(2):'Restaurant meal-plan order '+id+' · Included · no room charge'});
+   s.history.unshift({date,by:'Guest',detail:billed?'Restaurant order '+id+' charged to room · USD '+(cents/100).toFixed(2):'Restaurant meal-plan order '+id+' · Included · no room charge'});
   }
   if(!await saveRestaurantState(state,revision,who.key))return Response.json({error:'Another order arrived. Please tap Send again.'},{status:409});
   return Response.json(await view(who));
