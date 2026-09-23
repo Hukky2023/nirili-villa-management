@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {chooseAutoAssignmentCandidate} from '../lib/excursion-auto-assignment.ts';
+import {chooseAutoAssignmentCandidate} from '../lib/excursion-operations.ts';
 
 const fishingOrder={
  id:'EXC-50EBE1AF',kind:'excursion',name:'Fishing',date:'2026-09-24',quantity:2,
