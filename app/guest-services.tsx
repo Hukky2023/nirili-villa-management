@@ -116,7 +116,7 @@ async function requestBuggy(e:React.FormEvent){
  if(!buggyPickup.trim()||!buggyDropoff.trim()){setMessage('Enter your pickup point and destination.');return;}
  if(!localizedConfirm('Request a buggy now from '+buggyPickup.trim()+' to '+buggyDropoff.trim()+'?'))return;
  setBusy(true);setMessage('');
- try{const result=await mutate({action:'buggy-request',token:crypto.randomUUID(),stayId:stay.id,location:buggyPickup.trim(),destination:buggyDropoff.trim(),quantity:buggyQty,notes:buggyNotes});const ride=result.buggyRides?.[0];setBuggyDropoff('');setBuggyNotes('');setMessage(ride?.status==='Driver on the way'?'Buggy assigned. Your driver is on the way.':'Ride requested. Dispatch is finding an available buggy.');}
+ try{const result=await mutate({action:'buggy-request',token:crypto.randomUUID(),stayId:stay.id,location:buggyPickup.trim(),destination:buggyDropoff.trim(),quantity:buggyQty,notes:buggyNotes});const ride=result.buggyRides?.[0];setBuggyDropoff('');setBuggyNotes('');setMessage(ride?.status==='Assigned'?'Buggy assigned. Waiting for the driver to start your pickup.':'Ride requested. Dispatch is finding an available buggy.');}
  catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
 }
 async function cancelBuggy(id:string){
