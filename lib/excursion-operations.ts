@@ -114,8 +114,8 @@ export function planSpecialPackageSchedules(candidates:SpecialPackageScheduleCan
  function better(next:any[]){
   if(!best)return true;
   if(next.length!==best.length)return next.length<best.length;
-  const nf=finishKey(next),bf=finishKey(best);if(nf!==bf)return nf<bf;
   const ns=startKey(next),bs=startKey(best);if(ns!==bs)return ns<bs;
+  const nf=finishKey(next),bf=finishKey(best);if(nf!==bf)return nf<bf;
   return next.map(item=>item.id).sort().join('|')<best.map(item=>item.id).sort().join('|');
  }
 
@@ -134,7 +134,7 @@ export function planSpecialPackageSchedules(candidates:SpecialPackageScheduleCan
   options.sort((a,b)=>{
    const anew=a.coverage.filter((component:any)=>(mask&(bitFor.get(component)||0))===0).length;
    const bnew=b.coverage.filter((component:any)=>(mask&(bitFor.get(component)||0))===0).length;
-   return bnew-anew||String(a.date).localeCompare(String(b.date))||String(a.time).localeCompare(String(b.time));
+   return String(a.date).localeCompare(String(b.date))||String(a.time).localeCompare(String(b.time))||bnew-anew;
   });
   for(const candidate of options)search(mask|candidate.mask,[...selected,candidate]);
  }
@@ -190,7 +190,7 @@ export function suggestedTripWindow(name:any){
  if(isDolphinOnly(name))return {time:'16:30',endTime:'18:00',dedicated:true};
  const candidates=standardExcursionTrips
   .filter(trip=>scheduleCanServeRequest(name,trip.name))
-  .sort((a,b)=>scheduleMatchRank(name,a.name)-scheduleMatchRank(name,b.name)||a.time.localeCompare(b.time));
+  .sort((a,b)=>a.time.localeCompare(b.time)||scheduleMatchRank(name,a.name)-scheduleMatchRank(name,b.name));
  const trip=candidates[0];
  return trip?{time:trip.time,endTime:trip.endTime,dedicated:false}:{time:'09:00',endTime:'11:00',dedicated:false};
 }
@@ -268,6 +268,6 @@ export function chooseAutoAssignmentCandidate(order:any,allSchedules:any[],order
  const candidates=allSchedules
   .filter((schedule:any)=>schedule.status==='Open'&&scheduleCanServeRequest(order.name,schedule.name))
   .map((schedule:any)=>({schedule,...excursionScheduleLoadForOrder(schedule,allSchedules,orders||[],order.id),rank:scheduleMatchRank(order.name,schedule.name)}))
-  .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||a.rank-b.rank||b.remaining-a.remaining||String(a.schedule.time).localeCompare(String(b.schedule.time)));
+  .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||String(a.schedule.time).localeCompare(String(b.schedule.time))||a.rank-b.rank||b.remaining-a.remaining);
  return candidates.find((candidate:any)=>candidate.remaining>=quantity)||null;
 }
