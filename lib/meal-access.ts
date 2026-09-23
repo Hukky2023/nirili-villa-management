@@ -71,7 +71,7 @@ export function setHalfBoardMealSelection(state:any,stayId:string,meal:any,by:st
  stay.halfBoardMealSelections??={};
  stay.halfBoardMealSelections[date]=meal;
  stay.history??=[];
- if(current!==meal)stay.history.unshift({date:new Date(now).toISOString(),by,detail:'Half Board included meal selected for '+date+': '+meal});
+ if(current!==meal){const at=now instanceof Date?now:new Date(now);stay.history.unshift({date:at.toISOString(),by,detail:'Half Board included meal selected for '+date+': '+meal});}
  return meal as HalfBoardIncludedMeal;
 }
 
