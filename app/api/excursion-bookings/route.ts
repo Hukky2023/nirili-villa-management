@@ -136,7 +136,7 @@ export async function PATCH(request: Request) {
     if (!saved.meta.changes) return Response.json({error: 'Another user changed the bill. Close this action, refresh bookings and review the amount again.'}, {status: 409, headers});
     try { await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,user.userId)]); } catch {}
     return Response.json({ok: true, revision: revision + 1, pricing: excursionPricing(result.order)}, {headers});
-  } catch {
-    return Response.json({error: 'Could not save the billing adjustment. Please retry.'}, {status: 503, headers});
+  } catch (error) {
+    return Response.json({error: error instanceof Error ? error.message : 'Could not save the excursion update. Please retry.'}, {status: 400, headers});
   }
 }
