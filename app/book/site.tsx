@@ -13,6 +13,11 @@ export default function GuestBookingSite(){
  const [today,setToday]=useState(''),[checkIn,setCheckIn]=useState(''),[checkOut,setCheckOut]=useState('');
  const [adults,setAdults]=useState(2),[children,setChildren]=useState(0),[meal,setMeal]=useState('Bed & Breakfast');
  const [guest,setGuest]=useState(''),[phone,setPhone]=useState(''),[email,setEmail]=useState(''),[notes,setNotes]=useState('');
+ const [transportPlan,setTransportPlan]=useState<any>({
+  arrival:{needTransfer:'later',from:'Velana International Airport',flightNumber:'',flightTime:'',ownTransport:'',dhiffushiArrivalTime:'',buggyRequired:true},
+  departure:{needTransfer:'later',destination:'Velana International Airport',flightNumber:'',flightTime:'',ownDepartureTime:'',buggyRequired:true}
+ });
+ function setTransport(leg:'arrival'|'departure',changes:any){setTransportPlan((old:any)=>({...old,[leg]:{...old[leg],...changes}}));}
  const [quote,setQuote]=useState<Quote>({}),[checking,setChecking]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [success,setSuccess]=useState<any>(null);
  const token=useRef('');
@@ -40,7 +45,7 @@ export default function GuestBookingSite(){
   e.preventDefault();if(busy)return;setBusy(true);setError('');
   try{
    const r=await fetch('/api/public-booking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    token:token.current,guest,phone,email,checkIn,checkOut,adults,children,meal,notes
+    token:token.current,guest,phone,email,checkIn,checkOut,adults,children,meal,notes,transportPlan:{arrival:{...transportPlan.arrival,date:checkIn},departure:{...transportPlan.departure,date:checkOut}}
    })});
    const d=await r.json();if(!r.ok)throw Error(d.error||'Could not complete your booking.');
    setSuccess(d);
@@ -61,7 +66,7 @@ export default function GuestBookingSite(){
     <span><Sparkles/> {meal}</span>
    </div>
    <p className="success-note">{success.email?.sent?'We sent a booking received email to '+email+'. Final confirmation will follow after room allocation.':'Your booking is saved, but the confirmation email could not be sent yet. Please keep this booking reference and contact reception if you do not receive an email.'}</p>
-   <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();setGuest('');setPhone('');setEmail('');setNotes('')}}>Make another booking <ArrowRight/></button>
+   <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();setGuest('');setPhone('');setEmail('');setNotes('');setTransportPlan({arrival:{needTransfer:'later',from:'Velana International Airport',flightNumber:'',flightTime:'',ownTransport:'',dhiffushiArrivalTime:'',buggyRequired:true},departure:{needTransfer:'later',destination:'Velana International Airport',flightNumber:'',flightTime:'',ownDepartureTime:'',buggyRequired:true}})}}>Make another booking <ArrowRight/></button>
   </section>
  </main>;
 
@@ -138,7 +143,40 @@ export default function GuestBookingSite(){
      <label><span>WhatsApp / contact</span><input required type="tel" maxLength={30} autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+960…"/><small>Include country code</small></label>
      <label><span>Email</span><input required type="email" maxLength={254} autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/><small>Booking confirmations are sent here</small></label>
     </div>
-    <label><span>Special requests (optional)</span><textarea rows={4} maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Arrival details, dietary requests, transfer help, celebration, or anything else we should know."/></label>
+    <div className="form-divider"><span>Travel & transport</span></div>
+    <p className="transport-help">Tell us how you are arriving and leaving Dhiffushi. We will coordinate the speedboat and the harbour buggy with your room booking.</p>
+    <div className="transport-plan-grid">
+     <section className="transport-plan-card">
+      <div className="transport-plan-title"><strong>Arrival · {checkIn}</strong><small>Getting to Nirili Villa</small></div>
+      <label><span>Need us to arrange Airport → Dhiffushi transfer?</span><select value={transportPlan.arrival.needTransfer} onChange={e=>setTransport('arrival',{needTransfer:e.target.value})}><option value="yes">Yes — arrange it for me</option><option value="no">No — I have my own transport</option><option value="later">I will confirm later</option></select></label>
+      {transportPlan.arrival.needTransfer==='yes'&&<>
+       <label><span>Arriving from</span><input maxLength={120} value={transportPlan.arrival.from} onChange={e=>setTransport('arrival',{from:e.target.value})} placeholder="Velana International Airport"/></label>
+       <div className="form-grid"><label><span>Arrival flight number (optional)</span><input maxLength={40} value={transportPlan.arrival.flightNumber} onChange={e=>setTransport('arrival',{flightNumber:e.target.value})} placeholder="e.g. EK656"/></label><label><span>Flight arrival time (24-hour)</span><input type="time" value={transportPlan.arrival.flightTime} onChange={e=>setTransport('arrival',{flightTime:e.target.value})}/></label></div>
+       <p className="transport-auto">We will match your flight to the safest available launch. Your Dhiffushi harbour → Nirili Villa buggy is linked automatically.</p>
+      </>}
+      {transportPlan.arrival.needTransfer==='no'&&<>
+       <label><span>How will you reach Dhiffushi?</span><select value={transportPlan.arrival.ownTransport} onChange={e=>setTransport('arrival',{ownTransport:e.target.value})}><option value="">Choose transport</option><option>Private speedboat</option><option>Public ferry</option><option>Another hotel/operator boat</option><option>Other</option></select></label>
+       <label><span>Expected arrival at Dhiffushi harbour (24-hour)</span><input type="time" value={transportPlan.arrival.dhiffushiArrivalTime} onChange={e=>setTransport('arrival',{dhiffushiArrivalTime:e.target.value})}/></label>
+       <p className="transport-auto">We will arrange your harbour → Nirili Villa buggy from this arrival time.</p>
+      </>}
+      {transportPlan.arrival.needTransfer==='later'&&<p className="transport-pending">You can add your flight or arrival details later from your manage-booking link.</p>}
+     </section>
+     <section className="transport-plan-card">
+      <div className="transport-plan-title"><strong>Departure · {checkOut}</strong><small>Leaving Nirili Villa</small></div>
+      <label><span>Need us to arrange your departure launch?</span><select value={transportPlan.departure.needTransfer} onChange={e=>setTransport('departure',{needTransfer:e.target.value})}><option value="yes">Yes — arrange it for me</option><option value="no">No — I have my own transport</option><option value="later">I will confirm later</option></select></label>
+      {transportPlan.departure.needTransfer==='yes'&&<>
+       <label><span>Destination</span><input maxLength={120} value={transportPlan.departure.destination} onChange={e=>setTransport('departure',{destination:e.target.value})} placeholder="Velana International Airport, Malé, another island…"/></label>
+       <div className="form-grid"><label><span>Departure flight number (if flying)</span><input maxLength={40} value={transportPlan.departure.flightNumber} onChange={e=>setTransport('departure',{flightNumber:e.target.value})} placeholder="e.g. EK657"/></label><label><span>Flight departure time (24-hour)</span><input type="time" value={transportPlan.departure.flightTime} onChange={e=>setTransport('departure',{flightTime:e.target.value})}/></label></div>
+       <p className="transport-auto">Reception will choose a safe Dhiffushi departure for your destination. Your Nirili Villa → harbour buggy will be scheduled 15 minutes before the launch.</p>
+      </>}
+      {transportPlan.departure.needTransfer==='no'&&<>
+       <label><span>Your planned harbour departure time (24-hour)</span><input type="time" value={transportPlan.departure.ownDepartureTime} onChange={e=>setTransport('departure',{ownDepartureTime:e.target.value})}/></label>
+       <p className="transport-auto">We will schedule the Nirili Villa → harbour buggy 15 minutes before this time.</p>
+      </>}
+      {transportPlan.departure.needTransfer==='later'&&<p className="transport-pending">You can complete departure transport later. Reception will see that details are still required.</p>}
+     </section>
+    </div>
+        <label><span>Special requests (optional)</span><textarea rows={4} maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Arrival details, dietary requests, transfer help, celebration, or anything else we should know."/></label>
     {error&&<p className="form-error" role="alert">{error}</p>}
     <button className="submit-booking" disabled={busy||checking||quote.availableRooms===0}>{busy?'Booking…':'Book Your Stay'} <ArrowRight/></button>
     <p className="privacy-note"><ShieldCheck/> Your booking goes to Nirili Villa reception. A confirmation email is sent after the room is approved. This form does not create management-system access.</p>
