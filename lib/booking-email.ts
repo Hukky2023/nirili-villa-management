@@ -168,3 +168,101 @@ export async function sendBookingRequestRejectedEmail(booking:BookingMail):Promi
  const plain=`Nirili Villa - request not approved\n\nBooking: ${booking.reference}\nYour existing confirmed booking remains active.\n${booking.reason?'Reception note: '+booking.reason+'\n':''}${managePlain(booking.manageToken)}`;
  return sendEmail({to:booking.email,subject:(cancelling?'Cancellation':'Change')+' request update · '+booking.reference,html,text:plain,idempotencyKey:'room-booking-rejected/'+(booking.eventId||booking.reference)});
 }
+
+
+export type TransportScheduleMail={
+ email:string;
+ guest:string;
+ reference:string;
+ room?:string;
+ manageToken?:string;
+ leg:'arrival'|'departure';
+ boat:string;
+ from:string;
+ to:string;
+ date:string;
+ depart:string;
+ arrive:string;
+ seats?:number[];
+ chargeCents?:number;
+ changed?:boolean;
+};
+
+export async function sendTransportScheduleEmail(input:TransportScheduleMail):Promise<MailResult>{
+ const label=input.leg==='arrival'?'Arrival':'Departure',verb=input.changed?'updated':'confirmed';
+ const seatText=Array.isArray(input.seats)&&input.seats.length?' · Seats '+input.seats.join(', '):'';
+ const charge=Number.isFinite(Number(input.chargeCents))?Math.max(0,Number(input.chargeCents)||0):null;
+ const html=shell(label+' speedboat '+verb,`
+  <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(input.guest)},</p>
+  <p style="font-size:15px;line-height:1.7">Your <strong>${escapeHtml(label.toLowerCase())}</strong> speedboat for Nirili Villa has been ${input.changed?'updated':'scheduled'}.</p>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:24px 0;background:#eef9f7;border-radius:14px;padding:18px">
+   <tr><td style="padding:6px 0;color:#6a7f88">Booking</td><td align="right" style="font-weight:700">${escapeHtml(input.reference)}</td></tr>
+   ${input.room?`<tr><td style="padding:6px 0;color:#6a7f88">Room</td><td align="right">${escapeHtml(input.room)}</td></tr>`:''}
+   <tr><td style="padding:6px 0;color:#6a7f88">Date</td><td align="right">${escapeHtml(input.date)}</td></tr>
+   <tr><td style="padding:6px 0;color:#6a7f88">Route</td><td align="right">${escapeHtml(input.from)} → ${escapeHtml(input.to)}</td></tr>
+   <tr><td style="padding:6px 0;color:#6a7f88">Departure</td><td align="right" style="font-weight:700">${escapeHtml(input.depart)}</td></tr>
+   <tr><td style="padding:6px 0;color:#6a7f88">Arrival</td><td align="right">${escapeHtml(input.arrive)}</td></tr>
+   <tr><td style="padding:6px 0;color:#6a7f88">Boat</td><td align="right">${escapeHtml(input.boat)}</td></tr>
+   ${seatText?`<tr><td style="padding:6px 0;color:#6a7f88">Seats</td><td align="right">${escapeHtml((input.seats||[]).join(', '))}</td></tr>`:''}
+   ${charge!==null?`<tr><td style="padding:6px 0;color:#6a7f88">Transfer charge</td><td align="right" style="font-weight:700">${money(charge)}</td></tr>`:''}
+  </table>
+  <p style="font-size:14px;line-height:1.7">Your harbour buggy is linked to this transport plan. We will send another update when a buggy is assigned and when the driver is on the way.</p>
+  ${manageButton(input.manageToken)}
+ `);
+ const plain=`Nirili Villa - ${label} speedboat ${verb}\n\nDear ${input.guest},\nBooking: ${input.reference}\nDate: ${input.date}\nRoute: ${input.from} -> ${input.to}\nDeparture: ${input.depart}\nArrival: ${input.arrive}\nBoat: ${input.boat}${seatText}${charge!==null?'\nTransfer charge: '+money(charge):''}\n\nYour harbour buggy is linked to this transport plan.\n${managePlain(input.manageToken)}`;
+ return sendEmail({
+  to:input.email,
+  subject:label+' speedboat '+verb+' · '+input.reference+' · Nirili Villa',
+  html,
+  text:plain,
+  idempotencyKey:'room-transport/'+input.reference+'/'+input.leg+'/'+input.date+'/'+input.depart+'/'+encodeURIComponent(input.boat).slice(0,80)
+ });
+}
+
+export type TransportBuggyMail={
+ email:string;
+ guest:string;
+ reference:string;
+ room?:string;
+ manageToken?:string;
+ leg:'arrival'|'departure';
+ date:string;
+ pickupTime:string;
+ location:string;
+ destination:string;
+ buggyName?:string;
+ driver?:string;
+ event:'assigned'|'on-the-way'|'arrived';
+};
+
+export async function sendTransportBuggyEmail(input:TransportBuggyMail):Promise<MailResult>{
+ const label=input.leg==='arrival'?'Arrival':'Departure';
+ const title=input.event==='assigned'?'Buggy assigned':input.event==='on-the-way'?'Buggy driver on the way':'Your buggy has arrived';
+ const eventText=input.event==='assigned'
+  ?'A buggy has been assigned for your '+label.toLowerCase()+' transport.'
+  :input.event==='on-the-way'
+   ?'Your buggy driver is now on the way to the pickup point.'
+   :'Your buggy has arrived at the pickup point.';
+ const html=shell(title,`
+  <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(input.guest)},</p>
+  <p style="font-size:15px;line-height:1.7">${escapeHtml(eventText)}</p>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:24px 0;background:#eef9f7;border-radius:14px;padding:18px">
+   <tr><td style="padding:6px 0;color:#6a7f88">Booking</td><td align="right" style="font-weight:700">${escapeHtml(input.reference)}</td></tr>
+   ${input.room?`<tr><td style="padding:6px 0;color:#6a7f88">Room</td><td align="right">${escapeHtml(input.room)}</td></tr>`:''}
+   <tr><td style="padding:6px 0;color:#6a7f88">Date</td><td align="right">${escapeHtml(input.date)}</td></tr>
+   <tr><td style="padding:6px 0;color:#6a7f88">Pickup</td><td align="right" style="font-weight:700">${escapeHtml(input.pickupTime)} · ${escapeHtml(input.location)}</td></tr>
+   <tr><td style="padding:6px 0;color:#6a7f88">Drop-off</td><td align="right">${escapeHtml(input.destination)}</td></tr>
+   ${input.buggyName?`<tr><td style="padding:6px 0;color:#6a7f88">Buggy</td><td align="right">${escapeHtml(input.buggyName)}</td></tr>`:''}
+   ${input.driver?`<tr><td style="padding:6px 0;color:#6a7f88">Driver</td><td align="right">${escapeHtml(input.driver)}</td></tr>`:''}
+  </table>
+  ${manageButton(input.manageToken)}
+ `);
+ const plain=`Nirili Villa - ${title}\n\nDear ${input.guest},\n${eventText}\nBooking: ${input.reference}\nDate: ${input.date}\nPickup: ${input.pickupTime} · ${input.location}\nDrop-off: ${input.destination}${input.buggyName?'\nBuggy: '+input.buggyName:''}${input.driver?'\nDriver: '+input.driver:''}\n${managePlain(input.manageToken)}`;
+ return sendEmail({
+  to:input.email,
+  subject:title+' · '+input.reference+' · Nirili Villa',
+  html,
+  text:plain,
+  idempotencyKey:'room-transport-buggy/'+input.reference+'/'+input.leg+'/'+input.date+'/'+input.pickupTime+'/'+input.event
+ });
+}
