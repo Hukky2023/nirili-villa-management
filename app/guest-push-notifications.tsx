@@ -44,7 +44,7 @@ export default function GuestPushNotifications(){
    if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:applicationKey(config.publicKey)});
    const response=await fetch('/api/guest-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:subscription.toJSON()})}),saved=await response.json();
    if(!response.ok)throw Error(saved.error||'Could not save notification subscription.');
-   setStatus('enabled');setMessage('Ride notifications are enabled on this device.');
+   setStatus('enabled');setMessage('Guest notifications are enabled on this device.');
   }catch(error){setStatus('error');setMessage(error instanceof Error?error.message:'Could not enable notifications.');}
   finally{setBusy(false);}
  }
@@ -56,15 +56,15 @@ export default function GuestPushNotifications(){
    const endpoint=subscription?.endpoint||'';
    if(subscription)await subscription.unsubscribe();
    if(endpoint)await fetch('/api/guest-push',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint})});
-   setStatus('ready');setMessage('Ride notifications are disabled on this device.');
+   setStatus('ready');setMessage('Guest notifications are disabled on this device.');
   }catch{setMessage('Could not disable notifications. Try again.');}
   finally{setBusy(false);}
  }
 
  return <section className={'guest-push '+status}>
   <div className="guest-push-icon">{status==='enabled'?<CheckCircle2/>:status==='blocked'?<BellOff/>:<BellRing/>}</div>
-  <div className="guest-push-copy"><strong><UiText>Buggy ride notifications</UiText></strong>
-   <span><UiText>{status==='enabled'?'Enabled — alerts can appear even when the guest portal is closed.':status==='blocked'?'Notifications are blocked in your browser settings.':status==='unsupported'?'Background notifications are not available in this browser. On iPhone, install the guest portal to the Home Screen and allow notifications.':'Enable alerts for buggy assignment, driver arrival, ride start and completion.'}</UiText></span>
+  <div className="guest-push-copy"><strong><UiText>Guest notifications</UiText></strong>
+   <span><UiText>{status==='enabled'?'Enabled — buggy and excursion alerts can appear even when the guest portal is closed.':status==='blocked'?'Notifications are blocked in your browser settings.':status==='unsupported'?'Background notifications are not available in this browser. On iPhone, install the guest portal to the Home Screen and allow notifications.':'Enable alerts for buggy updates and important excursion schedule changes.'}</UiText></span>
    {message&&<small role="status"><UiText>{message}</UiText></small>}
   </div>
   {status==='enabled'?<button type="button" disabled={busy} onClick={disable}><UiText>{busy?'Saving…':'Disable'}</UiText></button>:!['blocked','unsupported','checking'].includes(status)&&<button type="button" className="primary" disabled={busy} onClick={enable}><UiText>{busy?'Enabling…':'Enable notifications'}</UiText></button>}
