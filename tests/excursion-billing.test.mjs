@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
-import {applyExcursionBillingAdjustment as adjust, excursionPricing, excursionFolioBill} from '../lib/excursion-billing.ts';
+import {applyExcursionBillingAdjustment as adjust, applyExcursionBillEdit as editBill, excursionPricing, excursionFolioBill} from '../lib/excursion-billing.ts';
 
 const actor = {role: 'admin', userId: 'admin-test', username: 'test-admin'};
 const request = (extra = {}) => ({id: 'EXC-TEST', action: 'discount', discountPercent: 10,
@@ -204,4 +204,57 @@ test('GET exposes billing controls and audit details only to Admin', async () =>
   const a = await (await admin.GET()).json(); assert.equal(a.canAdjustBilling, true); assert.equal(a.bookings[0].billingHistory.length, 1);
   const staff = routeHarness({user: {...actor, role: 'staff'}}), s = await (await staff.GET()).json();
   assert.equal(s.canAdjustBilling, false); assert.equal('billingHistory' in s.bookings[0], false);
+});
+
+
+test('admin excursion bill edit updates the booking charge and folio line items',()=>{
+  const state=fixture(),order=state.orders[0];
+  const result=editBill(state,{
+    id:order.id,revision:0,date:'23 Sep 2026 · 14:00',status:'Posted',
+    requestId:crypto.randomUUID(),
+    items:[['Turtle Snorkeling package',3,60,10],['Private pickup',1,20,0]]
+  },actor);
+  assert.equal(order.cents,7400);
+  assert.equal(order.billingRevision,1);
+  assert.equal(order.billingEditedBy,'test-admin');
+  assert.deepEqual(result.bill.items,[['Turtle Snorkeling package',3,60,10],['Private pickup',1,20,0]]);
+  assert.equal(result.bill.totalCents,7400);
+  assert.equal(result.bill.date,'23 Sep 2026 · 14:00');
+});
+
+test('excursion bill quantity is informational and never multiplies the group charge',()=>{
+  const state=fixture(),order=state.orders[0];
+  editBill(state,{id:order.id,revision:0,date:'23 Sep 2026',status:'Posted',items:[['Private Shark Trip',6,200,0]]},actor);
+  assert.equal(order.cents,20000);
+  assert.equal(excursionFolioBill(order).totalCents,20000);
+});
+
+test('second admin edit requires the latest excursion billing revision',()=>{
+  const state=fixture(),order=state.orders[0];
+  editBill(state,{id:order.id,revision:0,date:'23 Sep 2026',status:'Posted',items:[['Turtle Snorkeling',3,45,0]]},actor);
+  assert.throws(()=>editBill(state,{id:order.id,revision:0,date:'23 Sep 2026',status:'Posted',items:[['Turtle Snorkeling',3,40,0]]},actor),/changed elsewhere/i);
+  editBill(state,{id:order.id,revision:1,date:'23 Sep 2026',status:'Posted',items:[['Turtle Snorkeling',3,40,0]]},actor);
+  assert.equal(order.cents,4000);
+  assert.equal(order.billingRevision,2);
+});
+
+test('lowering a settled excursion keeps it paid and creates credit; increasing never invents payment',()=>{
+  const state=fixture(),stay=state.stays[0],order=state.orders[0];
+  stay.paidBills['Excursions:'+order.id]=5000;
+  editBill(state,{id:order.id,revision:0,date:'23 Sep 2026',status:'Posted',items:[['Turtle Snorkeling',3,40,0]]},actor);
+  assert.equal(stay.paidBills['Excursions:'+order.id],4000);
+  editBill(state,{id:order.id,revision:1,date:'23 Sep 2026',status:'Posted',items:[['Turtle Snorkeling',3,60,0]]},actor);
+  assert.equal(stay.paidBills['Excursions:'+order.id],4000);
+  assert.equal(excursionPaid(order,state),false);
+});
+
+test('flat discount and free actions continue to work after a custom excursion bill edit',()=>{
+  const state=fixture(),order=state.orders[0];
+  editBill(state,{id:order.id,revision:0,date:'23 Sep 2026',status:'Posted',items:[['Trip',3,60,0],['Pickup',1,20,0]]},actor);
+  adjust(state,request({discountPercent:25}),actor);
+  assert.equal(order.cents,6000);
+  assert.deepEqual(excursionFolioBill(order).items,[['Trip',3,60,25],['Pickup',1,20,25]]);
+  adjust(state,request({action:'free'}),actor);
+  assert.equal(order.cents,0);
+  assert.equal(excursionPricing(order).complimentary,true);
 });
