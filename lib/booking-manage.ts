@@ -13,6 +13,12 @@ export function bookingManageUrl(token:string){
  return bookingManageHost+'/book/manage#'+encodeURIComponent(token);
 }
 
+export function bookingCancellationNeedsApproval(checkIn:string,today=new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())){
+ // Guests may cancel directly through the day before arrival. Once the
+ // check-in date begins in Maldives, reception approval is required.
+ return !/^\d{4}-\d{2}-\d{2}$/.test(checkIn)||checkIn<=today;
+}
+
 export function ensureBookingManageState(state:any){
  state.requests??=[];
  state.stays??=[];
@@ -63,6 +69,7 @@ export function bookingManageSnapshot(state:any,target:any){
   totalCents:Number(booking.base??booking.estimate??0),
   nights,
   refundRequiredCents:Number(booking.refundRequiredCents||target.archive?.refundRequiredCents||0),
+  cancelRequiresApproval:target.kind==='stay'&&booking.status==='Confirmed'?bookingCancellationNeedsApproval(String(booking.checkIn||'')):false,
   pendingAction:pendingAction?{
    id:pendingAction.id,
    type:pendingAction.type,
