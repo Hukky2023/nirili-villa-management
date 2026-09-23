@@ -37,6 +37,7 @@ export async function GET(request?: Request) {
     const canReassign=hasPermission(user,'excursions_manager');
     const url=request?new URL(request.url):null,bookingId=String(url?.searchParams.get('bookingId')||''),scheduleDate=String(url?.searchParams.get('scheduleDate')||'');
     if(bookingId||scheduleDate){
+      if(!canReassign)return Response.json({error:'Only Admin or Excursions Manager can view reassignment options.'},{status:403,headers});
       if(!bookingId||!validDate(scheduleDate)||scheduleDate<islandToday())return Response.json({error:'Choose a valid booking and today or a future trip date.'},{status:400,headers});
       const order=(state.orders||[]).find((item:any)=>item.id===bookingId&&item.kind==='excursion');
       if(!order)return Response.json({error:'Excursion booking not found.'},{status:404,headers});
