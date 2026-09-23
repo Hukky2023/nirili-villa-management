@@ -3,7 +3,7 @@ import {loadStays, stayKey} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {excursionPaid, excursionResources} from '../../../lib/excursion-workflow';
 import {isConfirmedExcursion, toConfirmedExcursionBooking} from '../../../lib/excursion-bookings';
-import {applyExcursionBillingAdjustment, excursionPricing} from '../../../lib/excursion-billing';
+import {applyExcursionBillEdit,applyExcursionBillingAdjustment,excursionFolioBill,excursionPricing} from '../../../lib/excursion-billing';
 import {mirrorHotelState,mirrorOperationalRecord,readExcursionSchedulesPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {approveExternalExcursionCancellation,approveExternalExcursionChange,approveExternalExcursionPackageCancellation,ensureExcursionManageState,externalPackageOrders,rejectExternalExcursionAction} from '../../../lib/excursion-manage';
 import {sendExternalExcursionCancelledEmail,sendExternalExcursionRejectedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
@@ -96,6 +96,7 @@ export async function GET(request?: Request) {
       }
       return {...toConfirmedExcursionBooking(order, stays.get(order.stayId), schedule, resources, excursionPaid(order, state)),
         pricing: excursionPricing(order),
+        bill: user!.role === 'admin' ? excursionFolioBill(order) : undefined,
         billingHistory: user!.role === 'admin' ? (order.billingHistory || []) : undefined};
     });
     bookings.sort((a: any, b: any) => (a.date || '9999').localeCompare(b.date || '9999') || a.time.localeCompare(b.time) || a.id.localeCompare(b.id));
@@ -203,6 +204,31 @@ export async function PATCH(request: Request) {
         else mail=await sendExternalExcursionUpdatedEmail(mailBase);
       }catch{mail={sent:false,error:'Guest email could not be sent.'};}
       return Response.json({ok:true,revision:revision+1,decision:{id:change.id,type:change.type,status:change.status,logisticsChanged:!!change.logisticsChanged,autoAssigned:!!decision?.autoAssigned,scheduleId:decision?.scheduleId||'',scheduleName:decision?.scheduleName||'',time:decision?.time||'',endTime:decision?.endTime||'',refundRequiredCents:Number(change.refundRequiredCents)||0},email:mail},{headers});
+    }
+    if(input?.action==='edit-bill'){
+      if(user.role!=='admin')return Response.json({error:'Only Admin can edit excursion bills.'},{status:403,headers});
+      if(typeof input.id!=='string'||!Number.isSafeInteger(input.revision)||input.revision<0||!Number.isSafeInteger(input.billRevision)||input.billRevision<0){
+        return Response.json({error:'Refresh the excursion bill and try again.'},{status:400,headers});
+      }
+      const {state,revision}=await loadStays();
+      if(input.revision!==revision)return Response.json({error:'Booking or billing data changed. Refresh and reopen the bill.'},{status:409,headers});
+      let result:any;
+      try{result=applyExcursionBillEdit(state,{id:input.id,revision:input.billRevision,date:input.date,status:input.status,items:input.items,requestId:input.requestId},user);}
+      catch(error){return Response.json({error:error instanceof Error?error.message:'Check the excursion bill.'},{status:400,headers});}
+      let nextRevision=0,primaryAvailable=true;
+      try{nextRevision=await saveOperationalRecordPrimary(stayKey,state,revision,user.userId);}catch{primaryAvailable=false;}
+      if(primaryAvailable){
+        if(!nextRevision)return Response.json({error:'Another user changed the excursion bill. Refresh and try again.'},{status:409,headers});
+        try{await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),nextRevision,user.userId).run();}catch{}
+        try{await mirrorHotelState(state);}catch{}
+        return Response.json({ok:true,revision:nextRevision,bill:result.bill,pricing:excursionPricing(result.order)},{headers});
+      }
+      const saved=revision===0
+       ?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),user.userId).run()
+       :await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),user.userId,stayKey,revision).run();
+      if(!saved.meta.changes)return Response.json({error:'Another user changed the excursion bill. Refresh and try again.'},{status:409,headers});
+      try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,user.userId)]);}catch{}
+      return Response.json({ok:true,revision:revision+1,bill:result.bill,pricing:excursionPricing(result.order)},{headers});
     }
     if (user.role !== 'admin') {
       return Response.json({error: 'Only Admin can make excursions free or change discounts.'}, {status: 403, headers});
