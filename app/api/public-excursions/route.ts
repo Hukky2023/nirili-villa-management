@@ -77,7 +77,7 @@ export async function GET(){
    pricingUnit:item.pricingUnit==='couple'?'couple':'guest',
    category:item.category||'single',
    group:item.group||'Excursions',
-   needsFootSizes:isSnorkelingTrip(item.name)
+   needsFootSizes:item.id==='special-package'||isSnorkelingTrip(item.name)
   }));
   return Response.json({today:islandToday(),items,childPolicy:excursionChildPolicyText(),privateBoatSurchargeCents:PRIVATE_BOAT_SURCHARGE_CENTS},{headers});
  }catch{
@@ -101,7 +101,7 @@ export async function POST(request:Request){
   const menu=await loadExcursionMenu();
   const item=menu.find((entry:any)=>entry.id===menuItemId&&entry.kind==='excursion'&&entry.active!==false);
   if(!item)throw Error('This excursion is no longer available.');
-  const footSizes=cleanFootSizes(body.footSizes,mix.total,isSnorkelingTrip(item.name));
+  const footSizes=cleanFootSizes(body.footSizes,mix.total,item.id==='special-package'||isSnorkelingTrip(item.name));
   const privateBoatRequested=mix.total>=4&&body.privateBoatRequested===true;
   const buggyRequested=body.buggyRequested===true;
   const pricingUnit=item.pricingUnit==='couple'?'couple':'guest';
