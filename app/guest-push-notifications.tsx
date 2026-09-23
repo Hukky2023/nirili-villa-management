@@ -55,7 +55,7 @@ export default function GuestPushNotifications(){
    const registration=await navigator.serviceWorker.getRegistration('/'),subscription=await registration?.pushManager.getSubscription();
    const endpoint=subscription?.endpoint||'';
    if(subscription)await subscription.unsubscribe();
-   await fetch('/api/guest-push',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint})});
+   if(endpoint)await fetch('/api/guest-push',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint})});
    setStatus('ready');setMessage('Ride notifications are disabled on this device.');
   }catch{setMessage('Could not disable notifications. Try again.');}
   finally{setBusy(false);}
