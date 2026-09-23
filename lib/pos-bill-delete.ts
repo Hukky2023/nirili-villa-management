@@ -1,4 +1,4 @@
-import {mealPlanIncludedOrder} from './pos-room-billing';
+function mealPlanIncludedOrder(order:any){const items=Array.isArray(order?.items)?order.items:[];return Math.max(0,Number(order?.cents)||0)===0&&items.length>0&&items.every((item:any)=>item?.included===true);}
 export function deletePOSBill(state:any,o:any,by:string){
  const stay=state.stays.find((s:any)=>s.id===o.stayId),key='Restaurant:'+o.id;
  if(o.stayId&&!stay)throw Error('Linked room is missing. Ask Admin to review this bill.');
