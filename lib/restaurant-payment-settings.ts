@@ -86,20 +86,18 @@ async function onlineRate(quote:'EUR'|'MVR'){
 export async function refreshRestaurantFxRates(force=false):Promise<RestaurantPaymentSettings>{
  const current=await loadRestaurantPaymentSettings(),today=maldivesToday();
  if(!force&&current.fxCheckedDate===today)return current;
- let eur:any=null,mvr:any=null;
- try{[eur,mvr]=await Promise.all([onlineRate('EUR'),onlineRate('MVR')]);}
+ let eur:any=null;
+ try{eur=await onlineRate('EUR');}
  catch{
   return current;
  }
  const next:RestaurantPaymentSettings={
   ...current,
   usdToEurRate:Math.round(eur.rate*1000000)/1000000,
-  usdToMvrRate:Math.round(mvr.rate*1000000)/1000000,
   fxCheckedDate:today,
   fxFetchedAt:new Date().toISOString(),
   fxSource:'Frankfurter / official central-bank sources',
-  eurRateDate:eur.date,
-  mvrRateDate:mvr.date
+  eurRateDate:eur.date
  };
  return persist(next,'system-fx-daily');
 }
