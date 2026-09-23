@@ -5,6 +5,7 @@ import {loadStays} from '../../../../lib/stays';
 import {loadExcursionMenu} from '../../../../lib/excursion-menu';
 import {excursionPriceCents} from '../../../../lib/excursion-children';
 import {PRIVATE_BOAT_SURCHARGE_CENTS,isSnorkelingTrip} from '../../../../lib/excursion-operations';
+import {isRomanticBeachDinner} from '../../../../lib/excursion-services';
 import {externalExcursionForToken,externalExcursionPaymentCents,excursionManageSnapshot,ensureExcursionManageState,pendingExcursionChange,validExcursionManageToken} from '../../../../lib/excursion-manage';
 import {sendExternalExcursionCancelledEmail,sendExternalExcursionRequestEmail,sendExternalExcursionUpdatedEmail} from '../../../../lib/excursion-email';
 
@@ -82,7 +83,8 @@ export async function POST(request:Request){
    const pendingUnscheduled=order.approvalStatus==='Pending'&&order.unscheduledRequest===true&&!order.scheduleId;
    if(pendingUnscheduled&&externalExcursionPaymentCents(order)===0){
     Object.assign(order,proposed,{cents:0,time:'',updatedAt:new Date().toISOString(),updatedBy:'External guest'});
-    order.status=String(order.serviceType||'')==='romantic-beach-dinner'?'Awaiting confirmation':'Awaiting scheduling';order.approvalStatus='Pending';order.autoConfirmed=false;order.guestNotified=false;
+    delete order.preferredTime;delete order.preferredEndTime;delete order.preferredScheduleId;delete order.matchedScheduleName;delete order.serviceType;delete order.serviceRequest;delete order.dinnerTime;delete order.buggyRoundTrip;
+    order.status=isRomanticBeachDinner(order)?'Awaiting confirmation':'Awaiting scheduling';order.approvalStatus='Pending';order.autoConfirmed=false;order.guestNotified=false;
     const saved=await saveStayAccess(state,revision,'public-excursion-manage');if(!saved)throw Error('The booking changed while you were editing it. Refresh and try again.');
     const email=await sendExternalExcursionUpdatedEmail({...mailFrom(order,'direct-'+Date.now()),status:'Pending'});
     return Response.json({ok:true,applied:true,email,booking:excursionManageSnapshot(state,order,null),items},{headers});
