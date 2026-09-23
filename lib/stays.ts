@@ -5,6 +5,7 @@ import {authDb} from './auth';
 import {readBill} from './restaurant-server';
 import {total} from './restaurant';
 import {reconcileRestaurantRoomBills} from './pos-room-billing';
+import {readOperationalRecordsPrimaryByPrefix} from './supabase-bridge';
 export const stayKey='hotel-stays-v1';
 export const money=(n:number)=>'$'+(n/100).toFixed(2);
 const excursionResetMarker='excursion-bookings-cleared-2026-09-17';
@@ -126,14 +127,24 @@ export async function loadStays(){
  reconcileRestaurantRoomBills(state);updateRoomInventory(state);return {state,revision};
 }
 function usesDemoLegacyFolio(s:any){return ['NV-1260','NV-1261','NV-1262','NV-1263'].includes(String(s?.id||''))&&['101','102','103','104'].includes(String(s?.billRoom||''));}
+async function folioOverrides(room:string){
+ const p='folio:'+room+':';
+ const [d1,primary]=await Promise.all([
+  authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(p+'%').all<any>(),
+  readOperationalRecordsPrimaryByPrefix(p).catch(()=>[])
+ ]);
+ const byKey=new Map<string,any>();
+ for(const row of d1.results||[])byKey.set(String(row.key),{revision:Number(row.revision)||0,payload:typeof row.payload==='string'?JSON.parse(row.payload):row.payload});
+ for(const row of primary||[]){const key=String(row.key),current=byKey.get(key);if(!current||Number(row.revision||0)>=Number(current.revision||0))byKey.set(key,{revision:Number(row.revision)||0,payload:row.payload});}
+ return [...byKey.values()].map(row=>row.payload).filter(Boolean);
+}
 export async function folioFor(s:any,orders?:any[]){if(!usesDemoLegacyFolio(s)){const all=orders??(await loadStays()).state.orders;let bills=[...(s.posBills||[]),{department:'Accommodation',id:s.id,items:[[s.meal+' · '+s.checkIn+' to '+s.checkOut,1,s.base/100,0]],status:'Posted',totalCents:s.base},...all.filter((o:any)=>billableOrder(o,s)).map((o:any)=>o.kind==='excursion'?excursionFolioBill(o):({department:o.kind==='food'?'Restaurant':'Transfer',id:o.id,items:[[o.name,o.quantity,o.cents/100,0]],status:o.status,totalCents:o.cents})),...s.extensions.map((e:any)=>({department:'Accommodation',id:e.id,items:[['Stay extension · '+e.from+' to '+e.to,e.nights,e.cents/100,0]],status:'Posted',totalCents:e.cents}))];
-const overrideRows=await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?').bind('folio:'+(s.billRoom||s.room)+':%').all<any>();
-const overrides=(overrideRows.results||[]).map((x:any)=>JSON.parse(x.payload));
+const overrides=await folioOverrides(String(s.billRoom||s.room));
 const overrideKey=(b:any)=>String(b.department)+':'+String(b.id);
 const byKey=new Map(overrides.map((b:any)=>[overrideKey(b),b]));
 bills=bills.map((b:any)=>{const o:any=byKey.get(overrideKey(b));if(!o)return b;byKey.delete(overrideKey(b));return {...b,...o,totalCents:o.status==='Cancelled'?0:Math.round(Number(o.total||0)*100)};});
 for(const o of byKey.values() as any){bills.push({...o,totalCents:o.status==='Cancelled'?0:Math.round(Number(o.total||0)*100)});}
-const totalCents=bills.reduce((n:number,b:any)=>n+Number(b.totalCents||0),0),paidCents=s.initialPaid+s.payments.reduce((n:number,p:any)=>n+p.cents,0);return {bills:bills.map((b:any)=>paidBillStatus(s,b)),totalCents,paidCents,balanceCents:totalCents-paidCents};}const rows=await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?').bind('folio:'+s.billRoom+':%').all<any>();const overrides=rows.results.map((x:any)=>JSON.parse(x.payload));
+const totalCents=bills.reduce((n:number,b:any)=>n+Number(b.totalCents||0),0),paidCents=s.initialPaid+s.payments.reduce((n:number,p:any)=>n+p.cents,0);return {bills:bills.map((b:any)=>paidBillStatus(s,b)),totalCents,paidCents,balanceCents:totalCents-paidCents};}const overrides=await folioOverrides(String(s.billRoom));
 const bill=(department:string,id:string,items:any[])=>overrides.find((x:any)=>x.department===department&&x.id===id)||{department,id,items,status:'Posted'};
 const bills=[bill('Accommodation',s.id,[[s.meal+' · '+s.checkIn+' to '+s.checkOut,1,s.base/100,0]]),...await Promise.all(['RES-1048','RES-1061'].map(async id=>({...await readBill(s.billRoom,id),department:'Restaurant'}))),bill('Transfer','TRF-0784',[['Airport → Dhiffushi shared speedboat',2,70,0]]),bill('Excursions','EXC-0921',[['Turtle Snorkeling',2,50,0]]),bill('Excursions','EXC-0934',[['Coral Garden + Sandbank',2,60,0]])].map((b:any)=>({...b,totalCents:b.status==='Cancelled'?0:Math.round(total({...b,items:b.items.map((i:any)=>[i[0],i[1],i[2],i[3]||0])})*100)}));
 bills.push(...(s.posBills||[]));
