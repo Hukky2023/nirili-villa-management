@@ -133,14 +133,24 @@ export async function GET(r:Request){
   // Cancelled trips remain stored for history/audit, but are removed from the live admin schedule screen.
   const raw=rawAll.filter((schedule:any)=>schedule.status!=='Cancelled');
   const loaded=await loadStays(),state=loaded.state;
-  let recovered=0;
+  const recoveredOrders:any[]=[];
   for(const order of state.orders||[]){
    if(order?.kind!=='excursion'||order.date!==date||order.status==='Cancelled'||order.approvalStatus!=='Pending'||order.unscheduledRequest!==true)continue;
-   if(await autoAssignExcursionOrder(state,order))recovered++;
+   if(await autoAssignExcursionOrder(state,order))recoveredOrders.push(order);
   }
-  if(recovered){
+  if(recoveredOrders.length){
    const saved=await saveStayAccess(state,loaded.revision,'system:excursion-auto-reconcile');
    if(!saved)throw Error('Excursion bookings changed during automatic schedule recovery. Refresh and try again.');
+   for(const order of recoveredOrders){
+    if(order.source==='External guest website'&&order.email&&order.manageToken)try{
+     await sendExternalExcursionUpdatedEmail({
+      email:order.email,guest:order.guest,reference:order.packageGroupId||order.id,excursion:order.packageName||order.name,
+      date:order.date,time:order.time||'',endTime:order.endTime||'',quantity:Number(order.quantity)||0,
+      quotedCents:Number(order.packageTotalCents)||Number(order.quotedCents)||Number(order.cents)||0,
+      hotel:order.hotel,manageToken:order.manageToken,eventId:'auto-reconcile-'+order.id+'-'+order.date+'-'+order.scheduleId
+     });
+    }catch{}
+   }
   }
   const orders=Array.isArray(state.orders)?state.orders:[];
   const resources=excursionResources(state);
