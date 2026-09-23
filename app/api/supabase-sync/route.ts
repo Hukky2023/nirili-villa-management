@@ -1,6 +1,6 @@
 import {authDb,currentUser,sameOrigin} from '../../../lib/auth';
 import {loadStays} from '../../../lib/stays';
-import {mirrorHotelState,mirrorLegacyAccounts,mirrorOperationalSnapshot,supabaseBridgeConfigured,supabaseBridgeHealth} from '../../../lib/supabase-bridge';
+import {mirrorHotelState,mirrorLegacyAccounts,mirrorOperationalSnapshot,readOperationalRecordPrimary,supabaseBridgeConfigured,supabaseBridgeHealth} from '../../../lib/supabase-bridge';
 
 export async function GET(){
   const user=await currentUser();
@@ -21,16 +21,18 @@ export async function POST(request:Request){
       loadStays()
     ]);
     const accounts=accountsResult.results||[],operations=operationsResult.results||[],bills=billsResult.results||[];
+    let hotelState=hotel.state;
+    try{hotelState=(await readOperationalRecordPrimary('hotel-stays-v1'))?.payload||hotelState;}catch{}
     const [mirroredAccounts,ops]=await Promise.all([
       mirrorLegacyAccounts(accounts),
       mirrorOperationalSnapshot(operations,bills),
-      mirrorHotelState(hotel.state)
+      mirrorHotelState(hotelState)
     ]);
     return Response.json({
       ok:true,
       accounts:mirroredAccounts,
-      bookings:Array.isArray(hotel.state.stays)?hotel.state.stays.length:0,
-      rooms:Array.isArray(hotel.state.rooms)?hotel.state.rooms.length:0,
+      bookings:Array.isArray(hotelState.stays)?hotelState.stays.length:0,
+      rooms:Array.isArray(hotelState.rooms)?hotelState.rooms.length:0,
       operations:ops.operations,
       excursionSchedules:ops.schedules,
       restaurantBills:ops.bills,
