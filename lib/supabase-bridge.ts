@@ -133,6 +133,93 @@ async function restUpsert(table:string,rows:any[],onConflict:string){
   },'secret') as any[];
 }
 
+function parseRestaurantOrderPayload(value:any){
+  if(value&&typeof value==='object')return value;
+  if(typeof value==='string')try{return JSON.parse(value)}catch{}
+  return null;
+}
+
+function mergeRestaurantOrdersIntoHotelState(state:any,orders:any[]){
+  if(!state||typeof state!=='object')return state;
+  state.posOrders=Array.isArray(state.posOrders)?state.posOrders:[];
+  state.stays=Array.isArray(state.stays)?state.stays:[];
+  state.deletedPOSOrders=Array.isArray(state.deletedPOSOrders)?state.deletedPOSOrders:[];
+  const deleted=new Set(state.deletedPOSOrders.map((order:any)=>String(order?.id||'')).filter(Boolean));
+  const existing=new Set(state.posOrders.map((order:any)=>String(order?.id||'')).filter(Boolean));
+
+  for(const raw of orders||[]){
+    const order=parseRestaurantOrderPayload(raw?.payload??raw);
+    const id=String(order?.id||raw?.id||'');
+    if(!id||deleted.has(id)||existing.has(id)||!order)continue;
+    state.posOrders.push(order);existing.add(id);
+
+    const stay=state.stays.find((item:any)=>String(item?.id||'')===String(order.stayId||''));
+    if(!stay)continue;
+    stay.posBills=Array.isArray(stay.posBills)?stay.posBills:[];
+    stay.payments=Array.isArray(stay.payments)?stay.payments:[];
+    if(!stay.posBills.some((bill:any)=>String(bill?.id||'')===id)){
+      const paidAtPOS=['Cash','Card','Bank transfer'].includes(String(order.method||''));
+      const items=(Array.isArray(order.items)?order.items:[]).map((item:any)=>[
+        String(item?.name||'Restaurant item'),
+        Math.max(1,Number(item?.quantity)||1),
+        Math.max(0,(Number(item?.unitCents)||0)*(Math.max(1,Number(item?.quantity)||1))/100),
+        Math.max(0,Math.min(100,Number(item?.discount)||0))
+      ]);
+      stay.posBills.push({
+        department:'Restaurant',
+        id,
+        items,
+        status:order.complimentary?'Complimentary':paidAtPOS?'Paid':'Posted',
+        totalCents:Math.max(0,Number(order.cents)||0),
+        complimentary:order.complimentary===true,
+        settledAtPOS:paidAtPOS
+      });
+    }
+    if(['Cash','Card','Bank transfer'].includes(String(order.method||''))&&Number(order.cents)>0&&!stay.payments.some((payment:any)=>payment?.reference===id&&Number(payment?.cents)>0&&!payment?.reversedAt)){
+      const payment:any={
+        id:'recovered-pos:'+id,
+        cents:Number(order.cents),
+        method:String(order.method),
+        reference:id,
+        date:order.paidAt||order.updatedAt||order.createdAt||new Date().toISOString(),
+        by:order.updatedBy||order.createdBy||'POS recovery'
+      };
+      if(['Cash','Card'].includes(String(order.method||''))){
+        payment.currency=['MVR','EUR'].includes(String(order.paymentCurrency||''))?order.paymentCurrency:'USD';
+        if(payment.currency==='MVR'){payment.exchangeRate=Number(order.exchangeRate)||0;payment.paidMvr=Number(order.paidMvr)||0;}
+        if(payment.currency==='EUR'){payment.exchangeRate=Number(order.exchangeRate)||0;payment.paidEur=Number(order.paidEur)||0;}
+      }
+      stay.payments.push(payment);
+    }
+  }
+  return state;
+}
+
+export async function readRestaurantOrdersPrimary(){
+  if(!supabaseBridgeConfigured())return [];
+  const rows=await restSelect('restaurant_orders','select=id,payload,created_at,synced_at&order=created_at.asc');
+  return rows||[];
+}
+
+export async function restoreRestaurantOrdersPrimary(state:any){
+  if(!state||typeof state!=='object'||!supabaseBridgeConfigured())return state;
+  return mergeRestaurantOrdersIntoHotelState(state,await readRestaurantOrdersPrimary());
+}
+
+export async function deleteRestaurantOrderPrimary(id:string){
+  if(!supabaseBridgeConfigured()||!id)return false;
+  await sb('/rest/v1/restaurant_orders?id=eq.'+encodeURIComponent(id),{
+    method:'DELETE',
+    headers:{Prefer:'return=minimal'}
+  },'secret');
+  return true;
+}
+
+async function protectHotelStatePayload(key:string,payload:any){
+  if(key!=='hotel-stays-v1')return payload;
+  try{return await restoreRestaurantOrdersPrimary(payload);}catch{return payload;}
+}
+
 
 export async function mirrorLegacyAccounts(rows:LegacyAccountRow[]){
   if(!supabaseBridgeConfigured()||!Array.isArray(rows)||!rows.length)return 0;
@@ -157,14 +244,19 @@ export async function mirrorOperationalSnapshot(records:any[],bills:any[]){
   if(!supabaseBridgeConfigured())return {operations:0,schedules:0,bills:0,transport:false};
   const now=new Date().toISOString(),batch=crypto.randomUUID();
   const parse=(value:any)=>{if(typeof value!=='string')return value??{};try{return JSON.parse(value||'{}')}catch{return value}};
-  const opRows=(records||[]).map((record:any)=>({
-    key:String(record.key),
-    payload:parse(record.payload),
-    revision:Number(record.revision)||0,
-    updated_by:record.updated_by||null,
-    synced_at:now,
-    sync_batch_id:batch
-  })).filter((row:any)=>row.key);
+  const [currentOps,currentBills,restaurantOrders]=await Promise.all([
+    restSelect('operational_records','select=key,revision'),
+    restSelect('restaurant_bills','select=key,revision'),
+    readRestaurantOrdersPrimary()
+  ]);
+  const opRevisions=new Map((currentOps||[]).map((row:any)=>[String(row.key),Number(row.revision)||0]));
+  const billRevisions=new Map((currentBills||[]).map((row:any)=>[String(row.key),Number(row.revision)||0]));
+  const opRows=(records||[]).map((record:any)=>{
+    const key=String(record.key),revision=Number(record.revision)||0;
+    let payload=parse(record.payload);
+    if(key==='hotel-stays-v1')payload=mergeRestaurantOrdersIntoHotelState(payload,restaurantOrders);
+    return {key,payload,revision,updated_by:record.updated_by||null,synced_at:now,sync_batch_id:batch};
+  }).filter((row:any)=>row.key&&(!opRevisions.has(row.key)||row.revision>(opRevisions.get(row.key)||0)));
   await restUpsert('operational_records',opRows,'key');
 
   const scheduleRows=opRows.filter((row:any)=>row.key.startsWith('excursion-schedule:')).map((row:any)=>{
@@ -193,7 +285,7 @@ export async function mirrorOperationalSnapshot(records:any[],bills:any[]){
     updated_by:bill.updated_by||null,
     synced_at:now,
     sync_batch_id:batch
-  })).filter((row:any)=>row.key);
+  })).filter((row:any)=>row.key&&(!billRevisions.has(row.key)||row.revision>(billRevisions.get(row.key)||0));
   await restUpsert('restaurant_bills',billRows,'key');
 
   const transport=opRows.find((row:any)=>row.key==='transport-bookings-v1');
@@ -548,10 +640,10 @@ export async function saveOperationalPairPrimary(
     method:'POST',
     body:JSON.stringify({
       p_key_a:keyA,
-      p_payload_a:payloadA,
+      p_payload_a:await protectHotelStatePayload(keyA,payloadA),
       p_expected_revision_a:expectedRevisionA,
       p_key_b:keyB,
-      p_payload_b:payloadB,
+      p_payload_b:await protectHotelStatePayload(keyB,payloadB),
       p_expected_revision_b:expectedRevisionB,
       p_updated_by:updatedBy
     })
@@ -566,7 +658,7 @@ export async function saveOperationalRecordPrimary(key:string,payload:any,expect
     method:'POST',
     body:JSON.stringify({
       p_key:key,
-      p_payload:payload,
+      p_payload:await protectHotelStatePayload(key,payload),
       p_expected_revision:expectedRevision,
       p_updated_by:updatedBy
     })
@@ -601,9 +693,10 @@ export async function deleteOperationalRecordPrimary(key:string){
 export async function mirrorOperationalRecord(key:string,payload:any,revision:number=0,updatedBy:string=''){
   if(!supabaseBridgeConfigured())return false;
   const batch=crypto.randomUUID();
+  const protectedPayload=await protectHotelStatePayload(key,payload);
   await restUpsert('operational_records',[{
     key,
-    payload,
+    payload:protectedPayload,
     revision:Number(revision)||0,
     updated_by:updatedBy||null,
     synced_at:new Date().toISOString(),
