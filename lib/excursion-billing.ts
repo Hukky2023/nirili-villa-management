@@ -39,7 +39,7 @@ export function excursionPricing(order: any): ExcursionPricing {
       originalCents,totalCents:total,discountCents:Math.max(0,originalCents-total),
       discountPercent:billingItemsUniformDiscount(order.billingItems),
       complimentary:total===0,
-      adjusted:true
+      adjusted:order.billingAdjustment?.action!=='restore'
     };
   }
   const saved = order.billingAdjustment;
