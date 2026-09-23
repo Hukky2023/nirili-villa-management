@@ -69,6 +69,7 @@ export function mergeTransportPlanInternal(current:any,next:any){
  const result={arrival:{...(next?.arrival||{})},departure:{...(next?.departure||{})}};
  for(const leg of ['arrival','departure'] as TransportLeg[]){
   const before=current?.[leg]||{},after=result[leg]||{};
+  if(before.billing&&!after.billing)after.billing={...before.billing};
   const sameNeed=before.needTransfer===after.needTransfer;
   const sameDate=before.date===after.date;
   const sameRoute=leg==='arrival'

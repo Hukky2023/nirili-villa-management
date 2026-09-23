@@ -5,6 +5,7 @@ import {authDb,currentUser,currentGuestUser,hasPermission,sameOrigin} from '../.
 import {restaurantOnly} from '../../../lib/pos-access';
 import {createTransfer,initialTransport,TransportState,Sailing} from '../../../lib/transport';
 import {minutes,syncTransportBuggy} from '../../../lib/transport-plan';
+import {syncTransportPlanBill} from '../../../lib/transport-plan-billing';
 import {mirrorTransportState,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 const key='transport-bookings-v1';
 async function transportUser(){return (await currentUser())||(await currentGuestUser());}
@@ -42,18 +43,19 @@ function planRows(state:TransportState,hotelState:any){
   if(!['Confirmed','In House'].includes(String(stay.status||'')))continue;
   for(const leg of ['arrival','departure'] as const){
    const plan=stay.transportPlan?.[leg];if(!plan)continue;
+   const linkedBill=(hotelState.orders||[]).find((order:any)=>order.kind==='transfer'&&order.id===plan.transportBookingId);
    const from=leg==='arrival'?canonicalLocation(plan.from||'Velana Airport'):'Dhiffushi';
    const to=leg==='arrival'?'Dhiffushi':canonicalLocation(plan.destination||'Velana Airport');
    const date=String(plan.date||(leg==='arrival'?stay.checkIn:stay.checkOut)||'');
    const pax=Math.max(1,Number(stay.pax)||1);
-   const eligible=state.sailings.filter(s=>s.active&&canonicalLocation(s.from)===from&&canonicalLocation(s.to)===to&&s.capacity-bookedPax(state,s.id,date,plan.transportBookingId||plan.previousTransportBookingId||'')>=pax).sort((a,b)=>a.depart.localeCompare(b.depart));
+   const eligible=state.sailings.filter(s=>s.active&&Number.isInteger(s.roomFare)&&Number(s.roomFare)>=0&&canonicalLocation(s.from)===from&&canonicalLocation(s.to)===to&&s.capacity-bookedPax(state,s.id,date,plan.transportBookingId||plan.previousTransportBookingId||'')>=pax).sort((a,b)=>a.depart.localeCompare(b.depart));
    const flight=minutes(String(plan.flightTime||''));let recommended:Sailing|undefined;
    if(eligible.length){
     if(leg==='arrival'&&flight!=null)recommended=eligible.find(s=>(minutes(s.depart)??0)>=flight+90);
     else if(leg==='departure'&&flight!=null)recommended=[...eligible].reverse().find(s=>(minutes(s.arrive)??1440)<=flight-120);
     else recommended=leg==='arrival'?eligible[0]:eligible[eligible.length-1];
    }
-   rows.push({stayId:stay.id,leg,guest:stay.guest,phone:stay.whatsapp||'',room:stay.room||'',pax,adults:Number(stay.adults??stay.pax??1),children:Number(stay.children??0),date,needTransfer:plan.needTransfer||'later',from,to,flightNumber:plan.flightNumber||'',flightTime:plan.flightTime||'',ownTransport:plan.ownTransport||'',ownTime:leg==='arrival'?plan.dhiffushiArrivalTime||'':plan.ownDepartureTime||'',status:plan.status||'',launch:plan.launch||null,transportBookingId:plan.transportBookingId||'',needsReview:!!plan.needsReview,recommendedScheduleId:recommended?.id||'',eligibleScheduleIds:eligible.map(s=>s.id)});
+   rows.push({stayId:stay.id,leg,guest:stay.guest,phone:stay.whatsapp||'',room:stay.room||'',pax,adults:Number(stay.adults??stay.pax??1),children:Number(stay.children??0),date,needTransfer:plan.needTransfer||'later',from,to,flightNumber:plan.flightNumber||'',flightTime:plan.flightTime||'',ownTransport:plan.ownTransport||'',ownTime:leg==='arrival'?plan.dhiffushiArrivalTime||'':plan.ownDepartureTime||'',status:plan.status||'',launch:plan.launch||null,transportBookingId:plan.transportBookingId||'',needsReview:!!plan.needsReview,billing:plan.billing||null,roomChargeCents:linkedBill?.status==='Cancelled'?0:Number(linkedBill?.cents??plan.billing?.cents??0),roomBaseCents:Number(linkedBill?.baseCents??plan.billing?.baseCents??0),recommendedScheduleId:recommended?.id||'',eligibleScheduleIds:eligible.map(s=>s.id)});
   }
  }
  return rows.sort((a,b)=>a.date.localeCompare(b.date)||a.leg.localeCompare(b.leg)||String(a.guest).localeCompare(String(b.guest)));
@@ -76,6 +78,7 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   const leg=b.leg==='arrival'||b.leg==='departure'?b.leg:null;if(!stay||!leg)throw Error('Guest transport plan not found.');
   const plan=stay.transportPlan?.[leg];if(!plan||plan.needTransfer!=='yes')throw Error('This guest has not asked Nirili Villa to arrange this launch.');
   const sailing=state.sailings.find(s=>s.id===String(b.scheduleId||'')&&s.active);if(!sailing)throw Error('Choose an active speedboat departure.');
+  if(!Number.isInteger(sailing.roomFare)||Number(sailing.roomFare)<0)throw Error('Set the USD room fare for this launch before assigning it to a room transport plan.');
   const date=String(plan.date||(leg==='arrival'?stay.checkIn:stay.checkOut)||''),expectedFrom=leg==='arrival'?canonicalLocation(plan.from||'Velana Airport'):'Dhiffushi',expectedTo=leg==='arrival'?'Dhiffushi':canonicalLocation(plan.destination||'Velana Airport');
   if(canonicalLocation(sailing.from)!==expectedFrom||canonicalLocation(sailing.to)!==expectedTo)throw Error('That launch does not match the guest transport route.');
   if(Date.parse(date+'T'+sailing.depart+':00+05:00')<=Date.now())throw Error('Choose a future launch departure.');
@@ -88,8 +91,23 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   Object.assign(booking,{name:stay.guest,phone:stay.whatsapp||'',traveller:'Tourist',adults,children,infants,journeys:[journey],total,status:'Confirmed',checked:[],notes:'Room transport plan · '+leg+(plan.flightNumber?' · Flight '+plan.flightNumber:'')+(plan.flightTime?' · '+plan.flightTime:''),stayId:stay.id,room:stay.room,transportPlanLeg:leg});
   if(!old)state.bookings.push(booking);
   plan.launch={scheduleId:sailing.id,date,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,seats};plan.transportBookingId=booking.id;plan.status='Scheduled';delete plan.needsReview;delete plan.previousTransportBookingId;
-  syncTransportBuggy(hotel.state,stay,leg,journey);stay.history??=[];stay.history.unshift({date:now,by:u.username,detail:(leg==='arrival'?'Arrival':'Departure')+' transport scheduled · '+sailing.depart+' '+sailing.boat+' · Buggy linked automatically'});
+  syncTransportBuggy(hotel.state,stay,leg,journey);const roomBill=syncTransportPlanBill(hotel.state,stay,booking,sailing,leg,u.username);stay.history??=[];stay.history.unshift({date:now,by:u.username,detail:(leg==='arrival'?'Arrival':'Departure')+' transport scheduled · '+sailing.depart+' '+sailing.boat+' · USD '+(roomBill.cents/100).toFixed(2)+' added to room bill · Buggy linked automatically'});
   hotelWrite=hotel;
+ }
+ else if(b.action==='plan-billing'){
+  if(u.role!=='admin')return Response.json({error:'Only Admin can change room transport charges.'},{status:403});
+  const hotel=await loadHotelPrimary(),stay=hotel.state.stays.find((item:any)=>item.id===String(b.stayId||'')&&['Confirmed','In House'].includes(String(item.status||'')));
+  const leg=b.leg==='arrival'||b.leg==='departure'?b.leg:null;if(!stay||!leg)throw Error('Guest transport plan not found.');
+  const plan=stay.transportPlan?.[leg],booking=state.bookings.find(item=>item.id===plan?.transportBookingId&&item.status!=='Cancelled');if(!plan||!booking)throw Error('Schedule the guest launch before changing its room charge.');
+  const journey=booking.journeys?.[0],sailing=state.sailings.find(s=>s.id===journey?.scheduleId);if(!sailing)throw Error('Linked launch schedule not found.');
+  const free=b.free===true,discountPercent=Math.max(0,Math.min(100,Number(b.discountPercent)||0));
+  let priceCents:any=undefined;if(b.priceCents!==undefined&&b.priceCents!==null&&b.priceCents!==''){const value=Number(b.priceCents);if(!Number.isInteger(value)||value<0||value>1000000)throw Error('Enter a valid USD transport price.');priceCents=value;}
+  plan.billing={...plan.billing,free,discountPercent,...(priceCents===undefined?{priceCents:undefined}:{priceCents}),updatedAt:new Date().toISOString(),updatedBy:u.username};
+  if(priceCents===undefined)delete plan.billing.priceCents;
+  const bill=syncTransportPlanBill(hotel.state,stay,booking,sailing,leg,u.username);
+  stay.history??=[];stay.history.unshift({date:new Date().toISOString(),by:u.username,detail:(leg==='arrival'?'Arrival':'Departure')+' transfer room charge updated · USD '+(bill.cents/100).toFixed(2)+(free?' · Marked free':discountPercent?' · '+discountPercent+'% discount':'')});
+  hotelWrite=hotel;
+
  }
  else if(b.action==='book'){
  const booking=createTransfer(state,b,u.userId);
