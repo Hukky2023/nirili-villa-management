@@ -120,7 +120,8 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   const booking:any=old||{id:'NT-'+crypto.randomUUID().slice(0,8).toUpperCase(),token:crypto.randomUUID(),owner:'stay:'+stay.id,created:now,paid:false};
   Object.assign(booking,{name:stay.guest,phone:stay.whatsapp||'',traveller:'Tourist',adults,children,infants,journeys:[journey],total,status:'Confirmed',checked:[],notes:'Admin manual room transfer · '+leg,stayId:stay.id,room:stay.room,transportPlanLeg:leg});
   if(!old)state.bookings.push(booking);
-  const nextPlan:any={...plan,needTransfer:'yes',date,status:'Scheduled',launch:{scheduleId:sailing.id,date,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,seats:requestedSeats},transportBookingId:booking.id,billing:{...plan.billing,free,discountPercent,...(priceCents===undefined?{}:{priceCents})}};
+  const billing:any={...plan.billing,free,discountPercent};if(priceCents===undefined)delete billing.priceCents;else billing.priceCents=priceCents;
+  const nextPlan:any={...plan,needTransfer:'yes',date,status:'Scheduled',launch:{scheduleId:sailing.id,date,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,seats:requestedSeats},transportBookingId:booking.id,billing};
   if(leg==='arrival')nextPlan.from=sailing.from;else nextPlan.destination=sailing.to;
   delete nextPlan.needsReview;delete nextPlan.previousTransportBookingId;delete nextPlan.cancelTransportBookingId;
   stay.transportPlan[leg]=nextPlan;
