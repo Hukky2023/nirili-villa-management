@@ -48,7 +48,7 @@ function planRows(state:TransportState,hotelState:any){
    const to=leg==='arrival'?'Dhiffushi':canonicalLocation(plan.destination||'Velana Airport');
    const date=String(plan.date||(leg==='arrival'?stay.checkIn:stay.checkOut)||'');
    const pax=Math.max(1,Number(stay.pax)||1);
-   const eligible=state.sailings.filter(s=>s.active&&canonicalLocation(s.from)===from&&canonicalLocation(s.to)===to&&s.capacity-bookedPax(state,s.id,date,plan.transportBookingId||plan.previousTransportBookingId||'')>=pax).sort((a,b)=>a.depart.localeCompare(b.depart));
+   const eligible=state.sailings.filter(s=>s.active&&Number.isInteger(s.roomFare)&&Number(s.roomFare)>=0&&canonicalLocation(s.from)===from&&canonicalLocation(s.to)===to&&s.capacity-bookedPax(state,s.id,date,plan.transportBookingId||plan.previousTransportBookingId||'')>=pax).sort((a,b)=>a.depart.localeCompare(b.depart));
    const flight=minutes(String(plan.flightTime||''));let recommended:Sailing|undefined;
    if(eligible.length){
     if(leg==='arrival'&&flight!=null)recommended=eligible.find(s=>(minutes(s.depart)??0)>=flight+90);
