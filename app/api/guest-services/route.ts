@@ -64,7 +64,27 @@ else if(['booking-change-approve','booking-change-reject','booking-cancel-approv
   const folio=await folioFor(s,state.orders),refundRequiredCents=Math.max(0,Number(folio.paidCents)||0);
   change.status='Approved';change.decidedAt=new Date().toISOString();change.decidedBy=u.username;change.decisionNote=note;change.refundRequiredCents=refundRequiredCents;
   s.refundRequiredCents=refundRequiredCents;s.cancelledAt=new Date().toISOString();s.cancelledBy=u.username;s.status='Cancelled';
-  s.history.unshift({date:s.cancelledAt,detail:'Guest cancellation approved'+(refundRequiredCents?' · Refund required if(!hasPermission(u,'edit_bills')&&!hasPermission(u,'guesthouse_reception'))return Response.json({error:'Reception or bill editing permission is required for check-in.'},{status:403});if(b.revision!==revision)return Response.json({error:'Bookings changed. Refresh and try again.'},{status:409});const s=state.stays.find((x:any)=>x.id===b.id);if(!s||!['Confirmed','Checked Out'].includes(s.status))throw Error('Only confirmed or checked-out bookings can check in.');const reentry=s.status==='Checked Out';if(today<s.checkIn||today>=s.checkOut)throw Error('Check-in is available during the booked stay dates.');const room=state.rooms.find((x:any)=>x.number===s.room);if(!room||!(room.status==='Available'||(reentry&&b.roomReady===true&&room.status==='Cleaning'))||state.stays.some((x:any)=>x.id!==s.id&&x.room===s.room&&(x.status==='In House'||(x.status==='Confirmed'&&x.checkIn<s.checkOut&&x.checkOut>today))))throw Error('The allocated room is not ready. Mark it Available after cleaning.');s.status='In House';loginPlan=await prepareStayLogin(state,s);delete s.checkedOutAt;s.checkedInAt=new Date().toISOString();room.status='Occupied';s.history.unshift({date:s.checkedInAt,detail:(reentry?'Guest checked back in · Room readiness confirmed':'Guest checked in')+' · Guest stay access created for Room '+s.room,by:u.username});}
+  s.history.unshift({date:s.cancelledAt,detail:'Guest cancellation approved'+(refundRequiredCents?' · Refund required USD '+(refundRequiredCents/100).toFixed(2):''),by:u.username});
+  bookingDecisionKind='cancelled';
+  bookingDecisionEmailInput={email:s.email,guest:s.guest,reference:s.id,room:s.room,checkIn:s.checkIn,checkOut:s.checkOut,meal:s.meal,pax:s.pax,totalCents:s.base||0,manageToken:s.manageToken,eventId:change.id,refundRequiredCents};
+  if(s.accountId)revokeAccounts.push(s.accountId);
+  const sourceRequest=state.requests.find((request:any)=>request.stayId===s.id);
+  deleteBooking(state,s,u.username);
+  if(sourceRequest){sourceRequest.status='Cancelled';sourceRequest.cancelledAt=new Date().toISOString();sourceRequest.reviewedBy=u.username;if(sourceRequest.source==='Guest booking website')publicBookingUpdate={id:sourceRequest.id,status:'Cancelled',stayId:s.id,room:s.room};}
+ }else{
+  const p=change.proposed||{},room=String(b.room||s.room),rateCents=Number(b.rateCents);
+  if(!Number.isInteger(rateCents)||rateCents<0||rateCents>1000000)throw Error('Enter a valid nightly rate.');
+  editBooking(state,s,{guest:p.guest,room,checkIn:p.checkIn,checkOut:p.checkOut,pax:p.pax,meal:p.meal,source:s.source,rateCents},u.username);
+  Object.assign(s,{email:p.email,whatsapp:p.whatsapp,adults:p.adults,children:p.children,notes:p.notes||'',rateCents});
+  change.status='Approved';change.decidedAt=new Date().toISOString();change.decidedBy=u.username;change.decisionNote=note;change.approvedRoom=room;change.approvedRateCents=rateCents;
+  s.history.unshift({date:change.decidedAt,detail:'Guest-requested booking changes approved · '+change.id,by:u.username});
+  const sourceRequest=state.requests.find((request:any)=>request.stayId===s.id);if(sourceRequest)Object.assign(sourceRequest,{guest:s.guest,email:s.email,whatsapp:s.whatsapp,checkIn:s.checkIn,checkOut:s.checkOut,pax:s.pax,adults:s.adults,children:s.children,meal:s.meal,notes:s.notes,room:s.room});
+  bookingDecisionKind='updated';
+  bookingDecisionEmailInput={email:s.email,guest:s.guest,reference:s.id,room:s.room,checkIn:s.checkIn,checkOut:s.checkOut,meal:s.meal,pax:s.pax,totalCents:s.base||0,manageToken:s.manageToken,eventId:change.id,statusLabel:'Confirmed'};
+  if(sourceRequest?.source==='Guest booking website')publicBookingUpdate={id:sourceRequest.id,status:'Confirmed',stayId:s.id,room:s.room};
+ }
+}
+else if(b.action==='checkin'){if(!hasPermission(u,'edit_bills')&&!hasPermission(u,'guesthouse_reception'))return Response.json({error:'Reception or bill editing permission is required for check-in.'},{status:403});if(b.revision!==revision)return Response.json({error:'Bookings changed. Refresh and try again.'},{status:409});const s=state.stays.find((x:any)=>x.id===b.id);if(!s||!['Confirmed','Checked Out'].includes(s.status))throw Error('Only confirmed or checked-out bookings can check in.');const reentry=s.status==='Checked Out';if(today<s.checkIn||today>=s.checkOut)throw Error('Check-in is available during the booked stay dates.');const room=state.rooms.find((x:any)=>x.number===s.room);if(!room||!(room.status==='Available'||(reentry&&b.roomReady===true&&room.status==='Cleaning'))||state.stays.some((x:any)=>x.id!==s.id&&x.room===s.room&&(x.status==='In House'||(x.status==='Confirmed'&&x.checkIn<s.checkOut&&x.checkOut>today))))throw Error('The allocated room is not ready. Mark it Available after cleaning.');s.status='In House';loginPlan=await prepareStayLogin(state,s);delete s.checkedOutAt;s.checkedInAt=new Date().toISOString();room.status='Occupied';s.history.unshift({date:s.checkedInAt,detail:(reentry?'Guest checked back in · Room readiness confirmed':'Guest checked in')+' · Guest stay access created for Room '+s.room,by:u.username});}
 else if(b.action==='order'){if(u.role!=='guest')throw Error('Use your guest account.');const s=state.stays.find((s:any)=>s.id===b.stayId&&s.accountId===u.userId);if(!s)return Response.json({error:'This booking is not linked to your account.'},{status:403});if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token))throw Error('Invalid request.');if(state.orders.some((o:any)=>o.token===b.token&&o.accountId===u.userId))return Response.json(await view(u));const item=[...await foodCatalog(),...catalog.filter(i=>i.kind!=='food'&&i.kind!=='excursion'),...await loadExcursionMenu()].find(x=>x.id===b.itemId);if(!item||!Number.isInteger(b.quantity)||b.quantity<MIN_EXCURSION_PAX||b.quantity>20||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Check the quantity and notes.');if(!(s.status==='In House'||(item.kind==='transfer'&&s.status==='Confirmed')))return Response.json({error:'A confirmed stay is required for transfers. Food and excursions unlock after check-in.'},{status:403});if(item.kind==='transfer'&&(!validDate(b.date)||b.date<today||b.date<s.checkIn||b.date>s.checkOut||typeof b.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.time)))throw Error('Choose a transfer date within your stay and a valid departure time.');const expectedTotal=item.kind==='food'&&mealItemIncluded(s.meal,item as any)?0:item.cents*b.quantity;if(b.expectedCents!==undefined&&b.expectedCents!==expectedTotal)throw Error('Price or meal plan changed. Refresh and review the total before ordering.');if(item.kind==='excursion'&&(!validDate(b.date)||b.date<today||b.date<s.checkIn||b.date>=s.checkOut))throw Error('Choose an excursion date within your stay, before checkout.');state.orders.push({id:(item.kind==='food'?'FOOD-':item.kind==='transfer'?'TRF-':'EXC-')+crypto.randomUUID().slice(0,8).toUpperCase(),token:b.token,accountId:u.userId,stayId:s.id,guest:s.guest,room:s.room,kind:item.kind,name:item.name+(item.kind==='food'&&mealItemIncluded(s.meal,item as any)?' (meal plan included)':''),quantity:b.quantity,cents:item.kind==='food'&&mealItemIncluded(s.meal,item as any)?0:item.cents*b.quantity,notes:b.notes,date:item.kind==='food'?today:b.date,time:item.kind==='transfer'?b.time:undefined,status:'Placed',kitchen:item.kind==='food'?'Awaiting cashier':undefined,createdAt:new Date().toISOString()});}
 else if(['schedule-excursion','excursion-create','excursion-resource','excursion-status','excursion-payment','excursion-notified','excursion-vessel-condition','excursion-vessel-remove','excursion-crew-update','excursion-crew-remove','excursion-gopro-update','excursion-gopro-remove','excursion-drone-update','excursion-drone-remove'].includes(b.action)){
  if(u.role!=='admin'&&!hasPermission(u,'excursions_manager')&&!hasPermission(u,'edit_excursions'))return Response.json({error:'Excursions manager access required.'},{status:403});
@@ -181,146 +201,6 @@ const response=await view(u);
 const responseWithConfirmation=bookingConfirmation?{...response,bookingConfirmation}:response;
 const responseWithDecision=bookingDecision?{...responseWithConfirmation,bookingDecision}:responseWithConfirmation;
 return Response.json(generatedCrewLogin?{...responseWithDecision,generatedCrewLogin}:responseWithDecision);
-}catch(e){
- if(generatedCrewAccountId&&!generatedCrewCommitted){
-  try{const db=authDb();await db.batch([db.prepare('DELETE FROM operation_records WHERE key=?').bind('credential:'+generatedCrewAccountId),db.prepare('DELETE FROM accounts WHERE id=?').bind(generatedCrewAccountId)]);}catch{}
- }
- return Response.json({error:e instanceof Error?e.message:'Could not save. Please retry.'},{status:400});
-}}
-+(refundRequiredCents/100).toFixed(2):''),by:u.username});
-  bookingDecisionKind='cancelled';
-  bookingDecisionEmailInput={email:s.email,guest:s.guest,reference:s.id,room:s.room,checkIn:s.checkIn,checkOut:s.checkOut,meal:s.meal,pax:s.pax,totalCents:s.base||0,manageToken:s.manageToken,eventId:change.id,refundRequiredCents};
-  if(s.accountId)revokeAccounts.push(s.accountId);
-  const sourceRequest=state.requests.find((request:any)=>request.stayId===s.id);
-  deleteBooking(state,s,u.username);
-  if(sourceRequest){sourceRequest.status='Cancelled';sourceRequest.cancelledAt=new Date().toISOString();sourceRequest.reviewedBy=u.username;if(sourceRequest.source==='Guest booking website')publicBookingUpdate={id:sourceRequest.id,status:'Cancelled',stayId:s.id,room:s.room};}
- }else{
-  const p=change.proposed||{},room=String(b.room||s.room),rateCents=Number(b.rateCents);
-  if(!Number.isInteger(rateCents)||rateCents<0||rateCents>1000000)throw Error('Enter a valid nightly rate.');
-  editBooking(state,s,{guest:p.guest,room,checkIn:p.checkIn,checkOut:p.checkOut,pax:p.pax,meal:p.meal,source:s.source,rateCents},u.username);
-  Object.assign(s,{email:p.email,whatsapp:p.whatsapp,adults:p.adults,children:p.children,notes:p.notes||'',rateCents});
-  change.status='Approved';change.decidedAt=new Date().toISOString();change.decidedBy=u.username;change.decisionNote=note;change.approvedRoom=room;change.approvedRateCents=rateCents;
-  s.history.unshift({date:change.decidedAt,detail:'Guest-requested booking changes approved · '+change.id,by:u.username});
-  const sourceRequest=state.requests.find((request:any)=>request.stayId===s.id);if(sourceRequest)Object.assign(sourceRequest,{guest:s.guest,email:s.email,whatsapp:s.whatsapp,checkIn:s.checkIn,checkOut:s.checkOut,pax:s.pax,adults:s.adults,children:s.children,meal:s.meal,notes:s.notes,room:s.room});
-  bookingDecisionKind='updated';
-  bookingDecisionEmailInput={email:s.email,guest:s.guest,reference:s.id,room:s.room,checkIn:s.checkIn,checkOut:s.checkOut,meal:s.meal,pax:s.pax,totalCents:s.base||0,manageToken:s.manageToken,eventId:change.id,statusLabel:'Confirmed'};
-  if(sourceRequest?.source==='Guest booking website')publicBookingUpdate={id:sourceRequest.id,status:'Confirmed',stayId:s.id,room:s.room};
- }
-}
-else if(b.action==='checkin'){if(!hasPermission(u,'edit_bills')&&!hasPermission(u,'guesthouse_reception'))return Response.json({error:'Reception or bill editing permission is required for check-in.'},{status:403});if(b.revision!==revision)return Response.json({error:'Bookings changed. Refresh and try again.'},{status:409});const s=state.stays.find((x:any)=>x.id===b.id);if(!s||!['Confirmed','Checked Out'].includes(s.status))throw Error('Only confirmed or checked-out bookings can check in.');const reentry=s.status==='Checked Out';if(today<s.checkIn||today>=s.checkOut)throw Error('Check-in is available during the booked stay dates.');const room=state.rooms.find((x:any)=>x.number===s.room);if(!room||!(room.status==='Available'||(reentry&&b.roomReady===true&&room.status==='Cleaning'))||state.stays.some((x:any)=>x.id!==s.id&&x.room===s.room&&(x.status==='In House'||(x.status==='Confirmed'&&x.checkIn<s.checkOut&&x.checkOut>today))))throw Error('The allocated room is not ready. Mark it Available after cleaning.');s.status='In House';loginPlan=await prepareStayLogin(state,s);delete s.checkedOutAt;s.checkedInAt=new Date().toISOString();room.status='Occupied';s.history.unshift({date:s.checkedInAt,detail:(reentry?'Guest checked back in · Room readiness confirmed':'Guest checked in')+' · Guest stay access created for Room '+s.room,by:u.username});}
-else if(b.action==='order'){if(u.role!=='guest')throw Error('Use your guest account.');const s=state.stays.find((s:any)=>s.id===b.stayId&&s.accountId===u.userId);if(!s)return Response.json({error:'This booking is not linked to your account.'},{status:403});if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token))throw Error('Invalid request.');if(state.orders.some((o:any)=>o.token===b.token&&o.accountId===u.userId))return Response.json(await view(u));const item=[...await foodCatalog(),...catalog.filter(i=>i.kind!=='food'&&i.kind!=='excursion'),...await loadExcursionMenu()].find(x=>x.id===b.itemId);if(!item||!Number.isInteger(b.quantity)||b.quantity<MIN_EXCURSION_PAX||b.quantity>20||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Check the quantity and notes.');if(!(s.status==='In House'||(item.kind==='transfer'&&s.status==='Confirmed')))return Response.json({error:'A confirmed stay is required for transfers. Food and excursions unlock after check-in.'},{status:403});if(item.kind==='transfer'&&(!validDate(b.date)||b.date<today||b.date<s.checkIn||b.date>s.checkOut||typeof b.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.time)))throw Error('Choose a transfer date within your stay and a valid departure time.');const expectedTotal=item.kind==='food'&&mealItemIncluded(s.meal,item as any)?0:item.cents*b.quantity;if(b.expectedCents!==undefined&&b.expectedCents!==expectedTotal)throw Error('Price or meal plan changed. Refresh and review the total before ordering.');if(item.kind==='excursion'&&(!validDate(b.date)||b.date<today||b.date<s.checkIn||b.date>=s.checkOut))throw Error('Choose an excursion date within your stay, before checkout.');state.orders.push({id:(item.kind==='food'?'FOOD-':item.kind==='transfer'?'TRF-':'EXC-')+crypto.randomUUID().slice(0,8).toUpperCase(),token:b.token,accountId:u.userId,stayId:s.id,guest:s.guest,room:s.room,kind:item.kind,name:item.name+(item.kind==='food'&&mealItemIncluded(s.meal,item as any)?' (meal plan included)':''),quantity:b.quantity,cents:item.kind==='food'&&mealItemIncluded(s.meal,item as any)?0:item.cents*b.quantity,notes:b.notes,date:item.kind==='food'?today:b.date,time:item.kind==='transfer'?b.time:undefined,status:'Placed',kitchen:item.kind==='food'?'Awaiting cashier':undefined,createdAt:new Date().toISOString()});}
-else if(['schedule-excursion','excursion-create','excursion-resource','excursion-status','excursion-payment','excursion-notified','excursion-vessel-condition','excursion-vessel-remove','excursion-crew-update','excursion-crew-remove','excursion-gopro-update','excursion-gopro-remove','excursion-drone-update','excursion-drone-remove'].includes(b.action)){
- if(u.role!=='admin'&&!hasPermission(u,'excursions_manager')&&!hasPermission(u,'edit_excursions'))return Response.json({error:'Excursions manager access required.'},{status:403});
- if(b.revision!==revision)return Response.json({error:'Bookings changed. Refresh and try again.'},{status:409});
- if(b.action==='excursion-resource'&&b.resourceType==='crew'){
-  const crewName=String(b.name||'').trim();
-  const username=String(b.username||'').trim().toLowerCase();
-  const password=typeof b.password==='string'?b.password:'';
-  const existing=excursionResources(state).crew.some((member:any)=>!member.removed&&String(member.name||'').trim().toLowerCase()===crewName.toLowerCase());
-  if(existing)throw Error('That name is already in the crew list.');
-  if(!/^[a-z0-9._-]{3,40}$/.test(username))throw Error('Username must be 3–40 characters using letters, numbers, dots, underscores or hyphens.');
-  if(!validPassword(password))throw Error('Password must be 8–128 characters.');
-  const db=authDb();
-  const taken=await db.prepare('SELECT id FROM accounts WHERE username=? OR email=?').bind(username,username).first<any>();
-  if(taken)throw Error('That username is already in use. Choose another username.');
-  const accountId=crypto.randomUUID(),hashed=await hashPassword(password);
-  const results=await db.batch([
-   db.prepare("INSERT OR IGNORE INTO accounts(id,username,email,name,password_hash,salt,role,permissions,active) VALUES(?,?,?,?,?,?,'staff',?,1)").bind(accountId,username,null,crewName,hashed.hash,hashed.salt,JSON.stringify(['crew_location'])),
-   await credentialStatement(accountId,hashed.hash,password,u.userId)
-  ]);
-  if(!results[0].meta.changes)throw Error('That username is already in use. Choose another username.');
-  generatedCrewAccountId=accountId;
-  generatedCrewLogin={accountId,username,password,name:crewName,role:'Crew Member'};
-  b.resourceId=accountId;b.accountId=accountId;b.username=username;
- }
- if(b.action==='excursion-crew-remove'){
-  const member=excursionResources(state).crew.find((crew:any)=>crew.id===b.crewId&&!crew.removed);
-  if(!member)throw Error('Crew member not found.');
-  const rows=(await authDb().prepare("SELECT payload FROM operation_records WHERE key LIKE 'excursion-schedule:%'").all<any>()).results||[];
-  const scheduled=rows.map((row:any)=>{try{return JSON.parse(row.payload||'{}')}catch{return null}}).filter(Boolean);
-  const activeSchedule=scheduled.find((schedule:any)=>schedule.status!=='Cancelled'&&String(schedule.date||'')>=today&&Array.isArray(schedule.crewIds)&&schedule.crewIds.includes(member.id));
-  if(activeSchedule)throw Error('This crew member is assigned to '+String(activeSchedule.name||'an excursion')+' on '+String(activeSchedule.date||'')+' at '+String(activeSchedule.time||'')+'. Reassign or cancel that trip before removing the crew member.');
- }
- if(b.action==='excursion-gopro-remove'){
-  const gopro=excursionResources(state).gopros.find((item:any)=>item.id===b.goproId);
-  if(!gopro)throw Error('GoPro not found.');
-  const rows=(await authDb().prepare("SELECT payload FROM operation_records WHERE key LIKE 'excursion-schedule:%'").all<any>()).results||[];
-  const scheduled=rows.map((row:any)=>{try{return JSON.parse(row.payload||'{}')}catch{return null}}).filter(Boolean);
-  const activeSchedule=scheduled.find((schedule:any)=>schedule.status!=='Cancelled'&&String(schedule.date||'')>=today&&schedule.goproId===gopro.id);
-  if(activeSchedule)throw Error(gopro.name+' is assigned to '+String(activeSchedule.name||'an excursion')+' on '+String(activeSchedule.date||'')+' at '+String(activeSchedule.time||'')+'. Assign another GoPro or cancel that trip before removing it.');
- }
- if(b.action==='excursion-drone-remove'){
-  const drone=excursionResources(state).drones.find((item:any)=>item.id===b.droneId);
-  if(!drone)throw Error('Drone not found.');
-  const rows=(await authDb().prepare("SELECT payload FROM operation_records WHERE key LIKE 'excursion-schedule:%'").all<any>()).results||[];
-  const scheduled=rows.map((row:any)=>{try{return JSON.parse(row.payload||'{}')}catch{return null}}).filter(Boolean);
-  const activeSchedule=scheduled.find((schedule:any)=>schedule.status!=='Cancelled'&&String(schedule.date||'')>=today&&schedule.droneId===drone.id);
-  if(activeSchedule)throw Error(drone.name+' is assigned to '+String(activeSchedule.name||'an excursion')+' on '+String(activeSchedule.date||'')+' at '+String(activeSchedule.time||'')+'. Assign another drone or cancel that trip before removing it.');
- }
- applyExcursionAction(state,b,today,u.username);
- await validateExcursionGuideAction(state,b);
-}
-else if(b.action==='orderstatus'){const o=state.orders.find((x:any)=>x.id===b.id);if(!o)throw Error('Order not found.');if(o.transportBooking)throw Error('Manage this ticket from the Transport manifest. Room payments are managed from the room bill.');if(o.kind==='excursion'?(!hasPermission(u,'edit_excursions')&&!hasPermission(u,'excursions_manager')):!hasPermission(u,o.kind==='food'?'edit_bills':'edit_transfers'))return Response.json({error:'Editing permission required.'},{status:403});if(b.revision!==revision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});if(!['Confirmed','Completed','Cancelled'].includes(b.status)||o.status==='Completed'||o.status==='Cancelled')throw Error('This order cannot be changed.');const stay=state.stays.find((x:any)=>x.id===o.stayId);if(stay?.status==='Checked Out')throw Error('This stay is checked out.');if(o.kind==='food'&&o.kitchen==='Awaiting cashier'&&b.status!=='Cancelled')throw Error('Send this order to the kitchen from the cashier Bills screen first.');if(o.kind==='excursion'){if(u.role!=='admin'&&!hasPermission(u,'excursions_manager')&&!hasPermission(u,'edit_excursions'))return Response.json({error:'Excursion management access required.'},{status:403});changeExcursionStatus(o,b.status,state,u.username);}else{o.status=b.status;o.updatedBy=u.username;}}
-else throw Error('Unknown action.');
-revokeAccounts=syncWalkInExcursionAccess(state);
-const saved=await saveStayAccess(state,revision,u.userId,loginPlan,revokeAccounts);
-if(!saved){
- if(generatedCrewAccountId){
-  const db=authDb();await db.batch([db.prepare('DELETE FROM operation_records WHERE key=?').bind('credential:'+generatedCrewAccountId),db.prepare('DELETE FROM accounts WHERE id=?').bind(generatedCrewAccountId)]);
-  generatedCrewAccountId='';
- }
- return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
-}
-if(publicBookingUpdate)try{await updatePublicBookingRequestStatus(publicBookingUpdate.id,publicBookingUpdate.status,publicBookingUpdate);}catch{}
-if(confirmationEmailInput){try{bookingConfirmation=await sendBookingConfirmationEmail(confirmationEmailInput);}catch{bookingConfirmation={sent:false,error:'Booking confirmed, but the confirmation email could not be sent.'};}}
-generatedCrewCommitted=true;
-if(generatedCrewLogin){
- try{await appendAccountHistory(generatedCrewLogin.accountId,{at:new Date().toISOString(),action:'Crew account created',by:u.username,detail:'Crew Member login created from Excursions → Crew members using credentials chosen by Admin.'});}catch{}
- try{
-  const account=await authDb().prepare('SELECT * FROM accounts WHERE id=?').bind(generatedCrewLogin.accountId).first<any>();
-  if(account)await ensureSupabaseEmployee(account,generatedCrewLogin.password);
-  await mirrorCredentialRecord(generatedCrewLogin.accountId);
- }catch{
-  try{const account=await authDb().prepare('SELECT * FROM accounts WHERE id=?').bind(generatedCrewLogin.accountId).first<any>();if(account)await mirrorLegacyAccount(account);}catch{}
- }
-}
-if(b.action==='excursion-crew-update'){
- const member=excursionResources(state).crew.find((crew:any)=>crew.id===b.crewId);
- if(member?.accountId){
-  try{
-   const active=member.active!==false&&member.active!==0,db=authDb();
-   await db.prepare("UPDATE accounts SET name=?,active=? WHERE id=? AND role='staff'").bind(member.name,active?1:0,member.accountId).run();
-   if(!active){await db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(member.accountId).run();try{await deleteLegacySessionsForAccount(member.accountId);}catch{}}
-   try{const account=await db.prepare('SELECT * FROM accounts WHERE id=?').bind(member.accountId).first<any>();if(account)await mirrorLegacyAccount(account);}catch{}
-   try{await appendAccountHistory(member.accountId,{at:new Date().toISOString(),action:active?'Crew profile updated':'Crew account disabled',by:u.username,detail:'Crew name/status updated from Excursions.'});}catch{}
-  }catch{}
- }
-}
-if(b.action==='excursion-crew-remove'){
- const member=excursionResources(state).crew.find((crew:any)=>crew.id===b.crewId);
- if(member?.accountId){
-  try{
-   const db=authDb(),account=await db.prepare("SELECT permissions FROM accounts WHERE id=? AND role='staff'").bind(member.accountId).first<any>();
-   const permissions=account?JSON.parse(account.permissions||'[]'):[],remaining=(Array.isArray(permissions)?permissions:[]).filter((permission:string)=>permission!=='crew_location');
-   try{await appendAccountHistory(member.accountId,{at:new Date().toISOString(),action:'Removed from excursion crew',by:u.username,detail:'Crew resource removed from Excursions. Historical trip records retained.'});}catch{}
-   await db.prepare('DELETE FROM operation_records WHERE key=?').bind('crew-location:'+member.accountId).run();
-   if(account&&remaining.length===0){
-    await db.batch([
-     db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(member.accountId),
-     db.prepare('DELETE FROM operation_records WHERE key=?').bind('credential:'+member.accountId),
-     db.prepare("DELETE FROM accounts WHERE id=? AND role='staff'").bind(member.accountId)
-    ]);
-    try{await deactivateSupabaseAccount(member.accountId);}catch{}
-   }else if(account){
-    await db.prepare("UPDATE accounts SET permissions=? WHERE id=? AND role='staff'").bind(JSON.stringify(remaining),member.accountId).run();
-    try{const updated=await db.prepare('SELECT * FROM accounts WHERE id=?').bind(member.accountId).first<any>();if(updated)await mirrorLegacyAccount(updated);}catch{}
-   }
-  }catch{}
- }
-}
-const response=await view(u);
-const responseWithConfirmation=bookingConfirmation?{...response,bookingConfirmation}:response;
-return Response.json(generatedCrewLogin?{...responseWithConfirmation,generatedCrewLogin}:responseWithConfirmation);
 }catch(e){
  if(generatedCrewAccountId&&!generatedCrewCommitted){
   try{const db=authDb();await db.batch([db.prepare('DELETE FROM operation_records WHERE key=?').bind('credential:'+generatedCrewAccountId),db.prepare('DELETE FROM accounts WHERE id=?').bind(generatedCrewAccountId)]);}catch{}
