@@ -88,7 +88,7 @@ export default function ExternalExcursionBooking(){
     <span><CalendarDays/> {success.date||date}{success.time?' · '+success.time:''}</span>
     <span><Users/> {guests.length} {guests.length===1?'guest':'guests'}</span>
    </div>
-   <p className="success-note">Reserve now, pay later. We sent your private View / Manage Excursion link to {email}. No Nirili Villa room booking or management-system login is required.</p>
+   <p className="success-note">{success.email?.sent?'Reserve now, pay later. We sent your private View / Manage Excursion link to '+email+'.':'Your excursion booking is saved. Email delivery could not be confirmed, so use the private View / Manage Excursion button below and keep the link.'} No Nirili Villa room booking or management-system login is required.</p>
    <div className="external-success-actions">
     {success.manageUrl&&<a className="primary" href={success.manageUrl}>View / Manage Excursion <ArrowRight/></a>}
     <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();}}>Book another excursion <ArrowRight/></button>
