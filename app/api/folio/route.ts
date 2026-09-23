@@ -1,7 +1,9 @@
 import {restaurantOnly} from '../../../lib/pos-access';
 import {discountsUnchanged} from "../../../lib/discounts";
 import {authDb,currentUser,hasPermission,sameOrigin} from "../../../lib/auth";
-import {mirrorOperationalRecord,readOperationalRecordPrimary,readOperationalRecordsPrimaryByPrefix,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {loadStays,stayKey} from '../../../lib/stays';
+import {applyExcursionBillEdit} from '../../../lib/excursion-billing';
+import {deleteOperationalRecordPrimary,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,readOperationalRecordsPrimaryByPrefix,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 
 function prefix(room:string){return "folio:"+room+":";}
 function parsePayload(value:any){if(value&&typeof value==='object')return value;try{return JSON.parse(String(value||'{}'))}catch{return {}}}
@@ -43,6 +45,47 @@ export async function PUT(r:Request){
  if(!hasPermission(user,"edit_bills")||!sameOrigin(r))return Response.json({error:"Bill editing permission required"},{status:403});
  try{
   const b=await r.json(),x=b.bill;
+
+  if(x?.department==="Excursions"){
+   if(user?.role!=="admin")return Response.json({error:"Only Admin can edit excursion bills."},{status:403});
+   let state:any,revision=0;
+   try{
+    const primary=await readOperationalRecordPrimary(stayKey);
+    if(primary?.payload){state=primary.payload;revision=Number(primary.revision)||0;}
+   }catch{}
+   if(!state){const loaded=await loadStays();state=loaded.state;revision=loaded.revision;}
+   state.orders??=[];state.stays??=[];
+   const order=state.orders.find((o:any)=>o.id===x.id&&o.kind==='excursion');
+   if(order){
+    const stay=state.stays.find((s:any)=>s.id===order.stayId);
+    if(stay&&String(stay.billRoom||stay.room)!==String(b.room))return Response.json({error:"This excursion bill belongs to another room."},{status:409});
+    let result:any;
+    try{result=applyExcursionBillEdit(state,{id:x.id,revision:x.revision,date:x.date,status:x.status,items:x.items,requestId:b.requestId},user!);}
+    catch(error){return Response.json({error:error instanceof Error?error.message:"Check the excursion bill."},{status:400});}
+
+    let nextRevision=0,primaryAvailable=true;
+    try{nextRevision=await saveOperationalRecordPrimary(stayKey,state,revision,user!.userId);}catch{primaryAvailable=false;}
+    if(primaryAvailable){
+     if(!nextRevision)return Response.json({error:"Excursion data changed. Reopen the bill and try again."},{status:409});
+     try{
+      await authDb().prepare("INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by")
+       .bind(stayKey,JSON.stringify(state),nextRevision,user!.userId).run();
+     }catch{}
+     try{await mirrorHotelState(state);}catch{}
+    }else{
+     const saved=revision===0
+      ?await authDb().prepare("INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)").bind(stayKey,JSON.stringify(state),user!.userId).run()
+      :await authDb().prepare("UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?").bind(JSON.stringify(state),user!.userId,stayKey,revision).run();
+     if(!saved.meta.changes)return Response.json({error:"Excursion data changed. Reopen the bill and try again."},{status:409});
+     nextRevision=revision+1;
+     try{await Promise.all([mirrorOperationalRecord(stayKey,state,nextRevision,user!.userId),mirrorHotelState(state)]);}catch{}
+    }
+    const staleKey=prefix(String(b.room))+"Excursions:"+x.id;
+    try{await deleteOperationalRecordPrimary(staleKey);}catch{}
+    try{await authDb().prepare("DELETE FROM operation_records WHERE key=?").bind(staleKey).run();}catch{}
+    return Response.json({bill:result.bill,revision:nextRevision});
+   }
+  }
   if(!/^(?:10[1-6]|20[1-4]|30[1-4])$/.test(String(b.room))||!x||!["Accommodation","Transfer","Excursions"].includes(x.department)||typeof x.id!=="string"||!/^[-A-Z0-9]{1,40}$/.test(x.id)||!Number.isInteger(x.revision)||x.revision<0||typeof x.date!=="string"||!x.date.trim()||x.date.length>100||!["Posted","Pending","Paid","Unpaid","Cancelled"].includes(x.status)||!Array.isArray(x.items)||x.items.length>100||x.items.some((i:any)=>!Array.isArray(i)||i.length!==4||typeof i[0]!=="string"||!i[0].trim()||i[0].length>200||!Number.isInteger(i[1])||i[1]<1||i[1]>10000||!Number.isFinite(i[2])||i[2]<0||i[2]>1000000||!Number.isFinite(i[3])||i[3]<0||i[3]>100))return Response.json({error:"Check bill items, amounts and discounts."},{status:400});
 
   const bill={id:x.id,department:x.department,date:x.date,status:x.status,items:x.items,total:Math.round(x.items.reduce((s:number,i:any)=>s+Math.round(i[2]*100)*(1-i[3]/100),0))/100};
