@@ -1,12 +1,14 @@
 import {diningRoom,diningOrderRoom} from '../../../lib/dining-room';
 import {sessionCookieName} from '../../../lib/tab-session';
-import {mealItemIncluded,halfBoardFreeOrderAvailable} from '../../../lib/meal-access';
+import {mealItemIncluded,halfBoardMealStatus,restaurantMealPeriod,setHalfBoardMealSelection} from '../../../lib/meal-access';
 import {cookies} from 'next/headers';
 import {currentGuestUser,authDb,randomToken,digest,sameOrigin,limit} from '../../../lib/auth';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {loadMenu} from '../../../lib/menu-server';
 import {restaurantTables} from '../../../lib/restaurant-tables';
 import {walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
+import {mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,restoreRestaurantOrdersPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {updateRoomInventory} from '../../../lib/rooms';
 
 async function identity(r:Request,create=false){
  const diningCookie=await sessionCookieName('nirili_dining');
@@ -28,8 +30,40 @@ async function identity(r:Request,create=false){
  return {key:'walk:'+await digest(token!),mode:'walkin',user:null,token:token!,fresh:!valid};
 }
 
+async function restaurantState(){
+ try{
+  const row=await readOperationalRecordPrimary(stayKey);
+  if(row?.payload){
+   const state=row.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.rooms??=[];
+   try{await restoreRestaurantOrdersPrimary(state);}catch{}
+   updateRoomInventory(state);
+   return {state,revision:Number(row.revision)||0};
+  }
+ }catch{}
+ const fallback=await loadStays();
+ try{await restoreRestaurantOrdersPrimary(fallback.state);}catch{}
+ return fallback;
+}
+
+async function saveRestaurantState(state:any,revision:number,by:string){
+ let nextRevision=0,primaryAvailable=true;
+ try{nextRevision=await saveOperationalRecordPrimary(stayKey,state,revision,by);}catch{primaryAvailable=false;}
+ if(primaryAvailable){
+  if(!nextRevision)return 0;
+  try{await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),nextRevision,by).run();}catch{}
+  try{await mirrorHotelState(state);}catch{}
+  return nextRevision;
+ }
+ const saved=revision===0
+  ?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),by).run()
+  :await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),by,stayKey,revision).run();
+ if(!saved.meta.changes)return 0;
+ try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,by)]);}catch{}
+ return revision+1;
+}
+
 async function view(id:any){
- const {state}=await loadStays();
+ const {state}=await restaurantState();
  let profile:any=null;
  if(id.mode==='walkin'){
   const visit=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind('dining-visit:'+id.key).first<any>();
@@ -39,12 +73,14 @@ async function view(id:any){
   profile=walkIn?{name:walkIn.name,hotel:walkIn.hotel,room:walkIn.room,departureDate:walkIn.departureDate}:null;
  }
  const assigned=id.mode==='inhouse'&&id.user?diningRoom(state.stays,id.user):null;
- const assignedRoom=assigned?{id:assigned.id,room:assigned.room,meal:assigned.meal,status:assigned.status,halfBoardFreeOrderAvailable:halfBoardFreeOrderAvailable(state,assigned.id)}:null;
+ const hb=assigned?halfBoardMealStatus(state,assigned.id):null;
+ const assignedRoom=assigned?{id:assigned.id,room:assigned.room,meal:assigned.meal,status:assigned.status,halfBoardFreeOrderAvailable:hb!.freeOrderAvailable,halfBoardIncludedMeal:hb!.selectedMeal,halfBoardMealLocked:hb!.locked}:null;
  const stays=assignedRoom?[assignedRoom]:[];
  return {
   visit:profile,
   items:(await loadMenu()).items,
   tables:restaurantTables,
+  mealPeriod:restaurantMealPeriod(),
   mode:id.mode,
   stays,
   assignedRoom,
@@ -86,38 +122,42 @@ export async function POST(r:Request){
    walkName=JSON.parse(visit.payload).name;
   }
   if(!await limit('dining:'+who.key,30,900000)||!await limit('dining-ip:'+(r.headers.get('cf-connecting-ip')||'unknown'),100,900000))throw Error('Please contact the cashier to place another order.');
-  const {state,revision}=await loadStays();
+  const {state,revision}=await restaurantState();
   state.posOrders??=[];
+  if(b.action==='set_half_board_meal'){
+   if(who.mode!=='inhouse'||!who.user)throw Error('Half Board meal selection is only available to checked-in guests.');
+   const s=diningOrderRoom(state.stays,who.user,b.stayId);
+   if(!s)throw Error('Your checked-in room could not be found.');
+   setHalfBoardMealSelection(state,s.id,b.meal,'Guest');
+   if(!await saveRestaurantState(state,revision,who.key))return Response.json({error:'The room meal plan changed. Refresh and choose again.'},{status:409});
+   return Response.json(await view(who));
+  }
   if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token))throw Error('Refresh the menu and try again.');
   if(state.posOrders.some((o:any)=>o.guestKey===who.key&&o.token===b.token))return Response.json(await view(who));
   if(!restaurantTables.includes(b.table)||!Array.isArray(b.items)||!b.items.length||b.items.length>40||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Select a table and menu items.');
   const s=who.mode==='inhouse'&&who.user?diningOrderRoom(state.stays,who.user,b.stayId):null;
-  const menu=(await loadMenu()).items,seen=new Set();
-  const halfBoardAvailable=halfBoardFreeOrderAvailable(state,s?.id);
+  const menu=(await loadMenu()).items,seen=new Set(),mealPeriod=restaurantMealPeriod(),hb=halfBoardMealStatus(state,s?.id);
   const items=b.items.map((x:any)=>{
    const i=menu.find((i:any)=>i.id===x.id);
    if(!i||seen.has(x.id)||!Number.isInteger(x.quantity)||x.quantity<1||x.quantity>20)throw Error('Check the selected items and quantities.');
    if(x.cents!==i.cents)throw Error('A price changed. Refresh the menu before ordering.');
    seen.add(x.id);
-   const included=mealItemIncluded(s?.meal,i,halfBoardAvailable);
+   const included=mealItemIncluded(s?.meal,i,hb.freeOrderAvailable,hb.selectedMeal,mealPeriod);
    if(typeof x.included==='boolean'&&x.included!==included)throw Error('Meal plan availability changed. Refresh the menu and review the charges before ordering.');
    return {id:i.id,name:i.category+' · '+i.name+(included?' (meal plan included)':''),quantity:x.quantity,unitCents:included?0:i.cents,cents:included?0:i.cents*x.quantity,included,menuCents:i.cents};
   });
-  const date=new Date().toISOString(),id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0);
+  const date=new Date().toISOString(),id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0),includedMealPeriod=items.some((i:any)=>i.included===true)?mealPeriod:'';
   state.posOrders.push({
    id,token:b.token,guestKey:who.key,by:who.key,
    createdBy:who.mode==='inhouse'?'In-house guest':who.mode==='account'?'Walk-in guest account':'Walk-in customer',
    createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||who.user?.displayName||walkName,table:b.table,notes:b.notes.trim(),items,cents,
-   kitchen:'Awaiting cashier',method:s?'Room':'',history:[{date,by:who.mode,detail:'Guest order sent to cashier'}]
+   kitchen:'Awaiting cashier',method:s?'Room':'',mealPeriod,halfBoardIncludedMeal:hb.selectedMeal,includedMealPeriod,history:[{date,by:who.mode,detail:'Guest order sent to cashier'}]
   });
   if(s){
    s.posBills??=[];s.posBills.push({department:'Restaurant',id,items:items.map((i:any)=>[i.name,i.quantity,i.cents/100,0]),status:'Posted',totalCents:cents});
    s.history.unshift({date,by:'Guest',detail:'Restaurant order '+id+' charged to room · $'+(cents/100).toFixed(2)});
   }
-  const saved=revision===0
-   ?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),who.key).run()
-   :await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),who.key,stayKey,revision).run();
-  if(!saved.meta.changes)return Response.json({error:'Another order arrived. Please tap Send again.'},{status:409});
+  if(!await saveRestaurantState(state,revision,who.key))return Response.json({error:'Another order arrived. Please tap Send again.'},{status:409});
   return Response.json(await view(who));
  }catch(e){return Response.json({error:(e as Error).message},{status:400});}
 }
