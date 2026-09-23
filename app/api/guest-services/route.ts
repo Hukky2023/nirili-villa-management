@@ -15,6 +15,7 @@ import {catalog,plans,nightly,islandToday,validDate} from '../../../lib/guest-ca
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
 import {deactivateSupabaseAccount,deleteLegacySessionsForAccount,ensureSupabaseEmployee,mirrorLegacyAccount,readOperationalRecordPrimary,updatePublicBookingRequestStatus} from '../../../lib/supabase-bridge';
 import {updateRoomInventory} from '../../../lib/rooms';
+import {autoPushBookingComAvailability} from '../../../lib/channels';
 import {sendBookingConfirmationEmail,sendBookingUpdatedEmail,sendBookingCancelledEmail,sendBookingRequestRejectedEmail} from '../../../lib/booking-email';
 const MIN_EXCURSION_PAX=1;
 import {walkInExcursionBill,walkInExcursionProfile,syncWalkInExcursionAccess} from '../../../lib/walkin-excursion-access';
@@ -128,6 +129,7 @@ if(!saved){
  return Response.json({error:'Another update was saved. Please refresh and try again.'},{status:409});
 }
 if(publicBookingUpdate)try{await updatePublicBookingRequestStatus(publicBookingUpdate.id,publicBookingUpdate.status,publicBookingUpdate);}catch{}
+if(['booking-change-approve','booking-cancel-approve'].includes(b.action))try{await autoPushBookingComAvailability();}catch{}
 if(confirmationEmailInput){try{bookingConfirmation=await sendBookingConfirmationEmail(confirmationEmailInput);}catch{bookingConfirmation={sent:false,error:'Booking confirmed, but the confirmation email could not be sent.'};}}
 if(bookingDecisionEmailInput){try{bookingDecision=bookingDecisionKind==='updated'?await sendBookingUpdatedEmail(bookingDecisionEmailInput):bookingDecisionKind==='cancelled'?await sendBookingCancelledEmail(bookingDecisionEmailInput):await sendBookingRequestRejectedEmail(bookingDecisionEmailInput);}catch{bookingDecision={sent:false,error:'Booking decision saved, but the guest email could not be sent.'};}}
 generatedCrewCommitted=true;
