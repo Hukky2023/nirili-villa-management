@@ -2,6 +2,7 @@ import {authDb,limit,sameOrigin} from '../../../lib/auth';
 import {islandToday,nightly,plans,validDate} from '../../../lib/guest-catalog';
 import {readOperationalRecordPrimary,submitPublicBookingRequest} from '../../../lib/supabase-bridge';
 import {sendBookingReceivedEmail} from '../../../lib/booking-email';
+import {createBookingManageToken} from '../../../lib/booking-manage';
 
 const headers={'Cache-Control':'no-store'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
@@ -64,17 +65,18 @@ export async function POST(request:Request){
   const rooms=availability(state,checkIn,checkOut,pax);
   if(!rooms.length)return Response.json({error:'No rooms are currently available for these dates and guest count. Try different dates or contact reception.'},{status:409,headers});
   const estimate=nightly(meal,pax)*nights;
-  const id='REQ-'+crypto.randomUUID().slice(0,8).toUpperCase();
+  const id='REQ-'+crypto.randomUUID().slice(0,8).toUpperCase(),manageToken=createBookingManageToken();
   const booking={
-   id,token,guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes,
+   id,token,manageToken,guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes,
    status:'Pending',source:'Guest booking website',createdAt:new Date().toISOString(),estimate
   };
   const result:any=await submitPublicBookingRequest(booking);
   const bookingRef=result?.id||id;
-  const emailResult=await sendBookingReceivedEmail({email,guest,reference:bookingRef,checkIn,checkOut,meal,pax,totalCents:estimate});
+  let latest:any=null;try{latest=await readOperationalRecordPrimary('hotel-stays-v1')}catch{}
+  const stored=latest?.payload?.requests?.find((request:any)=>request.id===bookingRef)||booking;
+  const emailResult=await sendBookingReceivedEmail({email:stored.email||email,guest:stored.guest||guest,reference:bookingRef,checkIn:stored.checkIn||checkIn,checkOut:stored.checkOut||checkOut,meal:stored.meal||meal,pax:stored.pax||pax,totalCents:stored.estimate||estimate,manageToken:stored.manageToken||manageToken});
   // Keep Cloudflare D1 as the rollback mirror; failure here must not lose a successful Supabase request.
   try{
-   const latest=await readOperationalRecordPrimary('hotel-stays-v1');
    if(latest?.payload)await authDb().prepare("INSERT INTO operation_records(key,payload,revision,updated_by) VALUES('hotel-stays-v1',?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by")
     .bind(JSON.stringify(latest.payload),Number(latest.revision)||1,'public-booking-site').run();
   }catch{}
