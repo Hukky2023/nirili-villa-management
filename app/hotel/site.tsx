@@ -1,5 +1,5 @@
 import {
- ArrowRight, BedDouble, CheckCircle2, Compass, Fish, Heart, MapPin,
+ ArrowRight, BedDouble, CheckCircle2, Compass, Heart, MapPin,
  Palmtree, Plane, ShipWheel, Sparkles, Star, Sun, UtensilsCrossed, Waves
 } from 'lucide-react';
 
