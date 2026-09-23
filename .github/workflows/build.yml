@@ -27,6 +27,8 @@ jobs:
         run: node --test tests/account-history.test.mjs
       - name: Excursion billing regression tests
         run: node --experimental-strip-types --test tests/excursion-billing.test.mjs
+      - name: External excursion self-service regression tests
+        run: node --experimental-strip-types --test tests/excursion-manage.test.mjs
       - name: Excursion timetable and guest-list consistency regression tests
         run: node --test tests/excursion-trip-counts.test.cjs
       - name: Build production worker
