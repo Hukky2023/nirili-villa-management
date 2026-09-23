@@ -45,9 +45,9 @@ function maintenanceFor(state:any){
  return (state.buggyMaintenance||[]).slice().sort((a:any,b:any)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,150);
 }
 export async function GET(r:Request){
- const {ok}=await allowed();if(!ok)return Response.json({error:'Buggy management access required.'},{status:403});
+ const {user,ok}=await allowed();if(!ok)return Response.json({error:'Buggy management access required.'},{status:403});
  const date=new URL(r.url).searchParams.get('date')||islandToday();if(!validDate(date))return Response.json({error:'Choose a valid date.'},{status:400});
- try{const {state}=await loadStays();return Response.json({date,settings:{guestRideFareCents:Math.max(0,Number(state.buggySettings?.guestRideFareCents)||0)},fleet:normalizedFleet(state),dispatches:dispatchesFor(state,date),upcoming:dispatchesFor(state).filter((x:any)=>x.date>=date).slice(0,100),maintenance:maintenanceFor(state),history:historyFor(state)},{headers:{'Cache-Control':'no-store'}});}
+ try{const {state}=await loadStays();return Response.json({date,canChangePricing:user?.role==='admin',settings:{guestRideFareCents:Math.max(0,Number(state.buggySettings?.guestRideFareCents)||0)},fleet:normalizedFleet(state),dispatches:dispatchesFor(state,date),upcoming:dispatchesFor(state).filter((x:any)=>x.date>=date).slice(0,100),maintenance:maintenanceFor(state),history:historyFor(state)},{headers:{'Cache-Control':'no-store'}});}
  catch{return Response.json({error:'Could not load buggy management.'},{status:503});}
 }
 export async function POST(r:Request){
