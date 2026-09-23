@@ -14,10 +14,10 @@ function validBillingItems(value:any){
   );
 }
 function billingItemsTotalCents(items:any[]){
-  return items.reduce((sum:number,item:any)=>sum+Math.round(Math.round(Number(item[2])*100)*Number(item[1])*(1-Number(item[3])/100)),0);
+  return items.reduce((sum:number,item:any)=>sum+Math.round(Math.round(Number(item[2])*100)*(1-Number(item[3])/100)),0);
 }
 function billingItemsOriginalCents(items:any[]){
-  return items.reduce((sum:number,item:any)=>sum+Math.round(Number(item[2])*100)*Number(item[1]),0);
+  return items.reduce((sum:number,item:any)=>sum+Math.round(Number(item[2])*100),0);
 }
 function billingItemsUniformDiscount(items:any[]){
   if(!items.length)return 0;
