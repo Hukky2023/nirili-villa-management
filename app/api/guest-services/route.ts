@@ -21,6 +21,7 @@ import {sendBookingConfirmationEmail,sendBookingUpdatedEmail,sendBookingCancelle
 import {sendGuestPushForRide} from '../../../lib/web-push';
 import {defaultTransportPlan,mergeTransportPlanInternal,normalizeTransportPlan,syncTransportBuggy} from '../../../lib/transport-plan';
 import {cancelLinkedTransportBookings,staleTransportBookingIds} from '../../../lib/linked-transport-bookings';
+import {cancelTransportPlanBills} from '../../../lib/transport-plan-billing';
 import {dismissGuestNotification,guestNotificationsForAccount} from '../../../lib/guest-notifications';
 const MIN_EXCURSION_PAX=1;
 import {walkInExcursionBill,walkInExcursionProfile,syncWalkInExcursionAccess} from '../../../lib/walkin-excursion-access';
@@ -108,7 +109,7 @@ else if(['booking-change-approve','booking-change-reject','booking-cancel-approv
   const p=change.proposed||{},room=String(b.room||s.room),rateCents=Number(b.rateCents),approvedTransport=mergeTransportPlanInternal(s.transportPlan,p.transportPlan||defaultTransportPlan(p.checkIn||s.checkIn,p.checkOut||s.checkOut));
   if(!Number.isInteger(rateCents)||rateCents<0||rateCents>1000000)throw Error('Enter a valid nightly rate.');
   editBooking(state,s,{guest:p.guest,room,checkIn:p.checkIn,checkOut:p.checkOut,pax:p.pax,meal:p.meal,source:s.source,rateCents},u.username);
-  Object.assign(s,{email:p.email,whatsapp:p.whatsapp,adults:p.adults,children:p.children,notes:p.notes||'',transportPlan:approvedTransport,rateCents});linkedTransportIdsToCancel=staleTransportBookingIds(approvedTransport);syncTransportBuggy(state,s,'arrival',approvedTransport.arrival?.launch);syncTransportBuggy(state,s,'departure',approvedTransport.departure?.launch);
+  Object.assign(s,{email:p.email,whatsapp:p.whatsapp,adults:p.adults,children:p.children,notes:p.notes||'',transportPlan:approvedTransport,rateCents});linkedTransportIdsToCancel=staleTransportBookingIds(approvedTransport);cancelTransportPlanBills(state,linkedTransportIdsToCancel,u.username);syncTransportBuggy(state,s,'arrival',approvedTransport.arrival?.launch);syncTransportBuggy(state,s,'departure',approvedTransport.departure?.launch);
   change.status='Approved';change.decidedAt=new Date().toISOString();change.decidedBy=u.username;change.decisionNote=note;change.approvedRoom=room;change.approvedRateCents=rateCents;
   s.history.unshift({date:change.decidedAt,detail:'Guest-requested booking changes approved · '+change.id,by:u.username});
   const sourceRequest=state.requests.find((request:any)=>request.stayId===s.id);if(sourceRequest)Object.assign(sourceRequest,{guest:s.guest,email:s.email,whatsapp:s.whatsapp,checkIn:s.checkIn,checkOut:s.checkOut,pax:s.pax,adults:s.adults,children:s.children,meal:s.meal,notes:s.notes,transportPlan:s.transportPlan,room:s.room});
