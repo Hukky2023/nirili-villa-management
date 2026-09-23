@@ -42,3 +42,34 @@ export function restaurantPaymentStatus(order:any,stay:any){
  if(order?.method==='Room')return 'Charged to room';
  return 'Unpaid';
 }
+
+
+export function reconcileRestaurantRoomBills(state:any){
+ if(!state||typeof state!=='object')return state;
+ const stays=Array.isArray(state.stays)?state.stays:[];
+ const orders=Array.isArray(state.posOrders)?state.posOrders:[];
+ const deleted=Array.isArray(state.deletedPOSOrders)?state.deletedPOSOrders:[];
+ const liveIds=new Set(orders.map((order:any)=>String(order?.id||'')).filter(Boolean));
+ const deletedIds=new Set(deleted.map((order:any)=>String(order?.id||'')).filter(Boolean));
+
+ for(const stay of stays){
+  stay.posBills=Array.isArray(stay.posBills)?stay.posBills:[];
+  stay.posBills=stay.posBills.filter((bill:any)=>{
+   if(String(bill?.department||'')!=='Restaurant')return true;
+   const id=String(bill?.id||'');
+   if(deletedIds.has(id))return false;
+   if(liveIds.has(id))return false;
+   return true;
+  });
+  if(stay.paidBills&&typeof stay.paidBills==='object'){
+   for(const id of deletedIds)delete stay.paidBills['Restaurant:'+id];
+  }
+ }
+
+ for(const order of orders){
+  const stay=stays.find((item:any)=>String(item?.id||'')===String(order?.stayId||''));
+  if(!stay)continue;
+  syncRestaurantRoomBill(stay,order);
+ }
+ return state;
+}
