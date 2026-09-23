@@ -489,6 +489,14 @@ export async function ensureSupabaseEmployee(row:LegacyAccountRow,password:strin
 
   if(!authUserId)throw Error('Supabase user migration did not return a user id.');
 
+  // A legacy staff login is authoritative during cutover. If a synthetic-email
+  // Auth user already exists with stale guest metadata, repair it and align the
+  // password so subsequent logins can use Supabase directly.
+  await sb('/auth/v1/admin/users/'+encodeURIComponent(authUserId),{
+    method:'PUT',
+    body:JSON.stringify({password,user_metadata:{username:row.username,full_name:row.name}})
+  },'secret');
+
   await sb('/rest/v1/legacy_accounts?id=eq.'+encodeURIComponent(row.id),{
     method:'PATCH',
     headers:{Prefer:'return=minimal'},
