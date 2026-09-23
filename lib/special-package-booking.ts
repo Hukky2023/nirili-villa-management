@@ -1,4 +1,4 @@
-import {SPECIAL_PACKAGE_COMPONENTS} from './excursion-operations';
+const SPECIAL_PACKAGE_COMPONENTS=['turtle','shark','sandbank','coral garden','dolphin','fishing'] as const;
 
 const labels:Record<string,string>={
  turtle:'Turtle Snorkeling',
