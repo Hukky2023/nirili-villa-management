@@ -1,0 +1,129 @@
+import {authDb} from './auth';
+
+type PushKeys={p256dh:string;auth:string};
+type StoredSubscription={endpoint:string;expirationTime?:number|null;keys:PushKeys;createdAt:string;updatedAt:string};
+type VapidPair={publicKey:string;privateKey:string;createdAt:string};
+
+const vapidRecordKey='guest-web-push-vapid-v1';
+const subscriptionPrefix='guest-web-push:';
+const enc=new TextEncoder();
+
+function concat(...parts:Uint8Array[]){
+ const size=parts.reduce((n,p)=>n+p.byteLength,0),out=new Uint8Array(size);
+ let offset=0;for(const part of parts){out.set(part,offset);offset+=part.byteLength;}return out;
+}
+function b64url(input:ArrayBuffer|Uint8Array){
+ const bytes=input instanceof Uint8Array?input:new Uint8Array(input);
+ let raw='';for(let i=0;i<bytes.length;i+=0x8000)raw+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+ return btoa(raw).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function fromB64url(value:string){
+ const normalized=value.replace(/-/g,'+').replace(/_/g,'/'),padded=normalized+'='.repeat((4-normalized.length%4)%4),raw=atob(padded),out=new Uint8Array(raw.length);
+ for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);return out;
+}
+async function hmac(key:Uint8Array,data:Uint8Array){
+ const cryptoKey=await crypto.subtle.importKey('raw',key,{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ return new Uint8Array(await crypto.subtle.sign('HMAC',cryptoKey,data));
+}
+async function hkdfExpand(prk:Uint8Array,info:Uint8Array,length:number){
+ const block=await hmac(prk,concat(info,new Uint8Array([1])));
+ return block.slice(0,length);
+}
+async function storedVapid():Promise<VapidPair>{
+ const db=authDb(),existing=await db.prepare('SELECT payload FROM operation_records WHERE key=?').bind(vapidRecordKey).first<any>();
+ if(existing?.payload){
+  try{const parsed=JSON.parse(existing.payload);if(parsed?.publicKey&&parsed?.privateKey)return parsed;}catch{}
+ }
+ const pair:any=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+ const created:VapidPair={publicKey:b64url(await crypto.subtle.exportKey('raw',pair.publicKey)),privateKey:b64url(await crypto.subtle.exportKey('pkcs8',pair.privateKey)),createdAt:new Date().toISOString()};
+ await db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(vapidRecordKey,JSON.stringify(created),'system:web-push').run();
+ const row=await db.prepare('SELECT payload FROM operation_records WHERE key=?').bind(vapidRecordKey).first<any>();
+ if(!row?.payload)throw Error('Could not initialize web push.');
+ const saved=JSON.parse(row.payload);if(!saved?.publicKey||!saved?.privateKey)throw Error('Web push keys are unavailable.');
+ return saved;
+}
+function subscriptionKey(accountId:string){return subscriptionPrefix+accountId;}
+async function readSubscriptions(accountId:string):Promise<StoredSubscription[]>{
+ const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(subscriptionKey(accountId)).first<any>();
+ if(!row?.payload)return [];
+ try{const parsed=JSON.parse(row.payload),items=Array.isArray(parsed?.subscriptions)?parsed.subscriptions:[];return items.filter((x:any)=>x?.endpoint&&x?.keys?.p256dh&&x?.keys?.auth);}catch{return [];}
+}
+async function writeSubscriptions(accountId:string,subscriptions:StoredSubscription[]){
+ const db=authDb(),key=subscriptionKey(accountId),payload=JSON.stringify({subscriptions:subscriptions.slice(-5),updatedAt:new Date().toISOString()});
+ const row=await db.prepare('SELECT key FROM operation_records WHERE key=?').bind(key).first<any>();
+ if(row)await db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=?').bind(payload,accountId,key).run();
+ else await db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(key,payload,accountId).run();
+}
+function cleanSubscription(raw:any):StoredSubscription{
+ const endpoint=String(raw?.endpoint||'').trim(),p256dh=String(raw?.keys?.p256dh||'').trim(),auth=String(raw?.keys?.auth||'').trim();
+ let url:URL;try{url=new URL(endpoint)}catch{throw Error('Invalid push subscription endpoint.')}
+ if(url.protocol!=='https:'||endpoint.length>2200||p256dh.length<40||p256dh.length>300||auth.length<10||auth.length>120)throw Error('Invalid push subscription.');
+ const now=new Date().toISOString();
+ return {endpoint,expirationTime:Number.isFinite(Number(raw?.expirationTime))?Number(raw.expirationTime):null,keys:{p256dh,auth},createdAt:now,updatedAt:now};
+}
+
+export async function guestPushPublicKey(){return (await storedVapid()).publicKey;}
+
+export async function saveGuestPushSubscription(accountId:string,raw:any){
+ const next=cleanSubscription(raw),items=await readSubscriptions(accountId),old=items.find(x=>x.endpoint===next.endpoint);
+ const merged={...next,createdAt:old?.createdAt||next.createdAt};
+ await writeSubscriptions(accountId,[...items.filter(x=>x.endpoint!==next.endpoint),merged]);
+ return merged;
+}
+
+export async function removeGuestPushSubscription(accountId:string,endpoint?:string){
+ if(!endpoint){await writeSubscriptions(accountId,[]);return true;}
+ const items=await readSubscriptions(accountId);await writeSubscriptions(accountId,items.filter(x=>x.endpoint!==endpoint));return true;
+}
+
+async function vapidAuthorization(endpoint:string,pair:VapidPair){
+ const audience=new URL(endpoint).origin,header=b64url(enc.encode(JSON.stringify({typ:'JWT',alg:'ES256'}))),payload=b64url(enc.encode(JSON.stringify({aud:audience,exp:Math.floor(Date.now()/1000)+12*60*60,sub:'mailto:nirilivilla@gmail.com'}))),unsigned=header+'.'+payload;
+ const privateKey=await crypto.subtle.importKey('pkcs8',fromB64url(pair.privateKey),{name:'ECDSA',namedCurve:'P-256'},false,['sign']);
+ const signature=await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},privateKey,enc.encode(unsigned));
+ return 'vapid t='+unsigned+'.'+b64url(signature)+', k='+pair.publicKey;
+}
+
+async function encryptedBody(subscription:StoredSubscription,payload:string){
+ const uaPublic=fromB64url(subscription.keys.p256dh),authSecret=fromB64url(subscription.keys.auth);
+ if(uaPublic.length!==65||uaPublic[0]!==4||authSecret.length<16)throw Error('Invalid browser push keys.');
+ const server:any=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveBits']);
+ const clientKey=await crypto.subtle.importKey('raw',uaPublic,{name:'ECDH',namedCurve:'P-256'},false,[]);
+ const shared=new Uint8Array(await crypto.subtle.deriveBits({name:'ECDH',public:clientKey},server.privateKey,256));
+ const serverPublic=new Uint8Array(await crypto.subtle.exportKey('raw',server.publicKey));
+ const authPrk=await hmac(authSecret,shared);
+ const ikm=await hkdfExpand(authPrk,concat(enc.encode('WebPush: info\0'),uaPublic,serverPublic),32);
+ const salt=crypto.getRandomValues(new Uint8Array(16)),prk=await hmac(salt,ikm);
+ const cek=await hkdfExpand(prk,enc.encode('Content-Encoding: aes128gcm\0'),16),nonce=await hkdfExpand(prk,enc.encode('Content-Encoding: nonce\0'),12);
+ const aes=await crypto.subtle.importKey('raw',cek,{name:'AES-GCM'},false,['encrypt']);
+ const plaintext=concat(enc.encode(payload),new Uint8Array([2]));
+ const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:nonce},aes,plaintext));
+ const header=new Uint8Array(21+serverPublic.length);header.set(salt,0);new DataView(header.buffer).setUint32(16,4096,false);header[20]=serverPublic.length;header.set(serverPublic,21);
+ return concat(header,ciphertext);
+}
+
+async function sendOne(subscription:StoredSubscription,payload:string,pair:VapidPair){
+ if(subscription.expirationTime&&subscription.expirationTime<Date.now())return {ok:false,gone:true};
+ const body=await encryptedBody(subscription,payload),authorization=await vapidAuthorization(subscription.endpoint,pair);
+ const response=await fetch(subscription.endpoint,{method:'POST',headers:{Authorization:authorization,'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream','TTL':'300','Urgency':'high'},body});
+ return {ok:response.ok,status:response.status,gone:response.status===404||response.status===410};
+}
+
+function rideMessage(ride:any,event:string){
+ const buggy=String(ride.buggyName||ride.buggyId||'Your buggy'),driver=String(ride.buggyDriver||ride.driver||'Your driver'),pickup=String(ride.location||'your pickup point'),destination=String(ride.destination||'your destination'),room=String(ride.room||'');
+ const fare=Math.max(0,Number(ride.fareCents)||0);
+ if(event==='assigned')return {title:'Buggy assigned',body:buggy+(driver?' · '+driver:'')+' is on the way to '+pickup+'.'};
+ if(event==='arrived')return {title:'Your buggy has arrived',body:driver+' is waiting at '+pickup+'.'};
+ if(event==='started')return {title:'Buggy ride started',body:pickup+' → '+destination+'.'};
+ if(event==='completed')return {title:'Ride completed',body:fare>0&&ride.chargeToRoom===true?'You have arrived. USD '+(fare/100).toFixed(2)+' was added to Room '+room+'.':'You have arrived at '+destination+'.'};
+ return {title:'Buggy ride update',body:'Your buggy ride was updated.'};
+}
+
+export async function sendGuestPushForRide(ride:any,event:'assigned'|'arrived'|'started'|'completed'){
+ const accountId=String(ride?.accountId||'');if(!accountId)return {sent:0,total:0};
+ const subscriptions=await readSubscriptions(accountId);if(!subscriptions.length)return {sent:0,total:0};
+ const pair=await storedVapid(),message=rideMessage(ride,event),payload=JSON.stringify({...message,tag:'buggy:'+String(ride.id||''),url:'/stay?service=buggy',rideId:String(ride.id||''),event});
+ const results=await Promise.allSettled(subscriptions.map(subscription=>sendOne(subscription,payload,pair)));
+ const stale=new Set<string>(),sent=results.filter((result,index)=>{if(result.status==='fulfilled'&&result.value.gone)stale.add(subscriptions[index].endpoint);return result.status==='fulfilled'&&result.value.ok;}).length;
+ if(stale.size)await writeSubscriptions(accountId,subscriptions.filter(x=>!stale.has(x.endpoint)));
+ return {sent,total:subscriptions.length};
+}

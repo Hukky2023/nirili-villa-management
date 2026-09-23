@@ -1,0 +1,18 @@
+{
+  "name": "Nirili Villa Guest Services",
+  "short_name": "Nirili Villa",
+  "description": "Guest services for Nirili Villa, Dhiffushi.",
+  "start_url": "/stay",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#086d9b",
+  "icons": [
+    {
+      "src": "/favicon-new.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
