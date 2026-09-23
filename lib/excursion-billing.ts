@@ -59,7 +59,8 @@ export function excursionFolioBill(order: any) {
   const items=validBillingItems(order.billingItems)?order.billingItems.map((item:any)=>[String(item[0]),Number(item[1]),Number(item[2]),Number(item[3])]):defaultBillingItems(order);
   return {department: 'Excursions', id: order.id,
     items,
-    status:order.billingStatus||order.status,
+    date:order.billingDate||[order.date||order.schedule?.date||'',order.time||order.schedule?.time||''].filter(Boolean).join(' · '),
+    status:order.billingStatus||'Posted',
     revision:Number(order.billingRevision)||0,
     editedAt:order.billingEditedAt||'',
     editedBy:order.billingEditedBy||'',
@@ -94,6 +95,7 @@ export function applyExcursionBillEdit(state:any,input:any,actor:ExcursionBillin
   order.billingItems=items;
   order.cents=totalCents;
   order.billingStatus=String(input.status);
+  order.billingDate=String(input.date).trim();
   order.billingRevision=revision+1;
   order.billingEditedAt=now;
   order.billingEditedBy=actor.username;
