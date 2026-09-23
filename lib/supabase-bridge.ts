@@ -1,4 +1,5 @@
 import {env} from 'cloudflare:workers';
+import {mealPlanIncludedOrder,syncRestaurantRoomBill} from './pos-room-billing';
 
 type LegacyAccountRow={
   id:string;
@@ -150,30 +151,18 @@ function mergeRestaurantOrdersIntoHotelState(state:any,orders:any[]){
   for(const raw of orders||[]){
     const order=parseRestaurantOrderPayload(raw?.payload??raw);
     const id=String(order?.id||raw?.id||'');
-    if(!id||deleted.has(id)||existing.has(id)||!order)continue;
-    state.posOrders.push(order);existing.add(id);
+    if(!id||deleted.has(id)||!order)continue;
+    if(!existing.has(id)){state.posOrders.push(order);existing.add(id);}
 
     const stay=state.stays.find((item:any)=>String(item?.id||'')===String(order.stayId||''));
     if(!stay)continue;
     stay.posBills=Array.isArray(stay.posBills)?stay.posBills:[];
     stay.payments=Array.isArray(stay.payments)?stay.payments:[];
-    if(!stay.posBills.some((bill:any)=>String(bill?.id||'')===id)){
-      const paidAtPOS=['Cash','Card','Bank transfer'].includes(String(order.method||''));
-      const items=(Array.isArray(order.items)?order.items:[]).map((item:any)=>[
-        String(item?.name||'Restaurant item'),
-        Math.max(1,Number(item?.quantity)||1),
-        Math.max(0,(Number(item?.unitCents)||0)*(Math.max(1,Number(item?.quantity)||1))/100),
-        Math.max(0,Math.min(100,Number(item?.discount)||0))
-      ]);
-      stay.posBills.push({
-        department:'Restaurant',
-        id,
-        items,
-        status:order.complimentary?'Complimentary':paidAtPOS?'Paid':'Posted',
-        totalCents:Math.max(0,Number(order.cents)||0),
-        complimentary:order.complimentary===true,
-        settledAtPOS:paidAtPOS
-      });
+    if(mealPlanIncludedOrder(order)){
+      stay.posBills=stay.posBills.filter((bill:any)=>String(bill?.id||'')!==id);
+      if(stay.paidBills&&typeof stay.paidBills==='object')delete stay.paidBills['Restaurant:'+id];
+    }else if(!stay.posBills.some((bill:any)=>String(bill?.id||'')===id)){
+      syncRestaurantRoomBill(stay,order);
     }
     if(['Cash','Card','Bank transfer'].includes(String(order.method||''))&&Number(order.cents)>0&&!stay.payments.some((payment:any)=>payment?.reference===id&&Number(payment?.cents)>0&&!payment?.reversedAt)){
       const payment:any={
