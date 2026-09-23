@@ -1,7 +1,8 @@
 import {env} from 'cloudflare:workers';
+import {bookingManageUrl} from './booking-manage';
 
 type MailResult={sent:boolean;id?:string;error?:string};
-type BookingMail={
+export type BookingMail={
  email:string;
  guest:string;
  reference:string;
@@ -11,6 +12,12 @@ type BookingMail={
  meal:string;
  pax:number;
  totalCents:number;
+ manageToken?:string;
+ eventId?:string;
+ statusLabel?:string;
+ requestType?:'change'|'cancel';
+ refundRequiredCents?:number;
+ reason?:string;
 };
 
 const money=(cents:number)=>'$'+(Math.max(0,Math.round(Number(cents)||0))/100).toFixed(2);
@@ -66,21 +73,35 @@ function shell(title:string,body:string){
  </body></html>`;
 }
 
+function bookingTable(booking:BookingMail,label='Accommodation total'){
+ return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:24px 0;background:#eef9f7;border-radius:14px;padding:18px">
+  <tr><td style="padding:6px 0;color:#6a7f88">Booking number</td><td align="right" style="font-weight:700">${escapeHtml(booking.reference)}</td></tr>
+  ${booking.room?`<tr><td style="padding:6px 0;color:#6a7f88">Room</td><td align="right" style="font-weight:700">${escapeHtml(booking.room)}</td></tr>`:''}
+  <tr><td style="padding:6px 0;color:#6a7f88">Check-in</td><td align="right">${escapeHtml(booking.checkIn)}</td></tr>
+  <tr><td style="padding:6px 0;color:#6a7f88">Check-out</td><td align="right">${escapeHtml(booking.checkOut)}</td></tr>
+  <tr><td style="padding:6px 0;color:#6a7f88">Guests</td><td align="right">${booking.pax}</td></tr>
+  <tr><td style="padding:6px 0;color:#6a7f88">Meal plan</td><td align="right">${escapeHtml(booking.meal)}</td></tr>
+  <tr><td style="padding:6px 0;color:#6a7f88">${escapeHtml(label)}</td><td align="right" style="font-weight:700">${money(booking.totalCents)}</td></tr>
+ </table>`;
+}
+
+function manageButton(token?:string){
+ if(!token)return '';
+ const url=bookingManageUrl(token);
+ return `<p style="margin:26px 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#0b536c;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 18px;border-radius:10px">Manage Booking</a></p><p style="font-size:12px;color:#71858e;line-height:1.5">This is your private booking-management link. Do not forward it to anyone you do not want to manage your reservation.</p>`;
+}
+
+function managePlain(token?:string){return token?'\nManage booking: '+bookingManageUrl(token)+'\n':'';}
+
 export async function sendBookingReceivedEmail(booking:BookingMail):Promise<MailResult>{
- const reference=escapeHtml(booking.reference),guest=escapeHtml(booking.guest);
  const html=shell('We received your booking',`
-  <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${guest},</p>
+  <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(booking.guest)},</p>
   <p style="font-size:15px;line-height:1.7">Thank you for booking directly with Nirili Villa. We have received your booking and our reception team will confirm the room allocation.</p>
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:24px 0;background:#f4faf9;border-radius:14px;padding:18px">
-   <tr><td style="padding:6px 0;color:#6a7f88">Booking reference</td><td align="right" style="font-weight:700">${reference}</td></tr>
-   <tr><td style="padding:6px 0;color:#6a7f88">Stay</td><td align="right">${escapeHtml(booking.checkIn)} → ${escapeHtml(booking.checkOut)}</td></tr>
-   <tr><td style="padding:6px 0;color:#6a7f88">Guests</td><td align="right">${booking.pax}</td></tr>
-   <tr><td style="padding:6px 0;color:#6a7f88">Meal plan</td><td align="right">${escapeHtml(booking.meal)}</td></tr>
-   <tr><td style="padding:6px 0;color:#6a7f88">Estimated accommodation</td><td align="right" style="font-weight:700">${money(booking.totalCents)}</td></tr>
-  </table>
+  ${bookingTable(booking,'Estimated accommodation')}
   <p style="font-size:14px;line-height:1.7">Your booking is currently <strong>confirmation pending</strong>. You will receive another email with your Nirili Villa booking number and assigned room after approval.</p>
+  ${manageButton(booking.manageToken)}
  `);
- const plain=`Nirili Villa - booking received\n\nDear ${booking.guest},\nWe received your booking.\nReference: ${booking.reference}\nStay: ${booking.checkIn} to ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\nEstimated accommodation: ${money(booking.totalCents)}\n\nStatus: confirmation pending. You will receive another email after the room is approved.\n`;
+ const plain=`Nirili Villa - booking received\n\nDear ${booking.guest},\nWe received your booking.\nReference: ${booking.reference}\nStay: ${booking.checkIn} to ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\nEstimated accommodation: ${money(booking.totalCents)}\n\nStatus: confirmation pending. You will receive another email after the room is approved.\n${managePlain(booking.manageToken)}`;
  return sendEmail({to:booking.email,subject:'Nirili Villa booking received · '+booking.reference,html,text:plain,idempotencyKey:'room-booking-received/'+booking.reference});
 }
 
@@ -88,17 +109,62 @@ export async function sendBookingConfirmationEmail(booking:BookingMail):Promise<
  const html=shell('Your stay is confirmed',`
   <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(booking.guest)},</p>
   <p style="font-size:15px;line-height:1.7">Your Nirili Villa booking is confirmed. We look forward to welcoming you to Dhiffushi.</p>
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:24px 0;background:#eef9f7;border-radius:14px;padding:18px">
-   <tr><td style="padding:6px 0;color:#6a7f88">Booking number</td><td align="right" style="font-weight:700;font-size:18px">${escapeHtml(booking.reference)}</td></tr>
-   <tr><td style="padding:6px 0;color:#6a7f88">Room</td><td align="right" style="font-weight:700">${escapeHtml(booking.room||'Assigned')}</td></tr>
-   <tr><td style="padding:6px 0;color:#6a7f88">Check-in</td><td align="right">${escapeHtml(booking.checkIn)}</td></tr>
-   <tr><td style="padding:6px 0;color:#6a7f88">Check-out</td><td align="right">${escapeHtml(booking.checkOut)}</td></tr>
-   <tr><td style="padding:6px 0;color:#6a7f88">Guests</td><td align="right">${booking.pax}</td></tr>
-   <tr><td style="padding:6px 0;color:#6a7f88">Meal plan</td><td align="right">${escapeHtml(booking.meal)}</td></tr>
-   <tr><td style="padding:6px 0;color:#6a7f88">Accommodation total</td><td align="right" style="font-weight:700">${money(booking.totalCents)}</td></tr>
-  </table>
+  ${bookingTable(booking)}
   <p style="font-size:14px;line-height:1.7">Please keep your booking number for check-in and future communication with reception.</p>
+  ${manageButton(booking.manageToken)}
  `);
- const plain=`Nirili Villa - booking confirmed\n\nDear ${booking.guest},\nYour booking is confirmed.\nBooking number: ${booking.reference}\nRoom: ${booking.room||'Assigned'}\nCheck-in: ${booking.checkIn}\nCheck-out: ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\nAccommodation total: ${money(booking.totalCents)}\n\nPlease keep your booking number for check-in.\n`;
+ const plain=`Nirili Villa - booking confirmed\n\nDear ${booking.guest},\nYour booking is confirmed.\nBooking number: ${booking.reference}\nRoom: ${booking.room||'Assigned'}\nCheck-in: ${booking.checkIn}\nCheck-out: ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\nAccommodation total: ${money(booking.totalCents)}\n\nPlease keep your booking number for check-in.\n${managePlain(booking.manageToken)}`;
  return sendEmail({to:booking.email,subject:'Booking confirmed · '+booking.reference+' · Nirili Villa',html,text:plain,idempotencyKey:'room-booking-confirmed/'+booking.reference});
+}
+
+export async function sendBookingUpdatedEmail(booking:BookingMail):Promise<MailResult>{
+ const html=shell('Your booking was updated',`
+  <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(booking.guest)},</p>
+  <p style="font-size:15px;line-height:1.7">Your booking details have been updated. ${booking.statusLabel?'<strong>'+escapeHtml(booking.statusLabel)+'</strong>.':''}</p>
+  ${bookingTable(booking,booking.reference.startsWith('REQ-')?'Estimated accommodation':'Accommodation total')}
+  ${manageButton(booking.manageToken)}
+ `);
+ const plain=`Nirili Villa - booking updated\n\nBooking: ${booking.reference}\nStay: ${booking.checkIn} to ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\nTotal: ${money(booking.totalCents)}\n${booking.statusLabel||''}\n${managePlain(booking.manageToken)}`;
+ return sendEmail({to:booking.email,subject:'Booking updated · '+booking.reference+' · Nirili Villa',html,text:plain,idempotencyKey:'room-booking-updated/'+(booking.eventId||booking.reference)});
+}
+
+export async function sendBookingChangeRequestedEmail(booking:BookingMail):Promise<MailResult>{
+ const cancelling=booking.requestType==='cancel';
+ const title=cancelling?'Cancellation request received':'Change request received';
+ const html=shell(title,`
+  <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(booking.guest)},</p>
+  <p style="font-size:15px;line-height:1.7">We received your ${cancelling?'cancellation':'change'} request for booking <strong>${escapeHtml(booking.reference)}</strong>.</p>
+  <p style="font-size:14px;line-height:1.7">${cancelling?'Your confirmed booking and room remain active until reception approves the cancellation. Any refund is handled separately according to your booking terms.':'Your current confirmed booking remains unchanged until reception approves the requested changes.'}</p>
+  ${bookingTable(booking)}
+  ${manageButton(booking.manageToken)}
+ `);
+ const plain=`Nirili Villa - ${title}\n\nBooking: ${booking.reference}\n${cancelling?'Your booking remains active until reception approves cancellation.':'Your current booking remains unchanged until reception approves the requested changes.'}\n${managePlain(booking.manageToken)}`;
+ return sendEmail({to:booking.email,subject:title+' · '+booking.reference+' · Nirili Villa',html,text:plain,idempotencyKey:'room-booking-request/'+(booking.eventId||booking.reference)});
+}
+
+export async function sendBookingCancelledEmail(booking:BookingMail):Promise<MailResult>{
+ const refund=Math.max(0,Number(booking.refundRequiredCents)||0);
+ const html=shell('Your booking is cancelled',`
+  <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(booking.guest)},</p>
+  <p style="font-size:15px;line-height:1.7">Booking <strong>${escapeHtml(booking.reference)}</strong> has been cancelled.</p>
+  ${bookingTable(booking)}
+  ${refund>0?`<p style="padding:14px;border-radius:10px;background:#fff5e6"><strong>Refund required: ${money(refund)}</strong><br><span style="font-size:13px">Reception will handle this separately. This email does not mean the refund has already been processed.</span></p>`:''}
+  ${manageButton(booking.manageToken)}
+ `);
+ const plain=`Nirili Villa - booking cancelled\n\nBooking: ${booking.reference}\nStatus: Cancelled\n${refund>0?'Refund required: '+money(refund)+' (handled separately by reception)\n':''}${managePlain(booking.manageToken)}`;
+ return sendEmail({to:booking.email,subject:'Booking cancelled · '+booking.reference+' · Nirili Villa',html,text:plain,idempotencyKey:'room-booking-cancelled/'+(booking.eventId||booking.reference)});
+}
+
+export async function sendBookingRequestRejectedEmail(booking:BookingMail):Promise<MailResult>{
+ const cancelling=booking.requestType==='cancel';
+ const html=shell(cancelling?'Cancellation request not approved':'Change request not approved',`
+  <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(booking.guest)},</p>
+  <p style="font-size:15px;line-height:1.7">Reception could not approve your ${cancelling?'cancellation':'change'} request for booking <strong>${escapeHtml(booking.reference)}</strong>.</p>
+  ${booking.reason?`<p style="font-size:14px;line-height:1.7"><strong>Reception note:</strong> ${escapeHtml(booking.reason)}</p>`:''}
+  <p style="font-size:14px;line-height:1.7">Your existing confirmed booking remains active.</p>
+  ${bookingTable(booking)}
+  ${manageButton(booking.manageToken)}
+ `);
+ const plain=`Nirili Villa - request not approved\n\nBooking: ${booking.reference}\nYour existing confirmed booking remains active.\n${booking.reason?'Reception note: '+booking.reason+'\n':''}${managePlain(booking.manageToken)}`;
+ return sendEmail({to:booking.email,subject:(cancelling?'Cancellation':'Change')+' request update · '+booking.reference,html,text:plain,idempotencyKey:'room-booking-rejected/'+(booking.eventId||booking.reference)});
 }
