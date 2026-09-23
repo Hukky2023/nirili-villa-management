@@ -83,7 +83,7 @@ export async function PUT(r:Request){
     const staleKey=prefix(String(b.room))+"Excursions:"+x.id;
     try{await deleteOperationalRecordPrimary(staleKey);}catch{}
     try{await authDb().prepare("DELETE FROM operation_records WHERE key=?").bind(staleKey).run();}catch{}
-    return Response.json({bill:result.bill,revision:nextRevision});
+    return Response.json({bill:result.bill,revision:nextRevision,source:'excursion-booking'});
    }
   }
   if(!/^(?:10[1-6]|20[1-4]|30[1-4])$/.test(String(b.room))||!x||!["Accommodation","Transfer","Excursions"].includes(x.department)||typeof x.id!=="string"||!/^[-A-Z0-9]{1,40}$/.test(x.id)||!Number.isInteger(x.revision)||x.revision<0||typeof x.date!=="string"||!x.date.trim()||x.date.length>100||!["Posted","Pending","Paid","Unpaid","Cancelled"].includes(x.status)||!Array.isArray(x.items)||x.items.length>100||x.items.some((i:any)=>!Array.isArray(i)||i.length!==4||typeof i[0]!=="string"||!i[0].trim()||i[0].length>200||!Number.isInteger(i[1])||i[1]<1||i[1]>10000||!Number.isFinite(i[2])||i[2]<0||i[2]>1000000||!Number.isFinite(i[3])||i[3]<0||i[3]>100))return Response.json({error:"Check bill items, amounts and discounts."},{status:400});
