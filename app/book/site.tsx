@@ -71,7 +71,7 @@ export default function GuestBookingSite(){
     <span className="brand-sun">☀</span>
     <div><strong>Nirili Villa</strong><small>DHIFFUSHI · MALDIVES</small></div>
    </a>
-   <nav><a href="#stay">Stay</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
+   <nav><a href="#stay">Stay</a><a href="/book/excursions">Excursions</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
    <a className="nav-book" href="#book"><span>Request a stay</span><ArrowRight/></a>
   </header>
 
@@ -91,7 +91,7 @@ export default function GuestBookingSite(){
 
   <section className="quick-strip">
    <article><ShipWheel/><div><strong>Airport transfers</strong><span>Shared speedboat arrangements available</span></div></article>
-   <article><Sparkles/><div><strong>Island experiences</strong><span>Snorkeling, sandbanks, fishing and more</span></div></article>
+   <article><Sparkles/><div><strong>Island experiences</strong><span>Snorkeling, sandbanks, fishing and more</span><a className="inline-excursion-cta" href="/book/excursions">External guest? Book excursions <ArrowRight/></a></div></article>
    <article><Globe2/><div><strong>Simple booking</strong><span>Send a request — no account or portal access</span></div></article>
   </section>
 
