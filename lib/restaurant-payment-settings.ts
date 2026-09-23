@@ -74,7 +74,7 @@ export async function loadRestaurantPaymentSettings():Promise<RestaurantPaymentS
  }catch{return {...defaults};}
 }
 
-async function onlineRate(quote:'EUR'|'MVR'){
+async function onlineRate(quote:'EUR'){
  const response=await fetch('https://api.frankfurter.dev/v2/rate/usd/'+quote.toLowerCase(),{headers:{Accept:'application/json'}});
  if(!response.ok)throw Error('FX provider unavailable.');
  const data:any=await response.json();
