@@ -5,8 +5,43 @@ export type ExcursionPricing = {
 };
 export type ExcursionBillingActor = {role: string; userId: string; username: string};
 
+function validBillingItems(value:any){
+  return Array.isArray(value)&&value.length>0&&value.length<=100&&value.every((item:any)=>
+    Array.isArray(item)&&item.length===4&&typeof item[0]==='string'&&item[0].trim()&&item[0].length<=200&&
+    Number.isInteger(item[1])&&item[1]>=1&&item[1]<=10000&&
+    Number.isFinite(item[2])&&item[2]>=0&&item[2]<=1000000&&
+    Number.isFinite(item[3])&&item[3]>=0&&item[3]<=100
+  );
+}
+function billingItemsTotalCents(items:any[]){
+  return items.reduce((sum:number,item:any)=>sum+Math.round(Math.round(Number(item[2])*100)*Number(item[1])*(1-Number(item[3])/100)),0);
+}
+function billingItemsOriginalCents(items:any[]){
+  return items.reduce((sum:number,item:any)=>sum+Math.round(Number(item[2])*100)*Number(item[1]),0);
+}
+function billingItemsUniformDiscount(items:any[]){
+  if(!items.length)return 0;
+  const value=Number(items[0][3])||0;
+  return items.every((item:any)=>Number(item[3]||0)===value)?value:0;
+}
+function defaultBillingItems(order:any){
+  const pricing=excursionPricing(order);
+  return [[String(order.name||'Excursion'),Math.max(1,Number(order.quantity)||1),pricing.originalCents/100,pricing.discountPercent]];
+}
+
 export function excursionPricing(order: any): ExcursionPricing {
   const totalCents = Math.max(0, Math.round(Number(order.cents) || 0));
+  if(validBillingItems(order.billingItems)){
+    const originalCents=billingItemsOriginalCents(order.billingItems);
+    const calculated=billingItemsTotalCents(order.billingItems);
+    const total=calculated===totalCents?totalCents:calculated;
+    return {
+      originalCents,totalCents:total,discountCents:Math.max(0,originalCents-total),
+      discountPercent:billingItemsUniformDiscount(order.billingItems),
+      complimentary:total===0,
+      adjusted:true
+    };
+  }
   const saved = order.billingAdjustment;
   // Other bill editors can replace the charge. Never show or reapply stale discounts.
   const valid = saved && saved.totalCents === totalCents &&
@@ -21,9 +56,72 @@ export function excursionPricing(order: any): ExcursionPricing {
 /** One shared projection for room folios, guest totals and invoice/PDF line items. */
 export function excursionFolioBill(order: any) {
   const pricing = excursionPricing(order);
+  const items=validBillingItems(order.billingItems)?order.billingItems.map((item:any)=>[String(item[0]),Number(item[1]),Number(item[2]),Number(item[3])]):defaultBillingItems(order);
   return {department: 'Excursions', id: order.id,
-    items: [[order.name, order.quantity, pricing.originalCents / 100, pricing.discountPercent]],
-    status: order.status, ...pricing};
+    items,
+    status:order.billingStatus||order.status,
+    revision:Number(order.billingRevision)||0,
+    editedAt:order.billingEditedAt||'',
+    editedBy:order.billingEditedBy||'',
+    ...pricing};
+}
+
+function updatePaidCoverage(stay:any,order:any,previousCents:number,totalCents:number){
+  if(!stay)return;
+  const key='Excursions:'+order.id,covered=stay.paidBills?.[key];
+  // Reductions to an already settled bill retain its paid state and create folio credit.
+  // Increases never invent a payment: the old coverage remains and the bill becomes due again.
+  if(Number.isSafeInteger(covered)&&covered===previousCents&&totalCents<=previousCents)stay.paidBills[key]=totalCents;
+}
+
+export function applyExcursionBillEdit(state:any,input:any,actor:ExcursionBillingActor){
+  if(actor.role!=='admin')throw new Error('Only Admin can edit excursion bills.');
+  if(!input||typeof input.id!=='string'||!Number.isSafeInteger(input.revision)||input.revision<0)throw new Error('Refresh the excursion bill and try again.');
+  const order=(state.orders||[]).find((item:any)=>item.id===input.id&&item.kind==='excursion');
+  if(!order)throw new Error('Excursion booking not found.');
+  const revision=Number(order.billingRevision)||0;
+  if(input.revision!==revision)throw new Error('This excursion bill changed elsewhere. Reopen it before saving.');
+  if(!validBillingItems(input.items))throw new Error('Check excursion bill items, quantities, amounts and discounts.');
+  if(typeof input.date!=='string'||!input.date.trim()||input.date.length>100)throw new Error('Enter a valid bill date.');
+  if(!['Posted','Pending','Paid','Unpaid','Cancelled'].includes(String(input.status||'')))throw new Error('Choose a valid bill status.');
+
+  const items=input.items.map((item:any)=>[String(item[0]).trim(),Number(item[1]),Number(item[2]),Number(item[3])]);
+  const totalCents=billingItemsTotalCents(items),originalCents=billingItemsOriginalCents(items);
+  if(!Number.isSafeInteger(totalCents)||totalCents<0||totalCents>100000000)throw new Error('The excursion bill total is invalid.');
+  const previousCents=Math.max(0,Math.round(Number(order.cents)||0)),now=new Date().toISOString();
+  const before={cents:previousCents,billingItems:order.billingItems||null,billingStatus:order.billingStatus||'',billingRevision:revision};
+
+  order.billingItems=items;
+  order.cents=totalCents;
+  order.billingStatus=String(input.status);
+  order.billingRevision=revision+1;
+  order.billingEditedAt=now;
+  order.billingEditedBy=actor.username;
+  order.updatedAt=now;
+  order.updatedBy=actor.username;
+  order.billingAdjustment={
+    action:'edit',
+    originalCents,
+    discountPercent:billingItemsUniformDiscount(items),
+    discountCents:Math.max(0,originalCents-totalCents),
+    totalCents,
+    complimentary:totalCents===0,
+    reason:'Bill edited by Admin',
+    at:now,by:actor.username,userId:actor.userId
+  };
+  order.billingHistory=[...(order.billingHistory||[]),{
+    requestId:String(input.requestId||crypto.randomUUID()),action:'edit',at:now,by:actor.username,userId:actor.userId,
+    previousCents,totalCents,before,after:{items,status:order.billingStatus,revision:order.billingRevision}
+  }];
+
+  const stay=(state.stays||[]).find((item:any)=>item.id===order.stayId);
+  updatePaidCoverage(stay,order,previousCents,totalCents);
+  if(stay){
+    stay.history=[...(stay.history||[]),{date:now,at:now,by:actor.username,action:'excursion-billing',
+      detail:order.id+': Excursion bill edited; $'+(previousCents/100).toFixed(2)+' → $'+(totalCents/100).toFixed(2),
+      orderId:order.id}];
+  }
+  return {order,bill:excursionFolioBill(order)};
 }
 
 export function applyExcursionBillingAdjustment(state: any, input: any, actor: ExcursionBillingActor) {
@@ -32,7 +130,6 @@ export function applyExcursionBillingAdjustment(state: any, input: any, actor: E
       !/^[-a-zA-Z0-9]{12,80}$/.test(input.requestId)) throw new Error('Reopen the billing action and try again.');
   const order = (state.orders || []).find((o: any) => o.id === input.id && o.kind === 'excursion');
   if (!order) throw new Error('Excursion booking not found.');
-  // A response lost in transit must not apply the same adjustment or audit entry twice.
   const previous = (order.billingHistory || []).find((entry: any) => entry.requestId === input.requestId);
   if (previous) {
     if (previous.userId !== actor.userId || previous.action !== input.action ||
@@ -48,6 +145,8 @@ export function applyExcursionBillingAdjustment(state: any, input: any, actor: E
   }
   if (!['free', 'discount', 'restore'].includes(input.action)) throw new Error('Choose a valid billing action.');
   if (typeof input.reason !== 'string' || input.reason.length > 500) throw new Error('Keep the reason under 500 characters.');
+
+  const currentItems=validBillingItems(order.billingItems)?order.billingItems.map((item:any)=>[String(item[0]),Number(item[1]),Number(item[2]),Number(item[3])]):defaultBillingItems(order);
   const pricing = excursionPricing(order);
   if (!Number.isSafeInteger(order.cents) || order.cents < 0 || pricing.originalCents > 100000000) {
     throw new Error('The excursion amount is invalid. Review the bill before changing it.');
@@ -61,24 +160,25 @@ export function applyExcursionBillingAdjustment(state: any, input: any, actor: E
     }
     percent = input.discountPercent;
   }
-  const totalCents = Math.round(pricing.originalCents * (10000 - Math.round(percent * 100)) / 10000);
-  const now = new Date().toISOString();
-  const adjustment = {action: input.action, originalCents: pricing.originalCents, discountPercent: percent,
-    discountCents: pricing.originalCents - totalCents, totalCents,
+  const baseItems=currentItems.map((item:any)=>[item[0],item[1],item[2],percent]);
+  const totalCents=billingItemsTotalCents(baseItems),originalCents=billingItemsOriginalCents(baseItems);
+  const now = new Date().toISOString(),previousCents=Math.max(0,Math.round(Number(order.cents)||0));
+  const adjustment = {action: input.action, originalCents, discountPercent: percent,
+    discountCents: originalCents - totalCents, totalCents,
     complimentary: input.action === 'free' || percent === 100,
     reason: input.reason.trim(), at: now, by: actor.username, userId: actor.userId};
-  const entry = {...adjustment, requestId: input.requestId, previousCents: order.cents};
+  const entry = {...adjustment, requestId: input.requestId, previousCents};
+  order.billingItems=baseItems;
   order.cents = totalCents;
   order.billingAdjustment = adjustment;
+  order.billingRevision=(Number(order.billingRevision)||0)+1;
+  order.billingEditedAt=now;order.billingEditedBy=actor.username;
   order.billingHistory = [...(order.billingHistory || []), entry];
   order.updatedAt = now; order.updatedBy = actor.username;
   const stay = (state.stays || []).find((s: any) => s.id === order.stayId);
+  updatePaidCoverage(stay,order,previousCents,totalCents);
   if (stay) {
-    const key = 'Excursions:' + order.id, covered = stay.paidBills?.[key];
-    // Keep cash/card receipts intact. A reduction to a settled charge leaves credit
-    // in the folio; it is NOT a refund, a deleted payment, or new payment income.
-    if (Number.isSafeInteger(covered) && covered >= totalCents) stay.paidBills[key] = totalCents;
-    const detail = `${order.id}: ${input.action === 'free' ? 'Made free' : input.action === 'restore' ? 'Original price restored' : percent + '% discount'}; $${(entry.previousCents / 100).toFixed(2)} → $${(totalCents / 100).toFixed(2)}${adjustment.reason ? ' · ' + adjustment.reason : ''}`;
+    const detail = `${order.id}: ${input.action === 'free' ? 'Made free' : input.action === 'restore' ? 'Original price restored' : percent + '% discount'}; $${(previousCents / 100).toFixed(2)} → $${(totalCents / 100).toFixed(2)}${adjustment.reason ? ' · ' + adjustment.reason : ''}`;
     stay.history = [...(stay.history || []), {date: now, at: now, by: actor.username,
       action: 'excursion-billing', detail, orderId: order.id, requestId: input.requestId}];
   }
