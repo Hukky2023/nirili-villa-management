@@ -15,7 +15,7 @@ const newGuest=():Guest=>({name:'',ageCategory:'adult',footSize:''});
 
 export default function ExternalExcursionBooking(){
  const [data,setData]=useState<PublicData>({}),[selected,setSelected]=useState<Excursion|null>(null);
- const [date,setDate]=useState(''),[phone,setPhone]=useState(''),[hotel,setHotel]=useState(''),[room,setRoom]=useState('');
+ const [date,setDate]=useState(''),[phone,setPhone]=useState(''),[email,setEmail]=useState(''),[hotel,setHotel]=useState(''),[room,setRoom]=useState('');
  const [groupName,setGroupName]=useState(''),[notes,setNotes]=useState(''),[guests,setGuests]=useState<Guest[]>([newGuest()]);
  const [buggyRequested,setBuggyRequested]=useState(false),[privateBoat,setPrivateBoat]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState<any>(null);
@@ -60,7 +60,7 @@ export default function ExternalExcursionBooking(){
   setBusy(true);setError('');
   try{
    const payload={
-    token:token.current,menuItemId:selected.id,date,guest:guests[0]?.name||'',phone,hotel,externalRoom:room,groupName,notes,
+    token:token.current,menuItemId:selected.id,date,guest:guests[0]?.name||'',phone,email,hotel,externalRoom:room,groupName,notes,
     guestNames:guests.map(guest=>guest.name),
     guestCategories:guests.map(guest=>guest.ageCategory),
     footSizes:selected.needsFootSizes?guests.map(guest=>Number(guest.footSize)):[],
@@ -69,7 +69,7 @@ export default function ExternalExcursionBooking(){
    const response=await fetch('/api/public-excursions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
    const result=await response.json();
    if(!response.ok)throw Error(result.error||'Could not send your excursion booking.');
-   setSuccess(result.booking);window.scrollTo({top:0,behavior:'smooth'});
+   setSuccess(result.booking);if(result.booking?.manageUrl)try{localStorage.setItem('nirili-excursion-manage:'+result.booking.id,result.booking.manageUrl)}catch{}window.scrollTo({top:0,behavior:'smooth'});
   }catch(reason){setError(reason instanceof Error?reason.message:'Could not send your excursion booking.');}
   finally{setBusy(false);}
  }
@@ -88,8 +88,9 @@ export default function ExternalExcursionBooking(){
     <span><CalendarDays/> {success.date||date}{success.time?' · '+success.time:''}</span>
     <span><Users/> {guests.length} {guests.length===1?'guest':'guests'}</span>
    </div>
-   <p className="success-note">Reserve now, pay later. No Nirili Villa room booking or management-system login is required.</p>
+   <p className="success-note">{success.email?.sent?'Reserve now, pay later. We sent your private View / Manage Excursion link to '+email+'.':'Your excursion booking is saved. Email delivery could not be confirmed, so use the private View / Manage Excursion button below and keep the link.'} No Nirili Villa room booking or management-system login is required.</p>
    <div className="external-success-actions">
+    {success.manageUrl&&<a className="primary" href={success.manageUrl}>View / Manage Excursion <ArrowRight/></a>}
     <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();}}>Book another excursion <ArrowRight/></button>
     <a href="/book"><ArrowLeft/> Back to Nirili Villa</a>
    </div>
@@ -175,13 +176,14 @@ export default function ExternalExcursionBooking(){
 
     <div className="form-divider"><span>Contact & pickup</span></div>
     <div className="form-grid">
+     <label><span>Email</span><input required type="email" autoComplete="email" maxLength={254} value={email} onChange={event=>setEmail(event.target.value)} placeholder="name@example.com"/><small>Your private manage-excursion link is sent here</small></label>
      <label><span>WhatsApp / contact number</span><input required type="tel" autoComplete="tel" maxLength={30} value={phone} onChange={event=>setPhone(event.target.value)} placeholder="+960..."/><small>Include country code</small></label>
-     <label><span>Hotel / pickup location</span><input required maxLength={150} value={hotel} onChange={event=>setHotel(event.target.value)} placeholder="Hotel, guesthouse or meeting point"/></label>
     </div>
     <div className="form-grid">
+     <label><span>Hotel / pickup location</span><input required maxLength={150} value={hotel} onChange={event=>setHotel(event.target.value)} placeholder="Hotel, guesthouse or meeting point"/></label>
      <label><span>Room number (optional)</span><input maxLength={50} value={room} onChange={event=>setRoom(event.target.value)} placeholder="Room"/></label>
-     <label className="external-check"><span><input type="checkbox" checked={buggyRequested} onChange={event=>setBuggyRequested(event.target.checked)}/> Request buggy pickup</span><small>For pickup on Dhiffushi when available.</small></label>
     </div>
+    <label className="external-check"><span><input type="checkbox" checked={buggyRequested} onChange={event=>setBuggyRequested(event.target.checked)}/> Request buggy pickup</span><small>For pickup on Dhiffushi when available.</small></label>
 
     <div className="form-divider"><span>Passenger details</span></div>
     <div className="external-roster-head">
@@ -210,7 +212,7 @@ export default function ExternalExcursionBooking(){
     <p className="external-policy">{data.childPolicy}</p>
     {error&&<p className="form-error" role="alert">{error}</p>}
     <button className="submit-booking" disabled={busy||!selected||!date}>{busy?'Sending booking…':'Reserve excursion'} <ArrowRight/></button>
-    <p className="privacy-note"><ShieldCheck/> No management-system account is created. Your contact, pickup and passenger details are stored only with the excursion booking workflow.</p>
+    <p className="privacy-note"><ShieldCheck/> No management-system account is created. We email you a private link to view live trip status, payment, changes and cancellation.</p>
    </form>
   </section>
 

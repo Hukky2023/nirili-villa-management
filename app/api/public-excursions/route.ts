@@ -8,10 +8,13 @@ import {loadExcursionMenu} from '../../../lib/excursion-menu';
 import {excursionPriceCents,excursionChildPolicyText} from '../../../lib/excursion-children';
 import {isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE} from '../../../lib/excursion-services';
 import {PRIVATE_BOAT_SURCHARGE_CENTS,isSnorkelingTrip,scheduleCanServeRequest,scheduleMatchRank,suggestedTripWindow} from '../../../lib/excursion-operations';
+import {createExcursionManageToken,excursionManageUrl} from '../../../lib/excursion-manage';
+import {sendExternalExcursionBookedEmail} from '../../../lib/excursion-email';
 
 const headers={'Cache-Control':'no-store'};
 const prefix='excursion-schedule:';
 const phonePattern=/^\+[1-9]\d{7,14}$/;
+const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const normal=(value:any)=>String(value||'').trim().replace(/\s+/g,' ').toLowerCase();
 
 function safeText(value:any,max:number){return String(value||'').trim().replace(/\s+/g,' ').slice(0,max);}
@@ -90,11 +93,11 @@ export async function POST(request:Request){
  try{
   const body=await request.json();
   const token=String(body.token||''),menuItemId=String(body.menuItemId||'').slice(0,100),date=String(body.date||'');
-  const leadGuest=safeText(body.guest,100),phone=cleanPhone(body.phone),hotel=safeText(body.hotel,150),externalRoom=safeText(body.externalRoom,50);
+  const leadGuest=safeText(body.guest,100),phone=cleanPhone(body.phone),email=safeText(body.email,254).toLowerCase(),hotel=safeText(body.hotel,150),externalRoom=safeText(body.externalRoom,50);
   const groupName=safeText(body.groupName,100),notes=safeText(body.notes,1000);
   if(!/^[a-f0-9-]{20,80}$/i.test(token))throw Error('Refresh the excursion page and try again.');
   if(!menuItemId||!validDate(date)||date<islandToday())throw Error('Choose an excursion and a valid date.');
-  if(!leadGuest||!phonePattern.test(phone)||!hotel)throw Error('Enter the lead guest name, WhatsApp number with country code, and hotel or pickup location.');
+  if(!leadGuest||!phonePattern.test(phone)||!emailPattern.test(email)||!hotel)throw Error('Enter the lead guest name, email, WhatsApp number with country code, and hotel or pickup location.');
 
   const guestCategories=cleanGuestCategories(body.guestCategories,20),mix=guestMixFromCategories(guestCategories);
   const guestNames=cleanGuestNames(body.guestNames,mix.total,leadGuest);
@@ -116,11 +119,11 @@ export async function POST(request:Request){
   const {state,revision}=await loadStays();
   state.orders??=[];
   const duplicate=state.orders.find((order:any)=>order.kind==='excursion'&&order.token===token&&order.source==='External guest website');
-  if(duplicate)return Response.json({ok:true,duplicate:true,booking:{id:duplicate.id,status:duplicate.approvalStatus==='Approved'?'Confirmed':duplicate.approvalStatus||duplicate.status,time:duplicate.time||duplicate.schedule?.time||'',date:duplicate.date,quotedCents:Number(duplicate.quotedCents)||Number(duplicate.cents)||0}},{status:200,headers});
+  if(duplicate)return Response.json({ok:true,duplicate:true,booking:{id:duplicate.id,status:duplicate.approvalStatus==='Approved'?'Confirmed':duplicate.approvalStatus||duplicate.status,time:duplicate.time||duplicate.schedule?.time||'',date:duplicate.date,quotedCents:Number(duplicate.quotedCents)||Number(duplicate.cents)||0,manageUrl:duplicate.manageToken?excursionManageUrl(duplicate.manageToken):''}},{status:200,headers});
 
-  const id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
+  const id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString(),manageToken=createExcursionManageToken();
   const common={
-   id,token,guest:leadGuest,groupName,room:'',phone,hotel,externalRoom,pickupLocation:hotel,externalGuest:true,
+   id,token,manageToken,guest:leadGuest,groupName,room:'',phone,email,hotel,externalRoom,pickupLocation:hotel,externalGuest:true,
    kind:'excursion',menuItemId:item.id,name:item.name,quantity:mix.total,adults:mix.adults,children:mix.children,infants:mix.infants,
    guestNames,guestCategories,excursionGuestRoster:makeGuestRoster(id,guestNames,guestCategories),footSizes,pricingUnit,buggyRequested,
    quotedCents,baseQuotedCents,unitPriceCents,privateBoatRequested,privateBoatSurchargeCents,notes,date,
@@ -131,7 +134,8 @@ export async function POST(request:Request){
    state.orders.push({...common,cents:0,time:'',serviceType:ROMANTIC_BEACH_DINNER_SERVICE,serviceRequest:true,buggyRoundTrip:buggyRequested,status:'Awaiting confirmation',approvalStatus:'Pending',seatRequest:false,unscheduledRequest:true,autoConfirmed:false,guestNotified:false});
    const saved=await saveStayAccess(state,revision,'public-excursion-site');
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please submit again.'},{status:409,headers});
-   return Response.json({ok:true,booking:{id,status:'Pending',requiresApproval:true,requiresScheduling:false,date,quotedCents}},{status:201,headers});
+   const emailResult=await sendExternalExcursionBookedEmail({email,guest:leadGuest,reference:id,excursion:item.name,date,time:'',quantity:mix.total,quotedCents,hotel,manageToken,status:'Pending'});
+   return Response.json({ok:true,booking:{id,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Pending',requiresApproval:true,requiresScheduling:false,date,quotedCents}},{status:201,headers});
   }
 
   // Multi-part packages and private boats always go to the scheduling queue so
@@ -141,7 +145,8 @@ export async function POST(request:Request){
    state.orders.push({...common,cents:0,time:'',preferredTime:fallback.time,preferredEndTime:fallback.endTime,status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:item.id!=='special-package',unscheduledRequest:true,autoConfirmed:false,guestNotified:false});
    const saved=await saveStayAccess(state,revision,'public-excursion-site');
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please submit again.'},{status:409,headers});
-   return Response.json({ok:true,booking:{id,status:'Pending',requiresApproval:true,requiresScheduling:true,date,quotedCents,privateBoatRequested}},{status:201,headers});
+   const emailResult=await sendExternalExcursionBookedEmail({email,guest:leadGuest,reference:id,excursion:item.name,date,time:'',quantity:mix.total,quotedCents,hotel,manageToken,status:'Pending'});
+   return Response.json({ok:true,booking:{id,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Pending',requiresApproval:true,requiresScheduling:true,date,quotedCents,privateBoatRequested}},{status:201,headers});
   }
 
   await ensureStandardDailyExcursions(date);
@@ -164,14 +169,16 @@ export async function POST(request:Request){
    });
    const saved=await saveStayAccess(state,revision,'public-excursion-site');
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please submit again.'},{status:409,headers});
-   return Response.json({ok:true,booking:{id,status:'Confirmed',requiresApproval:false,requiresScheduling:false,date,time:schedule.time,endTime:schedule.endTime||'',quotedCents}},{status:201,headers});
+   const emailResult=await sendExternalExcursionBookedEmail({email,guest:leadGuest,reference:id,excursion:item.name,date,time:schedule.time,quantity:mix.total,quotedCents,hotel,manageToken,status:'Confirmed'});
+   return Response.json({ok:true,booking:{id,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Confirmed',requiresApproval:false,requiresScheduling:false,date,time:schedule.time,endTime:schedule.endTime||'',quotedCents}},{status:201,headers});
   }
 
   const fallback=suggestedTripWindow(item.name);
   state.orders.push({...common,cents:0,time:'',preferredTime:fallback.time,preferredEndTime:fallback.endTime,status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false});
   const saved=await saveStayAccess(state,revision,'public-excursion-site');
   if(!saved)return Response.json({error:'Another booking was saved at the same time. Please submit again.'},{status:409,headers});
-  return Response.json({ok:true,booking:{id,status:'Pending',requiresApproval:true,requiresScheduling:true,date,quotedCents}},{status:201,headers});
+   const emailResult=await sendExternalExcursionBookedEmail({email,guest:leadGuest,reference:id,excursion:item.name,date,time:'',quantity:mix.total,quotedCents,hotel,manageToken,status:'Pending'});
+  return Response.json({ok:true,booking:{id,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Pending',requiresApproval:true,requiresScheduling:true,date,quotedCents}},{status:201,headers});
  }catch(error){
   const message=error instanceof Error?error.message:'Could not send your excursion booking.';
   return Response.json({error:message},{status:400,headers});

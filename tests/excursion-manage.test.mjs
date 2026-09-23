@@ -1,0 +1,62 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  approveExternalExcursionCancellation,
+  approveExternalExcursionChange,
+  createExcursionManageToken,
+  excursionLogisticsChanged,
+  excursionManageSnapshot,
+  excursionManageUrl,
+  externalExcursionPaymentCents,
+  pendingExcursionChange,
+  validExcursionManageToken,
+} from '../lib/excursion-manage.ts';
+
+const token='b'.repeat(48);
+const state=()=>({orders:[],excursionChanges:[]});
+
+test('external excursion manage links keep the secret in the URL fragment',()=>{
+ const a=createExcursionManageToken(),b=createExcursionManageToken();
+ assert.equal(a.length,48);assert.equal(validExcursionManageToken(a),true);assert.notEqual(a,b);
+ const url=excursionManageUrl(a);assert.match(url,/\/book\/excursions\/manage#/);assert.equal(url.includes('?token='),false);
+});
+
+test('snapshot exposes live payment and locks while a guest action is pending',()=>{
+ const s=state(),order={id:'EXC-1',manageToken:token,source:'External guest website',kind:'excursion',guest:'Guest',email:'g@example.com',phone:'+9607000000',hotel:'Hotel',name:'Turtle',menuItemId:'turtle',date:'2026-10-01',time:'08:00',quantity:2,adults:2,children:0,infants:0,quotedCents:5000,cents:5000,status:'Scheduled',approvalStatus:'Approved',excursionPayments:[{cents:2000}]};
+ s.orders.push(order);s.excursionChanges.push({id:'ECH-1',bookingId:order.id,type:'change',status:'Pending',requestedAt:'2026-09-23T06:00:00Z',proposed:{date:'2026-10-02'}});
+ const view=excursionManageSnapshot(s,order,{time:'08:30',endTime:'10:00',vessel:'Boat One'});
+ assert.equal(view.time,'08:30');assert.equal(view.paymentStatus,'Partially paid');assert.equal(view.balanceCents,3000);assert.equal(view.canEdit,false);assert.equal(view.pendingAction.id,'ECH-1');
+});
+
+test('payment total nets reversals',()=>{
+ assert.equal(externalExcursionPaymentCents({excursionPayments:[{cents:5000},{cents:-2000}]}),3000);
+});
+
+test('logistics-changing approval releases old trip and moves booking back to scheduling',()=>{
+ const order={id:'EXC-2',menuItemId:'turtle',name:'Turtle',date:'2026-10-01',quantity:2,privateBoatRequested:false,quotedCents:5000,cents:5000,status:'Scheduled',approvalStatus:'Approved',scheduleId:'trip2',time:'08:00',endTime:'09:30',schedule:{date:'2026-10-01',time:'08:00',vessel:'Boat'},matchedScheduleName:'Turtle + Coral',preferredTime:'08:00'};
+ const proposed={...order,menuItemId:'shark',name:'Shark',date:'2026-10-02',quantity:3,quotedCents:30000,guest:'Guest',email:'g@example.com',phone:'+9607000000',hotel:'Hotel',externalRoom:'2',groupName:'',notes:'',adults:3,children:0,infants:0,guestNames:['A','B','C'],guestCategories:['adult','adult','adult'],footSizes:[40,41,42],buggyRequested:false,privateBoatRequested:false,pricingUnit:'guest',unitPriceCents:10000,baseQuotedCents:30000,privateBoatSurchargeCents:0,excursionGuestRoster:[]};
+ const change={id:'ECH-2',type:'change',status:'Pending',proposed};
+ assert.equal(excursionLogisticsChanged(order,proposed),true);
+ const result=approveExternalExcursionChange(order,change,'manager');
+ assert.equal(result.logisticsChanged,true);assert.equal(order.status,'Awaiting scheduling');assert.equal(order.approvalStatus,'Pending');assert.equal(order.cents,0);assert.equal(order.scheduleId,undefined);assert.equal(order.schedule,undefined);assert.equal(order.preferredTime,undefined);
+});
+
+test('contact-only approved change keeps confirmed trip assignment',()=>{
+ const order={id:'EXC-3',menuItemId:'turtle',name:'Turtle',date:'2026-10-01',quantity:2,privateBoatRequested:false,quotedCents:5000,cents:5000,status:'Scheduled',approvalStatus:'Approved',scheduleId:'trip2',time:'08:00',schedule:{date:'2026-10-01',time:'08:00',vessel:'Boat'}};
+ const proposed={...order,email:'new@example.com',phone:'+9607111111',hotel:'New Hotel',quotedCents:5000};
+ const change={id:'ECH-3',type:'change',status:'Pending',proposed};
+ const result=approveExternalExcursionChange(order,change,'manager');
+ assert.equal(result.logisticsChanged,false);assert.equal(order.status,'Scheduled');assert.equal(order.scheduleId,'trip2');assert.equal(order.email,'new@example.com');
+});
+
+test('approved cancellation closes booking and records net refund required',()=>{
+ const order={id:'EXC-4',status:'Scheduled',approvalStatus:'Approved',cents:10000,quotedCents:10000,excursionPayments:[{cents:10000},{cents:-2500}]};
+ const change={id:'ECH-4',type:'cancel',status:'Pending'};
+ const result=approveExternalExcursionCancellation(order,change,'manager');
+ assert.equal(result.refundRequiredCents,7500);assert.equal(order.status,'Cancelled');assert.equal(order.approvalStatus,'Cancelled');assert.equal(order.cents,0);assert.equal(change.status,'Approved');
+});
+
+test('pending action lookup only returns current pending request',()=>{
+ const s=state();s.excursionChanges=[{id:'old',bookingId:'EXC',status:'Rejected',requestedAt:'2026-09-20'},{id:'new',bookingId:'EXC',status:'Pending',requestedAt:'2026-09-21'}];
+ assert.equal(pendingExcursionChange(s,'EXC').id,'new');
+});
