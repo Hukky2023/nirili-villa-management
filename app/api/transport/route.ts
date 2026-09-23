@@ -65,7 +65,8 @@ async function visible(state:TransportState,revision:number,u:any){
  const canEdit=hasPermission(u,'edit_transfers'),hotel=await loadHotelPrimary();
  const eligible=u.role==='guest'&&!isTransportAgent(u)?hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&s.checkOut>=new Date(Date.now()+5*3600000).toISOString().slice(0,10)):[];
  const ownRoom=eligible.length===1?{id:eligible[0].id,room:eligible[0].room,checkIn:eligible[0].checkIn,checkOut:eligible[0].checkOut}:null;
- return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,transportPlans:canEdit?planRows(state,hotel.state):[],sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.filter(b=>b.status!=='Cancelled').flatMap(b=>b.journeys.map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };
+ const guestStays=u.role==='admin'?(hotel.state.stays||[]).filter((s:any)=>['Confirmed','In House'].includes(String(s.status||''))).map((s:any)=>({id:s.id,guest:s.guest,room:s.room,phone:s.whatsapp||'',email:s.email||'',checkIn:s.checkIn,checkOut:s.checkOut,pax:Number(s.pax)||1,adults:Number(s.adults??s.pax??1),children:Number(s.children??0),transportPlan:s.transportPlan||null})):[];
+ return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,guestStays,transportPlans:canEdit?planRows(state,hotel.state):[],sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.filter(b=>b.status!=='Cancelled').flatMap(b=>b.journeys.map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };
 }
 export async function GET(){const u=await transportUser();if(!u||!canTransport(u))return Response.json({error:'Sign in to access transfers.'},{status:403});try{const {state,revision}=await loadForRead();return Response.json(await visible(state,revision,u),{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Unable to load transfers. Please retry.'},{status:503});}}
 export async function POST(r:Request){const u=await transportUser();if(!u||!canTransport(u)||!sameOrigin(r))return Response.json({error:'Not allowed.'},{status:403});try{
@@ -93,6 +94,40 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   if(!old)state.bookings.push(booking);
   plan.launch={scheduleId:sailing.id,date,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,seats};plan.transportBookingId=booking.id;plan.status='Scheduled';delete plan.needsReview;delete plan.previousTransportBookingId;
   syncTransportBuggy(hotel.state,stay,leg,journey);const roomBill=syncTransportPlanBill(hotel.state,stay,booking,sailing,leg,u.username);stay.history??=[];stay.history.unshift({date:now,by:u.username,detail:(leg==='arrival'?'Arrival':'Departure')+' transport scheduled · '+sailing.depart+' '+sailing.boat+' · USD '+(roomBill.cents/100).toFixed(2)+' added to room bill · Buggy linked automatically'});if(stay.email)transportMail={email:stay.email,guest:stay.guest,reference:stay.id,room:stay.room,manageToken:stay.manageToken,leg,boat:sailing.boat,from:sailing.from,to:sailing.to,date,depart:sailing.depart,arrive:sailing.arrive,seats,chargeCents:roomBill.cents,changed:wasScheduled};
+  hotelWrite=hotel;
+ }
+ else if(b.action==='manual-guest-transfer'){
+  if(u.role!=='admin')return Response.json({error:'Only Admin can create a linked guest transfer manually.'},{status:403});
+  const hotel=await loadHotelPrimary(),stay=hotel.state.stays.find((item:any)=>item.id===String(b.stayId||'')&&['Confirmed','In House'].includes(String(item.status||'')));
+  const leg=b.leg==='arrival'||b.leg==='departure'?b.leg:null;if(!stay||!leg)throw Error('Choose a confirmed or in-house guest and Arrival or Departure.');
+  const sailing=state.sailings.find(s=>s.id===String(b.scheduleId||'')&&s.active);if(!sailing)throw Error('Choose an active speedboat departure.');
+  if(!Number.isInteger(sailing.roomFare)||Number(sailing.roomFare)<0)throw Error('Set the USD room fare for this launch before assigning it to a guest.');
+  const date=String(b.date||'');if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Choose a valid travel date.');
+  if(Date.parse(date+'T'+sailing.depart+':00+05:00')<=Date.now())throw Error('Choose a future launch departure.');
+  if(leg==='arrival'&&canonicalLocation(sailing.to)!=='Dhiffushi')throw Error('Arrival transfers must arrive in Dhiffushi.');
+  if(leg==='departure'&&canonicalLocation(sailing.from)!=='Dhiffushi')throw Error('Departure transfers must leave Dhiffushi.');
+  stay.transportPlan??={};
+  const plan=stay.transportPlan[leg]||{};
+  const oldId=String(plan.transportBookingId||plan.previousTransportBookingId||''),old=oldId?state.bookings.find(item=>item.id===oldId):undefined,wasScheduled=!!old&&!!plan.launch;
+  const adults=Math.max(1,Number(stay.adults??stay.pax??1)),children=Math.max(0,Number(stay.children??0)),infants=0,seatCount=adults+children;
+  const requestedSeats=Array.isArray(b.seats)?b.seats.map(Number):[];
+  if(requestedSeats.length!==seatCount||new Set(requestedSeats).size!==seatCount||requestedSeats.some((n:number)=>!Number.isInteger(n)||n<1||n>sailing.capacity))throw Error('Select one valid seat for every adult and child.');
+  const used=state.bookings.filter(item=>item.id!==oldId&&item.status!=='Cancelled').flatMap(item=>item.journeys.filter(j=>j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
+  if(requestedSeats.some((n:number)=>used.includes(n)))throw Error('One or more selected seats were just booked. Choose available seats.');
+  const free=b.free===true,discountPercent=Math.max(0,Math.min(100,Number(b.discountPercent)||0));let priceCents:any=undefined;
+  if(b.priceCents!==undefined&&b.priceCents!==null&&b.priceCents!==''){const value=Number(b.priceCents);if(!Number.isInteger(value)||value<0||value>1000000)throw Error('Enter a valid custom USD total.');priceCents=value;}
+  const now=new Date().toISOString(),journey={scheduleId:sailing.id,date,seats:requestedSeats,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,fare:sailing.fare},total=sailing.fare*adults+Math.round(sailing.fare/2)*children;
+  const booking:any=old||{id:'NT-'+crypto.randomUUID().slice(0,8).toUpperCase(),token:crypto.randomUUID(),owner:'stay:'+stay.id,created:now,paid:false};
+  Object.assign(booking,{name:stay.guest,phone:stay.whatsapp||'',traveller:'Tourist',adults,children,infants,journeys:[journey],total,status:'Confirmed',checked:[],notes:'Admin manual room transfer · '+leg,stayId:stay.id,room:stay.room,transportPlanLeg:leg});
+  if(!old)state.bookings.push(booking);
+  const billing:any={...plan.billing,free,discountPercent};if(priceCents===undefined)delete billing.priceCents;else billing.priceCents=priceCents;
+  const nextPlan:any={...plan,needTransfer:'yes',date,status:'Scheduled',launch:{scheduleId:sailing.id,date,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,seats:requestedSeats},transportBookingId:booking.id,billing};
+  if(leg==='arrival')nextPlan.from=sailing.from;else nextPlan.destination=sailing.to;
+  delete nextPlan.needsReview;delete nextPlan.previousTransportBookingId;delete nextPlan.cancelTransportBookingId;
+  stay.transportPlan[leg]=nextPlan;
+  syncTransportBuggy(hotel.state,stay,leg,journey);const roomBill=syncTransportPlanBill(hotel.state,stay,booking,sailing,leg,u.username);
+  stay.history??=[];stay.history.unshift({date:now,by:u.username,detail:'Admin manually assigned '+leg+' transfer · '+date+' '+sailing.depart+' '+sailing.boat+' · seats '+requestedSeats.join(', ')+' · USD '+(roomBill.cents/100).toFixed(2)});
+  if(stay.email)transportMail={email:stay.email,guest:stay.guest,reference:stay.id,room:stay.room,manageToken:stay.manageToken,leg,boat:sailing.boat,from:sailing.from,to:sailing.to,date,depart:sailing.depart,arrive:sailing.arrive,seats:requestedSeats,chargeCents:roomBill.cents,changed:wasScheduled};
   hotelWrite=hotel;
  }
  else if(b.action==='plan-billing'){
