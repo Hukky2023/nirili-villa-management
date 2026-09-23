@@ -136,6 +136,7 @@ export async function PATCH(r:Request){
    order.buggyStatus='Driver on the way';
   }else if(action==='arrived'){
    if(guestRide&&!order.buggyId)throw Error('This guest ride is waiting for buggy assignment.');
+   if(guestRide&&String(order.buggyStatus||'')!=='Driver on the way')throw Error('Start the pickup before marking that you arrived.');
    if(!order.buggyArrivedAt){
     order.buggyArrivedAt=now;
     order.buggyArrivedBy=user?.username||user?.displayName||'buggy-driver';
