@@ -57,6 +57,7 @@ const clean=async (x:any,state:any)=>{
  if(!x||!validDate(x.date)||!validTime(x.time))throw Error('Choose a valid date and departure time.');
  const name=String(x.name||'').trim().slice(0,180);
  if(!name)throw Error('Excursion name is required.');
+ if(norm(name)==='special package')throw Error('Special Package is a package booking, not one scheduled excursion. Schedule its individual package legs instead.');
  const endTime=validTime(x.endTime)?String(x.endTime):inferTripEndTime(name,x.time);
  if(!validTime(endTime)||clockMinutes(endTime)<=clockMinutes(x.time))throw Error('Choose an end time later than the departure time.');
  if(fridayExcursionBlackout(x.date,x.time,endTime))throw Error(fridayExcursionBlackoutMessage);
@@ -541,6 +542,7 @@ export async function PATCH(r:Request){
       await ensureStandardDailyExcursions(candidateDate);
       const daySchedules=(await schedulesForDate(candidateDate)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
       for(const schedule of daySchedules){
+       if(norm(schedule.name)==='special package')continue;
        const coverage=specialPackageCoverage(schedule.name);
        if(!coverage.length)continue;
        const key=sharedKey(schedule),groupSchedules=key?daySchedules.filter((x:any)=>sharedKey(x)===key):[schedule],groupIds=new Set(groupSchedules.map((x:any)=>x.id));
