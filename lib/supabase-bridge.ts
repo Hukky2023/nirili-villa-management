@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:workers';
-import {mealPlanIncludedOrder,syncRestaurantRoomBill} from './pos-room-billing';
+import {reconcileRestaurantRoomBills} from './pos-room-billing';
 
 type LegacyAccountRow={
   id:string;
@@ -140,30 +140,46 @@ function parseRestaurantOrderPayload(value:any){
   return null;
 }
 
+function restaurantOrderVersion(order:any){
+  const values:any[]=[order?.updatedAt,order?.paidAt,order?.createdAt];
+  if(Array.isArray(order?.history))for(const entry of order.history)values.push(entry?.date,entry?.at);
+  return values.reduce((latest:number,value:any)=>{
+    const time=Date.parse(String(value||''));
+    return Number.isFinite(time)&&time>latest?time:latest;
+  },0);
+}
+
 function mergeRestaurantOrdersIntoHotelState(state:any,orders:any[]){
   if(!state||typeof state!=='object')return state;
   state.posOrders=Array.isArray(state.posOrders)?state.posOrders:[];
   state.stays=Array.isArray(state.stays)?state.stays:[];
   state.deletedPOSOrders=Array.isArray(state.deletedPOSOrders)?state.deletedPOSOrders:[];
   const deleted=new Set(state.deletedPOSOrders.map((order:any)=>String(order?.id||'')).filter(Boolean));
-  const existing=new Set(state.posOrders.map((order:any)=>String(order?.id||'')).filter(Boolean));
+  const indexById=new Map<string,number>();
+  state.posOrders.forEach((order:any,index:number)=>{const id=String(order?.id||'');if(id)indexById.set(id,index);});
 
   for(const raw of orders||[]){
-    const order=parseRestaurantOrderPayload(raw?.payload??raw);
-    const id=String(order?.id||raw?.id||'');
-    if(!id||deleted.has(id)||!order)continue;
-    if(!existing.has(id)){state.posOrders.push(order);existing.add(id);}
+    const incoming=parseRestaurantOrderPayload(raw?.payload??raw);
+    const id=String(incoming?.id||raw?.id||'');
+    if(!id||deleted.has(id)||!incoming)continue;
+    const index=indexById.get(id);
+    if(index===undefined){
+      state.posOrders.push(incoming);
+      indexById.set(id,state.posOrders.length-1);
+      continue;
+    }
+    const current=state.posOrders[index];
+    if(restaurantOrderVersion(incoming)>restaurantOrderVersion(current))state.posOrders[index]=incoming;
+  }
 
+  reconcileRestaurantRoomBills(state);
+
+  for(const order of state.posOrders){
+    const id=String(order?.id||'');
+    if(!id||deleted.has(id))continue;
     const stay=state.stays.find((item:any)=>String(item?.id||'')===String(order.stayId||''));
     if(!stay)continue;
-    stay.posBills=Array.isArray(stay.posBills)?stay.posBills:[];
     stay.payments=Array.isArray(stay.payments)?stay.payments:[];
-    if(mealPlanIncludedOrder(order)){
-      stay.posBills=stay.posBills.filter((bill:any)=>String(bill?.id||'')!==id);
-      if(stay.paidBills&&typeof stay.paidBills==='object')delete stay.paidBills['Restaurant:'+id];
-    }else if(!stay.posBills.some((bill:any)=>String(bill?.id||'')===id)){
-      syncRestaurantRoomBill(stay,order);
-    }
     if(['Cash','Card','Bank transfer'].includes(String(order.method||''))&&Number(order.cents)>0&&!stay.payments.some((payment:any)=>payment?.reference===id&&Number(payment?.cents)>0&&!payment?.reversedAt)){
       const payment:any={
         id:'recovered-pos:'+id,
