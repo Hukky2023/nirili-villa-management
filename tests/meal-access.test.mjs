@@ -2,11 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   halfBoardFreeOrderAvailable,
-  halfBoardMealSelection,
+  halfBoardIncludedMealPeriod,
   mealItemCoveredByPackage,
   mealItemIncluded,
-  restaurantMealPeriod,
-  setHalfBoardMealSelection
+  restaurantMealPeriod
 } from '../lib/meal-access.ts';
 
 const state=()=>({
@@ -22,46 +21,47 @@ test('restaurant meal periods follow Maldives service hours',()=>{
   assert.equal(restaurantMealPeriod('2026-09-25T08:30:00Z'),'Lunch');
 });
 
-test('Half Board breakfast is included and selected lunch or dinner is included once',()=>{
+test('Half Board first lunch is automatically included',()=>{
   const s=state();
-  const lunch='2026-09-23T07:30:00Z';
-  setHalfBoardMealSelection(s,'NV-HB','Lunch','waiter',lunch);
-  assert.equal(halfBoardMealSelection(s,'NV-HB',lunch),'Lunch');
-  assert.equal(mealItemIncluded('Half Board',{fullBoard:true},true,'Lunch','Breakfast'),true);
-  assert.equal(mealItemIncluded('Half Board',{fullBoard:true},true,'Lunch','Lunch'),true);
-  assert.equal(mealItemIncluded('Half Board',{fullBoard:true},true,'Lunch','Dinner'),false);
-  assert.equal(mealItemIncluded('Half Board',{fullBoard:false},true,'Lunch','Lunch'),false);
-  assert.equal(mealItemIncluded('Full Board',{fullBoard:true},true,'',''),true);
-});
-
-test('Half Board lunch or dinner selection locks after included meal is used',()=>{
-  const s=state(),now='2026-09-23T07:30:00Z';
-  setHalfBoardMealSelection(s,'NV-HB','Lunch','guest',now);
+  assert.equal(halfBoardFreeOrderAvailable(s,'NV-HB','2026-09-23T07:30:00Z'),true);
+  assert.equal(mealItemIncluded('Half Board',{fullBoard:true},true,'','Lunch'),true);
   s.posOrders.push({
-    id:'POS-1',stayId:'NV-HB',createdAt:now,mealPeriod:'Lunch',includedMealPeriod:'Lunch',
-    items:[{included:true}]
+    id:'POS-LUNCH',stayId:'NV-HB',createdAt:'2026-09-23T07:30:00Z',
+    mealPeriod:'Lunch',includedMealPeriod:'Lunch',items:[{included:true}]
   });
-  assert.equal(halfBoardFreeOrderAvailable(s,'NV-HB',now),false);
-  assert.throws(()=>setHalfBoardMealSelection(s,'NV-HB','Dinner','guest',now),/locked/);
-  assert.equal(halfBoardMealSelection(s,'NV-HB',now),'Lunch');
+  assert.equal(halfBoardIncludedMealPeriod(s,'NV-HB','2026-09-23T14:00:00Z'),'Lunch');
+  assert.equal(halfBoardFreeOrderAvailable(s,'NV-HB','2026-09-23T14:00:00Z'),false);
+  assert.equal(mealItemIncluded('Half Board',{fullBoard:true},false,'','Dinner'),false);
 });
 
-test('Breakfast does not consume the Half Board lunch or dinner entitlement',()=>{
-  const s=state(),breakfast='2026-09-23T02:30:00Z',lunch='2026-09-23T07:30:00Z';
-  setHalfBoardMealSelection(s,'NV-HB','Dinner','guest',breakfast);
+test('Half Board first dinner is automatically included when lunch was not used',()=>{
+  const s=state();
+  assert.equal(mealItemIncluded('Half Board',{fullBoard:true},true,'','Dinner'),true);
   s.posOrders.push({
-    id:'POS-B',stayId:'NV-HB',createdAt:breakfast,mealPeriod:'Breakfast',includedMealPeriod:'Breakfast',
-    items:[{included:true}]
+    id:'POS-DINNER',stayId:'NV-HB',createdAt:'2026-09-23T14:00:00Z',
+    mealPeriod:'Dinner',includedMealPeriod:'Dinner',items:[{included:true}]
   });
-  assert.equal(halfBoardFreeOrderAvailable(s,'NV-HB',lunch),true);
+  assert.equal(halfBoardIncludedMealPeriod(s,'NV-HB','2026-09-23T14:10:00Z'),'Dinner');
+  assert.equal(halfBoardFreeOrderAvailable(s,'NV-HB','2026-09-23T14:10:00Z'),false);
 });
 
+test('Half Board breakfast stays included and does not consume lunch or dinner',()=>{
+  const s=state();
+  assert.equal(mealItemIncluded('Half Board',{fullBoard:true},true,'','Breakfast'),true);
+  s.posOrders.push({
+    id:'POS-B',stayId:'NV-HB',createdAt:'2026-09-23T02:30:00Z',
+    mealPeriod:'Breakfast',includedMealPeriod:'Breakfast',items:[{included:true}]
+  });
+  assert.equal(halfBoardFreeOrderAvailable(s,'NV-HB','2026-09-23T07:30:00Z'),true);
+  assert.equal(mealItemIncluded('Half Board',{fullBoard:true},true,'','Lunch'),true);
+});
 
-test('package menu coverage is independent from current Half Board entitlement',()=>{
-  assert.equal(mealItemCoveredByPackage('Full Board',{fullBoard:true}),true);
-  assert.equal(mealItemCoveredByPackage('Half Board',{fullBoard:true}),true);
+test('non-package Half Board items remain chargeable',()=>{
+  assert.equal(mealItemIncluded('Half Board',{fullBoard:false},true,'','Lunch'),false);
   assert.equal(mealItemCoveredByPackage('Half Board',{fullBoard:false}),false);
-  assert.equal(mealItemCoveredByPackage('Bed & Breakfast',{fullBoard:true}),false);
-  assert.equal(mealItemIncluded('Half Board',{fullBoard:true},true,'Dinner','Lunch'),false);
-  assert.equal(mealItemCoveredByPackage('Half Board',{fullBoard:true}),true);
+});
+
+test('Full Board package items remain included',()=>{
+  assert.equal(mealItemIncluded('Full Board',{fullBoard:true},true,'','Lunch'),true);
+  assert.equal(mealItemCoveredByPackage('Full Board',{fullBoard:true}),true);
 });
