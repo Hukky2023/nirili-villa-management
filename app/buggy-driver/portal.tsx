@@ -94,7 +94,8 @@ export default function BuggyDriverPortal(){
     <div className="buggy-time"><small>{p.guestRide?'GUEST RIDE':p.roundTrip?'DINNER TRANSFER':'PICKUP'}</small><strong>{p.pickupTime||'Arrange'}</strong><span><Clock3 size={14}/>{p.guestRide?'Requested now':p.romanticDinner?(p.pickupTimingNote||'Pickup time arranged'):p.excursionTime+' excursion'}</span></div>
     <div className="buggy-guest">
      <div className="buggy-name-row"><h3>{p.guest}</h3><span className={'buggy-status '+p.status.toLowerCase().replace(/\s+/g,'-')}>{p.status}</span></div>
-     <p className="buggy-excursion">{p.excursion}{p.roundTrip&&<span className="buggy-roundtrip-badge">Round trip</span>}{p.guestRide&&p.chargeToRoom&&<span className="buggy-roundtrip-badge">{p.fareCents>0?'Room bill 
+     <p className="buggy-excursion">{p.excursion}{p.roundTrip&&<span className="buggy-roundtrip-badge">Round trip</span>}{p.guestRide&&p.chargeToRoom&&<span className="buggy-roundtrip-badge">{p.fareCents>0?'Room bill USD '+(p.fareCents/100).toFixed(2):'No configured fare'}</span>}</p>
+     <div className="buggy-meta"><span><MapPin size={16}/><b>Pickup: {p.location}</b>{p.room?' · Room '+p.room:''}</span>{p.destination&&<span><MapPin size={16}/>Destination: {p.destination}</span>}<span><Users size={16}/>{p.quantity} guest{p.quantity===1?'':'s'}</span>{p.buggyName&&<span>Buggy: {p.buggyName}</span>}{p.driver&&<span>Driver: {p.driver}</span>}{p.phone&&<a href={'tel:'+p.phone}><Phone size={16}/>{p.phone}</a>}</div>
      {p.notes&&<p className="buggy-notes">{p.notes}</p>}
     </div>
     <div className="buggy-actions">
