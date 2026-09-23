@@ -12,6 +12,8 @@ import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE
 import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,PRIVATE_BOAT_SURCHARGE_CENTS,scheduleCanServeRequest,scheduleMatchRank,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
 import {mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 import {sendExternalExcursionDeclinedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
+import {sendGuestPushForExcursionTimeChange} from '../../../lib/web-push';
+import {addGuestNotification} from '../../../lib/guest-notifications';
 import {autoAssignExcursionOrder} from '../../../lib/excursion-auto-assignment';
 
 const prefix='excursion-schedule:';
@@ -233,7 +235,7 @@ export async function PUT(r:Request){
   const raw=await r.json();
   const id=String(raw.id||'').slice(0,100),revision=Number(raw.revision);
   if(!id||!Number.isInteger(revision)||revision<1)throw Error('Invalid schedule record.');
-  const {state}=await loadStays();
+  const {state,revision:stayRevision}=await loadStays();
   const body=await clean(raw,state);
   const key=prefix+body.date+':'+id;
   const existing=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(key).first<any>();
@@ -256,17 +258,91 @@ export async function PUT(r:Request){
   if(droneClash)throw Error('This drone is already assigned to '+droneClash.name+' from '+droneClash.time+' to '+(droneClash.endTime||inferTripEndTime(droneClash.name,droneClash.time))+'. Choose another drone or wait until that trip ends.');
   // Closing an unsafe/understaffed trip must remain possible; departure is guarded separately.
   if(record.status!=='Closed')assertGuideRule(guideRuleFor(record,daySchedules,state.orders||[],crew,old));
-  let nextRevision=0;
-  try{nextRevision=await saveOperationalRecordPrimary(key,record,revision,user.userId);}catch{}
-  if(!nextRevision){
-   const result=await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision).run();
-   if(!result.meta.changes)return Response.json({error:'Schedule changed elsewhere. Reload and try again.'},{status:409});
-   nextRevision=revision+1;
-   try{await mirrorExcursionScheduleRecord(key,{...record,revision:nextRevision,updatedBy:user.userId});}catch{}
-  }else{
-   try{await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(record),nextRevision,user.userId).run();}catch{}
+  const departureChanged=String(old.date||'')!==String(record.date||'')||String(old.time||'')!==String(record.time||'');
+  const timeChangeNotices:any[]=[];
+  if(departureChanged){
+   const resources=excursionResources(state),vessel=resources.vessels.find((item:any)=>item.id===record.vesselId),assignedCrew=resources.crew.filter((item:any)=>record.crewIds?.includes(item.id));
+   state.guestNotifications??=[];
+   const affected=(state.orders||[]).filter((order:any)=>order.kind==='excursion'&&order.status!=='Cancelled'&&order.approvalStatus!=='Cancelled'&&(String(order.scheduleId||'')===id||matches(order,old)));
+   const changedAt=new Date().toISOString();
+   for(const order of affected){
+    const before={date:String(order.date||old.date||''),time:String(order.time||order.schedule?.time||old.time||'')};
+    const after={date:String(record.date||''),time:String(record.time||'')};
+    order.scheduleTimeHistory=Array.isArray(order.scheduleTimeHistory)?order.scheduleTimeHistory:[];
+    order.scheduleTimeHistory.push({at:changedAt,by:user.username,from:before,to:after,scheduleId:id});
+    order.date=record.date;order.time=record.time;order.endTime=record.endTime||'';order.returnTime=record.returnTime||'';
+    order.schedule={
+     ...(order.schedule||{}),date:record.date,time:record.time,endTime:record.endTime||'',
+     ...(record.returnTime?{returnTime:record.returnTime}:{}),
+     vesselId:record.vesselId,vessel:vessel?.name||order.schedule?.vessel||'',
+     crewIds:record.crewIds||[],crew:assignedCrew.map((person:any)=>person.name)
+    };
+    order.guestNotified=false;
+    const excursionName=String(order.packageName||order.name||record.name||'Excursion');
+    const message=excursionName+' departure changed from '+(before.time||'the previous time')+' to '+after.time+' on '+after.date+'.';
+    if(order.accountId)addGuestNotification(state,{accountId:String(order.accountId),type:'excursion-time-change',title:'Excursion time changed',message,url:'/stay?service=excursion',bookingId:String(order.packageGroupId||order.id||''),metadata:{from:before,to:after,scheduleId:id}});
+    timeChangeNotices.push({order,before,after});
+   }
   }
-  return Response.json({schedule:{...record,revision:nextRevision}});
+
+  let nextRevision=0;
+  if(departureChanged&&timeChangeNotices.length){
+   let pair:any=null,primaryAvailable=true,primaryConflict=false;
+   try{pair=await saveOperationalPairPrimary(key,record,revision,stayKey,state,stayRevision,user.userId);}catch(error){
+    const message=error instanceof Error?error.message:String(error||'');
+    if(message.includes('CAS_CONFLICT'))primaryConflict=true;else primaryAvailable=false;
+   }
+   if(primaryConflict)return Response.json({error:'The excursion or assigned guest bookings changed elsewhere. Reload and try again.'},{status:409});
+   if(primaryAvailable&&pair?.revisionA&&pair?.revisionB){
+    nextRevision=pair.revisionA;
+    try{
+     await authDb().batch([
+      authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(record),pair.revisionA,user.userId),
+      authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(stayKey,JSON.stringify(state),pair.revisionB,user.userId)
+     ]);
+    }catch{}
+    try{await Promise.all([mirrorExcursionScheduleRecord(key,{...record,revision:pair.revisionA,updatedBy:user.userId}),mirrorHotelState(state)]);}catch{}
+   }else{
+    const statements:any[]=[
+     authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision)
+    ];
+    const stayPayload=JSON.stringify(state);
+    if(stayRevision===0)statements.push(authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,stayPayload,user.userId));
+    else statements.push(authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(stayPayload,user.userId,stayKey,stayRevision));
+    const results=await authDb().batch(statements);
+    if(!results[0].meta.changes||!results[1].meta.changes)return Response.json({error:'The excursion or assigned guest bookings changed elsewhere. Reload and try again.'},{status:409});
+    nextRevision=revision+1;
+    try{await mirrorExcursionScheduleRecord(key,{...record,revision:nextRevision,updatedBy:user.userId});await mirrorHotelState(state);}catch{}
+   }
+  }else{
+   try{nextRevision=await saveOperationalRecordPrimary(key,record,revision,user.userId);}catch{}
+   if(!nextRevision){
+    const result=await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(record),user.userId,key,revision).run();
+    if(!result.meta.changes)return Response.json({error:'Schedule changed elsewhere. Reload and try again.'},{status:409});
+    nextRevision=revision+1;
+    try{await mirrorExcursionScheduleRecord(key,{...record,revision:nextRevision,updatedBy:user.userId});}catch{}
+   }else{
+    try{await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(record),nextRevision,user.userId).run();}catch{}
+   }
+  }
+
+  let notified=0;
+  if(timeChangeNotices.length){
+   const results=await Promise.allSettled(timeChangeNotices.map(async({order,before,after}:any)=>{
+    const tasks:Promise<any>[]=[];
+    if(order.source==='External guest website'&&order.email&&order.manageToken)tasks.push(sendExternalExcursionUpdatedEmail({
+     email:order.email,guest:order.guest,reference:order.packageGroupId||order.id,excursion:order.packageName||order.name,
+     date:after.date,time:after.time,endTime:record.endTime||'',quantity:Number(order.quantity)||0,
+     quotedCents:Number(order.packageTotalCents)||Number(order.quotedCents)||Number(order.cents)||0,
+     hotel:order.hotel,manageToken:order.manageToken,eventId:'schedule-time-'+id+'-'+nextRevision+'-'+order.id
+    }));
+    if(order.accountId)tasks.push(sendGuestPushForExcursionTimeChange(order,before,after));
+    await Promise.allSettled(tasks);
+    return true;
+   }));
+   notified=results.filter(result=>result.status==='fulfilled').length;
+  }
+  return Response.json({schedule:{...record,revision:nextRevision},timeChange:{changed:departureChanged,affectedBookings:timeChangeNotices.length,notificationsAttempted:notified}});
  }catch(e){return Response.json({error:(e as Error).message||'Could not update schedule.'},{status:400});
  }
 }
