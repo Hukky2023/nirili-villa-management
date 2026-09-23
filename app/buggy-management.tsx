@@ -4,6 +4,7 @@ import {BatteryCharging,CalendarDays,CarFront,CheckCircle2,MapPin,Plus,RefreshCw
 import {startLiveRefresh} from "../lib/live-refresh";
 import {islandToday} from "../lib/guest-catalog";
 import DateFieldDMY from "./date-field-dmy";
+import TimeField24 from "./time-field-24";
 import {UiText,UiField,UiOption} from "./ui-language";
 
 type Tab="Overview"|"Dispatch"|"Fleet"|"Maintenance"|"Tracking";

@@ -2,6 +2,7 @@
 
 import {useEffect,useRef,useState} from 'react';
 import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,Palmtree,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
+import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
 type Quote={today?:string;plans?:Plan[];availableRooms?:number;nights?:number;estimates?:{name:string;nightlyCents:number;totalCents:number}[];error?:string};

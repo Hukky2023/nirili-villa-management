@@ -3,6 +3,7 @@ import './excursion-scheduler.css';
 import './excursion-timetable-v2.css';
 import ExcursionWeather from './excursion-weather';
 import DateFieldDMY from './date-field-dmy';
+import TimeField24 from './time-field-24';
 import AdminExcursionBooking from './admin-excursion-booking';
 import ExcursionBookings from './excursion-bookings';
 import ExcursionGuestListButton from './excursion-guest-list';

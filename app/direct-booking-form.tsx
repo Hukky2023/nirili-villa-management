@@ -3,6 +3,7 @@ import {UiText,UiField,UiOption} from './ui-language';
 
 import {useEffect,useRef,useState} from 'react';
 import {X} from 'lucide-react';
+import TimeField24 from './time-field-24';
 import './booking-guests.css';
 import {islandToday,plans} from '../lib/guest-catalog';
 
