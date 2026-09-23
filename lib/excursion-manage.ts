@@ -39,7 +39,7 @@ function text(value:any){return String(value??'').trim();}
 
 export function excursionManageSnapshot(state:any,order:any,liveSchedule:any=null){
  const pending=pendingExcursionChange(state,order.id);
- const schedule=liveSchedule||order.schedule||{};
+ const schedule=['Departed','Completed'].includes(String(order.status||''))?(order.schedule||{}):{...(order.schedule||{}),...(liveSchedule||{})};
  const paidCents=externalExcursionPaymentCents(order);
  const dueCents=Math.max(0,Number(order.cents||order.quotedCents||0)-paidCents);
  const closed=['Completed','Departed','Cancelled'].includes(String(order.status||''));
@@ -57,14 +57,14 @@ export function excursionManageSnapshot(state:any,order:any,liveSchedule:any=nul
   room:text(order.externalRoom||order.room),
   groupName:text(order.groupName),
   date:text(order.date||schedule.date),
-  time:text(order.time||schedule.time),
-  endTime:text(order.endTime||schedule.endTime),
-  returnTime:text(order.returnTime||schedule.returnTime),
+  time:text(schedule.time||order.time),
+  endTime:text(schedule.endTime||order.endTime),
+  returnTime:text(schedule.returnTime||order.returnTime),
   status,
-  paymentStatus:cancelled?'Cancelled':paidCents>0&&dueCents===0?'Paid':paidCents>0?'Partially paid':'Unpaid',
+  paymentStatus:cancelled?'Cancelled':quotedCents===0?'No payment due':paidCents>0&&dueCents===0?'Paid':paidCents>0?'Partially paid':'Unpaid',
   paidCents,
   balanceCents:dueCents,
-  quotedCents:Math.max(0,Number(order.quotedCents)||Number(order.cents)||0),
+  quotedCents,
   adults:Math.max(0,Number(order.adults)||0),
   children:Math.max(0,Number(order.children)||0),
   infants:Math.max(0,Number(order.infants)||0),
