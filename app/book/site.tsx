@@ -42,7 +42,7 @@ export default function GuestBookingSite(){
    const r=await fetch('/api/public-booking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     token:token.current,guest,phone,email,checkIn,checkOut,adults,children,meal,notes
    })});
-   const d=await r.json();if(!r.ok)throw Error(d.error||'Could not send booking request.');
+   const d=await r.json();if(!r.ok)throw Error(d.error||'Could not complete your booking.');
    setSuccess(d);
    window.scrollTo({top:0,behavior:'smooth'});
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
@@ -52,16 +52,16 @@ export default function GuestBookingSite(){
   <section className="booking-success">
    <div className="success-mark"><CheckCircle2/></div>
    <span className="eyebrow">NIRILI VILLA · DHIFFUSHI</span>
-   <h1>Your booking request is received.</h1>
-   <p>Thank you, {guest}. Reception will review the dates, allocate a room and contact you using the details you provided.</p>
-   <div className="success-ref"><small>REQUEST REFERENCE</small><strong>{success.id}</strong></div>
+   <h1>Your booking has been received.</h1>
+   <p>Thank you, {guest}. Reception will review the booking, allocate your room and send your final confirmation by email.</p>
+   <div className="success-ref"><small>BOOKING REFERENCE</small><strong>{success.id}</strong></div>
    <div className="success-details">
     <span><CalendarDays/> {checkIn} → {checkOut}</span>
     <span><Users/> {pax} {pax===1?'guest':'guests'}</span>
     <span><Sparkles/> {meal}</span>
    </div>
-   <p className="success-note">This website does not create a management-system login. Your request is sent directly to Nirili Villa reception.</p>
-   <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();setGuest('');setPhone('');setEmail('');setNotes('')}}>Make another request <ArrowRight/></button>
+   <p className="success-note">{success.email?.sent?'We sent a booking received email to '+email+'. Final confirmation will follow after room allocation.':'Your booking is saved, but the confirmation email could not be sent yet. Please keep this booking reference and contact reception if you do not receive an email.'}</p>
+   <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();setGuest('');setPhone('');setEmail('');setNotes('')}}>Make another booking <ArrowRight/></button>
   </section>
  </main>;
 
@@ -72,7 +72,7 @@ export default function GuestBookingSite(){
     <div><strong>Nirili Villa</strong><small>DHIFFUSHI · MALDIVES</small></div>
    </a>
    <nav><a href="#stay">Stay</a><a href="/book/excursions">Excursions</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
-   <a className="nav-book" href="#book"><span>Request a stay</span><ArrowRight/></a>
+   <a className="nav-book" href="#book"><span>Book Now</span><ArrowRight/></a>
   </header>
 
   <section className="hero" id="stay">
@@ -92,7 +92,7 @@ export default function GuestBookingSite(){
   <section className="quick-strip">
    <article><ShipWheel/><div><strong>Airport transfers</strong><span>Shared speedboat arrangements available</span></div></article>
    <article><Sparkles/><div><strong>Island experiences</strong><span>Snorkeling, sandbanks, fishing and more</span><a className="inline-excursion-cta" href="/book/excursions">External guest? Book excursions <ArrowRight/></a></div></article>
-   <article><Globe2/><div><strong>Simple booking</strong><span>Send a request — no account or portal access</span></div></article>
+   <article><Globe2/><div><strong>Simple booking</strong><span>Book direct — no account or portal access</span></div></article>
   </section>
 
   <section className="rates" id="rates">
@@ -111,12 +111,12 @@ export default function GuestBookingSite(){
   <section className="booking-zone" id="book">
    <div className="booking-intro">
     <span className="eyebrow">BOOK DIRECT</span>
-    <h2>Request your Nirili Villa stay.</h2>
-    <p>Tell us your dates and group details. We will check the room inventory and send the request directly to reception.</p>
+    <h2>Book your Nirili Villa stay.</h2>
+    <p>Choose your dates and stay details. Your booking goes directly to reception for room allocation and confirmation.</p>
     <div className="booking-points"><span><CheckCircle2/> No management-system account</span><span><CheckCircle2/> Live room availability check</span><span><CheckCircle2/> Reception confirms your booking</span></div>
    </div>
    <form className="booking-form" onSubmit={submit}>
-    <div className="form-heading"><div><small>STAY REQUEST</small><h3>Your trip details</h3></div>{quote.availableRooms!==undefined&&<span className={quote.availableRooms>0?'available':'unavailable'}>{quote.availableRooms>0?quote.availableRooms+' rooms available':'No rooms available'}</span>}</div>
+    <div className="form-heading"><div><small>ROOM BOOKING</small><h3>Your trip details</h3></div>{quote.availableRooms!==undefined&&<span className={quote.availableRooms>0?'available':'unavailable'}>{quote.availableRooms>0?quote.availableRooms+' rooms available':'No rooms available'}</span>}</div>
     <div className="form-grid dates">
      <label><span>Check-in</span><input required type="date" min={today||undefined} value={checkIn} onChange={e=>{setCheckIn(e.target.value);if(e.target.value>=checkOut)setCheckOut(tomorrow(e.target.value,1))}}/></label>
      <label><span>Check-out</span><input required type="date" min={checkIn?tomorrow(checkIn,1):today||undefined} value={checkOut} onChange={e=>setCheckOut(e.target.value)}/></label>
@@ -136,19 +136,19 @@ export default function GuestBookingSite(){
     <label><span>Lead guest name</span><input required maxLength={100} autoComplete="name" value={guest} onChange={e=>setGuest(e.target.value)} placeholder="Full name"/></label>
     <div className="form-grid">
      <label><span>WhatsApp / contact</span><input required type="tel" maxLength={30} autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+960…"/><small>Include country code</small></label>
-     <label><span>Email (optional)</span><input type="email" maxLength={254} autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/></label>
+     <label><span>Email</span><input required type="email" maxLength={254} autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/><small>Booking confirmations are sent here</small></label>
     </div>
     <label><span>Special requests (optional)</span><textarea rows={4} maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Arrival details, dietary requests, transfer help, celebration, or anything else we should know."/></label>
     {error&&<p className="form-error" role="alert">{error}</p>}
-    <button className="submit-booking" disabled={busy||checking||quote.availableRooms===0}>{busy?'Sending request…':'Send booking request'} <ArrowRight/></button>
-    <p className="privacy-note"><ShieldCheck/> Your request goes to Nirili Villa reception. This form does not create a guest login or provide access to the management system.</p>
+    <button className="submit-booking" disabled={busy||checking||quote.availableRooms===0}>{busy?'Booking…':'Book Your Stay'} <ArrowRight/></button>
+    <p className="privacy-note"><ShieldCheck/> Your booking goes to Nirili Villa reception. A confirmation email is sent after the room is approved. This form does not create management-system access.</p>
    </form>
   </section>
 
   <footer className="guest-footer">
    <div className="guest-brand"><span className="brand-sun">☀</span><div><strong>Nirili Villa</strong><small>DHIFFUSHI · MALDIVES</small></div></div>
    <p>Arrive as a Guest, Leave as a Friend.</p>
-   <a href="#book">Request your stay <ArrowRight/></a>
+   <a href="#book">Book your stay <ArrowRight/></a>
   </footer>
  </main>;
 }

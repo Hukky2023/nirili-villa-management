@@ -1,6 +1,7 @@
 import {authDb,limit,sameOrigin} from '../../../lib/auth';
 import {islandToday,nightly,plans,validDate} from '../../../lib/guest-catalog';
 import {readOperationalRecordPrimary,submitPublicBookingRequest} from '../../../lib/supabase-bridge';
+import {sendBookingReceivedEmail} from '../../../lib/booking-email';
 
 const headers={'Cache-Control':'no-store'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
@@ -52,7 +53,7 @@ export async function POST(request:Request){
   const adults=Number(body.adults),children=Number(body.children),pax=adults+children;
   const notes=safeText(body.notes,1000),token=String(body.token||'');
   const today=islandToday(),nights=nightsBetween(checkIn,checkOut);
-  if(!guest||!phonePattern.test(phone)||email&&!emailPattern.test(email))throw Error('Enter your name, WhatsApp number with country code, and a valid email if supplied.');
+  if(!guest||!phonePattern.test(phone)||!email||!emailPattern.test(email))throw Error('Enter your name, WhatsApp number with country code, and a valid email address.');
   if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||!Number.isInteger(nights)||nights<1||nights>365)throw Error('Choose valid check-in and check-out dates.');
   if(!Number.isInteger(adults)||adults<1||adults>3||!Number.isInteger(children)||children<0||children>2||pax>3)throw Error('A room can accommodate up to 3 guests.');
   if(!plans.includes(meal))throw Error('Choose a valid meal plan.');
@@ -69,13 +70,15 @@ export async function POST(request:Request){
    status:'Pending',source:'Guest booking website',createdAt:new Date().toISOString(),estimate
   };
   const result:any=await submitPublicBookingRequest(booking);
+  const bookingRef=result?.id||id;
+  const emailResult=await sendBookingReceivedEmail({email,guest,reference:bookingRef,checkIn,checkOut,meal,pax,totalCents:estimate});
   // Keep Cloudflare D1 as the rollback mirror; failure here must not lose a successful Supabase request.
   try{
    const latest=await readOperationalRecordPrimary('hotel-stays-v1');
    if(latest?.payload)await authDb().prepare("INSERT INTO operation_records(key,payload,revision,updated_by) VALUES('hotel-stays-v1',?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by")
     .bind(JSON.stringify(latest.payload),Number(latest.revision)||1,'public-booking-site').run();
   }catch{}
-  return Response.json({ok:true,id:result?.id||id,duplicate:!!result?.duplicate,estimateCents:estimate,nights},{status:201,headers});
+  return Response.json({ok:true,id:bookingRef,duplicate:!!result?.duplicate,estimateCents:estimate,nights,email:emailResult},{status:201,headers});
  }catch(error){
   const message=error instanceof Error?error.message:'Could not send your booking request.';
   return Response.json({error:message},{status:400,headers});

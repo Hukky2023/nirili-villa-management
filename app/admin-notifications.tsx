@@ -55,7 +55,7 @@ function buildNotices(previous:Snapshot,current:Snapshot){
   else if(changed(old,o))push(out,"change",kind+" booking changed",String(o.guest||"Guest")+" · "+String(o.name||kind)+" · "+String(o.status||""),id+":order");
  }
  const psvc=obj(previous.services),csvc=obj(current.services);
- diffCollection(out,arr(psvc.requests),arr(csvc.requests),"hotel","New guest booking request",r=>String(r.guest||"Guest")+" · "+String(r.checkIn||"")+" → "+String(r.checkOut||""));
+ diffCollection(out,arr(psvc.requests),arr(csvc.requests),"hotel","New room booking",r=>String(r.guest||"Guest")+" · "+String(r.checkIn||"")+" → "+String(r.checkOut||""));
  const pt=obj(previous.transport),ct=obj(current.transport);
  diffCollection(out,arr(pt.bookings),arr(ct.bookings),"transport","New transport booking",b=>{
   const j=arr(b.journeys)[0]||{};return String(b.guest||b.name||"Guest")+" · "+String(j.from||"")+" → "+String(j.to||"")+" · "+String(j.date||"")+" "+String(j.depart||"");
