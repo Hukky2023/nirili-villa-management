@@ -1390,3 +1390,20 @@
  .admin-private-boat>span{align-items:flex-start;flex-wrap:wrap}
  .admin-private-boat strong{margin-left:27px;width:100%}
 }
+
+.admin-booking-form-error{
+ display:grid;
+ gap:3px;
+ padding:11px 13px;
+ border:1px solid #e1b4a8;
+ border-radius:10px;
+ background:#fff4f1;
+ color:#8b2f22;
+}
+.admin-booking-form-error strong{font-size:13px}
+.admin-booking-form-error span{font-size:12px;line-height:1.45}
+.admin-guest-row input[aria-invalid="true"]{
+ border-color:#c94b3a;
+ box-shadow:0 0 0 2px rgba(201,75,58,.12);
+ background:#fff8f6;
+}

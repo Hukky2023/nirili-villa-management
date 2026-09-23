@@ -31,7 +31,7 @@ function maldivesToday(){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Indi
 const ageLabel=(value:string)=>value==='child'?'Child (3–11)':value==='infant'?'Under 3':'Adult (12+)';
 
 export default function AdminExcursionBooking({schedules,sharedBoatGroups,resources,stays,menu,date,onSaved,onMessage}:Props){
- const [open,setOpen]=useState(false),[saving,setSaving]=useState(false),[loadingDay,setLoadingDay]=useState(false),[loadingMenu,setLoadingMenu]=useState(false);
+ const [open,setOpen]=useState(false),[saving,setSaving]=useState(false),[loadingDay,setLoadingDay]=useState(false),[loadingMenu,setLoadingMenu]=useState(false),[formError,setFormError]=useState('');
  const [bookingDate,setBookingDate]=useState(date),[daySchedules,setDaySchedules]=useState<any[]>(schedules),[dayGroups,setDayGroups]=useState<Record<string,any>>(sharedBoatGroups);
  const [form,setForm]=useState<any>(blankForm());
  const [liveMenu,setLiveMenu]=useState<any[]>(menu||[]);
@@ -85,7 +85,8 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
  });
  const money=(c:number)=>'$'+((Number(c)||0)/100).toFixed(2);
 
- function reset(){setForm(blankForm());setBookingDate(date);setDaySchedules(schedules);setDayGroups(sharedBoatGroups);}
+ function reset(){setForm(blankForm());setBookingDate(date);setDaySchedules(schedules);setDayGroups(sharedBoatGroups);setFormError('');}
+ function fail(message:string){setFormError(message);onMessage('');}
  function close(){if(saving)return;setOpen(false);reset();}
  function resizeGuestArrays(current:any,total:number,categories:string[]){
   const guestNames=Array.from({length:total},(_,index)=>String(current.guestNames?.[index]||''));
@@ -126,19 +127,19 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
  }
 
  async function submit(e:React.FormEvent){
-  e.preventDefault();if(saving)return;
-  if(!selected&&!selectedOther){onMessage(choosingOther?'Choose an excursion from the excursion menu.':'Choose an available trip.');return;}
+  e.preventDefault();if(saving)return;setFormError('');
+  if(!selected&&!selectedOther){fail(choosingOther?'Choose an excursion from the excursion menu.':'Choose an available trip.');return;}
   const total=Number(form.quantity)||0,ageTotal=(Number(form.adults)||0)+(Number(form.children)||0)+(Number(form.infants)||0);
-  if(total<1||total>100||ageTotal!==total){onMessage('Total seats must match Adults + Children + Children under 3.');return;}
+  if(total<1||total>100||ageTotal!==total){fail('Total seats must match Adults + Children + Children under 3.');return;}
   const guestNames=(form.guestNames||[]).slice(0,total).map((value:any)=>String(value||'').trim());
   const guestCategories=(form.guestCategories||[]).slice(0,total);
-  if(guestNames.length!==total||guestNames.some((name:string)=>!name)){onMessage('Enter the name of every guest.');return;}
-  if(guestCategories.length!==total||guestCategories.some((category:string)=>!['adult','child','infant'].includes(category))){onMessage('Choose an age category for every guest.');return;}
+  if(guestNames.length!==total||guestNames.some((name:string)=>!name)){fail('Enter the name of every guest.');return;}
+  if(guestCategories.length!==total||guestCategories.some((category:string)=>!['adult','child','infant'].includes(category))){fail('Choose an age category for every guest.');return;}
   const footSizes=(form.footSizes||[]).slice(0,total);
-  if(snorkeling&&(footSizes.length!==total||footSizes.some((value:any)=>!Number.isInteger(Number(value))||Number(value)<15||Number(value)>50))){onMessage('Enter an EU foot size from 15 to 50 for every snorkeling guest.');return;}
-  if(form.guestType==='inhouse'&&!form.stayId){onMessage('Choose an in-house guest.');return;}
-  if(form.guestType==='walkin'&&(!form.guest.trim()||!form.hotel.trim()||!form.phone.trim())){onMessage('Enter the walk-in guest name, hotel and WhatsApp number.');return;}
-  if(needsExtraVessel&&!form.vesselId){onMessage('This departure does not have enough seats. Choose an extra vessel for this booking.');return;}
+  if(snorkeling&&(footSizes.length!==total||footSizes.some((value:any)=>!Number.isInteger(Number(value))||Number(value)<15||Number(value)>50))){const missing=footSizes.findIndex((value:any)=>!Number.isInteger(Number(value))||Number(value)<15||Number(value)>50);fail('Enter an EU foot size from 15 to 50 for '+(guestNames[missing]||('Guest '+(missing+1)))+'. Foot size is required for snorkeling fins.');return;}
+  if(form.guestType==='inhouse'&&!form.stayId){fail('Choose an in-house guest.');return;}
+  if(form.guestType==='walkin'&&(!form.guest.trim()||!form.hotel.trim()||!form.phone.trim())){fail('Enter the walk-in guest name, hotel and WhatsApp number.');return;}
+  if(needsExtraVessel&&!form.vesselId){fail('This departure does not have enough seats. Choose an extra vessel for this booking.');return;}
   setSaving(true);onMessage('');
   try{
    const payload=selected?{action:'admin-booking',date:bookingDate,scheduleId:selected.id}:{action:'admin-booking-auto',date:bookingDate,menuItemId:selectedOther.id,forceUnscheduled:true};
@@ -168,7 +169,7 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
 
  return <>
   <button type="button" className="excursion-secondary-btn" onClick={()=>{setOpen(true);setBookingDate(date);setDaySchedules(schedules);setDayGroups(sharedBoatGroups)}}>+ Book guest</button>
-  {open&&<div className="excursion-schedule-overlay"><form className="excursion-schedule-dialog admin-excursion-booking" onSubmit={submit}>
+  {open&&<div className="excursion-schedule-overlay"><form className="excursion-schedule-dialog admin-excursion-booking" onSubmit={submit} noValidate>
    <header><div><small>ADMIN BOOKING</small><h3>Book excursion on any day</h3><p>{formatDateDMY(bookingDate)} · Add every guest, then confirm a scheduled trip or send it to Awaiting Scheduling.</p></div><button type="button" className="excursion-dialog-close" aria-label="Close" onClick={close}><X/></button></header>
    <div className="excursion-schedule-form-grid">
     <label>Date<input required type="date" min={maldivesToday()} value={bookingDate} onChange={e=>loadDay(e.target.value)}/><small>Change the date to load that day's excursion schedule.</small></label>
@@ -197,13 +198,15 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
       <span className="admin-guest-number">{index+1}</span>
       <label>Guest name<input required maxLength={100} value={form.guestNames?.[index]||''} onChange={e=>updateGuestName(index,e.target.value)} placeholder={'Guest '+(index+1)+' name'}/></label>
       <label>Age category<select required value={form.guestCategories?.[index]||'adult'} onChange={e=>updateGuestCategory(index,e.target.value)}><option value="adult">Adult (12+)</option><option value="child">Child (3–11)</option><option value="infant">Under 3</option></select><small>{ageLabel(form.guestCategories?.[index]||'adult')}</small></label>
-      {snorkeling&&<label>EU foot size<input required type="number" inputMode="numeric" min={15} max={50} step={1} value={form.footSizes?.[index]??''} onChange={e=>updateFootSize(index,e.target.value)} placeholder="e.g. 42"/><small>For fins</small></label>}
+      {snorkeling&&<label>EU foot size<input aria-invalid={!!formError&&(!Number.isInteger(Number(form.footSizes?.[index]))||Number(form.footSizes?.[index])<15||Number(form.footSizes?.[index])>50)} type="number" inputMode="numeric" min={15} max={50} step={1} value={form.footSizes?.[index]??''} onChange={e=>{setFormError('');updateFootSize(index,e.target.value)}} placeholder="e.g. 42"/><small>Required for snorkeling fins · EU size 15–50</small></label>}
      </div>)}</div>
     </div>}
 
     {privateBoatEligible&&<label className="full admin-private-boat"><span><input type="checkbox" checked={!!form.privateBoatRequested} onChange={e=>setForm({...form,privateBoatRequested:e.target.checked,vesselId:''})}/> Private boat for this group <strong>+{money(PRIVATE_BOAT_SURCHARGE_CENTS)}</strong></span><small>Available for 4+ guests. The booking will go to Awaiting Scheduling so Admin can assign a dedicated vessel and crew.</small></label>}
 
     {needsExtraVessel&&<label className="full admin-extra-vessel">Extra vessel<select required value={form.vesselId} onChange={e=>setForm({...form,vesselId:e.target.value})}><option value="">Choose extra vessel</option>{availableExtraVessels.map((v:any)=><option key={v.id} value={v.id}>{v.name}{Number.isSafeInteger(Number(v.capacity))?' · '+v.capacity+' pax':''}</option>)}</select><small>This trip only has {remaining} seat{remaining===1?'':'s'} left. The selected extra vessel will carry this booking at the same departure time.</small>{!availableExtraVessels.length&&<strong>No available vessel has enough recorded capacity. Update vessel capacity or choose Private boat to schedule it separately.</strong>}</label>}
+
+    {formError&&<div className="full admin-booking-form-error" role="alert"><strong>Booking needs attention</strong><span>{formError}</span></div>}
 
     {selected&&<div className="full admin-booking-capacity"><span>{form.privateBoatRequested?'Private boat request':needsExtraVessel?'Extra vessel booking':'Selected trip'}</span><strong>{selected.time} · {selected.name}</strong><small>{booked+' / '+capacity+' confirmed · '+remaining+' seat'+(remaining===1?'':'s')+' remaining · '}{estimatedTotal?money(estimatedTotal)+' estimated total · ':''}{form.privateBoatRequested?'Awaiting Scheduling after save.':needsExtraVessel?'Separate vessel will be recorded for this booking.':'Departure time is checked using Maldives time (UTC+5).'}</small></div>}
     {selectedOther&&<div className="full admin-booking-capacity"><span>Awaiting Scheduling</span><strong>{selectedOther.name}</strong><small>{estimatedTotal?money(estimatedTotal)+' estimated total · ':''}Admin will assign the departure time, vessel and crew after the booking is saved.</small></div>}
