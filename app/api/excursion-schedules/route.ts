@@ -11,6 +11,7 @@ import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
 import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,PRIVATE_BOAT_SURCHARGE_CENTS,scheduleCanServeRequest,scheduleMatchRank,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
 import {mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
+import {sendExternalExcursionDeclinedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
 
 const prefix='excursion-schedule:';
 const validDate=(v:any)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T00:00:00Z'));
@@ -323,6 +324,7 @@ export async function PATCH(r:Request){
    delete order.scheduleId;delete order.schedule;delete order.vesselId;delete order.crewIds;delete order.guideIds;
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
+   if(order.source==='External guest website'&&order.email&&order.manageToken)try{await sendExternalExcursionUpdatedEmail({email:order.email,guest:order.guest,reference:order.id,excursion:order.name,date:order.date,time:order.time,quantity:Number(order.quantity)||0,quotedCents:Number(order.quotedCents)||0,hotel:order.hotel,manageToken:order.manageToken,eventId:'schedule-'+now});}catch{}
    return Response.json({ok:true,booking:{id:order.id,status:'Confirmed',time:order.time,serviceType:order.serviceType,buggyRoundTrip:order.buggyRoundTrip}});
   }
 
@@ -374,6 +376,7 @@ export async function PATCH(r:Request){
     return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
    }
    try{await mirrorExcursionScheduleRecord(key,{...record,revision:1,updatedBy:user.userId});}catch{}
+   if(order.source==='External guest website'&&order.email&&order.manageToken)try{await sendExternalExcursionUpdatedEmail({email:order.email,guest:order.guest,reference:order.id,excursion:order.name,date:order.date,time:order.time,endTime:order.endTime,quantity:Number(order.quantity)||0,quotedCents:Number(order.quotedCents)||0,hotel:order.hotel,manageToken:order.manageToken,eventId:'schedule-'+scheduleId});}catch{}
    return Response.json({ok:true,booking:{id:order.id,status:'Confirmed'},schedule:{...record,revision:1}},{status:201});
   }
 
@@ -393,6 +396,7 @@ export async function PATCH(r:Request){
    order.guestNotified=false;
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
+   if(order.source==='External guest website'&&order.email&&order.manageToken)try{await sendExternalExcursionDeclinedEmail({email:order.email,guest:order.guest,reference:order.id,excursion:order.name,date:order.date,time:order.time||'',quantity:Number(order.quantity)||0,quotedCents:Number(order.quotedCents)||0,hotel:order.hotel,manageToken:order.manageToken,eventId:'decline-'+order.rejectedAt});}catch{}
    return Response.json({ok:true,requestId,status:'Rejected'});
   }
 
