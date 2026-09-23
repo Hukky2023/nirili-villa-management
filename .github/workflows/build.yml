@@ -35,6 +35,8 @@ jobs:
         run: node --experimental-strip-types --test tests/excursion-manage.test.mjs
       - name: Excursion date-change auto-assignment regression tests
         run: node --experimental-strip-types --test tests/excursion-change-autoassign.test.mjs
+      - name: Excursion booking reassignment regression tests
+        run: node --experimental-strip-types --test tests/excursion-reassignment.test.mjs
       - name: Special Package auto-scheduling regression tests
         run: node --experimental-strip-types --test tests/special-package-auto-schedule.test.mjs
       - name: Build production worker
