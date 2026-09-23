@@ -124,14 +124,14 @@ export async function loadStays(){
   if(saved.meta.changes)revision+=1;
  }
  revision=await keepOnlyDhaainAndSifaahCrew(state,revision);
- reconcileRestaurantRoomBills(state);updateRoomInventory(state);return {state,revision};
+ if(typeof reconcileRestaurantRoomBills==='function')reconcileRestaurantRoomBills(state);updateRoomInventory(state);return {state,revision};
 }
 function usesDemoLegacyFolio(s:any){return ['NV-1260','NV-1261','NV-1262','NV-1263'].includes(String(s?.id||''))&&['101','102','103','104'].includes(String(s?.billRoom||''));}
 async function folioOverrides(room:string){
  const p='folio:'+room+':';
  const [d1,primary]=await Promise.all([
   authDb().prepare('SELECT key,payload,revision FROM operation_records WHERE key LIKE ?').bind(p+'%').all<any>(),
-  readOperationalRecordsPrimaryByPrefix(p).catch(()=>[])
+  typeof readOperationalRecordsPrimaryByPrefix==='function'?readOperationalRecordsPrimaryByPrefix(p).catch(()=>[]):Promise.resolve([])
  ]);
  const byKey=new Map<string,any>();
  for(const row of d1.results||[])byKey.set(String(row.key),{revision:Number(row.revision)||0,payload:typeof row.payload==='string'?JSON.parse(row.payload):row.payload});
