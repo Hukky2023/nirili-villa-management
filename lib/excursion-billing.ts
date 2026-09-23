@@ -31,14 +31,12 @@ function defaultBillingItems(order:any){
 
 export function excursionPricing(order: any): ExcursionPricing {
   const totalCents = Math.max(0, Math.round(Number(order.cents) || 0));
-  if(validBillingItems(order.billingItems)){
+  if(validBillingItems(order.billingItems)&&billingItemsTotalCents(order.billingItems)===totalCents){
     const originalCents=billingItemsOriginalCents(order.billingItems);
-    const calculated=billingItemsTotalCents(order.billingItems);
-    const total=calculated===totalCents?totalCents:calculated;
     return {
-      originalCents,totalCents:total,discountCents:Math.max(0,originalCents-total),
+      originalCents,totalCents,discountCents:Math.max(0,originalCents-totalCents),
       discountPercent:billingItemsUniformDiscount(order.billingItems),
-      complimentary:total===0,
+      complimentary:totalCents===0,
       adjusted:order.billingAdjustment?.action!=='restore'
     };
   }
