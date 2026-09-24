@@ -1208,6 +1208,30 @@ function webhookRevisionId(payload:any){
   return text(candidates.find(Boolean),160);
 }
 
+export async function handleBookingComCron(request:Request){
+  const connection=await getConnection();
+  const supplied=request.headers.get('x-nirili-channel-cron')||'';
+  const expected=String(connection.settings?.cronTokenHash||'');
+  if(!supplied||!expected||!equalSecret(await hashText(supplied),expected)){
+    throw Object.assign(Error('Invalid booking-feed poll token.'),{status:401});
+  }
+  if(!connection.enabled){
+    return {ok:true,skipped:true,reason:'channel_disabled',mode:connection.mode};
+  }
+  const started=isoNow();
+  try{
+    const result=await pullBookingComFeed();
+    await recordEvent('cron-poll:'+started,'inbound','booking_feed_poll','processed',{
+      mode:connection.mode,received:result.received,processed:result.processed?.length||0
+    });
+    return {ok:true,skipped:false,mode:connection.mode,received:result.received,processed:result.processed?.length||0};
+  }catch(error){
+    const message=error instanceof Error?error.message:'Booking feed poll failed.';
+    await recordEvent('cron-poll:'+started,'inbound','booking_feed_poll','error',{mode:connection.mode},message);
+    throw error;
+  }
+}
+
 export async function handleBookingComWebhook(request:Request){
   const cfg=runtime();
   const connection=await getConnection();
