@@ -8,6 +8,34 @@ import {
   syncRestaurantRoomBill
 } from '../lib/pos-room-billing.ts';
 
+test('deleted booking orders cannot return from the restaurant recovery table',()=>{
+ const removed={id:'POS-D2DE1652',stayId:'NV-0004',room:'103',cents:0,items:[{included:true,cents:0}]};
+ const newer={id:'POS-NEW',stayId:'NV-0009',room:'103',cents:500,items:[{name:'Drink',quantity:1,unitCents:500,cents:500}]};
+ const state={
+  stays:[{id:'NV-0009',posBills:[],paidBills:{}}],
+  posOrders:[removed,newer],
+  deletedPOSOrders:[],
+  deletedBookings:[{stay:{id:'NV-0004'},posOrders:[removed],deletedAt:'2026-09-23T20:41:37.777Z'}]
+ };
+ reconcileRestaurantRoomBills(state);
+ assert.deepEqual(state.posOrders.map(o=>o.id),['POS-NEW']);
+ assert.deepEqual(state.stays[0].posBills.map(b=>b.id),['POS-NEW']);
+ assert.equal(state.deletedBookings[0].posOrders[0].id,removed.id);
+});
+
+test('deleted booking suppresses recovered orders missing from its archived snapshot',()=>{
+ const state={stays:[],posOrders:[{id:'POS-LATE',stayId:'NV-DELETED',cents:0}],deletedBookings:[{stay:{id:'NV-DELETED'}}]};
+ reconcileRestaurantRoomBills(state);
+ assert.deepEqual(state.posOrders,[]);
+});
+
+test('individual deletion wins over a stale active order and linked room charge',()=>{
+ const state={stays:[{id:'NV-1',posBills:[{department:'Restaurant',id:'POS-DELETED',totalCents:500}],paidBills:{}}],posOrders:[{id:'POS-DELETED',stayId:'NV-1',cents:500,items:[{name:'Drink',quantity:1,unitCents:500,cents:500}]}],deletedPOSOrders:[{id:'POS-DELETED'}]};
+ reconcileRestaurantRoomBills(state);
+ assert.deepEqual(state.posOrders,[]);
+ assert.deepEqual(state.stays[0].posBills,[]);
+});
+
 test('Full Board included-only order never creates a room bill',()=>{
  const stay={id:'NV-FB',meal:'Full Board',posBills:[],paidBills:{}};
  const order={

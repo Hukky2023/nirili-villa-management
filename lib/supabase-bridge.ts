@@ -200,7 +200,9 @@ export async function readRestaurantOrdersPrimary(){
 }
 
 export async function restoreRestaurantOrdersPrimary(state:any){
-  if(!state||typeof state!=='object'||!supabaseBridgeConfigured())return state;
+  if(!state||typeof state!=='object')return state;
+  reconcileRestaurantRoomBills(state);
+  if(!supabaseBridgeConfigured())return state;
   return mergeRestaurantOrdersIntoHotelState(state,await readRestaurantOrdersPrimary());
 }
 
@@ -850,6 +852,7 @@ export async function mirrorTransportState(state:any){
 }
 
 export async function mirrorHotelState(state:any){
+  reconcileRestaurantRoomBills(state);
   if(!supabaseBridgeConfigured())return false;
   const now=new Date().toISOString();
   const rooms=(state.rooms||[]).map((room:any)=>({

@@ -47,10 +47,27 @@ export function restaurantPaymentStatus(order:any,stay:any){
 export function reconcileRestaurantRoomBills(state:any){
  if(!state||typeof state!=='object')return state;
  const stays=Array.isArray(state.stays)?state.stays:[];
- const orders=Array.isArray(state.posOrders)?state.posOrders:[];
+ const candidates=Array.isArray(state.posOrders)?state.posOrders:[];
  const deleted=Array.isArray(state.deletedPOSOrders)?state.deletedPOSOrders:[];
- const liveIds=new Set(orders.map((order:any)=>String(order?.id||'')).filter(Boolean));
  const deletedIds=new Set(deleted.map((order:any)=>String(order?.id||'')).filter(Boolean));
+ const deletedStayIds=new Set<string>();
+ // Booking deletion archives its bills separately from individual POS deletion.
+ // Both archives must win over stale snapshots and restaurant recovery rows.
+ for(const booking of Array.isArray(state.deletedBookings)?state.deletedBookings:[]){
+  const stayId=String(booking?.stay?.id||'');
+  if(stayId)deletedStayIds.add(stayId);
+  for(const order of Array.isArray(booking?.posOrders)?booking.posOrders:[]){
+   const id=String(order?.id||'');
+   if(id)deletedIds.add(id);
+  }
+ }
+ const orders=candidates.filter((order:any)=>{
+  const id=String(order?.id||'');
+  if(deletedStayIds.has(String(order?.stayId||''))){if(id)deletedIds.add(id);return false;}
+  return !deletedIds.has(id);
+ });
+ state.posOrders=orders;
+ const liveIds=new Set(orders.map((order:any)=>String(order?.id||'')).filter(Boolean));
 
  for(const stay of stays){
   stay.posBills=Array.isArray(stay.posBills)?stay.posBills:[];

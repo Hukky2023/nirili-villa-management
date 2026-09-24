@@ -1,6 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {deletePOSBill} from '../lib/pos-bill-delete.ts';
+import {readFileSync} from 'node:fs';
+import {stripTypeScriptTypes} from 'node:module';
+
+const bridgeSource=readFileSync(new URL('../lib/supabase-bridge.ts',import.meta.url),'utf8')
+ .replace("import {env} from 'cloudflare:workers';","const env={SUPABASE_SECRET_KEY:'test-only-key'};")
+ .replace("'./pos-room-billing'",JSON.stringify(new URL('../lib/pos-room-billing.ts',import.meta.url).href));
+const bridge=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(bridgeSource,{mode:'transform'})).toString('base64'));
+
+test('Supabase recovery and subsequent save do not resurrect a deleted booking bill',async t=>{
+ const order={id:'POS-ARCHIVED',stayId:'NV-ARCHIVED',cents:0,items:[{included:true,cents:0}]};
+ const state={stays:[],posOrders:[order],deletedBookings:[{stay:{id:'NV-ARCHIVED'},posOrders:[order]}]};
+ let saved;
+ t.mock.method(globalThis,'fetch',async (url,init)=>{
+  if(String(url).includes('/restaurant_orders?'))return Response.json([{id:order.id,payload:order}]);
+  if(String(url).endsWith('/rpc/save_operational_record')){saved=JSON.parse(init.body).p_payload;return Response.json(2);}
+  throw Error('Unexpected test request: '+url);
+ });
+ await bridge.restoreRestaurantOrdersPrimary(state);
+ assert.deepEqual(state.posOrders,[]);
+ assert.equal(await bridge.saveOperationalRecordPrimary('hotel-stays-v1',state,1,'admin'),2);
+ assert.deepEqual(saved.posOrders,[]);
+ assert.equal(saved.deletedBookings[0].posOrders[0].id,order.id);
+});
+
+test('known deleted bills stay hidden when Supabase recovery is unavailable',async t=>{
+ const state={stays:[],posOrders:[{id:'POS-ARCHIVED',stayId:'NV-ARCHIVED'}],deletedBookings:[{stay:{id:'NV-ARCHIVED'}}]};
+ t.mock.method(globalThis,'fetch',async()=>{throw Error('Recovery unavailable');});
+ await assert.rejects(bridge.restoreRestaurantOrdersPrimary(state),/Recovery unavailable/);
+ assert.deepEqual(state.posOrders,[]);
+});
 
 test('included Full Board zero-dollar bill deletes without a linked room charge',()=>{
  const order={
