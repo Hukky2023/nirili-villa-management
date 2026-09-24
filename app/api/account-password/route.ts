@@ -1,6 +1,6 @@
 import {authDb,currentUser,hashPassword,hasPermission,limit,roomLoginActive,sameOrigin,validPassword,verifyPassword} from '../../../lib/auth';
 import {credentialStatement,mirrorCredentialRecord,readCredential} from '../../../lib/credential-store';
-import {deleteLegacySessionsForAccount,mirrorLegacyAccount,updateSupabaseEmployeePassword} from '../../../lib/supabase-bridge';
+import {deleteLegacySessionsForAccount,mirrorLegacyAccount,updateSupabaseEmployeePassword,supabaseBridgeConfigured} from '../../../lib/supabase-bridge';
 import {appendAccountHistory} from '../../../lib/account-history';
 
 function canHandleGuestAccess(user:any,target:any){
@@ -50,7 +50,8 @@ export async function POST(r:Request){
    {
     const row=await db.prepare('SELECT * FROM accounts WHERE id=?').bind(target.id).first<any>();
     if(row)await mirrorLegacyAccount(row);
-    await mirrorCredentialRecord(target.id);
+    const codeSynced=await mirrorCredentialRecord(target.id);
+    if(supabaseBridgeConfigured()&&!codeSynced)throw Error('Guest setup code could not be synced.');
    }
    try{await appendAccountHistory(target.id,{at:new Date().toISOString(),action:'Guest password reset',by:u.username,detail:'One-time reset code issued. Previous guest password and active sessions invalidated.'});}catch{}
 

@@ -40,7 +40,7 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
   try{
    const d=await request({action:'guest-reset-code'});
    setAvailable(true);setPassword(d.setupCode||'');setShow(true);setOpen(true);
-   setMessage('Password reset. Share this new one-time setup code with the guest. Their previous password no longer works.');
+   setMessage('Password reset. The guest must create a new password using this one-time setup code. Their previous password no longer works.');
   }catch(e){setMessage((e as Error).message)}
   finally{setBusy(false);}
  }
@@ -90,6 +90,7 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
    {user.role!=='guest'&&<button onClick={()=>{setOpen(true);setMode('reset');setCurrentPassword('');setDraft('');setMessage('');}}><UiText>Manage password</UiText></button>}
   </div>
 
+  {isGuest&&available===true&&<p role="status"><UiText>Password setup required. Share the setup code so the guest can create a new private password.</UiText></p>}
   {isGuest&&unavailableGuest&&<p role="status"><UiText>Guest chose their own password. Reception cannot view it. If the guest forgets it, use Reset guest password to issue a new one-time setup code.</UiText></p>}
   {message&&!open&&<p role="status"><UiText>{message}</UiText></p>}
 
