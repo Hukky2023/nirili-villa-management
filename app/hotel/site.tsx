@@ -1,3 +1,4 @@
+import WebsiteChat from '../website-chat';
 import {
  ArrowRight, BedDouble, CheckCircle2, Compass, Heart, MapPin,
  Palmtree, Plane, ShipWheel, Sparkles, Star, Sun, UtensilsCrossed, Waves
@@ -250,5 +251,6 @@ export default function HotelHome(){
    <p>Arrive as a Guest, Leave as a Friend.</p>
    <div className="footer-links"><a href="#stay">Stay</a><a href="#dining">Dining</a><a href="#experiences">Explore</a><a href={BOOK}>Book</a></div>
   </footer>
+  <WebsiteChat/>
  </main>;
 }
