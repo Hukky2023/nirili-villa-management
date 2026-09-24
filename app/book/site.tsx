@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useRef,useState} from 'react';
-import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,Palmtree,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
+import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,Palmtree,ShipWheel,Sparkles,Users} from 'lucide-react';
 import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
@@ -87,7 +87,7 @@ export default function GuestBookingSite(){
     <h1>Island days.<br/><em>Easy stays.</em></h1>
     <p>Stay close to the beach, explore the Maldives with our local team, and arrange your room, meals, transfers and island experiences from one place.</p>
     <div className="hero-actions"><a className="primary" href="#book">Check your dates <ArrowRight/></a><a href="#rates">View room rates <ChevronDown/></a></div>
-    <div className="trust-row"><span><ShieldCheck/> No guest login required</span><span><Heart/> Local Dhiffushi hospitality</span></div>
+    <div className="trust-row"><span><Heart/> Local Dhiffushi hospitality</span></div>
    </div>
    <div className="hero-card">
     <div className="lagoon-art"><span className="sun"/><span className="island"/><span className="wave wave-a"/><span className="wave wave-b"/><Palmtree className="palm"/></div>
