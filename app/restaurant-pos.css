@@ -59,3 +59,13 @@
 .pos-meal-plan-badge.half{background:#493a1f;color:#ffe0a1;border-color:#80652f}
 
 .till-included-price{color:#8ee8cc!important;font-weight:800}
+
+/* Keep product photos and labels inside equally sized grid cards. */
+.till-products{align-items:stretch;gap:8px}
+.till-products>article{display:flex;flex-direction:column;min-width:0}
+.till-products .till-product{flex:1;min-width:0;justify-content:flex-start;gap:7px;padding:8px}
+.till-product .menu-product-photo{width:100%;max-width:100%;height:auto;aspect-ratio:4 / 3;object-fit:cover;flex-shrink:0;margin:0 0 2px;border-radius:7px}
+.till-product b,.till-product small,.till-product strong,.till-product>span{max-width:100%;overflow-wrap:anywhere}
+.till-product b{min-height:2.8em}
+.till-product strong{margin-top:auto;padding-top:3px}
+@media(max-width:650px){.till-products{grid-template-columns:repeat(2,minmax(0,1fr))}.till-product b{font-size:12px}.till-product strong{font-size:14px}}
