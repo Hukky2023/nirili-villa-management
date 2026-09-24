@@ -411,7 +411,7 @@ export async function ensureBookingComStagingRoomTypes(){
       const uniqueRateTitle=spec.title==='Double Room'?plan.title:(spec.title+' · '+plan.title);
       let rate=existingRates.find((item:any)=>{
         const a=attrsOf(item);
-        return String(a.room_type_id||'')===roomId&&String(a.title||a.name||'').trim().toLowerCase()===uniqueRateTitle.toLowerCase();
+        return String(a.title||a.name||'').trim().toLowerCase()===uniqueRateTitle.toLowerCase();
       });
       if(!rate){
         const amount=plan.rates[spec.occupancy-1];
@@ -429,6 +429,7 @@ export async function ensureBookingComStagingRoomTypes(){
           }})
         });
         rate=rowsOf(result)[0]||result?.data||result;
+        if(rate)existingRates.push(rate);
       }
       const rateId=String(rate?.id||attrsOf(rate)?.id||'');
       if(!rateId)throw Error('Channex did not return a rate plan ID for '+spec.title+' / '+plan.title+'.');
