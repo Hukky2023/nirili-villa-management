@@ -25,6 +25,7 @@ type ExcursionTab='Bookings'|'Schedule'|'Excursion menu'|'Crew members'|'Vessels
 function maldivesToday(){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=(type:string)=>parts.find(p=>p.type===type)?.value||'';return `${get('year')}-${get('month')}-${get('day')}`;}
 const shiftDate=(date:string,days:number)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 const displayDate=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)?value.split('-').reverse().join('-'):value;
+const scheduleDateStorageKey='nirili-excursion-schedule-date';
 
 export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(body:any)=>Promise<any>}){
  const [tab,setTab]=useState<ExcursionTab>('Schedule');
@@ -32,6 +33,15 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
  const canAddCrew=data?.canSchedule===true&&Number.isInteger(data?.revision)&&typeof mutate==='function';
  const [date,setDate]=useState(maldivesToday());
  const [autoAdvanceDate,setAutoAdvanceDate]=useState(true);
+ useEffect(()=>{
+  try{
+   const stored=window.sessionStorage.getItem(scheduleDateStorageKey);
+   if(stored&&/^\d{4}-\d{2}-\d{2}$/.test(stored)){
+    setAutoAdvanceDate(false);
+    setDate(stored);
+   }
+  }catch{}
+ },[]);
  const [schedules,setSchedules]=useState<any[]>([]),[sharedBoatGroups,setSharedBoatGroups]=useState<Record<string,any>>({}),[unscheduledRequests,setUnscheduledRequests]=useState<any[]>([]),[crewTripRequests,setCrewTripRequests]=useState<any[]>([]),[loading,setLoading]=useState(false),[message,setMessage]=useState(''),[editor,setEditor]=useState<any>(null),[assignment,setAssignment]=useState<any>(null),[accessoriesFor,setAccessoriesFor]=useState(''),[requestScheduler,setRequestScheduler]=useState<any>(null),[cancelSchedule,setCancelSchedule]=useState<any>(null),[menuEditor,setMenuEditor]=useState<any>(null),[saving,setSaving]=useState(false),[requestBusy,setRequestBusy]=useState(''),[crewRequestBusy,setCrewRequestBusy]=useState(''),[crewReplacements,setCrewReplacements]=useState<Record<string,string>>({}),[requestVessels,setRequestVessels]=useState<Record<string,string>>({});
  const [menu,setMenu]=useState<any[]>((data?.catalog||[]).filter((item:any)=>item.kind==='excursion'));
  const resources=data?.resources||{vessels:[],crew:[],gopros:[],drones:[]};
@@ -90,9 +100,22 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
   const timer=window.setInterval(advanceIfFinished,30000);
   return()=>window.clearInterval(timer);
  },[tab,date,schedules,loading,autoAdvanceDate]);
+ function rememberScheduleDate(nextDate:string){
+  try{window.sessionStorage.setItem(scheduleDateStorageKey,nextDate);}catch{}
+ }
  function selectScheduleDate(nextDate:string){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(nextDate))return;
   setAutoAdvanceDate(false);
+  rememberScheduleDate(nextDate);
   setDate(nextDate);
+ }
+ function moveScheduleDate(days:number){
+  setAutoAdvanceDate(false);
+  setDate(current=>{
+   const nextDate=shiftDate(current,days);
+   rememberScheduleDate(nextDate);
+   return nextDate;
+  });
  }
  async function reviewCrewTripRequest(request:any,decision:'Approved'|'Declined'){
   if(crewRequestBusy)return;
@@ -195,7 +218,7 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
     <div className="excursion-panel-head"><div><h3>Schedule</h3><p>Manage the six regular daily trips, trip end times, boats, crew and additional trips created from guest requests.</p></div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><AdminExcursionBooking schedules={schedules} sharedBoatGroups={sharedBoatGroups} resources={resources} stays={data?.stays||[]} menu={menu} date={date} onSaved={()=>load(date)} onMessage={setMessage}/><button type="button" className="excursion-primary-btn" onClick={createSchedule}>+ Create schedule</button><ExcursionShareTimetable key={date} date={date} disabled={loading||saving}/></div></div>
     <p className="excursion-guide-notice"><strong>Guide rule: 5 or more confirmed passengers require at least 3 guides.</strong>Assign at least 3 crew members to the trip; assigned crew count as guides. Trips needing more crew are flagged below; existing bookings are kept.</p>
     {unscheduledRequests.length>0&&<section className="excursion-unscheduled-requests"><div className="excursion-unscheduled-head"><div><small>NOT SCHEDULED</small><h4>Trips waiting to be scheduled</h4><p>These bookings do not yet have a suitable trip. Create the trip here; once the booking is scheduled successfully, it is removed from this list automatically.</p></div><span>{unscheduledRequests.length} waiting</span></div><div className="excursion-unscheduled-list">{unscheduledRequests.map((req:any)=><article key={req.id}><div><strong>{req.name}</strong><p>{req.guest} · {req.inHouse?'In-house':'Walk-in'}{req.room?' · Room '+req.room:''} · {req.quantity} guest{req.quantity===1?'':'s'} · {req.adults} adult{req.adults===1?'':'s'} · {req.children} child{req.children===1?'':'ren'} · {req.infants} under 3</p><small>{displayDate(req.date)} · {money(req.quotedCents)} total{req.privateBoatRequested?' · PRIVATE BOAT +$50':''}{req.preferredTime?' · Suggested '+req.preferredTime+(req.preferredEndTime?'–'+req.preferredEndTime:''):''}{req.buggyRequested?' · Buggy '+(req.inHouse?'included':'requested'):''}{req.notes?' · '+req.notes:''}</small></div><div className="excursion-request-actions"><button type="button" className="excursion-secondary-btn" disabled={requestBusy===req.id} onClick={()=>rejectUnscheduledRequest(req)}>{requestBusy===req.id?'Rejecting…':'Reject'}</button><button type="button" className="excursion-primary-btn" disabled={requestBusy===req.id} onClick={()=>openRequestScheduler(req)}>{isRomanticBeachDinner(req)?'Confirm dinner':req.privateBoatRequested?'Create private trip':'Create schedule'}</button></div></article>)}</div></section>}
-    <div className="excursion-schedule-tools"><button type="button" onClick={()=>selectScheduleDate(shiftDate(date,-1))}>← Previous day</button><label>Date<DateFieldDMY value={date} onChange={selectScheduleDate} ariaLabel="Schedule date"/></label><button type="button" onClick={()=>selectScheduleDate(shiftDate(date,1))}>Next day →</button></div>
+    <div className="excursion-schedule-tools"><button type="button" aria-label="Show previous excursion schedule day" onClick={()=>moveScheduleDate(-1)}>← Previous day</button><label>Date<DateFieldDMY value={date} onChange={selectScheduleDate} ariaLabel="Schedule date"/></label><button type="button" aria-label="Show next excursion schedule day" onClick={()=>moveScheduleDate(1)}>Next day →</button></div>
     {message&&<p className="excursion-schedule-message" role="status">{message}</p>}
     {crewTripRequests.length>0&&<section className="crew-trip-admin-requests"><div className="crew-trip-admin-head"><div><small>CREW REQUESTS</small><h4>Crew unable to attend</h4><p>A leave request can only be approved after Admin chooses an available replacement. Approval replaces the crew member immediately in the trip assignment.</p></div><span>{crewTripRequests.length} pending</span></div><div className="crew-trip-admin-list">{crewTripRequests.map((request:any)=>{const replacementChoices=crewPool.filter((member:any)=>member.active!==false&&member.active!==0&&member.id!==request.crewId&&!(request.assignedCrewIds||[]).includes(member.id));const replacementId=crewReplacements[request.id]||'';return <article key={request.id}><div className="crew-trip-admin-main"><strong>{request.crewName}</strong><h5>{request.tripNames.join(' + ')}</h5><p>{displayDate(request.date)} · {request.time}{request.endTime?'–'+request.endTime:''} · Maldives time</p><blockquote>{request.reason}</blockquote></div><div className="crew-trip-admin-actions"><label className="crew-replacement-select"><span>Replacement crew</span><select value={replacementId} disabled={crewRequestBusy===request.id} onChange={event=>setCrewReplacements({...crewReplacements,[request.id]:event.target.value})}><option value="">Choose replacement before approval</option>{replacementChoices.map((member:any)=><option key={member.id} value={member.id}>{member.name}</option>)}</select>{!replacementChoices.length&&<small>No unassigned active crew are available.</small>}</label><div className="crew-trip-admin-action-buttons"><button type="button" className="excursion-secondary-btn" disabled={crewRequestBusy===request.id} onClick={()=>reviewCrewTripRequest(request,'Declined')}>Decline</button><button type="button" className="excursion-primary-btn" disabled={crewRequestBusy===request.id||!replacementId} onClick={()=>reviewCrewTripRequest(request,'Approved')}>{crewRequestBusy===request.id?'Saving…':'Approve & replace'}</button></div></div></article>})}</div></section>}
 
