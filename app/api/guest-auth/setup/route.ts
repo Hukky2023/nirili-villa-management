@@ -1,6 +1,6 @@
 import {authDb,hashPassword,issueGuestSession,limit,roomLoginActive,sameOrigin,validPassword,verifyPassword} from '../../../../lib/auth';
 import {readCredential} from '../../../../lib/credential-store';
-import {deleteLegacySessionsForAccount,deleteOperationalRecordPrimary,mirrorLegacyAccount} from '../../../../lib/supabase-bridge';
+import {primaryGuestAccount,supabaseBridgeConfigured,deleteLegacySessionsForAccount,deleteOperationalRecordPrimary,mirrorLegacyAccount} from '../../../../lib/supabase-bridge';
 
 function guestHostAllowed(r:Request){
  const host=(r.headers.get('host')||new URL(r.url).host).split(':')[0].toLowerCase();
@@ -33,7 +33,7 @@ export async function POST(r:Request){
   }
 
   const db=authDb();
-  const row=await db.prepare("SELECT * FROM accounts WHERE lower(username)=? AND role='guest' AND active=1").bind(username).first<any>();
+  const row=supabaseBridgeConfigured()?await primaryGuestAccount(username):await db.prepare("SELECT * FROM accounts WHERE lower(username)=? AND role='guest' AND active=1").bind(username).first<any>();
   if(!row||!row.id?.startsWith('room-')||!await roomLoginActive(row.id)){
    return Response.json({error:'This room is not currently available for guest password setup.'},{status:401,headers});
   }
@@ -56,12 +56,12 @@ export async function POST(r:Request){
    return Response.json({error:'Guest access changed while the password was being created. Please try again.'},{status:409,headers});
   }
 
-  try{await deleteLegacySessionsForAccount(row.id);}catch{}
-  try{await deleteOperationalRecordPrimary('credential:'+row.id);}catch{}
-  try{
+  await deleteLegacySessionsForAccount(row.id);
+  await deleteOperationalRecordPrimary('credential:'+row.id);
+  {
    const updated=await db.prepare('SELECT * FROM accounts WHERE id=?').bind(row.id).first<any>();
    if(updated)await mirrorLegacyAccount(updated);
-  }catch{}
+  }
 
   const cookie=await issueGuestSession(row.id);
   return Response.json({ok:true,redirect:'/stay'},{headers:{...headers,'Set-Cookie':cookie}});
@@ -69,3 +69,4 @@ export async function POST(r:Request){
   return Response.json({error:'Could not create the guest password. Please try again or contact reception.'},{status:503,headers});
  }
 }
+

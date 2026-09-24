@@ -25,6 +25,7 @@ export async function POST(r:Request){
   if(!target)return Response.json({error:'Account not found.'},{status:404,headers});
 
   if(b.action==='reveal'){
+   if(target.role!=='guest')return Response.json({error:'Passwords are private. Set a new password if access needs to be recovered.'},{status:403,headers});
    if(!canHandleGuestAccess(u,target))return Response.json({error:'Admin or Reception access required.'},{status:403,headers});
    const password=await readCredential(target.id,target.password_hash);
    return Response.json({password,available:password!==null},{headers});
@@ -45,12 +46,12 @@ export async function POST(r:Request){
    ]);
    if(!result[0].meta.changes)return Response.json({error:'Guest access changed while resetting. Refresh and try again.'},{status:409,headers});
 
-   try{await deleteLegacySessionsForAccount(target.id);}catch{}
-   try{
+   await deleteLegacySessionsForAccount(target.id);
+   {
     const row=await db.prepare('SELECT * FROM accounts WHERE id=?').bind(target.id).first<any>();
     if(row)await mirrorLegacyAccount(row);
     await mirrorCredentialRecord(target.id);
-   }catch{}
+   }
    try{await appendAccountHistory(target.id,{at:new Date().toISOString(),action:'Guest password reset',by:u.username,detail:'One-time reset code issued. Previous guest password and active sessions invalidated.'});}catch{}
 
    return Response.json({ok:true,setupCode,requiresNewPassword:true},{headers});
@@ -60,13 +61,7 @@ export async function POST(r:Request){
   if(u.role!=='admin')return Response.json({error:'Only Admin can manage account passwords.'},{status:403,headers});
   if(!validPassword(b.password))return Response.json({error:'Use a password of 8–128 characters.'},{status:400,headers});
 
-  if(b.action==='remember'){
-   if(!await limit('credential-verify:'+u.userId+':'+target.id,10,900000))return Response.json({error:'Too many attempts. Try later.'},{status:429,headers});
-   if(!await verifyPassword(b.password,target.salt,target.password_hash))return Response.json({error:'The current password is incorrect.'},{status:400,headers});
-   await (await credentialStatement(target.id,target.password_hash,b.password,u.userId)).run();
-   try{await mirrorCredentialRecord(target.id);}catch{}
-   return Response.json({ok:true},{headers});
-  }
+  if(b.action==='remember')return Response.json({error:'Passwords cannot be saved for later viewing. Use password reset.'},{status:400,headers});
 
   if(b.action!=='reset')return Response.json({error:'Invalid password action.'},{status:400,headers});
   if(target.role==='admin'){
@@ -86,14 +81,15 @@ export async function POST(r:Request){
    db.prepare('DELETE FROM account_sessions WHERE account_id=?').bind(b.id),
    await credentialStatement(b.id,p.hash,b.password,u.userId)
   ]);
-  try{await deleteLegacySessionsForAccount(b.id);}catch{}
-  try{
+  await deleteLegacySessionsForAccount(b.id);
+  {
    const row=await db.prepare('SELECT * FROM accounts WHERE id=?').bind(b.id).first<any>();
    if(row)await mirrorLegacyAccount(row);
    await mirrorCredentialRecord(b.id);
-  }catch{}
+  }
   return Response.json({ok:true,signInAgain:target.id===u.userId},{headers});
  }catch{
   return Response.json({error:'Could not access the password. Please try again.'},{status:503,headers});
  }
 }
+

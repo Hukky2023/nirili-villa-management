@@ -66,8 +66,9 @@ export async function saveStayAccess(state:any,revision:number,by:string,plan:an
     ...documents.map(doc=>mirrorOperationalRecord('passport:'+doc.id,doc.payload,1,by)),
     ...removedDocuments.map(id=>deleteOperationalRecordPrimary('passport:'+id))
   ]);}catch{}
-  if(plan)try{await mirrorLegacyAccount({id:plan.id,username:plan.username,name:plan.name,password_hash:plan.hash.hash,salt:plan.hash.salt,role:'guest',permissions:'[]',active:1});await mirrorCredentialRecord(plan.id);}catch{}
-  for(const id of disabledIds)try{await deactivateSupabaseAccount(id);}catch{}
+  if(plan){await mirrorLegacyAccount({id:plan.id,username:plan.username,name:plan.name,password_hash:plan.hash.hash,salt:plan.hash.salt,role:'guest',permissions:'[]',active:1});await mirrorCredentialRecord(plan.id);}
+  for(const id of disabledIds)await deactivateSupabaseAccount(id);
  }
  return saved;
 }
+

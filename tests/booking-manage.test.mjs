@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {bookingCancellationNeedsApproval,bookingManageUrl,bookingForManageToken,bookingManageSnapshot,createBookingManageToken,roomAvailability,validBookingManageToken} from '../lib/booking-manage.ts';
+import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url),ts=require('typescript');
+function load(file){const m={exports:{}};const src=ts.transpileModule(readFileSync(new URL(file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;new Function('require','module','exports',src)(id=>load('../lib/'+id.replace('./','')+'.ts'),m,m.exports);return m.exports;}
+const {bookingCancellationNeedsApproval,bookingManageUrl,bookingForManageToken,bookingManageSnapshot,createBookingManageToken,roomAvailability,validBookingManageToken}=load('../lib/booking-manage.ts');
 
 const token='a'.repeat(48);
 const base=()=>({
@@ -78,3 +82,4 @@ test('Manage Booking shows the linked arrival buggy status and driver',()=>{
  assert.equal(view.transportPlan.arrival.buggy.buggyName,'Buggy One');
  assert.equal(view.transportPlan.arrival.buggy.driver,'Ahmed');
 });
+

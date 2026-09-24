@@ -134,7 +134,8 @@ export const validEmail=(e:string)=>e.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.
 
 export async function roomLoginActive(id:string){
  if(!id.startsWith('room-')&&!id.startsWith('walkin-exc-'))return true;
- let state:any=null;try{state=(await readOperationalRecordPrimary('hotel-stays-v1'))?.payload||null;}catch{}
+ let state:any=null;try{state=(await readOperationalRecordPrimary('hotel-stays-v1'))?.payload||null;}catch{if(supabaseBridgeConfigured())return false;}
+ if(!state&&supabaseBridgeConfigured())return false;
  if(!state){const r=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind('hotel-stays-v1').first<any>();if(!r)return false;state=JSON.parse(r.payload);}
 
  if(id.startsWith('walkin-exc-')){

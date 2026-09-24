@@ -68,7 +68,7 @@ async function deleteSubscription(accountId:string,endpoint?:string){
 function cleanSubscription(raw:any):StoredSubscription{
  const endpoint=String(raw?.endpoint||'').trim(),p256dh=String(raw?.keys?.p256dh||'').trim(),auth=String(raw?.keys?.auth||'').trim();
  let url:URL;try{url=new URL(endpoint)}catch{throw Error('Invalid push subscription endpoint.')}
- if(url.protocol!=='https:'||endpoint.length>2200||p256dh.length<40||p256dh.length>300||auth.length<10||auth.length>120)throw Error('Invalid push subscription.');
+ if(!validPushEndpoint(endpoint)||endpoint.length>2200||p256dh.length<40||p256dh.length>300||auth.length<10||auth.length>120)throw Error('Invalid push subscription.');
  const now=new Date().toISOString();
  return {endpoint,expirationTime:Number.isFinite(Number(raw?.expirationTime))?Number(raw.expirationTime):null,keys:{p256dh,auth},createdAt:now,updatedAt:now};
 }
@@ -114,7 +114,8 @@ async function encryptedBody(subscription:StoredSubscription,payload:string){
 async function sendOne(subscription:StoredSubscription,payload:string,pair:VapidPair){
  if(subscription.expirationTime&&subscription.expirationTime<Date.now())return {ok:false,gone:true};
  const body=await encryptedBody(subscription,payload),authorization=await vapidAuthorization(subscription.endpoint,pair);
- const response=await fetch(subscription.endpoint,{method:'POST',headers:{Authorization:authorization,'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream','TTL':'300','Urgency':'high'},body});
+ if(!validPushEndpoint(subscription.endpoint))throw Error('Unsupported push provider.');
+ const response=await fetch(subscription.endpoint,{redirect:'error',method:'POST',headers:{Authorization:authorization,'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream','TTL':'300','Urgency':'high'},body});
  return {ok:response.ok,status:response.status,gone:response.status===404||response.status===410};
 }
 
@@ -180,4 +181,14 @@ export async function sendGuestPushForExcursionTimeChange(
  }).length;
  if(stale.size)for(const endpoint of stale)await deleteSubscription(accountId,endpoint);
  return {sent,total:subscriptions.length};
+}
+
+
+export function validPushEndpoint(endpoint:string){
+ try{
+  const u=new URL(endpoint),h=u.hostname.toLowerCase();
+  return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&!u.hash&&(
+   h==='fcm.googleapis.com'||h==='updates.push.services.mozilla.com'||h==='web.push.apple.com'||
+   h.endsWith('.push.apple.com')||h.endsWith('.notify.windows.com'));
+ }catch{return false;}
 }
