@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
+import {startLiveRefresh} from '../lib/live-refresh';
 import {UiText} from './ui-language';
 import AccountPassword from './account-password';
 
@@ -10,7 +11,7 @@ export default function GuestAccountForm({stayId,standalone=false,embedded=false
   const r=await fetch('/api/guest-accounts?stay='+encodeURIComponent(stayId),{cache:'no-store'}),d=await r.json();
   if(!r.ok)throw Error(d.error||'Could not load guest access.');setData(d);setError('');
  }
- useEffect(()=>{refresh().catch(e=>setError((e as Error).message));const reload=()=>refresh().catch(()=>{});window.addEventListener('services-updated',reload);return()=>window.removeEventListener('services-updated',reload);},[stayId]);
+ useEffect(()=>{refresh().catch(e=>setError((e as Error).message));return startLiveRefresh(()=>refresh().catch(()=>{}));},[stayId]);
  if(!stayId)return null;
  const stay=data?.stay,account=data?.account;
  return <section className={'room-notes guest-create'+(embedded?' embedded':'')}>
