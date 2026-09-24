@@ -1,13 +1,25 @@
 'use client';
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {ArrowRight,Eye,EyeOff,KeyRound,ShieldCheck} from 'lucide-react';
 import AuthShell from '../auth-shell';
 import {UiField,UiText} from '../ui-language';
 
 export default function GuestStayLogin(){
- const [mode,setMode]=useState<'login'|'setup'>('login');
+ const [mode,setMode]=useState<'login'|'setup'>('setup');
  const [username,setUsername]=useState(''),[password,setPassword]=useState(''),[show,setShow]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [setupCode,setSetupCode]=useState(''),[newPassword,setNewPassword]=useState(''),[confirmPassword,setConfirmPassword]=useState(''),[showNew,setShowNew]=useState(false);
+
+ useEffect(()=>{
+  if(new URLSearchParams(window.location.search).get('mode')==='setup')return;
+  try{
+   const room=localStorage.getItem('nirili-guest-password-room');
+   if(room&&/^\d{3,10}$/.test(room)){setUsername(room);setMode('login');}
+  }catch{}
+ },[]);
+
+ function rememberAccount(){
+  try{localStorage.setItem('nirili-guest-password-room',username.trim());}catch{}
+ }
 
  function switchMode(next:'login'|'setup'){
   if(busy)return;
@@ -19,6 +31,7 @@ export default function GuestStayLogin(){
   try{
    const r=await fetch('/api/guest-auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})}),d=await r.json();
    if(!r.ok)throw Error(d.error||'Could not sign in.');
+   rememberAccount();
    window.location.assign(d.redirect||'/stay');
   }catch(e){setError((e as Error).message);setBusy(false);}
  }
@@ -30,6 +43,7 @@ export default function GuestStayLogin(){
   try{
    const r=await fetch('/api/guest-auth/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,setupCode,password:newPassword,confirmPassword})}),d=await r.json();
    if(!r.ok)throw Error(d.error||'Could not create your password.');
+   rememberAccount();
    window.location.assign(d.redirect||'/stay');
   }catch(e){setError((e as Error).message);setBusy(false);}
  }
@@ -47,8 +61,8 @@ export default function GuestStayLogin(){
   </div>
 
   <div className="nv-guest-auth-tabs" role="tablist" aria-label="Guest access">
-   <button type="button" role="tab" aria-selected={mode==='login'} className={mode==='login'?'active':''} onClick={()=>switchMode('login')}><UiText>Sign in</UiText></button>
-   <button type="button" role="tab" aria-selected={mode==='setup'} className={mode==='setup'?'active':''} onClick={()=>switchMode('setup')}><UiText>Create / reset password</UiText></button>
+   <button type="button" role="tab" aria-selected={mode==='setup'} className={mode==='setup'?'active':''} onClick={()=>switchMode('setup')}><UiText>Sign up / reset password</UiText></button>
+   <button type="button" role="tab" aria-selected={mode==='login'} className={mode==='login'?'active':''} onClick={()=>switchMode('login')}><UiText>Already registered? Sign in</UiText></button>
   </div>
 
   {mode==='login'?<form className="nv-login-form" onSubmit={submitLogin}>
@@ -56,7 +70,7 @@ export default function GuestStayLogin(){
    <label><UiText>Your password</UiText><span className="nv-password"><UiField as="input" required type={show?'text':'password'} autoComplete="current-password" maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your private password"/><UiField as="button" type="button" aria-label={show?'Hide password':'Show password'} onClick={()=>setShow(!show)}><UiText>{show?<EyeOff size={20}/>:<Eye size={20}/>}</UiText></UiField></span></label>
    {error&&<p className="nv-login-error" role="alert"><UiText>{error}</UiText></p>}
    <button className="nv-submit" disabled={busy}><UiText>{busy?'Signing in…':'Open my stay'}</UiText><ArrowRight size={18}/></button>
-   <p className="nv-phone-note"><UiText>First time here? Choose Create / reset password and use the 5-digit setup code from reception. Forgot your password? Ask Reception for a new one-time reset code.</UiText></p>
+   <p className="nv-phone-note"><UiText>First time here? Choose Sign up / reset password and use the 5-digit setup code from reception. Forgot your password? Ask Reception for a new one-time reset code.</UiText></p>
   </form>:<form className="nv-login-form" onSubmit={submitSetup}>
    <label><UiText>Room number</UiText><UiField as="input" required inputMode="numeric" pattern="[0-9]*" autoComplete="username" value={username} onChange={e=>setUsername(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="e.g. 201"/></label>
    <label><UiText>5-digit setup code</UiText><UiField as="input" required inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" maxLength={5} value={setupCode} onChange={e=>setSetupCode(e.target.value.replace(/\D/g,'').slice(0,5))} placeholder="Code from reception"/></label>

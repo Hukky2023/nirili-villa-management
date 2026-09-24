@@ -50,7 +50,7 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
  function text(){
   const rooms=(user.stays||[]).filter((s:any)=>s.status!=='Checked Out').map((s:any)=>'Room '+s.room+' · '+s.meal).join('\n');
   if(isGuest){
-   return 'Nirili Villa guest portal setup\nName: '+user.name+'\nRoom: '+user.username+'\nSetup code: '+password+'\n'+(rooms?rooms+'\n':'')+'Portal: https://booking.nirilihotels.com/stay\n\nOpen the portal, choose Create password, enter the room number and setup code, then create your own private password.';
+   return 'Nirili Villa guest portal setup\nName: '+user.name+'\nRoom: '+user.username+'\nSetup code: '+password+'\n'+(rooms?rooms+'\n':'')+'Portal: https://booking.nirilihotels.com/stay?mode=setup\n\nOpen the portal, choose Create password, enter the room number and setup code, then create your own private password.';
   }
   const link=window.location.origin+'/login?portal=direct&username='+encodeURIComponent(user.username);
   return 'Nirili Villa login\nName: '+user.name+'\nUsername: '+user.username+'\nPassword: '+password+'\n'+(rooms?rooms+'\n':'')+'Login: '+link+'\n\nOpen the link and sign in. You will be taken directly to your assigned page.';
