@@ -1050,3 +1050,5 @@
  .hotel-footer{padding:32px 18px;align-items:flex-start;flex-direction:column}
  .footer-links{flex-wrap:wrap}
 }
+
+.hotel-home .rate-card strong{font-size:28px;line-height:1.15;letter-spacing:-.035em}

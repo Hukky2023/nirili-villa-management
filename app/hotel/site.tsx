@@ -3,7 +3,7 @@ import {
  Palmtree, Plane, ShipWheel, Sparkles, Star, Sun, UtensilsCrossed, Waves
 } from 'lucide-react';
 
-const BOOK='https://booking.nirilihotels.com';
+const BOOK='https://booking.nirilihotels.com/#book';
 
 const excursionNames=[
  'Turtle Snorkeling',
@@ -86,8 +86,8 @@ export default function HotelHome(){
     <div className="room-photo"/>
     <div className="rate-card">
      <small>DIRECT STAYS</small>
-     <strong>From $50</strong>
-     <span>per night · Bed & Breakfast</span>
+     <strong>Your island stay</strong>
+     <span>Choose your dates to see available rates</span>
      <a href={BOOK}>View dates <ArrowRight/></a>
     </div>
     <div className="photo-caption">
