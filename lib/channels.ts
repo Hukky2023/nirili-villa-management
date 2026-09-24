@@ -408,16 +408,17 @@ export async function ensureBookingComStagingRoomTypes(){
     });
 
     for(const plan of rateSpecs){
+      const uniqueRateTitle=spec.title==='Double Room'?plan.title:(spec.title+' · '+plan.title);
       let rate=existingRates.find((item:any)=>{
         const a=attrsOf(item);
-        return String(a.room_type_id||'')===roomId&&String(a.title||a.name||'').trim().toLowerCase()===plan.title.toLowerCase();
+        return String(a.room_type_id||'')===roomId&&String(a.title||a.name||'').trim().toLowerCase()===uniqueRateTitle.toLowerCase();
       });
       if(!rate){
         const amount=plan.rates[spec.occupancy-1];
         const result=await channex(connection,'/rate_plans',{
           method:'POST',
           body:JSON.stringify({rate_plan:{
-            title:plan.title,
+            title:uniqueRateTitle,
             property_id:connection.property_id,
             room_type_id:roomId,
             currency:'GBP',
@@ -434,7 +435,7 @@ export async function ensureBookingComStagingRoomTypes(){
       rateRows.push({
         connection_id:connectionId,
         channel_rate_id:rateId,
-        channel_rate_name:spec.title+' · '+plan.title,
+        channel_rate_name:uniqueRateTitle,
         pms_meal_plan:plan.meal,
         currency:'GBP',
         active:true,
