@@ -59,7 +59,6 @@ export async function supabaseBridgeHealth(){
     reachable:false,
     publicReachable,
     publicError:publicReachable?undefined:publicError,
-    secretFormat:false,
     projectRef:'vjbyrjqibzebpzontxgc',
     diagnosticVersion:'supabase-health-v2',
     error:'SUPABASE_SECRET_KEY is not available to this deployment.'
@@ -71,9 +70,6 @@ export async function supabaseBridgeHealth(){
       reachable:true,
       publicReachable,
       roomsVisible:Array.isArray(rows)?rows.length:0,
-      secretFormat:cfg.secret.startsWith('sb_secret_'),
-      secretLength:cfg.secret.length,
-      secretWasNormalized:cfg.secretWasNormalized,
       projectRef:'vjbyrjqibzebpzontxgc',
       diagnosticVersion:'supabase-health-v2'
     };
@@ -84,9 +80,6 @@ export async function supabaseBridgeHealth(){
       reachable:false,
       publicReachable,
       publicError:publicReachable?undefined:publicError,
-      secretFormat:cfg.secret.startsWith('sb_secret_'),
-      secretLength:cfg.secret.length,
-      secretWasNormalized:cfg.secretWasNormalized,
       projectRef:'vjbyrjqibzebpzontxgc',
       diagnosticVersion:'supabase-health-v2',
       error:message
