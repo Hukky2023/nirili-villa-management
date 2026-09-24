@@ -1,8 +1,8 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {ArrowRight,Eye,EyeOff,KeyRound,ShieldCheck} from 'lucide-react';
-import AuthShell from '../auth-shell';
-import {UiField,UiText} from '../ui-language';
+import {ArrowRight,Eye,EyeOff,LockKeyhole,MapPin,Sun,Waves,Utensils,Compass,Car,LoaderCircle,Globe2} from 'lucide-react';
+import LanguageSelector,{UiField,UiText} from '../ui-language';
+import './guest-login.css';
 
 export default function GuestStayLogin(){
  const [mode,setMode]=useState<'login'|'setup'>('setup');
@@ -48,37 +48,54 @@ export default function GuestStayLogin(){
   }catch(e){setError((e as Error).message);setBusy(false);}
  }
 
- return <AuthShell>
-  <div className="nv-auth-heading">
-   <span className="nv-eyebrow"><UiText>NIRILI VILLA · GUEST STAY</UiText></span>
-   <h2><UiText>Guest portal</UiText></h2>
-   <p><UiText>{mode==='setup'?'Create your own private password after check-in.':'Sign in with your room number and the password you created.'}</UiText></p>
-  </div>
-
-  <div className="nv-direct-login-badge">
-   {mode==='setup'?<ShieldCheck size={20}/>:<KeyRound size={20}/>}
-   <div><small><UiText>ACCESS</UiText></small><strong><UiText>{mode==='setup'?'First-time password setup':'In-house guest'}</UiText></strong></div>
-  </div>
-
-  <div className="nv-guest-auth-tabs" role="tablist" aria-label="Guest access">
-   <button type="button" role="tab" aria-selected={mode==='setup'} className={mode==='setup'?'active':''} onClick={()=>switchMode('setup')}><UiText>Sign up / reset password</UiText></button>
-   <button type="button" role="tab" aria-selected={mode==='login'} className={mode==='login'?'active':''} onClick={()=>switchMode('login')}><UiText>Already registered? Sign in</UiText></button>
-  </div>
-
-  {mode==='login'?<form className="nv-login-form" onSubmit={submitLogin}>
-   <label><UiText>Room number</UiText><UiField as="input" required inputMode="numeric" pattern="[0-9]*" autoComplete="username" value={username} onChange={e=>setUsername(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="e.g. 201"/></label>
-   <label><UiText>Your password</UiText><span className="nv-password"><UiField as="input" required type={show?'text':'password'} autoComplete="current-password" maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your private password"/><UiField as="button" type="button" aria-label={show?'Hide password':'Show password'} onClick={()=>setShow(!show)}><UiText>{show?<EyeOff size={20}/>:<Eye size={20}/>}</UiText></UiField></span></label>
-   {error&&<p className="nv-login-error" role="alert"><UiText>{error}</UiText></p>}
-   <button className="nv-submit" disabled={busy}><UiText>{busy?'Signing in…':'Open my stay'}</UiText><ArrowRight size={18}/></button>
-   <p className="nv-phone-note"><UiText>First time here? Choose Sign up / reset password and use the 5-digit setup code from reception. Forgot your password? Ask Reception for a new one-time reset code.</UiText></p>
-  </form>:<form className="nv-login-form" onSubmit={submitSetup}>
-   <label><UiText>Room number</UiText><UiField as="input" required inputMode="numeric" pattern="[0-9]*" autoComplete="username" value={username} onChange={e=>setUsername(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="e.g. 201"/></label>
-   <label><UiText>5-digit setup code</UiText><UiField as="input" required inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" maxLength={5} value={setupCode} onChange={e=>setSetupCode(e.target.value.replace(/\D/g,'').slice(0,5))} placeholder="Code from reception"/></label>
-   <label><UiText>Create password</UiText><span className="nv-password"><UiField as="input" required minLength={8} maxLength={128} type={showNew?'text':'password'} autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="8 or more characters"/><UiField as="button" type="button" aria-label={showNew?'Hide password':'Show password'} onClick={()=>setShowNew(!showNew)}><UiText>{showNew?<EyeOff size={20}/>:<Eye size={20}/>}</UiText></UiField></span></label>
-   <label><UiText>Confirm password</UiText><UiField as="input" required minLength={8} maxLength={128} type={showNew?'text':'password'} autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Enter it again"/></label>
-   {error&&<p className="nv-login-error" role="alert"><UiText>{error}</UiText></p>}
-   <button className="nv-submit" disabled={busy||newPassword.length<8||newPassword!==confirmPassword}><UiText>{busy?'Creating password…':'Create password & open my stay'}</UiText><ArrowRight size={18}/></button>
-   <p className="nv-phone-note"><UiText>Your setup or reset code works only until you create your private password. Reception does not need to know your new password.</UiText></p>
-  </form>}
- </AuthShell>;
+ const setup=mode==='setup';
+ return <main className="nv-guest-entry">
+  <header className="nge-header">
+   <a className="nge-brand" href="/hotel"><span className="nge-mark" aria-hidden="true"><Sun size={22}/><Waves size={30}/></span><span>Nirili Villa<small><UiText>DHIFFUSHI · MALDIVES</UiText></small></span></a>
+   <div className="nge-language"><span><UiText>Language</UiText></span><div className="nge-language-control"><Globe2 size={21} aria-hidden="true"/><LanguageSelector inline/></div></div>
+  </header>
+  <section className="nge-layout">
+   <aside className="nge-welcome">
+    <span className="nge-overline"><UiText>YOUR STAY AT NIRILI VILLA</UiText></span>
+    <h1><UiText>A little island.</UiText><br/><em><UiText>All yours to enjoy.</UiText></em></h1>
+    <p><UiText>Everything for your stay, in one place.</UiText></p>
+    <ul className="nge-services">
+     <li><Utensils size={20}/><UiText>Order your favourite meals</UiText></li>
+     <li><Compass size={20}/><UiText>Discover island excursions</UiText></li>
+     <li><Car size={20}/><UiText>Arrange your transfers & buggy</UiText></li>
+    </ul>
+    <footer><p><UiText>Arrive as a Guest, Leave as a Friend.</UiText></p><span><MapPin size={16}/><UiText>Dhiffushi Island, Maldives</UiText></span></footer>
+   </aside>
+   <section className="nge-card" aria-labelledby="nge-title">
+    <div className="nge-mode" aria-label="Guest access">
+     <button type="button" disabled={busy} aria-pressed={setup} className={setup?'selected':''} onClick={()=>switchMode('setup')}><UiText>Sign up</UiText></button>
+     <button type="button" disabled={busy} aria-pressed={!setup} className={!setup?'selected':''} onClick={()=>switchMode('login')}><UiText>Sign in</UiText></button>
+    </div>
+    <div className="nge-heading">
+     <span className="nge-overline"><UiText>GUEST PORTAL</UiText></span>
+     <h2 id="nge-title"><UiText>{setup?'Make yourself at home.':'Welcome back.'}</UiText></h2>
+     <p><UiText>{setup?'Use your room number and the setup code from reception to create your password.':'Enter your room number and private password to open your stay.'}</UiText></p>
+    </div>
+    <form className="nge-form" onSubmit={setup?submitSetup:submitLogin} aria-busy={busy}>
+     <fieldset disabled={busy}>
+      <div className={setup?'nge-room-code':'nge-single'}>
+       <label htmlFor="nge-room"><UiText>Room number</UiText><UiField as="input" id="nge-room" name="username" required inputMode="numeric" pattern="[0-9]{3,10}" autoComplete="username" value={username} onChange={e=>setUsername(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="e.g. 101"/></label>
+       {setup&&<label htmlFor="nge-code"><UiText>5-digit setup code</UiText><UiField as="input" id="nge-code" name="setupCode" required inputMode="numeric" pattern="[0-9]{5}" autoComplete="one-time-code" minLength={5} maxLength={5} value={setupCode} onChange={e=>setSetupCode(e.target.value.replace(/\D/g,'').slice(0,5))} placeholder="From reception"/></label>}
+      </div>
+      {setup?<>
+       <label htmlFor="nge-new-password"><UiText>Create password</UiText><span className="nge-password"><UiField as="input" id="nge-new-password" name="newPassword" required minLength={8} maxLength={128} type={showNew?'text':'password'} autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} aria-describedby="nge-password-help" placeholder="At least 8 characters"/><UiField as="button" type="button" aria-label={showNew?'Hide passwords':'Show passwords'} aria-pressed={showNew} onClick={()=>setShowNew(!showNew)}>{showNew?<EyeOff size={20}/>:<Eye size={20}/>}</UiField></span></label>
+       <p className="nge-field-help" id="nge-password-help"><UiText>Choose a private password with at least 8 characters.</UiText></p>
+       <label htmlFor="nge-confirm"><UiText>Confirm password</UiText><UiField as="input" id="nge-confirm" name="confirmPassword" required minLength={8} maxLength={128} type={showNew?'text':'password'} autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Enter your password again"/></label>
+      </>:<label htmlFor="nge-password"><UiText>Your password</UiText><span className="nge-password"><UiField as="input" id="nge-password" name="password" required type={show?'text':'password'} autoComplete="current-password" maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your private password"/><UiField as="button" type="button" aria-label={show?'Hide password':'Show password'} aria-pressed={show} onClick={()=>setShow(!show)}>{show?<EyeOff size={20}/>:<Eye size={20}/>}</UiField></span></label>}
+      {error&&<p className="nge-error" role="alert"><UiText>{error}</UiText></p>}
+      <button className="nge-submit" type="submit" disabled={busy}><UiText>{busy?(setup?'Creating password…':'Signing in…'):(setup?'Create password & continue':'Sign in to my stay')}</UiText>{busy?<LoaderCircle size={19} className="nge-spinner"/>:<ArrowRight size={19}/>}</button>
+     </fieldset>
+    </form>
+    <div className="nge-switch"><UiText>{setup?'Already created your password?':'First time here?'}</UiText><button type="button" disabled={busy} onClick={()=>switchMode(setup?'login':'setup')}><UiText>{setup?'Sign in':'Set up your access'}</UiText></button></div>
+    <details className="nge-help"><summary><UiText>{setup?'Need a setup code or password reset?':'Forgot your password?'}</UiText></summary><p><UiText>Ask reception for a new 5-digit code, then choose Sign up to create a new password. The code can only be used once.</UiText></p></details>
+    <p className="nge-private"><LockKeyhole size={15}/><UiText>Your password stays private.</UiText></p>
+   </section>
+  </section>
+  <footer className="nge-mobile-footer"><MapPin size={15}/><UiText>Dhiffushi Island, Maldives</UiText></footer>
+ </main>;
 }

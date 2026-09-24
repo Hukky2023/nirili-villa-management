@@ -1,0 +1,61 @@
+.nv-guest-entry{--nge-ink:#143a43;--nge-muted:#526d75;--nge-line:#d6e4e7;min-height:100svh;padding:28px clamp(20px,5vw,76px) 36px;background:#f0f6f7;color:var(--nge-ink);font-size:16px;line-height:1.5}
+.nv-guest-entry *{box-sizing:border-box}
+.nge-header{max-width:1120px;margin:0 auto 30px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.nge-brand{display:flex;align-items:center;gap:12px;color:#123b45;text-decoration:none;font:italic 28px/1.1 Georgia,serif}
+.nge-brand small{display:block;margin-top:7px;font:600 12px/1.5 system-ui,sans-serif;letter-spacing:.12em}
+.nge-mark{display:grid;justify-items:center;color:#097b83}
+.nge-mark svg+svg{margin-top:-2px}
+.nge-language{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--nge-muted)}
+.nge-layout{max-width:1120px;margin:auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);border:1px solid var(--nge-line);border-radius:24px;overflow:hidden;background:white;box-shadow:0 18px 60px #103d4910}
+.nge-welcome{display:flex;flex-direction:column;background:#073c46;color:#fff;padding:clamp(32px,4vw,56px);min-width:0}
+.nge-overline{display:block;font-size:12px;font-weight:700;letter-spacing:.13em}
+.nge-welcome>.nge-overline{color:#a8ddd8;margin-bottom:26px}
+.nge-welcome h1{font:400 clamp(34px,3.4vw,48px)/1.16 Georgia,serif;letter-spacing:-.02em;margin:0 0 24px}
+.nge-welcome h1 em{color:#a8e1d8;font-weight:400}
+.nge-welcome>p{color:#d1e8e8;max-width:280px;margin:0;font-size:17px}
+.nge-services{display:grid;gap:22px;list-style:none;padding:34px 0;margin:0}
+.nge-services li{display:flex;gap:13px;align-items:center;color:#e0efef;font-size:15px}
+.nge-services svg{color:#9cdcd2;flex-shrink:0}
+.nge-welcome footer{margin-top:auto;border-top:1px solid #ffffff29;padding-top:26px}
+.nge-welcome footer p{font:italic 18px/1.6 Georgia,serif;margin:0 0 15px;color:#fff}
+.nge-welcome footer span{display:flex;align-items:center;gap:7px;font-size:14px;color:#c4dedd}
+.nge-card{padding:32px clamp(24px,4vw,52px) 24px;min-width:0}
+.nge-mode{display:flex;background:#edf4f5;padding:4px;border:1px solid #e3ecee;border-radius:12px;margin-bottom:25px;gap:4px}
+.nge-mode button{flex:1;min-height:44px;border:0;background:transparent;color:#506c74;border-radius:8px;font-size:15px;font-weight:650;padding:9px 12px}
+.nge-mode button.selected{background:#fff;color:#086d76;box-shadow:0 2px 7px #183f4912}
+.nge-heading>.nge-overline{color:#087782}
+.nge-heading h2{font-size:29px;font-weight:650;line-height:1.2;letter-spacing:-.035em;margin:8px 0 10px}
+.nge-heading p{font-size:15px;color:var(--nge-muted);line-height:1.6;margin:0 0 25px}
+.nge-form fieldset{display:grid;gap:17px;padding:0;margin:0;border:0;min-width:0}
+.nge-room-code{display:grid;grid-template-columns:.8fr 1.2fr;gap:14px}
+.nge-form label{display:grid;gap:7px;font-size:14px;font-weight:650;min-width:0}
+.nge-form input{width:100%;min-width:0;min-height:50px;padding:12px 13px;border:1px solid #c8dade;border-radius:10px;background:#fff;color:#153c45;font-size:16px;line-height:1.5;transition:border-color .15s,box-shadow .15s}
+.nge-form input::placeholder{color:#6f858c;font-weight:400}
+.nge-form input:focus{border-color:#087e89;box-shadow:0 0 0 3px #087e8917;outline:none}
+.nge-password{position:relative;display:block}
+.nge-password input{padding-right:52px}
+.nge-password button{position:absolute;right:3px;top:3px;bottom:3px;width:44px;border:0;border-radius:7px;color:#5a747c;background:transparent;display:grid;place-items:center}
+.nge-password button:hover{background:#eef6f7}
+.nge-field-help{font-size:13px;color:var(--nge-muted);margin:-9px 0 0;line-height:1.5}
+.nge-submit{display:flex;align-items:center;justify-content:center;gap:12px;min-height:52px;width:100%;padding:12px 16px;border:0;border-radius:10px;background:#087f87;color:white;font-size:16px;font-weight:650;margin-top:3px}
+.nge-submit:hover{background:#066a73}
+.nge-submit svg{flex-shrink:0}
+.nv-guest-entry button:disabled{cursor:wait;opacity:.65}
+.nge-switch{display:flex;gap:5px;flex-wrap:wrap;align-items:center;justify-content:center;margin:16px 0 8px;color:var(--nge-muted);font-size:14px}
+.nge-switch button{border:0;background:transparent;color:#08727b;font-size:14px;font-weight:700;padding:10px 4px;min-height:44px}
+.nge-help{border-top:1px solid #e2ecee;margin-top:6px;padding-top:5px;color:var(--nge-muted);font-size:14px}
+.nge-help summary{cursor:pointer;padding:12px 0;min-height:44px;font-weight:550}
+.nge-help p{margin:0 0 10px;line-height:1.65}
+.nge-private{display:flex;justify-content:center;align-items:center;gap:7px;color:#58757c;font-size:13px;margin:15px 0 0}
+.nge-error{color:#92342c;background:#fff3f1;border:1px solid #edc9c4;border-radius:9px;padding:12px 14px;font-size:14px;margin:0;line-height:1.5}
+.nge-mobile-footer{display:none}
+.nv-guest-entry a:focus-visible,.nv-guest-entry button:focus-visible,.nv-guest-entry summary:focus-visible{outline:3px solid #2498a4;outline-offset:3px}
+body:has(.nv-guest-entry)>.nv-session-floating{display:none}
+.nge-spinner{animation:nge-spin 1s linear infinite}
+@keyframes nge-spin{to{transform:rotate(360deg)}}
+@media(max-width:820px){.nv-guest-entry{padding:20px 22px 24px}.nge-header{max-width:520px;margin-bottom:20px}.nge-layout{display:block;max-width:520px}.nge-welcome{display:none}.nge-card{padding:26px 30px}.nge-heading h2{font-size:28px}.nge-mobile-footer{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:22px;color:#53727a;font-size:13px}}
+@media(max-width:480px){.nv-guest-entry{padding:18px 16px 24px}.nge-header{margin-bottom:20px;gap:12px}.nge-brand{font-size:24px;gap:9px}.nge-brand small{font-size:10px;letter-spacing:.1em}.nge-language>span{display:none}.nge-layout{border-radius:18px}.nge-card{padding:22px 20px 20px}.nge-heading h2{font-size:27px}.nge-mode{margin-bottom:23px}.nge-heading p{margin-bottom:22px}.nge-room-code{gap:12px;grid-template-columns:.8fr 1.2fr}.nge-private{font-size:12px}}
+@media(max-width:360px){.nv-guest-entry{padding-inline:12px}.nge-card{padding-inline:17px}.nge-room-code{grid-template-columns:1fr}.nge-brand{font-size:22px}}
+@media(prefers-reduced-motion:reduce){.nge-spinner{animation:none}.nge-form input{transition:none}}
+
+.nge-language-control{position:relative}.nge-language-control>svg{position:absolute;inset:0;margin:auto;z-index:1;pointer-events:none;color:#176872}.nge-language .nv-language label>span{visibility:hidden}
