@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState} from 'react';
 import {CheckCircle2,CloudCog,Database,Link2,RefreshCw,RotateCw,Send,ShieldCheck,TriangleAlert,XCircle} from 'lucide-react';
+import ChannelCertification from './channel-certification';
 
 const meals=['Bed & Breakfast','Half Board','Full Board'];
 
@@ -130,6 +131,8 @@ export default function ChannelManager(){
       <div className="channel-actions"><button disabled={!!busy} onClick={()=>post('preview',{days:30})}><RefreshCw/>Preview 30 days</button><button className="primary" disabled={!!busy||!draft.enabled} onClick={()=>post('push',{days:30})}><Send/>{draft.dryRun?'Run dry-run sync':'Push to Channex'}</button></div>
       {preview&&<div className="channel-preview"><b>{preview.totalInventory} sellable rooms</b><div>{(preview.values||[]).slice(0,14).map((x:any)=><span key={x.date}><small>{x.date.slice(5)}</small><strong>{x.availability}</strong></span>)}</div></div>}
     </article>
+
+    {draft.mode==='staging'&&<ChannelCertification/>}
 
     <div className="channel-two channel-logs">
       <article className="channel-card"><header><Database/><div><h2>Recent reservations</h2></div></header>{data.recentReservations.length===0&&<p>No Booking.com reservations yet.</p>}{data.recentReservations.map((x:any)=><div className="channel-log" key={x.id}><span><b>{x.guest_name||'Guest'}</b><small>{x.check_in||'—'} → {x.check_out||'—'} · {x.booking_reference||'not imported'}</small></span><i>{x.status}</i></div>)}</article>
