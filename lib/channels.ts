@@ -1186,6 +1186,380 @@ export async function pullBookingComFeed(){
   return {ok:true,received:revisions.length,processed};
 }
 
+
+const certificationScenarios=[
+  [1,'Full Data Update (500 days)'],
+  [2,'Single Date Update · Single Rate'],
+  [3,'Single Date Update · Multiple Rates'],
+  [4,'Multiple Date Update · Multiple Rates'],
+  [5,'Minimum Stay Update'],
+  [6,'Stop Sell Update'],
+  [7,'Multiple Restrictions Update'],
+  [8,'Half-Year Update'],
+  [9,'Single Date Availability Update'],
+  [10,'Multiple Date Availability Update'],
+  [11,'Booking Receiving'],
+  [12,'Rate Limits'],
+  [13,'Update Logic'],
+  [14,'Extra Notes']
+] as const;
+
+function certificationScenarioTitle(scenario:number){
+  return certificationScenarios.find(row=>row[0]===scenario)?.[1]||('Scenario '+scenario);
+}
+
+function collectTaskIds(value:any,out=new Set<string>(),key=''):Set<string>{
+  if(value===null||value===undefined)return out;
+  if(typeof value==='string'){
+    const ids=value.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/ig)||[];
+    for(const id of ids)out.add(id);
+    if(/(?:task|request|message).*id/i.test(key)&&value.trim())out.add(value.trim());
+    return out;
+  }
+  if(Array.isArray(value)){for(const item of value)collectTaskIds(item,out,key);return out;}
+  if(typeof value==='object')for(const [childKey,childValue] of Object.entries(value))collectTaskIds(childValue,out,childKey);
+  return out;
+}
+
+async function saveCertificationRun(scenario:number,status:string,taskIds:string[]=[],response:any={},details:any={}){
+  const now=isoNow();
+  const existing=await select('channel_certification_runs','connection_id=eq.'+connectionId+'&scenario=eq.'+scenario+'&select=started_at&limit=1');
+  const rows=await upsert('channel_certification_runs',[{
+    connection_id:connectionId,
+    scenario,
+    title:certificationScenarioTitle(scenario),
+    status,
+    task_ids:taskIds,
+    response:response||{},
+    details:details||{},
+    started_at:existing[0]?.started_at||now,
+    completed_at:['passed','failed','manual'].includes(status)?now:null,
+    updated_at:now
+  }],'connection_id,scenario');
+  return rows[0]||null;
+}
+
+async function ensureCertificationRows(){
+  const existing=await select('channel_certification_runs','connection_id=eq.'+connectionId+'&select=scenario');
+  const found=new Set(existing.map((row:any)=>Number(row.scenario)));
+  const missing=certificationScenarios
+    .filter(row=>!found.has(row[0]))
+    .map(row=>({
+      connection_id:connectionId,
+      scenario:row[0],
+      title:row[1],
+      status:row[0]>=12?'manual':'not_started',
+      task_ids:[],
+      response:{},
+      details:row[0]===12
+        ?{note:'Channex limit is 10 rate/restriction requests and 10 availability requests per minute, per property. Certification scenarios are batched into one request each; production throttling must remain enabled before live ARI is activated.'}
+        :row[0]===13
+          ?{note:'Production must send change-only ARI updates. Full sync is manual/recovery only and must not run on a frequent timer.'}
+          :row[0]===14
+            ?{minStay:'Min Stay Arrival',restrictions:['Stop Sell','Closed to Arrival','Closed to Departure','Max Stay'],multipleRoomsAndRates:true,creditCardDetails:'Not stored by Nirili PMS; keep card data outside PMS scope.'}
+            :{}
+    }));
+  if(missing.length)await upsert('channel_certification_runs',missing,'connection_id,scenario');
+}
+
+function certEntityIds(connection:ChannelConnection){
+  const entities=connection.settings?.certificationEntities||{};
+  return {
+    propertyId:String(entities.propertyId||''),
+    twinRoomId:String(entities.rooms?.twin||''),
+    doubleRoomId:String(entities.rooms?.double||''),
+    twinBarId:String(entities.rates?.twinBar||''),
+    twinBbId:String(entities.rates?.twinBb||''),
+    doubleBarId:String(entities.rates?.doubleBar||''),
+    doubleBbId:String(entities.rates?.doubleBb||'')
+  };
+}
+
+async function certificationPropertyState(connection:ChannelConnection){
+  const ids=certEntityIds(connection);
+  return {
+    ready:Object.values(ids).every(Boolean),
+    ...ids,
+    title:'Test Property - Nirili PMS',
+    currency:'USD'
+  };
+}
+
+export async function bootstrapBookingComCertification(){
+  const connection=await getConnection();
+  if(connection.mode!=='staging')throw Error('Certification Lab only runs against Channex staging.');
+  if(!runtime().channexStagingKey)throw Error('CHANNEX_STAGING_API_KEY is not configured.');
+
+  const title='Test Property - Nirili PMS';
+  const propertyList=await channex(connection,'/properties?filter[title]='+encodeURIComponent(title)+'&pagination[limit]=100');
+  let property=rowsOf(propertyList).find((item:any)=>String(attrsOf(item).title||'')===title);
+  if(!property){
+    const created=await channex(connection,'/properties',{
+      method:'POST',
+      body:JSON.stringify({property:{
+        title,
+        currency:'USD',
+        country:'MV',
+        property_type:'guest_house',
+        city:'Dhiffushi',
+        address:'Dhiffushi, Kaafu Atoll',
+        timezone:'Indian/Maldives',
+        facilities:[],
+        settings:{min_stay_type:'arrival'}
+      }})
+    });
+    property=rowsOf(created)[0]||created?.data||created;
+  }
+  const propertyId=String(property?.id||attrsOf(property)?.id||'');
+  if(!propertyId)throw Error('Channex did not return the certification property ID.');
+
+  const roomList=await channex(connection,'/room_types?filter[property_id]='+encodeURIComponent(propertyId)+'&pagination[limit]=100');
+  const rooms=rowsOf(roomList);
+  async function ensureRoom(title:string){
+    let room=rooms.find((item:any)=>String(attrsOf(item).title||attrsOf(item).name||'')===title);
+    if(!room){
+      const result=await channex(connection,'/room_types',{
+        method:'POST',
+        body:JSON.stringify({room_type:{
+          property_id:propertyId,title,count_of_rooms:10,occ_adults:2,occ_children:0,occ_infants:0,
+          default_occupancy:2,room_kind:'room',facilities:[]
+        }})
+      });
+      room=rowsOf(result)[0]||result?.data||result;
+      if(room)rooms.push(room);
+    }
+    const id=String(room?.id||attrsOf(room)?.id||'');
+    if(!id)throw Error('Could not create/find certification '+title+'.');
+    return id;
+  }
+  const twinRoomId=await ensureRoom('Twin Room');
+  const doubleRoomId=await ensureRoom('Double Room');
+
+  const rateList=await channex(connection,'/rate_plans?filter[property_id]='+encodeURIComponent(propertyId)+'&pagination[limit]=100');
+  const rates=rowsOf(rateList);
+  async function ensureRate(title:string,roomTypeId:string,amount:number,mealType:string){
+    let rate=rates.find((item:any)=>String(attrsOf(item).title||attrsOf(item).name||'')===title);
+    if(!rate){
+      const result=await channex(connection,'/rate_plans',{
+        method:'POST',
+        body:JSON.stringify({rate_plan:{
+          title,property_id:propertyId,room_type_id:roomTypeId,currency:'USD',
+          sell_mode:'per_room',rate_mode:'manual',meal_type:mealType,
+          options:[{occupancy:2,is_primary:true,rate:amount}]
+        }})
+      });
+      rate=rowsOf(result)[0]||result?.data||result;
+      if(rate)rates.push(rate);
+    }
+    const id=String(rate?.id||attrsOf(rate)?.id||'');
+    if(!id)throw Error('Could not create/find certification rate '+title+'.');
+    return id;
+  }
+
+  const twinBarId=await ensureRate('Twin Room · Best Available Rate',twinRoomId,100,'none');
+  const twinBbId=await ensureRate('Twin Room · Bed & Breakfast Rate',twinRoomId,120,'bed_and_breakfast');
+  const doubleBarId=await ensureRate('Double Room · Best Available Rate',doubleRoomId,100,'none');
+  const doubleBbId=await ensureRate('Double Room · Bed & Breakfast Rate',doubleRoomId,120,'bed_and_breakfast');
+
+  const certificationEntities={
+    propertyId,
+    rooms:{twin:twinRoomId,double:doubleRoomId},
+    rates:{twinBar:twinBarId,twinBb:twinBbId,doubleBar:doubleBarId,doubleBb:doubleBbId},
+    createdAt:isoNow()
+  };
+  await patch('channel_connections','id=eq.'+connectionId,{
+    settings:{...(connection.settings||{}),certificationEntities},
+    updated_at:isoNow(),last_error:null
+  });
+  await ensureCertificationRows();
+  return getBookingComCertificationState();
+}
+
+function certRateResponseSummary(response:any){
+  return {
+    meta:response?.meta||null,
+    warnings:response?.warnings||response?.meta?.warnings||null
+  };
+}
+
+async function certPost(connection:ChannelConnection,path:string,values:any[]){
+  return await channex(connection,path,{method:'POST',body:JSON.stringify({values})});
+}
+
+export async function getBookingComCertificationState(){
+  const connection=await getConnection();
+  await ensureCertificationRows();
+
+  const bookingRows=await select('channel_reservations','connection_id=eq.'+connectionId+'&external_reservation_id=eq.'+encodeURIComponent('OFL-NIRILI-CRS-001')+'&select=external_reservation_id,external_revision_id,booking_reference,status,guest_name,check_in,check_out,updated_at&limit=1');
+  if(bookingRows[0]?.status==='cancelled'){
+    const eventRows=await select('channel_events','connection_id=eq.'+connectionId+'&event_key=like.'+encodeURIComponent('booking-revision:*')+'&select=event_key,status,created_at&order=created_at.asc&limit=20');
+    const revisionIds=eventRows
+      .filter((row:any)=>row.status==='processed')
+      .map((row:any)=>String(row.event_key||'').replace('booking-revision:',''))
+      .filter(Boolean);
+    await saveCertificationRun(11,'passed',revisionIds,{},{
+      externalReservationId:bookingRows[0].external_reservation_id,
+      localBookingReference:bookingRows[0].booking_reference,
+      finalStatus:bookingRows[0].status,
+      lifecycle:['new','modified','cancelled'],
+      acknowledged:true
+    });
+  }
+
+  const rows=await select('channel_certification_runs','connection_id=eq.'+connectionId+'&select=*&order=scenario.asc');
+  return {
+    mode:connection.mode,
+    stagingApiKeyConfigured:!!runtime().channexStagingKey,
+    property:await certificationPropertyState(connection),
+    scenarios:rows,
+    formUrl:'https://forms.gle/xA8F3eSYBPBd8apYA',
+    limits:{restrictionsPerMinute:10,availabilityPerMinute:10,maxPayloadMb:10}
+  };
+}
+
+export async function runBookingComCertificationScenario(scenario:number){
+  const n=Math.trunc(Number(scenario));
+  if(n<1||n>14)throw Error('Choose a certification scenario from 1 to 14.');
+  const connection=await getConnection();
+  if(connection.mode!=='staging')throw Error('Certification tests can only run in Staging / test mode.');
+  let ids=certEntityIds(connection);
+  if(!Object.values(ids).every(Boolean)){
+    await bootstrapBookingComCertification();
+    ids=certEntityIds(await getConnection());
+  }
+  await saveCertificationRun(n,'running',[],{},{});
+  const propertyId=ids.propertyId;
+  const detailBase={propertyId,executedAt:isoNow()};
+  try{
+    let responses:any[]=[];
+    let details:any={...detailBase};
+
+    if(n===1){
+      const start=addDays(maldivesToday(),1);
+      const availability:any[]=[];
+      const restrictions:any[]=[];
+      for(let day=0;day<500;day++){
+        const date=addDays(start,day);
+        const month=Number(date.slice(5,7));
+        availability.push(
+          {property_id:propertyId,room_type_id:ids.twinRoomId,date,availability:4+((day*3)%6)},
+          {property_id:propertyId,room_type_id:ids.doubleRoomId,date,availability:1+((day*2)%5)}
+        );
+        const seasonal=(month>=11||month<=3)?35:month>=6&&month<=8?18:0;
+        const weekend=[5,6].includes(new Date(date+'T00:00:00Z').getUTCDay())?20:0;
+        restrictions.push(
+          {property_id:propertyId,rate_plan_id:ids.twinBarId,date,rate:String(100+seasonal+weekend+(day%9)),min_stay_arrival:day%17===0?2:1,stop_sell:day%113===0},
+          {property_id:propertyId,rate_plan_id:ids.twinBbId,date,rate:String(120+seasonal+weekend+(day%7)),min_stay_arrival:day%19===0?2:1,closed_to_arrival:day%127===0},
+          {property_id:propertyId,rate_plan_id:ids.doubleBarId,date,rate:String(105+seasonal+weekend+(day%11)),min_stay_arrival:day%23===0?3:1,closed_to_departure:day%131===0},
+          {property_id:propertyId,rate_plan_id:ids.doubleBbId,date,rate:String(125+seasonal+weekend+(day%5)),min_stay_arrival:day%29===0?2:1,max_stay:day%97===0?7:0}
+        );
+      }
+      const availabilityResponse=await certPost(connection,'/availability',availability);
+      const restrictionsResponse=await certPost(connection,'/restrictions',restrictions);
+      responses=[availabilityResponse,restrictionsResponse];
+      details={...detailBase,startDate:start,days:500,availabilityValues:availability.length,restrictionValues:restrictions.length,apiCalls:2};
+    }else if(n===2){
+      const values=[{property_id:propertyId,rate_plan_id:ids.twinBarId,date:'2026-11-22',rate:'333'}];
+      responses=[await certPost(connection,'/restrictions',values)];details={...detailBase,values};
+    }else if(n===3){
+      const values=[
+        {property_id:propertyId,rate_plan_id:ids.twinBarId,date:'2026-11-21',rate:'333'},
+        {property_id:propertyId,rate_plan_id:ids.doubleBarId,date:'2026-11-25',rate:'444'},
+        {property_id:propertyId,rate_plan_id:ids.doubleBbId,date:'2026-11-29',rate:'456.23'}
+      ];
+      responses=[await certPost(connection,'/restrictions',values)];details={...detailBase,values,apiCalls:1};
+    }else if(n===4){
+      const values=[
+        {property_id:propertyId,rate_plan_id:ids.twinBarId,date_from:'2026-11-01',date_to:'2026-11-10',rate:'241'},
+        {property_id:propertyId,rate_plan_id:ids.doubleBarId,date_from:'2026-11-10',date_to:'2026-11-16',rate:'312.66'},
+        {property_id:propertyId,rate_plan_id:ids.doubleBbId,date_from:'2026-11-01',date_to:'2026-11-20',rate:'111'}
+      ];
+      responses=[await certPost(connection,'/restrictions',values)];details={...detailBase,values,apiCalls:1};
+    }else if(n===5){
+      const values=[
+        {property_id:propertyId,rate_plan_id:ids.twinBarId,date:'2026-11-23',min_stay_arrival:3},
+        {property_id:propertyId,rate_plan_id:ids.doubleBarId,date:'2026-11-25',min_stay_arrival:2},
+        {property_id:propertyId,rate_plan_id:ids.doubleBbId,date:'2026-11-15',min_stay_arrival:5}
+      ];
+      responses=[await certPost(connection,'/restrictions',values)];details={...detailBase,values,minStayType:'arrival',apiCalls:1};
+    }else if(n===6){
+      const values=[
+        {property_id:propertyId,rate_plan_id:ids.twinBarId,date:'2026-11-14',stop_sell:true},
+        {property_id:propertyId,rate_plan_id:ids.doubleBarId,date:'2026-11-16',stop_sell:true},
+        {property_id:propertyId,rate_plan_id:ids.doubleBbId,date:'2026-11-20',stop_sell:true}
+      ];
+      responses=[await certPost(connection,'/restrictions',values)];details={...detailBase,values,apiCalls:1};
+    }else if(n===7){
+      const values=[
+        {property_id:propertyId,rate_plan_id:ids.twinBarId,date_from:'2026-11-01',date_to:'2026-11-10',closed_to_arrival:true,closed_to_departure:false,max_stay:4,min_stay_arrival:1},
+        {property_id:propertyId,rate_plan_id:ids.twinBbId,date_from:'2026-11-12',date_to:'2026-11-16',closed_to_arrival:false,closed_to_departure:true,min_stay_arrival:6},
+        {property_id:propertyId,rate_plan_id:ids.doubleBarId,date_from:'2026-11-10',date_to:'2026-11-16',closed_to_arrival:true,min_stay_arrival:2},
+        {property_id:propertyId,rate_plan_id:ids.doubleBbId,date_from:'2026-11-01',date_to:'2026-11-20',min_stay_arrival:10}
+      ];
+      responses=[await certPost(connection,'/restrictions',values)];details={...detailBase,values,apiCalls:1};
+    }else if(n===8){
+      const values=[
+        {property_id:propertyId,rate_plan_id:ids.twinBarId,date_from:'2026-12-01',date_to:'2027-05-01',rate:'432',closed_to_arrival:false,closed_to_departure:false,min_stay_arrival:2},
+        {property_id:propertyId,rate_plan_id:ids.doubleBarId,date_from:'2026-12-01',date_to:'2027-05-01',rate:'342',min_stay_arrival:3}
+      ];
+      responses=[await certPost(connection,'/restrictions',values)];details={...detailBase,values,apiCalls:1};
+    }else if(n===9){
+      const values=[
+        {property_id:propertyId,room_type_id:ids.twinRoomId,date:'2026-11-21',availability:7},
+        {property_id:propertyId,room_type_id:ids.doubleRoomId,date:'2026-11-25',availability:0}
+      ];
+      responses=[await certPost(connection,'/availability',values)];details={...detailBase,values,apiCalls:1};
+    }else if(n===10){
+      const values=[
+        {property_id:propertyId,room_type_id:ids.twinRoomId,date_from:'2026-11-10',date_to:'2026-11-16',availability:3},
+        {property_id:propertyId,room_type_id:ids.doubleRoomId,date_from:'2026-11-17',date_to:'2026-11-24',availability:4}
+      ];
+      responses=[await certPost(connection,'/availability',values)];details={...detailBase,values,apiCalls:1};
+    }else if(n===11){
+      const state=await getBookingComCertificationState();
+      const row=state.scenarios.find((x:any)=>Number(x.scenario)===11);
+      if(row?.status!=='passed')throw Error('Complete the Booking CRS create → modify → cancel lifecycle before marking booking receiving complete.');
+      return state;
+    }else if(n===12){
+      const row=await saveCertificationRun(12,'manual',[],{},{
+        ...detailBase,
+        limits:{restrictionsPerMinute:10,availabilityPerMinute:10,maxPayloadMb:10},
+        implementation:'Certification requests are batched by property; full sync is exactly two calls. Production ARI remains disabled until the production batching/throttle gate is enabled.',
+        answer:'Pending final production ARI throttle sign-off'
+      });
+      return {...(await getBookingComCertificationState()),lastRun:row};
+    }else if(n===13){
+      const row=await saveCertificationRun(13,'manual',[],{},{
+        ...detailBase,
+        policy:'Change-only updates are required. Full sync is manual/recovery only and must never run every few minutes.',
+        answer:'Agreed; production live sync stays disabled until change-only ARI is enabled.'
+      });
+      return {...(await getBookingComCertificationState()),lastRun:row};
+    }else if(n===14){
+      const row=await saveCertificationRun(14,'manual',[],{},{
+        ...detailBase,
+        minStaySupport:'Min Stay Arrival',
+        restrictionsSupported:['Stop Sell','Closed to Arrival','Closed to Departure','Maximum Stay'],
+        multipleRoomTypes:true,
+        multipleRatePlans:true,
+        creditCards:'Nirili PMS does not store raw card details; card data should remain in Booking.com/Channex PCI scope.'
+      });
+      return {...(await getBookingComCertificationState()),lastRun:row};
+    }
+
+    const taskIds=Array.from(collectTaskIds(responses));
+    const summaries=responses.map(certRateResponseSummary);
+    const hasWarnings=summaries.some((x:any)=>x.warnings&&JSON.stringify(x.warnings)!=='[]'&&JSON.stringify(x.warnings)!=='{}');
+    const status=hasWarnings?'failed':'passed';
+    const row=await saveCertificationRun(n,status,taskIds,{responses:summaries},details);
+    return {...(await getBookingComCertificationState()),lastRun:row};
+  }catch(error){
+    const message=error instanceof Error?error.message:'Certification scenario failed.';
+    await saveCertificationRun(n,'failed',[],{error:message},{...detailBase,error:message});
+    throw error;
+  }
+}
+
 async function hashText(value:string){
   const bytes=new TextEncoder().encode(value);
   const digest=await crypto.subtle.digest('SHA-256',bytes);
