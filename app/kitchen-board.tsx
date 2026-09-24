@@ -2,7 +2,7 @@
 
 import {useEffect,useMemo,useState} from 'react';
 import {ChefHat,RefreshCw} from 'lucide-react';
-import {startLiveRefresh} from '../lib/live-refresh';
+import {startLiveRefresh,REFRESH_INTERVALS} from '../lib/live-refresh';
 import {tabNavigate} from '../lib/tab-navigation';
 import {tableLabel} from '../lib/restaurant-tables';
 import './restaurant-pos.css';
@@ -23,7 +23,7 @@ export default function KitchenBoard(){
   }catch(e){setError(e instanceof Error?e.message:'Could not load kitchen orders.');}
   finally{if(!background)setLoading(false);}
  }
- useEffect(()=>{void refresh();const stop=startLiveRefresh(()=>refresh(true));const onUpdate=()=>refresh(true);window.addEventListener('pos-updated',onUpdate);window.addEventListener('services-updated',onUpdate);return()=>{stop();window.removeEventListener('pos-updated',onUpdate);window.removeEventListener('services-updated',onUpdate)}},[]);
+ useEffect(()=>{void refresh();return startLiveRefresh(()=>refresh(true),REFRESH_INTERVALS.live)},[]);
 
  async function advance(order:any,guest=false){
   const status=nextStatus[order.kitchen];if(!status||busy)return;

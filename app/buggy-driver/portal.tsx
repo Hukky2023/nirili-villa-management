@@ -2,7 +2,7 @@
 
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {BellRing,CheckCircle2,Clock3,MapPin,Phone,Trash2,Users} from 'lucide-react';
-import {startLiveRefresh} from '../../lib/live-refresh';
+import {startLiveRefresh,REFRESH_INTERVALS} from '../../lib/live-refresh';
 import DateFieldDMY from '../date-field-dmy';
 import SessionButton from '../session-button';
 import './style.css';
@@ -32,7 +32,7 @@ export default function BuggyDriverPortal(){
   finally{if(request.current===controller){request.current=null;setLoading(false);}}
  },[date]);
 
- useEffect(()=>{void load(date);const stop=startLiveRefresh(()=>load(date,true));window.addEventListener('focus',()=>load(date,true));return()=>{stop();request.current?.abort();}},[date,load]);
+ useEffect(()=>{void load(date);const stop=startLiveRefresh(()=>load(date,true),REFRESH_INTERVALS.live);return()=>{stop();request.current?.abort();}},[date,load]);
 
  async function update(id:string,action:'on-the-way'|'arrived'|'boarded'|'complete'|'cancel'|'dinner-dropoff'|'return-arrived'|'return-boarded'|'return-complete'){
   if(busy)return;setBusy(id+action);setError('');

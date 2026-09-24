@@ -4,11 +4,12 @@ import {BedDouble,CalendarDays,CircleDollarSign,House,Plane,RefreshCw,ShipWheel,
 import {UiText} from './ui-language';
 import type {DashboardData,DashboardTrip} from '../lib/dashboard-data';
 import './live-dashboard.css';
+import {startLiveRefresh,REFRESH_INTERVALS} from '../lib/live-refresh';
 type Module='Bookings'|'Rooms'|'Guests'|'Transfers'|'Excursions'|'POS'|'Reports';
 const money=(cents:number,currency='USD')=>new Intl.NumberFormat('en-US',{style:'currency',currency,maximumFractionDigits:2}).format(cents/100);
 const localTime=(value:string)=>new Date(value).toLocaleTimeString('en-GB',{timeZone:'Indian/Maldives',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
 const dayLabel=(date:string)=>new Date(date+'T12:00:00+05:00').toLocaleDateString('en-GB',{timeZone:'Indian/Maldives',day:'2-digit',month:'short'});
-function useDashboard(){
+function useDashboard(intervalMs:number=REFRESH_INTERVALS.standard){
  const [data,setData]=useState<DashboardData|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const refresh=useRef<()=>void>(()=>{});
  useEffect(()=>{
@@ -30,17 +31,15 @@ function useDashboard(){
   }
   const update=()=>{void load();};
   refresh.current=update;update();
-  const timer=setInterval(update,5000);
+  const stopLive=startLiveRefresh(load,intervalMs);
   const offline=()=>setError('Offline — showing the last successful update.');
-  const events=['focus','online','services-updated','nirili:auto-refresh'];
-  events.forEach(event=>window.addEventListener(event,update));
-  window.addEventListener('offline',offline);document.addEventListener('visibilitychange',update);
-  return()=>{disposed=true;controller?.abort();clearInterval(timer);events.forEach(event=>window.removeEventListener(event,update));window.removeEventListener('offline',offline);document.removeEventListener('visibilitychange',update);refresh.current=()=>{};};
- },[]);
- return {data,error,busy,refresh:()=>refresh.current()};
+  window.addEventListener('offline',offline);
+  return()=>{disposed=true;controller?.abort();stopLive();window.removeEventListener('offline',offline);refresh.current=()=>{};};
+ },[intervalMs]);
+ return {data,error,busy,intervalMs,refresh:()=>refresh.current()};
 }
-function LiveStatus({data,error,busy,refresh}:ReturnType<typeof useDashboard>){
- return <div className="nv-live-status"><div><b><UiText>{error?'Update interrupted':data?'Auto update · every 5 seconds':'Loading live data…'}</UiText></b><span>{data&&<><UiText>Last updated</UiText> {localTime(data.updatedAt)} · {dayLabel(data.date)} · <UiText>Maldives time</UiText></>}</span>{error&&<p role="alert"><UiText>{error}</UiText></p>}</div><button type="button" onClick={refresh} disabled={busy}><RefreshCw size={16}/><UiText>{busy?'Updating…':'Refresh'}</UiText></button></div>;
+function LiveStatus({data,error,busy,intervalMs,refresh}:ReturnType<typeof useDashboard>){
+ return <div className="nv-live-status"><div><b><UiText>{error?'Update interrupted':data?`Auto update · every ${intervalMs/1000} seconds`:'Loading live data…'}</UiText></b><span>{data&&<><UiText>Last updated</UiText> {localTime(data.updatedAt)} · {dayLabel(data.date)} · <UiText>Maldives time</UiText></>}</span>{error&&<p role="alert"><UiText>{error}</UiText></p>}</div><button type="button" onClick={refresh} disabled={busy}><RefreshCw size={16}/><UiText>{busy?'Updating…':'Refresh'}</UiText></button></div>;
 }
 function Weather(){
  const [weather,setWeather]=useState<any>(null),[failed,setFailed]=useState(false);
@@ -96,6 +95,6 @@ export default function LiveDashboard({open}:{open:(module:Module)=>void}){
  return <div className="stack nv-live-dashboard"><section className="welcome"><div><small><UiText>WELCOME BACK</UiText></small><h1><UiText>{data?.greeting||'Welcome to Nirili Villa'}</UiText></h1><p><UiText>Here’s what’s happening at Nirili Villa today.</UiText></p></div><Weather/></section><LiveStatus {...live}/><section className="stats">{stats.map(([value,label,Icon,module,note])=><button key={label} onClick={()=>open(module)} disabled={!allowed(module)}><Icon/><span><b>{value}</b><small><UiText>{label}</UiText></small><small className="nv-stat-note"><UiText>{note}</UiText></small>{label==='Revenue Today'&&data?.revenue&&access?.transfers&&<small>{money(data.revenue.today.mvrCents,'MVR')} · <UiText>transfers</UiText></small>}</span></button>)}</section><div className="dashgrid"><Panel title="Today’s Transfers" icon={Plane} onView={allowed('Transfers')?()=>open('Transfers'):undefined}><Trips values={data?.transfers} empty="No transfers booked for today."/></Panel><Panel title="Today’s Excursions" icon={ShipWheel} onView={allowed('Excursions')?()=>open('Excursions'):undefined}><Trips values={data?.excursions===null?null:data?.excursions?.trips} empty="No excursions scheduled for today."/>{!!data?.excursions?.awaiting&&<p className="nv-live-note">{data.excursions.awaiting} <UiText>booking requests still await scheduling.</UiText></p>}</Panel><Panel title="Recent Bookings" icon={CalendarDays} onView={allowed('Bookings')?()=>open('Bookings'):undefined}>{!data?<p className="nv-live-empty"><UiText>Loading bookings…</UiText></p>:!data.recent.length?<p className="nv-live-empty"><UiText>No bookings yet.</UiText></p>:<div className="nv-live-rows">{data.recent.map(booking=><div key={booking.id}><b>{booking.guest}<small>{booking.id}</small></b><span>{booking.checkIn&&dayLabel(booking.checkIn)}{booking.checkOut&&' – '+dayLabel(booking.checkOut)}</span><small>{booking.pax} <UiText>Pax</UiText></small><Status value={booking.status}/></div>)}</div>}</Panel><Panel title="Room Occupancy" icon={BedDouble} onView={allowed('Rooms')?()=>open('Rooms'):undefined}>{occupancy?<div className="occupancy"><div className="nv-live-ring" style={{background:`conic-gradient(#1298ce ${occupancy.percent}%, #e5f0f2 0)`}}><span><b>{occupancy.percent}%</b><small><UiText>occupied</UiText></small></span></div><div><p><UiText>Occupied</UiText> <b>{occupancy.occupied}</b></p><p><UiText>Available</UiText> <b>{occupancy.available}</b></p><p><UiText>Cleaning</UiText> <b>{occupancy.cleaning}</b></p><p><UiText>Maintenance</UiText> <b>{occupancy.maintenance}</b></p>{occupancy.other>0&&<p><UiText>Other / unavailable</UiText> <b>{occupancy.other}</b></p>}<p><UiText>Total Rooms</UiText> <b>{occupancy.total}</b></p></div></div>:<p className="nv-live-empty"><UiText>Loading rooms…</UiText></p>}</Panel><Panel title="Revenue Overview" icon={CircleDollarSign} onView={allowed('Reports')?()=>open('Reports'):undefined}><Revenue data={data}/></Panel><Panel title="Quick Actions" icon={Sparkles}><div className="quick">{actions.filter(([, ,module])=>allowed(module)).map(([label,Icon,module])=><button key={label} onClick={()=>open(module)}><Icon/><small><UiText>{label}</UiText></small></button>)}</div></Panel></div></div>;
 }
 export function DashboardReport(){
- const live=useDashboard(),data=live.data;
+ const live=useDashboard(REFRESH_INTERVALS.reports),data=live.data;
  return <section className="page nv-live-dashboard"><header className="title"><FileText/><div><h1><UiText>Live Reports</UiText></h1><p><UiText>Recorded payments and current room occupancy.</UiText></p></div></header><LiveStatus {...live}/><div className="reports nv-live-report-cards"><article><small><UiText>Payments today · USD</UiText></small><b>{data?.revenue?money(data.revenue.today.usdCents):'—'}</b></article>{data?.access.transfers&&<article><small><UiText>Transfer payments today · MVR</UiText></small><b>{data?.revenue?money(data.revenue.today.mvrCents,'MVR'):'—'}</b></article>}<article><small><UiText>Current room occupancy</UiText></small><b>{data?data.occupancy.percent+'%':'—'}</b></article><article><small><UiText>Available rooms</UiText></small><b>{data?data.occupancy.available:'—'}</b></article></div><Panel title="Revenue Overview" icon={CircleDollarSign}><Revenue data={data} table/></Panel></section>;
 }

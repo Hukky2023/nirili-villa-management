@@ -1,4 +1,5 @@
 'use client';
+import {startLiveRefresh,REFRESH_INTERVALS} from '../lib/live-refresh';
 import {useEffect,useRef,useState} from 'react';
 import {Clock,Users,ShipWheel,X,CalendarDays,CheckCircle2,MapPin} from 'lucide-react';
 import {formatDateDMY} from '../lib/date-format';
@@ -34,7 +35,7 @@ export default function ExcursionCatalog({items,canBook=true,walkInProfile=null}
  const pickupAlertRef=useRef<any>(null);
  async function load(selected=date,silent=false){if(!silent){setLoading(true);setMessage('');}try{const r=await fetch('/api/guest-excursion-schedules?date='+encodeURIComponent(selected),{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not load excursions');setData(d);}catch(e){if(!silent)setMessage((e as Error).message);}finally{if(!silent)setLoading(false);}}
  useEffect(()=>{load(date)},[date]);
- useEffect(()=>{const onRefresh=()=>void load(date,true),onFocus=()=>void load(date,true),onVisible=()=>{if(document.visibilityState==='visible')void load(date,true)};window.addEventListener('nirili:auto-refresh',onRefresh);window.addEventListener('focus',onFocus);document.addEventListener('visibilitychange',onVisible);return()=>{window.removeEventListener('nirili:auto-refresh',onRefresh);window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisible)}},[date]);
+ useEffect(()=>startLiveRefresh(()=>load(date,true),REFRESH_INTERVALS.guest),[date]);
  useEffect(()=>{if(typeof Notification!=='undefined')setNotificationPermission(Notification.permission)},[]);
  useEffect(()=>{pickupAlertRef.current=pickupAlert},[pickupAlert]);
  useEffect(()=>{

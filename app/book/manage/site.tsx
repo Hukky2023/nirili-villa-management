@@ -1,4 +1,5 @@
 'use client';
+import {startLiveRefresh,REFRESH_INTERVALS} from '../../../lib/live-refresh';
 
 import {useEffect,useState} from 'react';
 import {ArrowLeft,CalendarDays,CheckCircle2,Mail,ShieldCheck,Users,XCircle} from 'lucide-react';
@@ -32,6 +33,16 @@ export default function ManageBookingSite(){
   }
  },[]);
 
+ useEffect(()=>{
+  if(!token||!ready||busy)return;
+  const controller=new AbortController();
+  const stop=startLiveRefresh(async()=>{
+   const response=await fetch('/api/public-booking/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'view',token}),cache:'no-store',signal:controller.signal});
+   const result=await response.json();
+   if(response.ok&&!controller.signal.aborted)setBooking(result.booking);
+  },REFRESH_INTERVALS.guest);
+  return()=>{stop();controller.abort();};
+ },[token,ready,busy]);
  async function save(e:React.FormEvent){
   e.preventDefault();if(busy)return;setBusy(true);setError('');setMessage('');
   try{

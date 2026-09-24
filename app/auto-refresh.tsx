@@ -1,8 +1,9 @@
 'use client';
 
 import {useEffect,useRef} from 'react';
+import {REFRESH_INTERVALS} from '../lib/live-refresh';
 
-const AUTO_REFRESH_MS=5000;
+const AUTO_REFRESH_MS=REFRESH_INTERVALS.standard;
 
 export default function AutoRefresh(){
  const running=useRef(false);
@@ -20,7 +21,6 @@ export default function AutoRefresh(){
     // Background data refresh only. Never call router.refresh(), reload(),
     // replace(), push(), or change the current URL/page.
     window.dispatchEvent(new Event('nirili:auto-refresh'));
-    window.dispatchEvent(new Event('services-updated'));
    }finally{
     window.setTimeout(()=>{running.current=false},250);
    }

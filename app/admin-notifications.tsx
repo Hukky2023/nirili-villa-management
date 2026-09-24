@@ -1,4 +1,5 @@
 "use client";
+import {startLiveRefresh} from "../lib/live-refresh";
 import {Bell,CheckCheck,X} from "lucide-react";
 import {useEffect,useMemo,useRef,useState} from "react";
 import {UiText} from "./ui-language";
@@ -8,7 +9,6 @@ type NoticeTarget="Bookings"|"Guests"|"Transfers"|"Excursions"|"Buggy"|"POS";
 type Snapshot={stays?:any;services?:any;transport?:any;excursions?:any;chat?:any};
 const SNAP_KEY="nirili-admin-notification-snapshot-v1";
 const NOTICE_KEY="nirili-admin-notifications-v1";
-const POLL_MS=5000;
 
 const obj=(v:any)=>v&&typeof v==="object"?v:{};
 const arr=(v:any)=>Array.isArray(v)?v:[];
@@ -133,9 +133,8 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
    }catch{}
    polling.current=false;started.current=true;
   };
-  poll();const timer=window.setInterval(poll,POLL_MS);
-  const wake=()=>poll();window.addEventListener("services-updated",wake);window.addEventListener("focus",wake);
-  return()=>{stop=true;window.clearInterval(timer);window.removeEventListener("services-updated",wake);window.removeEventListener("focus",wake)};
+  poll();const stopLive=startLiveRefresh(poll);
+  return()=>{stop=true;stopLive()};
  },[]);
  const unread=useMemo(()=>notices.filter(n=>!n.read).length,[notices]);
  const save=(next:Notice[])=>{setNotices(next);try{localStorage.setItem(NOTICE_KEY,JSON.stringify(next))}catch{}};

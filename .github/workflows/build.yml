@@ -21,6 +21,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Refresh interval and lifecycle regression tests
+        run: node --experimental-strip-types --test tests/live-refresh.test.mjs
       - name: Room workspace and checkout buggy regression tests
         run: node --test tests/room-workspace.test.mjs
       - name: Dashboard data regression tests

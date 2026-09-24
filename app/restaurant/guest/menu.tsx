@@ -1,5 +1,5 @@
 'use client';
-import {startLiveRefresh} from '../../../lib/live-refresh';
+import {startLiveRefresh,REFRESH_INTERVALS} from '../../../lib/live-refresh';
 import {UiText,UiField,UiOption} from '../../ui-language';
 import {localizedConfirm,localizedAlert} from '../../../lib/i18n/runtime';
 
@@ -10,7 +10,7 @@ import {hasMealPlan,mealItemIncluded} from '../../../lib/meal-access';
 const usd=(n:number)=>'$'+(n/100).toFixed(2);
 export default function DiningMenu({mode,embedded=false}:{mode:string;embedded?:boolean}){const [data,setData]=useState<any>(null),[table,setTable]=useState(''),[cart,setCart]=useState<any[]>([]),[category,setCategory]=useState('All'),[query,setQuery]=useState(''),[notes,setNotes]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[token,setToken]=useState(''),[page,setPage]=useState(1);const url='/api/restaurant-guest?mode='+mode;
  async function refresh(){try{const r=await fetch(url,{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error);setData(d);if(d.visit?.table)setTable(old=>old||d.visit.table);}catch(e){setError((e as Error).message);}}
- useEffect(()=>{refresh();const stopLive=startLiveRefresh(refresh);return()=>stopLive()},[mode]);useEffect(()=>setToken(crypto.randomUUID()),[cart]);
+ useEffect(()=>{refresh();const stopLive=startLiveRefresh(refresh,REFRESH_INTERVALS.guest);return()=>stopLive()},[mode]);useEffect(()=>setToken(crypto.randomUUID()),[cart]);
  async function send(){if(busy||!table||!cart.length)return;if(mode==='inhouse'&&total>0&&!localizedConfirm('Add '+usd(total)+' in extra items to your room bill?'))return;setBusy(true);setError('');try{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,table,stayId:stay,notes,items:cart.map(i=>({id:i.id,quantity:i.quantity,cents:i.cents,included:mealItemIncluded(selectedMeal,i,freeOrderAvailable)}))})}),d=await r.json();if(!r.ok)throw Error(d.error);setData(d);window.dispatchEvent(new Event('services-updated'));setCart([]);setNotes('');setMessage('Order received by the cashier. They will send it to the kitchen. '+(mode==='inhouse'?(total>0?'Chargeable extras have been added to your room bill.':'Your meal-plan items are included. Nothing was added to your room bill.'):'Please pay at the cashier.'));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  useEffect(()=>setPage(1),[category,query]);
  const assignedRoom=data?.assignedRoom;const stay=assignedRoom&&['Confirmed','In House'].includes(assignedRoom.status)?assignedRoom.id:'';
