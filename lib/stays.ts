@@ -1,5 +1,5 @@
 import {roomNumbers,roomDetails,updateRoomInventory} from './rooms';
-import {folioTotals,paidBillStatus} from './bill-payment';
+import {paidBillStatus} from './bill-payment';
 import {excursionFolioBill} from './excursion-billing';
 import {authDb} from './auth';
 import {readBill} from './restaurant-server';
@@ -146,7 +146,7 @@ const overrideKey=(b:any)=>String(b.department)+':'+String(b.id);
 const byKey=new Map(overrides.map((b:any)=>[overrideKey(b),b]));
 bills=bills.map((b:any)=>{const o:any=byKey.get(overrideKey(b));if(!o)return b;byKey.delete(overrideKey(b));return {...b,...o,totalCents:o.status==='Cancelled'?0:Math.round(Number(o.total||0)*100)};});
 for(const o of byKey.values() as any){bills.push({...o,totalCents:o.status==='Cancelled'?0:Math.round(Number(o.total||0)*100)});}
-const visibleBills=bills.filter((b:any)=>!b.deleted),totals=folioTotals(s,visibleBills);return {bills:visibleBills.map((b:any)=>paidBillStatus(s,b)),...totals};}const guestOrders=orders??(await loadStays()).state.orders;
+const visibleBills=bills.filter((b:any)=>!b.deleted),totalCents=visibleBills.filter((b:any)=>b.status!=='Cancelled').reduce((n:number,b:any)=>n+Number(b.totalCents||0),0),recordedPaidCents=s.initialPaid+s.payments.reduce((n:number,p:any)=>n+p.cents,0),directPaidCents=s.markedUnpaid?0:visibleBills.filter((b:any)=>b.status==='Paid'&&b.status!=='Cancelled').reduce((n:number,b:any)=>{const covered=s.paidBills?.[String(b.department)+':'+String(b.id)];return n+(Number.isInteger(covered)&&covered===Number(b.totalCents||0)?0:Number(b.totalCents||0));},0),paidCents=recordedPaidCents+directPaidCents;return {bills:visibleBills.map((b:any)=>paidBillStatus(s,b)),totalCents,paidCents,balanceCents:totalCents-paidCents};}const guestOrders=orders??(await loadStays()).state.orders;
 const sourceExcursionIds=new Set(guestOrders.filter((o:any)=>o.kind==='excursion'&&o.stayId===s.id).map((o:any)=>String(o.id)));
 const overrides=(await folioOverrides(String(s.billRoom))).filter((o:any)=>!(o?.department==='Excursions'&&sourceExcursionIds.has(String(o?.id||''))));
 const bill=(department:string,id:string,items:any[])=>overrides.find((x:any)=>x.department===department&&x.id===id)||{department,id,items,status:'Posted'};
@@ -154,5 +154,5 @@ const bills=[bill('Accommodation',s.id,[[s.meal+' · '+s.checkIn+' to '+s.checkO
 bills.push(...(s.posBills||[]));
 bills.push(...guestOrders.filter((o:any)=>billableOrder(o,s)).map((o:any)=>o.kind==='excursion'?excursionFolioBill(o):(o.kind==='food'?{department:'Restaurant',id:o.id,items:[[o.name,o.quantity,o.cents/100,0]],status:o.status,totalCents:o.cents}:{department:'Transfer',id:o.id,items:transferBillItems(o),status:transferBillStatus(o),totalCents:Number(o.cents)||0})));
 for(const e of s.extensions)bills.push({department:'Accommodation',id:e.id,items:[['Stay extension · '+e.from+' to '+e.to,e.nights,e.cents/100,0]],status:'Posted',totalCents:e.cents});
-const visibleBills=bills.filter((b:any)=>!b.deleted),totals=folioTotals(s,visibleBills);return {bills:visibleBills.map((b:any)=>paidBillStatus(s,b)),...totals};}
+const visibleBills=bills.filter((b:any)=>!b.deleted),totalCents=visibleBills.filter((b:any)=>b.status!=='Cancelled').reduce((n:number,b:any)=>n+Number(b.totalCents||0),0),recordedPaidCents=s.initialPaid+s.payments.reduce((n:number,p:any)=>n+p.cents,0),directPaidCents=s.markedUnpaid?0:visibleBills.filter((b:any)=>b.status==='Paid'&&b.status!=='Cancelled').reduce((n:number,b:any)=>{const covered=s.paidBills?.[String(b.department)+':'+String(b.id)];return n+(Number.isInteger(covered)&&covered===Number(b.totalCents||0)?0:Number(b.totalCents||0));},0),paidCents=recordedPaidCents+directPaidCents;return {bills:visibleBills.map((b:any)=>paidBillStatus(s,b)),totalCents,paidCents,balanceCents:totalCents-paidCents};}
 export async function stayView(){const {state,revision}=await loadStays();return {...state,revision,stays:await Promise.all(state.stays.map(async(s:any)=>({...s,folio:await folioFor(s,state.orders)})))};}
