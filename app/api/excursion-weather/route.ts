@@ -1,4 +1,3 @@
-import {currentUser} from '../../../lib/auth';
 
 const LAT=4.4410,LON=73.7130;
 const WEATHER_URL=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&timezone=Indian%2FMaldives&forecast_days=7&current=temperature_2m,apparent_temperature,weather_code,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,sunrise,sunset`;
@@ -29,8 +28,7 @@ function maxByDay(times:string[],values:any[]){
 }
 
 export async function GET(){
- const user=await currentUser();
- if(!user)return Response.json({error:'Login required.'},{status:403});
+ // Public, read-only forecast: contains no guest or management data.
  try{
   const [weatherResponse,marineResponse]=await Promise.all([
    fetch(WEATHER_URL,{headers:{Accept:'application/json'},next:{revalidate:900}}),

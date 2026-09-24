@@ -18,7 +18,7 @@ const dayName=(date:string,lang:string)=>new Date(date+'T12:00:00+05:00').toLoca
 export default function ExcursionWeather(){
  const lang=useLanguage();
  const [weather,setWeather]=useState<any>(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[dayIndex,setDayIndex]=useState(0);
- async function load(){setLoading(true);setError('');try{const r=await fetch('/api/excursion-weather',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Weather unavailable');setWeather(d);}catch(e){setError((e as Error).message);}finally{setLoading(false);}}
+ async function load(){setLoading(true);setError('');try{const r=await fetch('/api/excursion-weather',{cache:'no-store'});if(!r.ok||!r.headers.get('content-type')?.includes('application/json'))throw Error('Weather unavailable');const d=await r.json();if(!d.current||!Array.isArray(d.days)||!d.days.length)throw Error('Weather unavailable');setWeather(d);}catch{setError('Weather and tide forecast is temporarily unavailable. Please try again.');}finally{setLoading(false);}}
  useEffect(()=>{load();const timer=setInterval(load,15*60*1000);return()=>clearInterval(timer)},[]);
  const selected=weather?.days?.[dayIndex]||weather?.days?.[0];
  const today=dayIndex===0;
