@@ -49,6 +49,8 @@ jobs:
         run: node --experimental-strip-types --test tests/excursion-reassignment.test.mjs
       - name: Excursion time-change notification regression tests
         run: node --experimental-strip-types --test tests/excursion-time-change-notifications.test.mjs
+      - name: Walk-in excursion WhatsApp notification regression tests
+        run: node --experimental-strip-types --test tests/walkin-excursion-whatsapp.test.mjs
       - name: Excursion schedule dropdown regression tests
         run: node --experimental-strip-types --test tests/excursion-schedule-options.test.mjs
       - name: Special Package auto-scheduling regression tests
