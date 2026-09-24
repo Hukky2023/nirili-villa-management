@@ -48,7 +48,8 @@ function runtime(){
   return {
     supabaseUrl:read('NEXT_PUBLIC_SUPABASE_URL','SUPABASE_URL')||projectUrl,
     supabaseSecret:clean(read('SUPABASE_SECRET_KEY')),
-    channexKey:clean(read('CHANNEX_API_KEY')),
+    channexStagingKey:clean(read('CHANNEX_STAGING_API_KEY','CHANNEX_API_KEY')),
+    channexProductionKey:clean(read('CHANNEX_PRODUCTION_API_KEY')),
     channexWebhookToken:clean(read('CHANNEX_WEBHOOK_TOKEN')),
     channexBaseOverride:read('CHANNEX_API_BASE_URL').replace(/\/$/,'')
   };
@@ -94,6 +95,11 @@ async function getConnection():Promise<ChannelConnection>{
   return rows[0] as ChannelConnection;
 }
 
+function channexKey(connection:ChannelConnection){
+  const cfg=runtime();
+  return connection.mode==='production'?cfg.channexProductionKey:cfg.channexStagingKey;
+}
+
 function channexBase(connection:ChannelConnection){
   const cfg=runtime();
   if(cfg.channexBaseOverride)return cfg.channexBaseOverride;
@@ -101,8 +107,8 @@ function channexBase(connection:ChannelConnection){
 }
 
 async function channex(connection:ChannelConnection,path:string,init:RequestInit={}){
-  const key=runtime().channexKey;
-  if(!key)throw Error('CHANNEX_API_KEY is not configured on Cloudflare.');
+  const key=channexKey(connection);
+  if(!key)throw Error(connection.mode==='production'?'CHANNEX_PRODUCTION_API_KEY is not configured on Cloudflare.':'CHANNEX_STAGING_API_KEY is not configured on Cloudflare.');
   const headers=new Headers(init.headers||{});
   headers.set('user-api-key',key);
   headers.set('Accept','application/json');
@@ -169,7 +175,9 @@ export async function getBookingComChannelState(){
     recentReservations,
     recentEvents,
     credentials:{
-      apiKeyConfigured:!!cfg.channexKey,
+      apiKeyConfigured:connection.mode==='production'?!!cfg.channexProductionKey:!!cfg.channexStagingKey,
+      stagingApiKeyConfigured:!!cfg.channexStagingKey,
+      productionApiKeyConfigured:!!cfg.channexProductionKey,
       webhookTokenConfigured:!!cfg.channexWebhookToken||!!connection.settings?.webhookTokenHash,
       supabaseConfigured:!!cfg.supabaseSecret
     },
@@ -180,8 +188,11 @@ export async function getBookingComChannelState(){
 export async function updateBookingComConnection(input:any){
   const current=await getConnection();
   const mode=input?.mode==='production'?'production':'staging';
-  const propertyId=text(input?.propertyId,100)||null;
+  const requestedPropertyId=text(input?.propertyId,100)||null;
   const channelPropertyId=text(input?.channelPropertyId,100)||null;
+  const storedStagingPropertyId=text(current.settings?.stagingPropertyId||current.property_id,100)||null;
+  const storedProductionPropertyId=text(current.settings?.productionPropertyId,100)||null;
+  const propertyId=mode==='production'?(requestedPropertyId||storedProductionPropertyId):(requestedPropertyId||storedStagingPropertyId);
   const requestedStagingHotelId=text(input?.stagingBookingHotelId,20)||String(current.settings?.stagingBookingHotelId||stagingBookingHotelId);
   if(mode==='staging'&&!/^\d{5,12}$/.test(requestedStagingHotelId))throw Error('Enter a valid numeric Booking.com staging Hotel ID.');
   const enabled=truthy(input?.enabled);
@@ -190,11 +201,13 @@ export async function updateBookingComConnection(input:any){
     inventoryMode:'room_type',
     roomTypeName:'Double Room',
     stagingBookingHotelId:requestedStagingHotelId,
+    stagingPropertyId:mode==='staging'?propertyId:storedStagingPropertyId,
+    productionPropertyId:mode==='production'?propertyId:storedProductionPropertyId,
     autoImportReservations:input?.autoImportReservations!==false,
     autoPushAvailability:truthy(input?.autoPushAvailability),
     dryRun:input?.dryRun!==false
   };
-  if(enabled&&(!runtime().channexKey||!propertyId))throw Error('Add the Channex API key and Channex property ID before enabling this channel.');
+  if(enabled&&(!channexKey({...current,mode} as ChannelConnection)||!propertyId))throw Error(mode==='production'?'Add the production Channex API key and production property ID before enabling this channel.':'Add the staging Channex API key and staging property ID before enabling this channel.');
   if(enabled&&settings.dryRun===false){
     const [rooms,rates]=await Promise.all([
       select('channel_room_mappings','connection_id=eq.'+connectionId+'&active=eq.true&select=id&limit=1'),
@@ -202,7 +215,7 @@ export async function updateBookingComConnection(input:any){
     ]);
     if(!rooms.length||!rates.length)throw Error('Discover and save at least one room mapping and one meal-plan rate mapping before leaving dry-run mode.');
   }
-  const status=enabled?(current.status==='connected'?'connected':'configured'):(propertyId&&runtime().channexKey?'configured':'disconnected');
+  const status=enabled?(current.status==='connected'?'connected':'configured'):(propertyId&&channexKey({...current,mode} as ChannelConnection)?'configured':'disconnected');
   await patch('channel_connections','id=eq.'+connectionId,{
     enabled,mode,status,property_id:propertyId,channel_property_id:channelPropertyId,
     settings,updated_at:isoNow(),last_error:null
@@ -212,7 +225,7 @@ export async function updateBookingComConnection(input:any){
 
 export async function testBookingComConnection(){
   const connection=await getConnection();
-  if(!runtime().channexKey)throw Error('CHANNEX_API_KEY is not configured on Cloudflare.');
+  if(!channexKey(connection))throw Error(connection.mode==='production'?'CHANNEX_PRODUCTION_API_KEY is not configured on Cloudflare.':'CHANNEX_STAGING_API_KEY is not configured on Cloudflare.');
   try{
     const result=connection.property_id
       ?await channex(connection,'/properties/'+encodeURIComponent(connection.property_id))
@@ -235,7 +248,7 @@ export async function testBookingComConnection(){
 export async function bootstrapBookingComStaging(){
   const connection=await getConnection();
   if(connection.mode!=='staging')throw Error('Staging bootstrap is blocked in production mode.');
-  if(!runtime().channexKey)throw Error('CHANNEX_API_KEY is not configured on Cloudflare.');
+  if(!runtime().channexStagingKey)throw Error('CHANNEX_STAGING_API_KEY is not configured on Cloudflare.');
   if(connection.property_id)throw Error('A Channex property is already selected. Use Discover from Channex instead.');
 
   const propertyResult=await channex(connection,'/properties',{
@@ -316,7 +329,7 @@ export async function bootstrapBookingComStaging(){
     patch('channel_connections','id=eq.'+connectionId,{
       property_id:propertyId,
       status:'configured',
-      settings:{...(connection.settings||{}),stagingBootstrapped:true,stagingRoomTypeId:roomTypeId,stagingBookingHotelId:String(connection.settings?.stagingBookingHotelId||stagingBookingHotelId),stagingCurrency:'GBP'},
+      settings:{...(connection.settings||{}),stagingPropertyId:propertyId,stagingBootstrapped:true,stagingRoomTypeId:roomTypeId,stagingBookingHotelId:String(connection.settings?.stagingBookingHotelId||stagingBookingHotelId),stagingCurrency:'GBP'},
       last_error:null,
       updated_at:isoNow()
     }),
@@ -348,7 +361,7 @@ export async function bootstrapBookingComStaging(){
 export async function ensureBookingComStagingRoomTypes(){
   const connection=await getConnection();
   if(connection.mode!=='staging')throw Error('Booking.com test room setup is only available in staging.');
-  if(!runtime().channexKey)throw Error('CHANNEX_API_KEY is not configured on Cloudflare.');
+  if(!runtime().channexStagingKey)throw Error('CHANNEX_STAGING_API_KEY is not configured on Cloudflare.');
   if(!connection.property_id)throw Error('Channex staging property ID is missing.');
 
   const property=encodeURIComponent(connection.property_id);
