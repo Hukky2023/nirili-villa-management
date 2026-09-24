@@ -2,7 +2,7 @@ import {transportPortalAllowed,isTransportAgent} from '../../../../lib/transport
 import {withTab} from '../../../../lib/tab-session';
 import {restaurantOnly,canPOS,canKitchen,canTakePayment} from '../../../../lib/pos-access';
 import {roomLoginActive,authDb,bootstrap,verifyPassword,issueSession,sameOrigin,limit,publicUser} from "../../../../lib/auth";
-import {authenticateSupabaseEmployee,ensureSupabaseEmployee} from "../../../../lib/supabase-bridge";
+import {authenticateSupabaseEmployee,supabaseBridgeConfigured} from "../../../../lib/supabase-bridge";
 export async function POST(request:Request){
 if(!sameOrigin(request))return Response.json({error:"Invalid request"},{status:403});
 try{
@@ -11,23 +11,16 @@ if(!username||username.length>254||typeof b.password!=="string"||b.password.leng
 const ip=request.headers.get("cf-connecting-ip")||"unknown";
 if(!await limit("login-ip:"+ip,100,900000)||!await limit("login:"+username,15,900000))return Response.json({error:"Too many attempts. Try again in 15 minutes."},{status:429});
 let row:any=null;
-let supabaseAuth:any=null;
-try{
- supabaseAuth=await Promise.race([
-  authenticateSupabaseEmployee(username,b.password),
-  new Promise(resolve=>setTimeout(()=>resolve(null),900))
- ]);
-}catch{}
-if(supabaseAuth?.account)row=supabaseAuth.account;
-if(!row){
+if(supabaseBridgeConfigured()){
+ const supabaseAuth=await authenticateSupabaseEmployee(username,b.password);
+ row=supabaseAuth?.account;
+ if(!row||!await roomLoginActive(row.id))return Response.json({error:"Incorrect username or password."},{status:401});
+}else{
  await bootstrap();
  row=await authDb().prepare("SELECT * FROM accounts WHERE (username=? OR email=?) AND active=1").bind(username,username).first<any>();
  const match=await verifyPassword(b.password,row?.salt||"00000000000000000000000000000000",row?.password_hash||"0".repeat(64));
  if(!row||!match||!await roomLoginActive(row.id))return Response.json({error:"Incorrect username or password."},{status:401});
- if(['admin','staff'].includes(row.role))try{
-  await ensureSupabaseEmployee(row,b.password);
- }catch{}
-}else if(!await roomLoginActive(row.id))return Response.json({error:"Incorrect username or password."},{status:401});
+}
 if(row.role==='guest')return Response.json({error:"Guest login access has been disabled."},{status:403});
 const user=publicUser(row);
 if(typeof b.portal==="string"&&b.portal.startsWith("transport_")&&!transportPortalAllowed(user,b.portal))return Response.json({error:"This account cannot access the selected transport portal."},{status:403});

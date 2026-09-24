@@ -32,7 +32,7 @@ async function currentBillRecord(key:string){
 
 export async function GET(r:Request){
  const user=await currentUser();
- if(!user||restaurantOnly(user)||user.role==="guest")return Response.json({error:"Staff login required"},{status:403});
+ if(!user||restaurantOnly(user)||!hasPermission(user,'edit_bills')&&!hasPermission(user,'guesthouse_reception'))return Response.json({error:"Reception or bill access required"},{status:403});
  const room=new URL(r.url).searchParams.get("room")||"";
  if(!/^(?:10[1-6]|20[1-4]|30[1-4])$/.test(room))return Response.json({error:"Invalid room"},{status:400});
  try{
