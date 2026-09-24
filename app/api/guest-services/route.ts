@@ -1,3 +1,4 @@
+import {staffData} from '../../../lib/staff-data';
 import {validateExcursionGuideAction} from '../../../lib/excursion-guide-server';
 import {applyExcursionAction,excursionResources,excursionPaid,excursionStage,changeExcursionStatus} from '../../../lib/excursion-workflow';
 import {nextBookingReference} from '../../../lib/booking-reference';
@@ -53,7 +54,7 @@ function canUseManagementServices(u:any){
  if(!u)return false;
  if(u.role==='guest'||u.role==='admin')return true;
  if(u.role!=='staff')return false;
- if(u.permissions.length===0)return true;
+ if(u.permissions.length===0)return false;
  return u.permissions.some((p:string)=>['guesthouse_reception','excursions_manager','edit_bills','edit_excursions','edit_transfers'].includes(p));
 }
 
@@ -89,7 +90,7 @@ async function view(u:any){const {state,revision}=await loadViewState();const ex
  const dining=(state.posOrders||[]).filter((o:any)=>ids.has(o.stayId)).map((o:any)=>({id:o.id,stayId:o.stayId,name:'Restaurant · Table '+o.table,quantity:1,cents:o.cents,date:o.createdAt?.slice(0,10),status:o.kitchen,paymentStatus:guestStays.find((s:any)=>s.id===o.stayId)?.folio.bills.find((b:any)=>b.id===o.id)?.status==='Paid'?'Paid':'Charged to room'}));
  const buggyRides=(state.buggyBookings||[]).filter((ride:any)=>ride.accountId===u.userId&&ride.bookingType==='guest-ride').slice().sort((a:any,b:any)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).map((ride:any)=>{const buggy=(state.buggyFleet||[]).find((x:any)=>x.id===ride.buggyId);return {id:ride.id,stayId:ride.stayId,room:ride.room,guest:ride.guest,date:ride.date,pickupTime:ride.pickupTime,location:ride.location,destination:ride.destination,quantity:ride.quantity,status:ride.cancelled?'Cancelled':ride.buggyStatus||'Requested',buggyId:ride.buggyId||'',buggyName:buggy?.name||'',driver:ride.buggyDriver||buggy?.driver||'',fareCents:Math.max(0,Number(ride.fareCents)||0),chargeToRoom:ride.chargeToRoom===true,createdAt:ride.createdAt||''};});
  return {catalog:currentCatalog,requests:[],stays:guestStays,orders:[...ownOrders,...dining],guestNotifications:guestNotificationsForAccount(state,u.userId),buggyFareCents:Math.max(0,Number(state.buggySettings?.guestRideFareCents)||0),buggyRides};
- }const canManageExcursions=u.role==='admin'||hasPermission(u,'excursions_manager')||hasPermission(u,'edit_excursions');const crewOptions=canManageExcursions?(await authDb().prepare("SELECT name FROM accounts WHERE active=1 AND role='staff'").all<any>()).results.map((x:any)=>x.name):[];return {canSchedule:canManageExcursions,resources:excursionResources(state),crewOptions,catalog:currentCatalog,revision,requests:state.requests,bookingChanges:state.bookingChanges||[],excursionChanges:state.excursionChanges||[],rooms:state.rooms,stays:state.stays,orders};}
+ }const canManageExcursions=u.role==='admin'||hasPermission(u,'excursions_manager')||hasPermission(u,'edit_excursions');const crewOptions=canManageExcursions?(await authDb().prepare("SELECT name FROM accounts WHERE active=1 AND role='staff'").all<any>()).results.map((x:any)=>x.name):[];return staffData(u,{canSchedule:canManageExcursions,resources:excursionResources(state),crewOptions,catalog:currentCatalog,revision,requests:state.requests,bookingChanges:state.bookingChanges||[],excursionChanges:state.excursionChanges||[],rooms:state.rooms,stays:state.stays,orders});}
 export async function GET(){const u=await serviceUser();if(!canUseManagementServices(u)||restaurantOnly(u))return Response.json({error:'This account cannot access hotel management services.'},{status:403});try{return Response.json(await view(u),{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({error:'Could not load bookings. Please retry.'},{status:503})}}
 export async function POST(r:Request){const u=await serviceUser();if(!u||!sameOrigin(r)||(!canUseManagementServices(u)&&u.role!=='guest'))return Response.json({error:'This account cannot access hotel management services.'},{status:403});let generatedCrewAccountId='',generatedCrewLogin:any=null,generatedCrewCommitted=false;try{const b=await r.json(),{state,revision}=await loadViewState();let resultId='';let loginPlan:any=null;let revokeAccounts:string[]=[];let publicBookingUpdate:any=null;let confirmationEmailInput:any=null;let bookingConfirmation:any=null;let bookingDecisionEmailInput:any=null;let bookingDecisionKind='';let bookingDecision:any=null;let buggyPush:any=null;let linkedTransportStayToCancel='',linkedTransportIdsToCancel:string[]=[];state.bookingChanges??=[];const today=islandToday();
 if(b.action==='guest-notification-dismiss'){
@@ -317,3 +318,4 @@ return Response.json(generatedCrewLogin?{...responseWithDecision,generatedCrewLo
  }
  return Response.json({error:e instanceof Error?e.message:'Could not save. Please retry.'},{status:400});
 }}
+

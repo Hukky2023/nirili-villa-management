@@ -52,6 +52,8 @@ class DB{
 }
 function saveFor(db){return load('lib/stay-login.ts',{
  './auth':{authDb:()=>db},'./credential-store':{credentialStatement:()=>{throw Error('No credential write expected');}},
+ './account-history':{preserveAccountHistoryStatement:()=>{throw Error('Unexpected account history write')}},
+ './supabase-bridge':{saveOperationalRecordPrimary:async()=>{throw Error('D1 fixture')},mirrorHotelState:async()=>{},mirrorOperationalRecord:async()=>{}},
  './stays':{stayKey:stateKey},'./excursion-extra-vessels':extra
 }).saveStayAccess;}
 function defaultFor(db){return load('lib/excursion-default-schedule.ts',{
@@ -104,11 +106,11 @@ test('admin-created overflow booking is promoted by the same atomic save',async(
  f.state.orders[1].adminCreated=true;assert.equal(await f.save(f.state,5,'admin'),true);assert.ok(child(f.db));
 });
 test('already-approved legacy extra vessel becomes a separate row on refresh',async()=>{
- const f=fixture({legacy:true});f.db.put('excursion-standard-day:v3:'+day,{date:day},1);
+ const f=fixture({legacy:true});f.db.put('excursion-standard-day:v7:'+day,{date:day},1);
  await defaultFor(f.db)(day);assert.ok(child(f.db));assert.equal(booked(f.db.state(),child(f.db).id),6);
 });
 test('repeated refresh does not duplicate trips or history',async()=>{
- const f=fixture({legacy:true});f.db.put('excursion-standard-day:v3:'+day,{date:day},1);const ensure=defaultFor(f.db);
+ const f=fixture({legacy:true});f.db.put('excursion-standard-day:v7:'+day,{date:day},1);const ensure=defaultFor(f.db);
  await ensure(day);const revision=f.db.row(stateKey).revision;await ensure(day);await ensure(day);
  assert.equal(f.db.schedules().length,2);assert.equal(f.db.state().orders[1].scheduleHistory.length,1);assert.equal(f.db.row(stateKey).revision,revision);
 });
@@ -184,7 +186,7 @@ test('a trip insertion failure rolls back the booking state update',async()=>{
  await assert.rejects(f.save(f.state,5,'admin'),/test insert failure/);assert.equal(f.db.row(stateKey).payload,before);
 });
 test('daily refresh retries a concurrent booking revision rather than duplicating rows',async()=>{
- const f=fixture({legacy:true});f.db.put('excursion-standard-day:v3:'+day,{date:day},1);
+ const f=fixture({legacy:true});f.db.put('excursion-standard-day:v7:'+day,{date:day},1);
  f.db.beforeBatch=()=>f.db.put(stateKey,f.db.state(),6);await defaultFor(f.db)(day);assert.equal(f.db.schedules().length,2);assert.equal(booked(f.db.state(),child(f.db).id),6);
 });
 test('unrelated hotel state saves do not add excursion rows',async()=>{
@@ -206,7 +208,7 @@ test('a concurrent new timetable row forces a retry before the extra vessel is o
  assert.equal(await f.save(f.state,5,'admin'),false);assert.equal(child(f.db),undefined);assert.equal(f.db.state().orders[1].approvalStatus,'Pending');
 });
 test('unmigratable legacy records do not increment the state revision on every refresh',async()=>{
- const f=fixture({legacy:true});delete f.state.excursionResources.vessels[1].capacity;f.db.put(stateKey,f.state,5);f.db.put('excursion-standard-day:v3:'+day,{date:day},1);
+ const f=fixture({legacy:true});delete f.state.excursionResources.vessels[1].capacity;f.db.put(stateKey,f.state,5);f.db.put('excursion-standard-day:v7:'+day,{date:day},1);
  const ensure=defaultFor(f.db);await ensure(day);await ensure(day);assert.equal(f.db.row(stateKey).revision,5);assert.equal(f.db.schedules().length,1);
 });
 
@@ -218,15 +220,23 @@ function routeFor(db){return load('app/api/excursion-schedules/route.ts',{
  '../../../lib/stays':{stayKey:stateKey,loadStays:async()=>({state:db.state(),revision:db.row(stateKey).revision})},
  '../../../lib/stay-login':{saveStayAccess:saveFor(db)},
  '../../../lib/excursion-children':childPricing,
+ '../../../lib/excursion-menu':{loadExcursionMenu:async()=>[]},
+ '../../../lib/excursion-manifest':load('lib/excursion-manifest.ts',{'./excursion-bookings':load('lib/excursion-bookings.ts')}),
+ '../../../lib/excursion-email':{},'../../../lib/web-push':{},
+ '../../../lib/guest-notifications':{addGuestNotification:()=>{}},
+ '../../../lib/excursion-time-change':load('lib/excursion-time-change.ts'),
+ '../../../lib/excursion-auto-assignment':{},
+ '../../../lib/special-package-booking':load('lib/special-package-booking.ts'),
  '../../../lib/excursion-default-schedule':{ensureStandardDailyExcursions:defaultFor(db)},
  '../../../lib/excursion-workflow':resources,
  '../../../lib/excursion-guides':{guideRuleFor:()=>({needsGuides:false})},
  '../../../lib/guest-catalog':{excursionDeparturePassed:()=>false},
  '../../../lib/excursion-services':{},
+ '../../../lib/supabase-bridge':{readExcursionSchedulesPrimary:async()=>null,readOperationalRecordPrimary:async()=>null,mirrorExcursionScheduleRecord:async()=>{},mirrorHotelState:async()=>{},saveOperationalRecordPrimary:async()=>{throw Error('D1 fixture')},saveOperationalPairPrimary:async()=>{throw Error('D1 fixture')}},
  '../../../lib/excursion-operations':operations
 });}
 const patch=body=>new Request('https://test.invalid/api/excursion-schedules',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-const walkin={action:'admin-booking',date:day,guestType:'walkin',guest:'Test guest',hotel:'Test hotel',phone:'+9601234567'};
+const walkin={guestNames:['Guest one','Guest two','Guest three'],footSizes:[40,41,42],action:'admin-booking',date:day,guestType:'walkin',guest:'Test guest',hotel:'Test hotel',phone:'+9601234567'};
 test('approval HTTP handler returns the new trip ID, not the parent ID',async()=>{
  const f=fixture(),route=routeFor(f.db);
  const response=await route.PATCH(patch({requestId:'EXC-EXTRA',decision:'Approved',vesselId:'v2'}));
@@ -235,7 +245,7 @@ test('approval HTTP handler returns the new trip ID, not the parent ID',async()=
  assert.equal(booked(f.db.state(),result.scheduleId),6);
 });
 test('schedule GET returns a separate extra row with its real remaining seats',async()=>{
- const f=fixture({legacy:true});f.db.put('excursion-standard-day:v3:'+day,{date:day});
+ const f=fixture({legacy:true});f.db.put('excursion-standard-day:v7:'+day,{date:day});
  const response=await routeFor(f.db).GET(new Request('https://test.invalid/api/excursion-schedules?date='+day));
  const result=await response.json();assert.equal(response.status,200,JSON.stringify(result));
  const trip=result.schedules.find(s=>s.extraVesselTrip),original=result.schedules.find(s=>s.id===f.parent.id);
@@ -263,3 +273,4 @@ test('admin-booking HTTP handler creates an independently bookable extra trip',a
  assert.equal(result.booking.scheduleId,child(f.db).id);assert.equal(result.booking.extraVesselTrip,true);
  assert.equal(booked(f.db.state(),child(f.db).id),3);assert.equal(booked(f.db.state(),f.parent.id),4);
 });
+

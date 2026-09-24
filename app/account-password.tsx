@@ -6,7 +6,7 @@ import './account-password.css';
 
 export default function AccountPassword({user,autoReveal=false}:{user:any;autoReveal?:boolean}){
  const isGuest=user.role==='guest';
- const [currentPassword,setCurrentPassword]=useState(''),[open,setOpen]=useState(false),[password,setPassword]=useState(''),[available,setAvailable]=useState<boolean|null>(null),[draft,setDraft]=useState(''),[show,setShow]=useState(false),[mode,setMode]=useState('remember'),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const [currentPassword,setCurrentPassword]=useState(''),[open,setOpen]=useState(false),[password,setPassword]=useState(''),[available,setAvailable]=useState<boolean|null>(null),[draft,setDraft]=useState(''),[show,setShow]=useState(false),[mode,setMode]=useState('reset'),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
 
  async function request(body:any){
   const r=await fetch('/api/account-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:user.id,...body})}),d=await r.json();
@@ -45,7 +45,7 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
   finally{setBusy(false);}
  }
 
- useEffect(()=>{if(autoReveal)void reveal();},[user.id,autoReveal]);
+ useEffect(()=>{if(autoReveal&&isGuest)void reveal();},[user.id,autoReveal]);
 
  function text(){
   const rooms=(user.stays||[]).filter((s:any)=>s.status!=='Checked Out').map((s:any)=>'Room '+s.room+' · '+s.meal).join('\n');
@@ -71,8 +71,8 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
  return <div className="account-password">
   <p><UiText>{primaryLabel+': '}</UiText><span><UiText>{unavailableGuest?'Private password created':show&&password?password:masked}</UiText></span></p>
   <div className="account-password-actions">
-   {!unavailableGuest&&<button type="button" disabled={busy} onClick={()=>show?setShow(false):reveal()}><UiText>{show?(isGuest?'Hide setup code':'Hide password'):(isGuest?'Show setup code':'Show password')}</UiText></button>}
-   {!unavailableGuest&&<button disabled={busy} onClick={()=>password?(setOpen(true),setMessage('')):reveal(true)}><UiText>{isGuest?'Share setup details':'Share login details'}</UiText></button>}
+   {isGuest&&!unavailableGuest&&<button type="button" disabled={busy} onClick={()=>show?setShow(false):reveal()}><UiText>{show?(isGuest?'Hide setup code':'Hide password'):(isGuest?'Show setup code':'Show password')}</UiText></button>}
+   {isGuest&&!unavailableGuest&&<button disabled={busy} onClick={()=>password?(setOpen(true),setMessage('')):reveal(true)}><UiText>{isGuest?'Share setup details':'Share login details'}</UiText></button>}
    {isGuest&&unavailableGuest&&<button type="button" disabled={busy} onClick={resetGuestPassword}><UiText>{busy?'Resetting…':'Reset guest password'}</UiText></button>}
    {user.role!=='guest'&&<button onClick={()=>{setOpen(true);setMode('reset');setCurrentPassword('');setDraft('');setMessage('');}}><UiText>Manage password</UiText></button>}
   </div>
@@ -95,11 +95,11 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
     try{
      const result=await request({action:mode==='remember'?'remember':'reset',password:draft,currentPassword});
      if(result.signInAgain){setDraft('');setCurrentPassword('');setPassword('');setShow(false);setMessage('Password changed. Close this dialog, sign out, then sign in with your new password.');return;}
-     setPassword(draft);setShow(true);setDraft('');setMessage('Password saved for Admin viewing and sharing.');
+     setPassword(draft);setShow(true);setDraft('');setMessage('Password changed. You can share it now; it cannot be viewed again after closing.');
     }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
    }}>
     <h3><UiText>Manage password</UiText></h3>
-    <label><UiText>Password action</UiText><select disabled={busy} value={mode} onChange={e=>setMode(e.target.value)}><UiOption value="remember">Verify and save current password</UiOption><UiOption value="reset">Set a new password</UiOption></select></label>
+    <label><UiText>Password action</UiText><select disabled={busy} value={mode} onChange={e=>setMode(e.target.value)}><UiOption value="reset">Set a new password</UiOption></select></label>
     {mode==='reset'&&<p><UiText>This replaces the password and signs this account out of other devices.</UiText></p>}
     {mode==='reset'&&user.role==='admin'&&<label><UiText>Current Admin password</UiText><input required type="password" autoComplete="current-password" maxLength={128} value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)}/></label>}
     <label><UiText>{mode==='remember'?'Current password':'New password'}</UiText><input required disabled={busy} minLength={8} maxLength={128} type="password" autoComplete={mode==='remember'?'current-password':'new-password'} value={draft} onChange={e=>setDraft(e.target.value)}/></label>
@@ -111,3 +111,4 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
   </UiField></div>}
  </div>;
 }
+

@@ -1,7 +1,7 @@
 import {sessionCookieName,currentTab} from './tab-session';
 import {env} from "cloudflare:workers";
 import {cookies} from "next/headers";
-import {deactivateSupabaseAccount,hitSupabaseRateLimit,readLegacySessionAccount,readOperationalRecordPrimary,upsertLegacySession} from './supabase-bridge';
+import {deactivateSupabaseAccount,hitSupabaseRateLimit,readLegacySessionAccount,readOperationalRecordPrimary,upsertLegacySession,supabaseBridgeConfigured} from './supabase-bridge';
 
 export type Permission="guesthouse_reception"|"excursions_manager"|"waiter_pos"|"restaurant_pos"|"kitchen_pos"|"edit_bills"|"edit_excursions"|"edit_transfers"|"buggy_driver"|"crew_location";
 export type Actor={userId:string;username:string;email:string;displayName:string;role:"admin"|"staff"|"guest";permissions:Permission[]};
@@ -86,16 +86,18 @@ export async function currentUser():Promise<Actor|null>{
 try{await applyBookingAndSessionResetOnce();}catch{}
 const token=(await cookies()).get(await sessionCookieName())?.value;if(!token)return null;
 const tokenHash=await digest(token),now=Date.now();let row:any=null;
-try{row=await readLegacySessionAccount(tokenHash,now);}catch{}
-if(!row)row=await authDb().prepare("SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id=a.id WHERE s.token_hash=? AND s.expires_at>? AND a.active=1").bind(tokenHash,now).first();
+if(supabaseBridgeConfigured()){
+ try{row=await readLegacySessionAccount(tokenHash,now);}catch{return null;}
+}else row=await authDb().prepare("SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id=a.id WHERE s.token_hash=? AND s.expires_at>? AND a.active=1").bind(tokenHash,now).first();
 if(!row||row.role==='guest')return null;
 return await roomLoginActive(row.id)?publicUser(row):null;}
 
 export async function currentGuestUser():Promise<Actor|null>{
  const token=(await cookies()).get(guestCookieName)?.value;if(!token)return null;
  const tokenHash=await digest(token),now=Date.now();let row:any=null;
- try{row=await readLegacySessionAccount(tokenHash,now);}catch{}
- if(!row)row=await authDb().prepare("SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id=a.id WHERE s.token_hash=? AND s.expires_at>? AND a.active=1").bind(tokenHash,now).first();
+ if(supabaseBridgeConfigured()){
+  try{row=await readLegacySessionAccount(tokenHash,now);}catch{return null;}
+ }else row=await authDb().prepare("SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id=a.id WHERE s.token_hash=? AND s.expires_at>? AND a.active=1").bind(tokenHash,now).first();
  if(!row||row.role!=='guest')return null;
  return await roomLoginActive(row.id)?publicUser(row):null;
 }
@@ -103,13 +105,19 @@ export function hasPermission(user:Actor|null,permission:Permission){return !!us
 export function sameOrigin(r:Request){return r.headers.get("origin")===new URL(r.url).origin;}
 export async function issueSession(id:string,tab?:string){
 const token=randomToken(),tokenHash=await digest(token),expiresAt=Date.now()+12*60*60*1000;let primary=false;
-try{primary=await upsertLegacySession(tokenHash,id,expiresAt);}catch{}
+if(supabaseBridgeConfigured()){
+ primary=await upsertLegacySession(tokenHash,id,expiresAt);
+ if(!primary)throw Error('Account service unavailable');
+}
 try{await authDb().prepare("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(tokenHash,id,expiresAt).run();}catch(error){if(!primary)throw error;}
 return (tab?cookieName+"_"+tab:await sessionCookieName())+"="+token+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200";}
 
 export async function issueGuestSession(id:string){
  const token=randomToken(),tokenHash=await digest(token),expiresAt=Date.now()+12*60*60*1000;let primary=false;
- try{primary=await upsertLegacySession(tokenHash,id,expiresAt);}catch{}
+ if(supabaseBridgeConfigured()){
+  primary=await upsertLegacySession(tokenHash,id,expiresAt);
+  if(!primary)throw Error('Account service unavailable');
+ }
  try{await authDb().prepare("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(tokenHash,id,expiresAt).run();}catch(error){if(!primary)throw error;}
  return guestCookieName+"="+token+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200";
 }
@@ -126,7 +134,8 @@ export const validEmail=(e:string)=>e.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.
 
 export async function roomLoginActive(id:string){
  if(!id.startsWith('room-')&&!id.startsWith('walkin-exc-'))return true;
- let state:any=null;try{state=(await readOperationalRecordPrimary('hotel-stays-v1'))?.payload||null;}catch{}
+ let state:any=null;try{state=(await readOperationalRecordPrimary('hotel-stays-v1'))?.payload||null;}catch{if(supabaseBridgeConfigured())return false;}
+ if(!state&&supabaseBridgeConfigured())return false;
  if(!state){const r=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind('hotel-stays-v1').first<any>();if(!r)return false;state=JSON.parse(r.payload);}
 
  if(id.startsWith('walkin-exc-')){

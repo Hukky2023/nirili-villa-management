@@ -1,3 +1,4 @@
+import {staffData} from '../../../lib/staff-data';
 import {bookingGuests} from '../../../lib/booking-guests';
 import {editBooking,deleteBooking} from '../../../lib/booking-admin';
 import {createDirectBooking} from '../../../lib/direct-booking';
@@ -16,8 +17,8 @@ function canViewHotel(u:any){
  if(!u)return false;
  if(u.role==='admin')return true;
  if(u.role!=='staff')return false;
- if(u.permissions.length===0)return true;
- return u.permissions.some((p:string)=>['guesthouse_reception','edit_bills','edit_excursions','edit_transfers'].includes(p));
+ if(u.permissions.length===0)return false;
+ return u.permissions.some((p:string)=>['guesthouse_reception','edit_bills','excursions_manager','edit_excursions','edit_transfers'].includes(p));
 }
 async function loadHotelPrimary(){
  try{
@@ -38,9 +39,9 @@ export async function GET(){const u=await currentUser();if(!canViewHotel(u)||res
  try{primary=await readOperationalRecordPrimary(stayKey);}catch{}
  if(primary?.payload){
   const state=primary.payload;
-  return Response.json(await projectStayState(state,Number(primary.revision)||0),{headers:{'Cache-Control':'no-store'}});
+  return Response.json(staffData(u!,await projectStayState(state,Number(primary.revision)||0)),{headers:{'Cache-Control':'no-store'}});
  }
- return Response.json(await stayView(),{headers:{'Cache-Control':'no-store'}});
+ return Response.json(staffData(u!,await stayView()),{headers:{'Cache-Control':'no-store'}});
 }catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
 export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();const canManageStay=hasPermission(u,'guesthouse_reception')||hasPermission(u,'edit_bills');if(!canManageStay)return Response.json({error:'Reception or bill editing permission is required.'},{status:403});const {state,revision}=await loadHotelPrimary();
 if(b.action==='create'){
@@ -106,3 +107,4 @@ else if(b.action==='checkout'){
 else throw Error('Unknown action');
 s.history.unshift({date:new Date().toISOString(),detail,by:u.username});const saved=await saveStayAccess(state,revision,u.userId,loginPlan,revoke);if(!saved)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});if(['extend','roomstatus'].includes(b.action))await autoPushBookingComAvailability();if(b.action==='checkout'&&s.accountId)await appendAccountHistory(s.accountId,{at:s.checkedOutAt||new Date().toISOString(),action:'In-house login terminated at checkout',by:u.username,detail:'Room '+s.room+' · '+s.id});return Response.json(await projectStayState(state,revision+1));
 }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not save. Please retry.'},{status:400})}}
+

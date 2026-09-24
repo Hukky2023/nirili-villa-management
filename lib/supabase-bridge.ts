@@ -234,7 +234,11 @@ export async function mirrorLegacyAccounts(rows:LegacyAccountRow[]){
     active:row.active===undefined?true:!!row.active,
     updated_at:now
   }));
-  await restUpsert('legacy_accounts',values,'id');
+  // Backfill only missing accounts. A stale rollback mirror must not undo a
+  // password change, disabled account or permission change on the primary.
+  await sb('/rest/v1/legacy_accounts?on_conflict=id',{
+    method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(values)
+  },'secret');
   return values.length;
 }
 
@@ -254,7 +258,7 @@ export async function mirrorOperationalSnapshot(records:any[],bills:any[]){
     let payload=parse(record.payload);
     if(key==='hotel-stays-v1')payload=mergeRestaurantOrdersIntoHotelState(payload,restaurantOrders);
     return {key,payload,revision,updated_by:record.updated_by||null,synced_at:now,sync_batch_id:batch};
-  }).filter((row:any)=>row.key&&(!opRevisions.has(row.key)||row.revision>(opRevisions.get(row.key)||0)));
+  }).filter((row:any)=>row.key&&!row.key.startsWith('credential:')&&(!opRevisions.has(row.key)||row.revision>(opRevisions.get(row.key)||0)));
   await restUpsert('operational_records',opRows,'key');
 
   const scheduleRows=opRows.filter((row:any)=>row.key.startsWith('excursion-schedule:')).map((row:any)=>{
@@ -535,10 +539,13 @@ export async function ensureSupabaseEmployee(row:LegacyAccountRow,password:strin
 export async function authenticateSupabaseEmployee(identifier:string,password:string){
   if(!supabaseBridgeConfigured())return null;
   const encoded=encodeURIComponent(identifier.toLowerCase());
-  let rows=await restSelect('legacy_accounts','username=eq.'+encoded+'&active=eq.true&select=id,username,email,name,role,permissions,active,auth_user_id&limit=1');
-  if(!rows.length)rows=await restSelect('legacy_accounts','email=eq.'+encoded+'&active=eq.true&select=id,username,email,name,role,permissions,active,auth_user_id&limit=1');
+  let rows=await restSelect('legacy_accounts','username=eq.'+encoded+'&active=eq.true&select=id,username,email,name,role,permissions,active,auth_user_id,password_hash,salt&limit=1');
+  if(!rows.length)rows=await restSelect('legacy_accounts','email=eq.'+encoded+'&active=eq.true&select=id,username,email,name,role,permissions,active,auth_user_id,password_hash,salt&limit=1');
   const row=rows[0];
-  if(!row||!['admin','staff'].includes(row.role)||!row.auth_user_id)return null;
+  if(!row||!['admin','staff'].includes(row.role))return null;
+  // Accounts not yet mapped to Auth keep working against the authoritative
+  // primary hash. Never consult D1 or overwrite an existing Auth password.
+  if(!row.auth_user_id)return await verifyPrimaryPassword(row,password)?{legacyId:String(row.id),account:row}:null;
   const email=(row.email||syntheticEmail(row.username)).toLowerCase();
   try{
     await sb('/auth/v1/token?grant_type=password',{
@@ -976,4 +983,19 @@ export async function mirrorHotelState(state:any){
   await restUpsert('payments',payments,'id');
 
   return true;
+}
+
+
+export async function verifyPrimaryPassword(row:any,password:string){
+ if(!row?.active||!row.salt||!row.password_hash)return false;
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);
+ const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:new TextEncoder().encode(row.salt),iterations:100000,hash:'SHA-256'},key,256);
+ const hash=Array.from(new Uint8Array(bits),x=>x.toString(16).padStart(2,'0')).join('');
+ let mismatch=hash.length^row.password_hash.length;
+ for(let i=0;i<hash.length;i++)mismatch|=hash.charCodeAt(i)^(row.password_hash.charCodeAt(i)||0);
+ return mismatch===0;
+}
+export async function primaryGuestAccount(username:string){
+ const rows=await restSelect('legacy_accounts','username=eq.'+encodeURIComponent(username)+'&role=eq.guest&active=eq.true&select=*&limit=1');
+ return rows[0]||null;
 }

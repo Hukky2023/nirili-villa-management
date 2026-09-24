@@ -76,7 +76,7 @@ function requestTab(request:NextRequest,url:URL){
  return '';
 }
 
-export function proxy(request:NextRequest){
+function routeRequest(request:NextRequest){
  const url=new URL(request.url);
  const host=(request.headers.get('host')||'').split(':')[0].toLowerCase();
 
@@ -108,3 +108,14 @@ export function proxy(request:NextRequest){
 }
 
 export const config={matcher:['/((?!_next|assets|favicon|.*\\.).*)']};
+
+
+export function proxy(request:NextRequest){
+ const response=routeRequest(request);
+ response.headers.set('X-Content-Type-Options','nosniff');
+ response.headers.set('X-Frame-Options','DENY');
+ response.headers.set('Referrer-Policy','strict-origin-when-cross-origin');
+ response.headers.set('Strict-Transport-Security','max-age=31536000');
+ response.headers.set('Content-Security-Policy',"object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
+ return response;
+}

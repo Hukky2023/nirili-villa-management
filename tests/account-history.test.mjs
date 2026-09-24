@@ -28,7 +28,7 @@ class D1 {
 const auth={authDb:()=>db,currentUser:async()=>current,sameOrigin:()=>true,hashPassword:async()=>({hash:'new-hash',salt:'new-salt'}),verifyPassword:async()=>false,validPassword:()=>true,validEmail:()=>true};
 const events=load('lib/account-history-events.ts');
 const history=load('lib/account-history.ts',{'./auth':auth,'./account-history-events':events});
-const userApi=load('app/api/user-account/route.ts',{'../../../lib/auth':auth,'../../../lib/account-history':history});
+const userApi=load('app/api/user-account/route.ts',{'../../../lib/auth':auth,'../../../lib/account-history':history,'../../../lib/supabase-bridge':{deactivateSupabaseAccount:async()=>true,deleteLegacySessionsForAccount:async()=>true}});
 const stays={stayKey:'hotel-stays-v1',loadStays:async()=>{const row=await db.prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind('hotel-stays-v1').first();return {state:JSON.parse(row.payload),revision:row.revision};}};
 const credentials={credentialStatement:async(id,hash,password,by)=>db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) SELECT ?,?,1,? WHERE EXISTS(SELECT 1 FROM accounts WHERE id=?)').bind('credential:'+id,JSON.stringify({hash,password}),by,id),mirrorCredentialRecord:async()=>true};
 const supabaseBridge={deleteLegacySessionsForAccount:async()=>true,mirrorLegacyAccount:async()=>true,ensureSupabaseEmployee:async()=>true};
