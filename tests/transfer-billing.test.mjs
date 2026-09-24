@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {applyTransferBillEdit,transferBillItems,transferBillStatus} from '../lib/transfer-billing.ts';
+import {folioTotals} from '../lib/bill-payment.ts';
 
 test('transfer bill edits update the source order instead of a detached folio override',()=>{
  const state={
@@ -30,4 +31,19 @@ test('cancelled transfer bill cancels its source order',()=>{
  applyTransferBillEdit(state,{id:'TRF-3',date:'24 Sep 2026, 03:00',status:'Cancelled',items:[['Transfer',1,35,0]]},'admin');
  assert.equal(state.orders[0].status,'Cancelled');
  assert.equal(transferBillStatus(state.orders[0]),'Cancelled');
+});
+
+
+test('manual transfer stays in room balance until it is marked paid',()=>{
+ const stay={initialPaid:0,payments:[],paidBills:{}};
+ const unpaid={department:'Transfer',id:'TRF-MANUAL',status:'Unpaid',totalCents:6000};
+ assert.deepEqual(folioTotals(stay,[unpaid]),{totalCents:6000,paidCents:0,balanceCents:6000});
+ const paid={...unpaid,status:'Paid'};
+ assert.deepEqual(folioTotals(stay,[paid]),{totalCents:6000,paidCents:6000,balanceCents:0});
+});
+
+test('room mark-paid coverage is not double counted with a paid transfer status',()=>{
+ const stay={initialPaid:0,payments:[{cents:6000}],paidBills:{'Transfer:TRF-MANUAL':6000}};
+ const bill={department:'Transfer',id:'TRF-MANUAL',status:'Paid',totalCents:6000};
+ assert.deepEqual(folioTotals(stay,[bill]),{totalCents:6000,paidCents:6000,balanceCents:0});
 });
