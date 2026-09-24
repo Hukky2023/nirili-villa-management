@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useRef,useState} from 'react';
-import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,Palmtree,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
+import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
 import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
@@ -90,8 +90,8 @@ export default function GuestBookingSite(){
     <div className="trust-row"><span><Heart/> Local Dhiffushi hospitality</span></div>
    </div>
    <div className="hero-card">
-    <div className="lagoon-art"><span className="sun"/><span className="island"/><span className="wave wave-a"/><span className="wave wave-b"/><Palmtree className="palm"/></div>
-    <div className="hero-card-copy"><small>YOUR DHIFFUSHI BASE</small><strong>14-room island guesthouse</strong><span>Arrive as a Guest, Leave as a Friend.</span></div>
+    <img className="hero-card-photo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Dhiffushi-Maldives-Andres_Larin.jpg/1280px-Dhiffushi-Maldives-Andres_Larin.jpg" alt="Aerial view of Dhiffushi island in Kaafu Atoll, Maldives" width={1280} height={959} fetchPriority="high"/>
+    <div className="hero-card-copy"><small>YOUR DHIFFUSHI BASE</small><strong>14-room island guesthouse</strong><span>Arrive as a Guest, Leave as a Friend.</span><p className="hero-photo-credit">Dhiffushi · Photo: <a href="https://commons.wikimedia.org/wiki/File:Dhiffushi-Maldives-Andres_Larin.jpg" target="_blank" rel="noopener noreferrer">Andres Larin / Saaremees</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p></div>
    </div>
   </section>
 
