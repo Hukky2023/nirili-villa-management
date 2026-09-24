@@ -338,6 +338,126 @@ export async function bootstrapBookingComStaging(){
   };
 }
 
+export async function ensureBookingComStagingRoomTypes(){
+  const connection=await getConnection();
+  if(connection.mode!=='staging')throw Error('Booking.com test room setup is only available in staging.');
+  if(!runtime().channexKey)throw Error('CHANNEX_API_KEY is not configured on Cloudflare.');
+  if(!connection.property_id)throw Error('Channex staging property ID is missing.');
+
+  const property=encodeURIComponent(connection.property_id);
+  const [roomResult,rateResult]=await Promise.all([
+    channex(connection,'/room_types?filter[property_id]='+property+'&pagination[limit]=100'),
+    channex(connection,'/rate_plans?filter[property_id]='+property+'&pagination[limit]=100')
+  ]);
+  const existingRooms=rowsOf(roomResult);
+  const existingRates=rowsOf(rateResult);
+
+  const roomSpecs=[
+    {title:'Double Room',occupancy:2},
+    {title:'Single Room',occupancy:1},
+    {title:'Suite',occupancy:3}
+  ];
+  const rateSpecs=[
+    {title:'Bed & Breakfast',meal:'Bed & Breakfast',mealType:'bed_and_breakfast',rates:[50,60,70]},
+    {title:'Half Board',meal:'Half Board',mealType:'half_board',rates:[70,80,90]},
+    {title:'Full Board',meal:'Full Board',mealType:'full_board',rates:[80,100,120]}
+  ];
+
+  const createdRooms:any[]=[];
+  const roomRows:any[]=[];
+  const rateRows:any[]=[];
+
+  for(const spec of roomSpecs){
+    let room=existingRooms.find((item:any)=>String(attrsOf(item).title||attrsOf(item).name||'').trim().toLowerCase()===spec.title.toLowerCase());
+    if(!room){
+      const result=await channex(connection,'/room_types',{
+        method:'POST',
+        body:JSON.stringify({room_type:{
+          property_id:connection.property_id,
+          title:spec.title,
+          count_of_rooms:14,
+          occ_adults:spec.occupancy,
+          occ_children:0,
+          occ_infants:0,
+          default_occupancy:spec.occupancy,
+          room_kind:'room',
+          facilities:[]
+        }})
+      });
+      room=rowsOf(result)[0]||result?.data||result;
+      createdRooms.push(spec.title);
+    }
+    const roomId=String(room?.id||attrsOf(room)?.id||'');
+    if(!roomId)throw Error('Channex did not return a room type ID for '+spec.title+'.');
+
+    roomRows.push({
+      connection_id:connectionId,
+      channel_room_id:roomId,
+      channel_room_name:spec.title,
+      pms_room_type:'Double Room',
+      active:true,
+      settings:{stagingOccupancy:spec.occupancy},
+      updated_at:isoNow()
+    });
+
+    for(const plan of rateSpecs){
+      let rate=existingRates.find((item:any)=>{
+        const a=attrsOf(item);
+        return String(a.room_type_id||'')===roomId&&String(a.title||a.name||'').trim().toLowerCase()===plan.title.toLowerCase();
+      });
+      if(!rate){
+        const amount=plan.rates[spec.occupancy-1];
+        const result=await channex(connection,'/rate_plans',{
+          method:'POST',
+          body:JSON.stringify({rate_plan:{
+            title:plan.title,
+            property_id:connection.property_id,
+            room_type_id:roomId,
+            currency:'GBP',
+            sell_mode:'per_person',
+            rate_mode:'manual',
+            meal_type:plan.mealType,
+            options:[{occupancy:spec.occupancy,is_primary:true,rate:amount}]
+          }})
+        });
+        rate=rowsOf(result)[0]||result?.data||result;
+      }
+      const rateId=String(rate?.id||attrsOf(rate)?.id||'');
+      if(!rateId)throw Error('Channex did not return a rate plan ID for '+spec.title+' / '+plan.title+'.');
+      rateRows.push({
+        connection_id:connectionId,
+        channel_rate_id:rateId,
+        channel_rate_name:spec.title+' · '+plan.title,
+        pms_meal_plan:plan.meal,
+        currency:'GBP',
+        active:true,
+        settings:{roomTypeId:roomId,stagingOccupancy:spec.occupancy},
+        updated_at:isoNow()
+      });
+    }
+  }
+
+  await Promise.all([
+    upsert('channel_room_mappings',roomRows,'connection_id,channel_room_id'),
+    upsert('channel_rate_mappings',rateRows,'connection_id,channel_rate_id'),
+    patch('channel_connections','id=eq.'+connectionId,{
+      settings:{...(connection.settings||{}),stagingBookingRoomTypesReady:true},
+      updated_at:isoNow(),
+      last_error:null
+    })
+  ]);
+
+  return {
+    ...(await getBookingComChannelState()),
+    stagingRooms:{
+      createdRooms,
+      roomTypes:roomRows.map(row=>({id:row.channel_room_id,name:row.channel_room_name,occupancy:row.settings.stagingOccupancy})),
+      ratePlans:rateRows.length,
+      message:'Booking.com staging room types and rates are ready. Return to Channex Mapping and click Refresh.'
+    }
+  };
+}
+
 export async function ensureBookingComWebhook(callbackUrl:string){
   const connection=await getConnection();
   const cfg=runtime();
@@ -588,14 +708,15 @@ export async function pushBookingComAvailability(days=30,startDate=maldivesToday
   const preview=await previewBookingComAvailability(days,startDate);
   if(connection.settings?.dryRun!==false)return {ok:true,dryRun:true,preview};
   if(!connection.property_id)throw Error('Channex property ID is missing.');
-  const mappings=await select('channel_room_mappings','connection_id=eq.'+connectionId+'&active=eq.true&pms_room_type=eq.'+encodeURIComponent('Double Room')+'&select=*&limit=1');
-  const mapping=mappings[0];
-  if(!mapping)throw Error('No active Double Room mapping is configured.');
-  const values=collapseAvailability(preview.values).map(range=>({
+  const mappings=await select('channel_room_mappings','connection_id=eq.'+connectionId+'&active=eq.true&pms_room_type=eq.'+encodeURIComponent('Double Room')+'&select=*');
+  if(!mappings.length)throw Error('No active room mapping is configured.');
+  const selectedMappings=connection.mode==='staging'?mappings:mappings.slice(0,1);
+  const ranges=collapseAvailability(preview.values);
+  const values=selectedMappings.flatMap((mapping:any)=>ranges.map(range=>({
     property_id:connection.property_id,
     room_type_id:mapping.channel_room_id,
     ...range
-  }));
+  })));
   const result=await channex(connection,'/availability',{method:'POST',body:JSON.stringify({values})});
   const now=isoNow();
   await Promise.all([
