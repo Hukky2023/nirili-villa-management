@@ -726,7 +726,9 @@ export async function pushBookingComAvailability(days=30,startDate=maldivesToday
   if(!connection.property_id)throw Error('Channex property ID is missing.');
   const mappings=await select('channel_room_mappings','connection_id=eq.'+connectionId+'&active=eq.true&pms_room_type=eq.'+encodeURIComponent('Double Room')+'&select=*');
   if(!mappings.length)throw Error('No active room mapping is configured.');
-  const selectedMappings=connection.mode==='staging'?mappings:mappings.slice(0,1);
+  const productionMappings=mappings.filter((mapping:any)=>mapping?.settings?.stagingOnly!==true);
+  const selectedMappings=connection.mode==='staging'?mappings:productionMappings.slice(0,1);
+  if(!selectedMappings.length)throw Error(connection.mode==='production'?'No production room mapping is configured.':'No staging room mapping is configured.');
   const ranges=collapseAvailability(preview.values);
   const values=selectedMappings.flatMap((mapping:any)=>ranges.map(range=>({
     property_id:connection.property_id,
