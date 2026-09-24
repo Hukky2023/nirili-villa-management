@@ -195,7 +195,8 @@ export async function updateBookingComConnection(input:any){
   const propertyId=mode==='production'?(requestedPropertyId||storedProductionPropertyId):(requestedPropertyId||storedStagingPropertyId);
   const requestedStagingHotelId=text(input?.stagingBookingHotelId,20)||String(current.settings?.stagingBookingHotelId||stagingBookingHotelId);
   if(mode==='staging'&&!/^\d{5,12}$/.test(requestedStagingHotelId))throw Error('Enter a valid numeric Booking.com staging Hotel ID.');
-  const enabled=truthy(input?.enabled);
+  const switchingMode=current.mode!==mode;
+  const enabled=switchingMode?false:truthy(input?.enabled);
   const settings={
     ...(current.settings||{}),
     inventoryMode:'room_type',
@@ -204,16 +205,18 @@ export async function updateBookingComConnection(input:any){
     stagingPropertyId:mode==='staging'?propertyId:storedStagingPropertyId,
     productionPropertyId:mode==='production'?propertyId:storedProductionPropertyId,
     autoImportReservations:input?.autoImportReservations!==false,
-    autoPushAvailability:truthy(input?.autoPushAvailability),
-    dryRun:input?.dryRun!==false
+    autoPushAvailability:switchingMode?false:truthy(input?.autoPushAvailability),
+    dryRun:switchingMode?true:input?.dryRun!==false
   };
   if(enabled&&(!channexKey({...current,mode} as ChannelConnection)||!propertyId))throw Error(mode==='production'?'Add the production Channex API key and production property ID before enabling this channel.':'Add the staging Channex API key and staging property ID before enabling this channel.');
   if(enabled&&settings.dryRun===false){
     const [rooms,rates]=await Promise.all([
-      select('channel_room_mappings','connection_id=eq.'+connectionId+'&active=eq.true&select=id&limit=1'),
-      select('channel_rate_mappings','connection_id=eq.'+connectionId+'&active=eq.true&pms_meal_plan=not.is.null&select=id&limit=1')
+      select('channel_room_mappings','connection_id=eq.'+connectionId+'&active=eq.true&select=*'),
+      select('channel_rate_mappings','connection_id=eq.'+connectionId+'&active=eq.true&pms_meal_plan=not.is.null&select=*')
     ]);
-    if(!rooms.length||!rates.length)throw Error('Discover and save at least one room mapping and one meal-plan rate mapping before leaving dry-run mode.');
+    const validRooms=mode==='production'?rooms.filter((row:any)=>row?.settings?.stagingOnly!==true):rooms;
+    const validRates=mode==='production'?rates.filter((row:any)=>row?.settings?.stagingOnly!==true):rates;
+    if(!validRooms.length||!validRates.length)throw Error(mode==='production'?'Discover and save production room/rate mappings before enabling live sync.':'Discover and save at least one room mapping and one meal-plan rate mapping before leaving dry-run mode.');
   }
   const status=enabled?(current.status==='connected'?'connected':'configured'):(propertyId&&channexKey({...current,mode} as ChannelConnection)?'configured':'disconnected');
   await patch('channel_connections','id=eq.'+connectionId,{
@@ -243,6 +246,115 @@ export async function testBookingComConnection(){
     await patch('channel_connections','id=eq.'+connectionId,{status:'error',last_health_at:isoNow(),last_error:message,updated_at:isoNow()});
     throw error;
   }
+}
+
+export async function bootstrapBookingComProduction(){
+  const connection=await getConnection();
+  if(connection.mode!=='production')throw Error('Switch Environment to Production and save before creating the production property.');
+  if(!runtime().channexProductionKey)throw Error('CHANNEX_PRODUCTION_API_KEY is not configured on Cloudflare.');
+  if(connection.settings?.productionPropertyId)throw Error('A production Channex property is already configured.');
+
+  const propertyResult=await channex(connection,'/properties',{
+    method:'POST',
+    body:JSON.stringify({property:{
+      title:'Nirili Villa',
+      currency:'USD',
+      country:'MV',
+      property_type:'guest_house',
+      city:'Dhiffushi',
+      address:'Dhiffushi, Kaafu Atoll',
+      timezone:'Indian/Maldives',
+      facilities:[]
+    }})
+  });
+  const propertyRow=rowsOf(propertyResult)[0]||propertyResult?.data||propertyResult;
+  const propertyId=String(propertyRow?.id||attrsOf(propertyRow)?.id||'');
+  if(!propertyId)throw Error('Channex did not return the production property ID.');
+
+  const roomResult=await channex({...connection,property_id:propertyId},'/room_types',{
+    method:'POST',
+    body:JSON.stringify({room_type:{
+      property_id:propertyId,
+      title:'Double Room',
+      count_of_rooms:14,
+      occ_adults:3,
+      occ_children:1,
+      occ_infants:0,
+      default_occupancy:2,
+      room_kind:'room',
+      facilities:[]
+    }})
+  });
+  const roomRow=rowsOf(roomResult)[0]||roomResult?.data||roomResult;
+  const roomTypeId=String(roomRow?.id||attrsOf(roomRow)?.id||'');
+  if(!roomTypeId)throw Error('Channex did not return the production Double Room type ID.');
+
+  const plans=[
+    {title:'Bed & Breakfast',meal:'Bed & Breakfast',mealType:'bed_and_breakfast',rates:[50,60,70]},
+    {title:'Half Board',meal:'Half Board',mealType:'half_board',rates:[70,80,90]},
+    {title:'Full Board',meal:'Full Board',mealType:'full_board',rates:[80,100,120]}
+  ];
+  const rateRows:any[]=[];
+  for(const plan of plans){
+    const result=await channex({...connection,property_id:propertyId},'/rate_plans',{
+      method:'POST',
+      body:JSON.stringify({rate_plan:{
+        title:plan.title,
+        property_id:propertyId,
+        room_type_id:roomTypeId,
+        currency:'USD',
+        sell_mode:'per_person',
+        rate_mode:'manual',
+        meal_type:plan.mealType,
+        options:[
+          {occupancy:1,is_primary:false,rate:plan.rates[0]},
+          {occupancy:2,is_primary:true,rate:plan.rates[1]},
+          {occupancy:3,is_primary:false,rate:plan.rates[2]}
+        ]
+      }})
+    });
+    const row=rowsOf(result)[0]||result?.data||result;
+    const id=String(row?.id||attrsOf(row)?.id||'');
+    if(!id)throw Error('Channex did not return a production rate plan ID for '+plan.title+'.');
+    rateRows.push({
+      connection_id:connectionId,
+      channel_rate_id:id,
+      channel_rate_name:plan.title,
+      pms_meal_plan:plan.meal,
+      currency:'USD',
+      active:true,
+      settings:{roomTypeId,production:true},
+      updated_at:isoNow()
+    });
+  }
+
+  await Promise.all([
+    patch('channel_connections','id=eq.'+connectionId,{
+      property_id:propertyId,
+      status:'configured',
+      settings:{...(connection.settings||{}),productionPropertyId:propertyId,productionBootstrapped:true,productionRoomTypeId:roomTypeId},
+      updated_at:isoNow(),
+      last_error:null
+    }),
+    upsert('channel_room_mappings',[{
+      connection_id:connectionId,
+      channel_room_id:roomTypeId,
+      channel_room_name:'Double Room',
+      pms_room_type:'Double Room',
+      active:true,
+      settings:{production:true},
+      updated_at:isoNow()
+    }],'connection_id,channel_room_id'),
+    upsert('channel_rate_mappings',rateRows,'connection_id,channel_rate_id')
+  ]);
+
+  return {
+    ...(await getBookingComChannelState()),
+    bootstrap:{
+      propertyId,roomTypeId,ratePlanIds:rateRows.map(row=>row.channel_rate_id),
+      message:'Nirili Villa production property created with 14 Double Rooms and USD BB/HB/FB rates. Live channel remains disabled and dry-run protected.'
+    }
+  };
 }
 
 export async function bootstrapBookingComStaging(){
