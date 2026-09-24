@@ -6,6 +6,7 @@ import './excursion-bookings.css';
 import DateFieldDMY from './date-field-dmy';
 import ExcursionBillingActions from './excursion-billing-actions';
 import type {ExcursionPricing} from '../lib/excursion-billing';
+import {walkInExcursionWhatsAppUrl} from '../lib/walkin-excursion-whatsapp';
 type BillingBooking = ConfirmedExcursionBooking & {pricing?: ExcursionPricing; billingHistory?: any[]};
 
 const pageSize = 25;
@@ -33,6 +34,7 @@ export default function ExcursionBookings() {
   const [manageRequests,setManageRequests]=useState<any[]>([]),[manageBusy,setManageBusy]=useState(''),[manageMessage,setManageMessage]=useState('');
   const [moveBooking,setMoveBooking]=useState<BillingBooking|null>(null),[moveDate,setMoveDate]=useState(''),[moveSchedules,setMoveSchedules]=useState<any[]>([]),[moveScheduleId,setMoveScheduleId]=useState('');
   const [moveRevision,setMoveRevision]=useState(0),[moveBusy,setMoveBusy]=useState(false),[moveLoading,setMoveLoading]=useState(false),[moveError,setMoveError]=useState(''),[moveNote,setMoveNote]=useState('');
+  const [whatsAppBusy,setWhatsAppBusy]=useState(''),[whatsAppOpened,setWhatsAppOpened]=useState('');
   const request = useRef<AbortController | null>(null);
 
   const load = useCallback(async (background = false) => {
@@ -129,6 +131,32 @@ export default function ExcursionBookings() {
     finally{setMoveBusy(false);}
   }
 
+  function packageLegsFor(booking:BillingBooking){
+    if(!booking.packageGroupId)return [booking];
+    return bookings.filter(item=>item.packageGroupId===booking.packageGroupId&&item.guestType==='Walk-in');
+  }
+  function openWalkInWhatsApp(booking:BillingBooking){
+    const url=walkInExcursionWhatsAppUrl(booking,packageLegsFor(booking));
+    if(!url){setManageMessage('This walk-in booking does not have a valid WhatsApp number.');return;}
+    window.open(url,'_blank','noopener,noreferrer');
+    setWhatsAppOpened(booking.packageGroupId||booking.id);
+  }
+  async function markWalkInWhatsAppSent(booking:BillingBooking){
+    const key=booking.packageGroupId||booking.id;
+    if(whatsAppBusy)return;
+    setWhatsAppBusy(key);setManageMessage('');
+    try{
+      const response=await fetch('/api/excursion-bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'mark-whatsapp-notified',id:booking.id,packageGroupId:booking.packageGroupId||'',notified:true,revision})});
+      const result=await response.json();
+      if(!response.ok)throw Error(result.error||'Could not mark the guest as notified.');
+      setManageMessage('WhatsApp notification recorded for '+booking.guest+'.');
+      setWhatsAppOpened('');
+      await load();
+      window.dispatchEvent(new Event('services-updated'));
+    }catch(e){setManageMessage(e instanceof Error?e.message:'Could not mark the guest as notified.');}
+    finally{setWhatsAppBusy('');}
+  }
+
   async function decideManageRequest(item:any,approve:boolean){
     if(manageBusy)return;
     const note=prompt(approve?'Optional note for the guest:':'Optional reason for rejecting this request:','')||'';
@@ -181,6 +209,13 @@ export default function ExcursionBookings() {
           <div><dt>Guests / total</dt><dd>{b.guests} {b.guests === 1 ? 'guest' : 'guests'}<small>{b.adults} adult{b.adults===1?'':'s'} · {b.children} child{b.children===1?'':'ren'} · {b.infants} under 3</small><small>{money(b.totalCents)} USD</small></dd></div>
         </dl>
         <ExcursionBillingActions booking={b} canAdjust={canAdjustBilling} revision={revision} onUpdated={() => load()}/>
+        {b.guestType==='Walk-in'&&b.phone&&<div className="excursion-whatsapp-bar">
+          <div><strong>{b.guestNotified?'Guest informed via WhatsApp':'Walk-in guest needs WhatsApp notification'}</strong><small>{b.guestNotifiedAt?'Recorded '+createdLabel(b.guestNotifiedAt)+(b.guestNotifiedBy?' by '+b.guestNotifiedBy:''):'Send the current booking date, time and pickup details.'}</small></div>
+          <div>
+            <button type="button" className="excursion-whatsapp-btn" onClick={()=>openWalkInWhatsApp(b)}>{b.guestNotified?'Send update via WhatsApp':'Notify via WhatsApp'}</button>
+            {whatsAppOpened===(b.packageGroupId||b.id)&&<button type="button" className="excursion-secondary-btn" disabled={whatsAppBusy===(b.packageGroupId||b.id)} onClick={()=>void markWalkInWhatsAppSent(b)}>{whatsAppBusy===(b.packageGroupId||b.id)?'Saving…':'Mark sent'}</button>}
+          </div>
+        </div>}
         {bookingCanMove(b)&&<div className="excursion-booking-reassign-bar"><button type="button" className="excursion-secondary-btn" onClick={()=>void openMove(b)}>Move guests to another trip</button><small>Admin & Excursions Manager</small></div>}
         <details className="excursion-booking-details"><summary>View details<span className="excursion-booking-sr-only"> for {b.guest}, booking {b.id}</span></summary>
           <dl>
@@ -191,6 +226,7 @@ export default function ExcursionBookings() {
             <div><dt>Buggy pickup</dt><dd>{b.serviceType==='romantic-beach-dinner'?(b.buggyRequested?'Round trip to dinner location and back':'Not requested'):(b.guestType==='In-house' ? 'Included automatically' : (b.buggyRequested ? 'Requested' : 'Not requested'))}</dd></div>
             <div><dt>Children policy</dt><dd>Under 3 free<small>Ages 3–11: 50% · Ages 12+: full price</small></dd></div><div><dt>Payment status</dt><dd>{b.pricing?.complimentary ? 'Complimentary / Free' : b.paymentStatus} · {money(b.totalCents)} USD<small>One combined payment for all guests in this booking</small></dd></div>
             <div className="excursion-booking-guests"><dt>Guest list</dt><dd>{b.people?.length ? <ol>{b.people.map(person => <li key={person.id}><span><strong>{person.nameRecorded ? person.name : 'Name not recorded'}</strong><small>{ageLabel(person.ageCategory)}{person.footSize ? ' · EU foot size '+person.footSize : ''}</small></span>{person.boarded && <em>Boarded</em>}</li>)}</ol> : 'Guest names not recorded'}</dd></div>
+            <div><dt>Guest notification</dt><dd>{b.guestType==='Walk-in'?(b.guestNotified?'WhatsApp informed':'Not yet informed'):'Guest portal / booking contact'}{b.guestNotifiedAt&&<small>{createdLabel(b.guestNotifiedAt)}{b.guestNotifiedBy?' · '+b.guestNotifiedBy:''}</small>}</dd></div>
             <div><dt>Booking source</dt><dd>{b.source || 'Not recorded'}</dd></div>
             <div><dt>Booked by</dt><dd>{b.createdBy || 'Not recorded'}</dd></div>
             <div><dt>Booking created</dt><dd>{createdLabel(b.createdAt)}{b.createdAt && <small>Maldives time</small>}</dd></div>
