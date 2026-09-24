@@ -20,6 +20,8 @@ export default function ChannelManager(){
       setData(b);setDraft({
         enabled:!!b.connection.enabled,mode:b.connection.mode||'staging',
         propertyId:b.connection.property_id||'',channelPropertyId:b.connection.channel_property_id||'',
+        stagingPropertyId:b.connection.settings?.stagingPropertyId||b.connection.property_id||'',
+        productionPropertyId:b.connection.settings?.productionPropertyId||'',
         stagingBookingHotelId:b.connection.settings?.stagingBookingHotelId||'6519420',
         dryRun:b.connection.settings?.dryRun!==false,
         autoImportReservations:b.connection.settings?.autoImportReservations!==false,
@@ -34,11 +36,12 @@ export default function ChannelManager(){
     try{
       const r=await fetch('/api/channels/booking-com',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...extra})});
       const b=await r.json();if(!r.ok)throw Error(b.error||'Channel action failed.');
-      if(b.connection){setData(b);setDraft((d:any)=>({...d,enabled:!!b.connection.enabled,mode:b.connection.mode,propertyId:b.connection.property_id||'',channelPropertyId:b.connection.channel_property_id||'',stagingBookingHotelId:b.connection.settings?.stagingBookingHotelId||d?.stagingBookingHotelId||'6519420',dryRun:b.connection.settings?.dryRun!==false}));}
+      if(b.connection){setData(b);setDraft((d:any)=>({...d,enabled:!!b.connection.enabled,mode:b.connection.mode,propertyId:b.connection.property_id||'',channelPropertyId:b.connection.channel_property_id||'',stagingPropertyId:b.connection.settings?.stagingPropertyId||d?.stagingPropertyId||'',productionPropertyId:b.connection.settings?.productionPropertyId||d?.productionPropertyId||'',stagingBookingHotelId:b.connection.settings?.stagingBookingHotelId||d?.stagingBookingHotelId||'6519420',dryRun:b.connection.settings?.dryRun!==false,autoPushAvailability:!!b.connection.settings?.autoPushAvailability,autoImportReservations:b.connection.settings?.autoImportReservations!==false}));}
       if(action==='preview')setPreview(b);
       if(action==='push'){setPreview(b.preview||null);setNotice(b.dryRun?'Dry-run complete. No external inventory changed.':'Availability sent to Channex.');}
       if(action==='selftest')setNotice((b.message||'PMS self-test passed.')+' Simulated '+(b.simulatedReference||'booking')+(b.simulatedRoom?' in room '+b.simulatedRoom:'')+'.');
       if(action==='bootstrap')setNotice(b.bootstrap?.message||'Nirili Villa staging property created.');
+      if(action==='bootstrap-production')setNotice(b.bootstrap?.message||'Nirili Villa production property created.');
       if(action==='stagingrooms')setNotice(b.stagingRooms?.message||'Booking.com staging room types and rates are ready.');
       if(action==='webhook')setNotice((b.created?'Booking webhook created.':'Booking webhook checked and repaired.')+' Event: booking.');
       if(action==='test')setNotice('Channex connection successful.');
@@ -64,7 +67,14 @@ export default function ChannelManager(){
   if(!data||!draft)return <section className="page channel-manager"><p className={error?'channel-alert error':'channel-alert'}>{error||'Loading Booking.com channel…'}</p></section>;
 
   const c=data.connection,credentials=data.credentials;
-  const mapped=data.roomMappings.length>0&&data.rateMappings.some((x:any)=>x.pms_meal_plan);
+  const stagingRoomMappings=data.roomMappings.filter((x:any)=>x?.settings?.stagingOnly===true);
+  const productionRoomMappings=data.roomMappings.filter((x:any)=>x?.settings?.stagingOnly!==true);
+  const stagingRateMappings=data.rateMappings.filter((x:any)=>x?.settings?.stagingOnly===true&&x.pms_meal_plan);
+  const productionRateMappings=data.rateMappings.filter((x:any)=>x?.settings?.stagingOnly!==true&&x.pms_meal_plan);
+  const mapped=draft.mode==='production'
+    ?productionRoomMappings.length>0&&productionRateMappings.length>0
+    :stagingRoomMappings.length>0&&stagingRateMappings.length>0;
+  const selectedApiKeyReady=draft.mode==='production'?!!credentials.productionApiKeyConfigured:!!credentials.stagingApiKeyConfigured;
   const webhook=(typeof window==='undefined'?'':window.location.origin)+data.webhookPath;
 
   return <section className="page channel-manager">
@@ -73,7 +83,8 @@ export default function ChannelManager(){
     {notice&&<p className="channel-alert success"><CheckCircle2/>{notice}</p>}
     <div className="channel-checks">
       <em className={credentials.supabaseConfigured?'ok':''}><Database/>Supabase</em>
-      <em className={credentials.apiKeyConfigured?'ok':''}><ShieldCheck/>Channex API key</em>
+      <em className={credentials.stagingApiKeyConfigured?'ok':''}><ShieldCheck/>Staging API key</em>
+      <em className={credentials.productionApiKeyConfigured?'ok':''}><ShieldCheck/>Production API key</em>
       <em className={credentials.webhookTokenConfigured?'ok':''}><ShieldCheck/>Webhook protection</em>
       <em className={mapped?'ok':''}><Link2/>Mappings</em>
     </div>
@@ -81,27 +92,27 @@ export default function ChannelManager(){
     <div className="channel-two">
       <article className="channel-card">
         <header><CloudCog/><div><h2>Connection</h2><p>Save IDs first, then test and discover mappings.</p></div></header>
-        <label>Environment<select value={draft.mode} onChange={e=>setDraft({...draft,mode:e.target.value})}><option value="staging">Staging / test</option><option value="production">Production</option></select></label>
-        <label>Channex property ID<input value={draft.propertyId} onChange={e=>setDraft({...draft,propertyId:e.target.value})} placeholder="Channex property UUID"/></label>
+        <label>Environment<select value={draft.mode} onChange={e=>{const mode=e.target.value;setDraft({...draft,mode,enabled:false,dryRun:true,autoPushAvailability:false,propertyId:mode==='production'?(draft.productionPropertyId||''):(draft.stagingPropertyId||'')})}}><option value="staging">Staging / test</option><option value="production">Production</option></select></label>
+        <label>{draft.mode==='production'?'Production Channex property ID':'Staging Channex property ID'}<input value={draft.propertyId} onChange={e=>setDraft({...draft,propertyId:e.target.value,[draft.mode==='production'?'productionPropertyId':'stagingPropertyId']:e.target.value})} placeholder={draft.mode==='production'?'Production Channex property UUID':'Staging Channex property UUID'}/></label>
         <label>{draft.mode==='staging'?'Live Booking.com property ID (saved for production)':'Booking.com property ID'}<input value={draft.channelPropertyId} onChange={e=>setDraft({...draft,channelPropertyId:e.target.value})} placeholder="Booking.com hotel ID"/></label>{draft.mode==='staging'&&<div className="channel-staging-note"><label><b>Booking.com staging Hotel ID</b><input inputMode="numeric" pattern="[0-9]*" value={draft.stagingBookingHotelId||''} onChange={e=>setDraft({...draft,stagingBookingHotelId:e.target.value.replace(/\D/g,'').slice(0,12)})} placeholder="Use an available GBP test Hotel ID from Channex"/></label><span>Shared Channex test accounts can be busy. Enter whichever available GBP Hotel ID Channex shows, then click Save settings. Your live Booking.com property {draft.channelPropertyId||'5747514'} remains untouched during staging.</span></div>}
-        <div className="channel-actions"><button className="primary" disabled={!!busy} onClick={save}>Save settings</button><button disabled={!!busy||!credentials.apiKeyConfigured} onClick={()=>post('test')}><RefreshCw/>Test Channex</button><button disabled={!!busy} onClick={()=>post('selftest')}><ShieldCheck/>Run PMS self-test</button>{draft.mode==='staging'&&!draft.propertyId&&<button disabled={!!busy||!credentials.apiKeyConfigured} onClick={()=>post('bootstrap')}><CloudCog/>Create Nirili staging property</button>}{draft.mode==='staging'&&draft.propertyId&&<button disabled={!!busy||!credentials.apiKeyConfigured} onClick={()=>post('stagingrooms')}><CloudCog/>Prepare Booking.com test room types</button>}</div>
+        <div className="channel-actions"><button className="primary" disabled={!!busy} onClick={save}>Save settings</button><button disabled={!!busy||!selectedApiKeyReady} onClick={()=>post('test')}><RefreshCw/>Test Channex</button>{draft.mode==='staging'&&<button disabled={!!busy} onClick={()=>post('selftest')}><ShieldCheck/>Run PMS self-test</button>}{draft.mode==='staging'&&!draft.propertyId&&<button disabled={!!busy||!credentials.stagingApiKeyConfigured} onClick={()=>post('bootstrap')}><CloudCog/>Create Nirili staging property</button>}{draft.mode==='staging'&&draft.propertyId&&<button disabled={!!busy||!credentials.stagingApiKeyConfigured} onClick={()=>post('stagingrooms')}><CloudCog/>Prepare Booking.com test room types</button>}{draft.mode==='production'&&!draft.propertyId&&<button disabled={!!busy||!credentials.productionApiKeyConfigured} onClick={()=>post('bootstrap-production')}><CloudCog/>Create Nirili production property</button>}</div>
         {c.last_error&&<p className="channel-inline-error">{c.last_error}</p>}
       </article>
 
       <article className="channel-card">
-        <header><ShieldCheck/><div><h2>Sync safety</h2><p>Dry-run remains on until staging tests pass.</p></div></header>
+        <header><ShieldCheck/><div><h2>Sync safety</h2><p>{draft.mode==='production'?'Production starts disabled and dry-run protected until real Booking.com mappings are verified.':'Dry-run remains on until staging tests pass.'}</p></div></header>
         <label className="channel-toggle"><span><b>Enable channel</b><small>Allows booking and inventory synchronization.</small></span><input type="checkbox" checked={draft.enabled} onChange={e=>setDraft({...draft,enabled:e.target.checked})}/></label>
         <label className="channel-toggle"><span><b>Dry-run</b><small>No PMS booking or Channex inventory changes.</small></span><input type="checkbox" checked={draft.dryRun} onChange={e=>setDraft({...draft,dryRun:e.target.checked})}/></label>
         <label className="channel-toggle"><span><b>Automatic booking import</b><small>New, modified and cancelled reservations.</small></span><input type="checkbox" checked={draft.autoImportReservations} onChange={e=>setDraft({...draft,autoImportReservations:e.target.checked})}/></label>
         <label className="channel-toggle"><span><b>Automatic availability push</b><small>Enable after certification/testing.</small></span><input type="checkbox" checked={draft.autoPushAvailability} onChange={e=>setDraft({...draft,autoPushAvailability:e.target.checked})}/></label>
-        <p className={mapped?'channel-ready':'channel-ready warning'}>{mapped?<CheckCircle2/>:<TriangleAlert/>}{mapped?'Room/rate mappings are prepared.':'Discover and map room/rate plans before live sync.'}</p>
+        <p className={mapped?'channel-ready':'channel-ready warning'}>{mapped?<CheckCircle2/>:<TriangleAlert/>}{mapped?(draft.mode==='production'?'Production room/rate mappings are prepared.':'Staging room/rate mappings are prepared.'):(draft.mode==='production'?'Production mappings are not configured yet.':'Discover and map room/rate plans before staging sync.')}</p>
       </article>
     </div>
 
     <article className="channel-card">
       <header><Database/><div><h2>Booking webhook & recovery feed</h2><p>Webhook imports quickly; feed polling recovers missed delivery.</p></div></header>
       <code className="channel-code">{webhook}</code>
-      <p className="channel-hint">The PMS automatically generates a private webhook credential and configures Channex to send it in the <code>X-Nirili-Channel-Secret</code> header. Only its verification hash is stored by the PMS; the secret is never displayed in the browser or placed in the callback URL.</p><div className="channel-actions"><button disabled={!!busy||!draft.propertyId||!credentials.apiKeyConfigured} onClick={()=>post('webhook')}><ShieldCheck/>Create / repair webhook</button></div><div className="channel-links"><a href="https://staging.channex.io/" target="_blank" rel="noreferrer">Open Channex staging</a><a href="https://staging.channex.io/user_profile" target="_blank" rel="noreferrer">Create / view API key</a></div>
+      <p className="channel-hint">The PMS automatically generates a private webhook credential and configures Channex to send it in the <code>X-Nirili-Channel-Secret</code> header. Only its verification hash is stored by the PMS; the secret is never displayed in the browser or placed in the callback URL.</p><div className="channel-actions"><button disabled={!!busy||!draft.propertyId||!selectedApiKeyReady} onClick={()=>post('webhook')}><ShieldCheck/>Create / repair webhook</button></div><div className="channel-links">{draft.mode==='staging'?<><a href="https://staging.channex.io/" target="_blank" rel="noreferrer">Open Channex staging</a><a href="https://staging.channex.io/user_profile" target="_blank" rel="noreferrer">Staging API keys</a></>:<><a href="https://app.channex.io/" target="_blank" rel="noreferrer">Open Channex production</a><a href="https://app.channex.io/user_profile" target="_blank" rel="noreferrer">Production API keys</a></>}</div>
       <div className="channel-actions"><button disabled={!!busy||!draft.enabled||!credentials.apiKeyConfigured} onClick={()=>post('pull')}><RotateCw/>Check booking feed now</button></div>
     </article>
 
