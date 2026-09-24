@@ -1,3 +1,4 @@
+import {validFolioAccount} from '../../../lib/folio-account';
 import {restaurantOnly} from '../../../lib/pos-access';
 import {discountsUnchanged} from "../../../lib/discounts";
 import {authDb,currentUser,hasPermission,sameOrigin} from "../../../lib/auth";
@@ -34,7 +35,8 @@ export async function GET(r:Request){
  const user=await currentUser();
  if(!user||restaurantOnly(user)||!hasPermission(user,'edit_bills')&&!hasPermission(user,'guesthouse_reception'))return Response.json({error:"Reception or bill access required"},{status:403});
  const room=new URL(r.url).searchParams.get("room")||"";
- if(!/^(?:10[1-6]|20[1-4]|30[1-4])$/.test(room))return Response.json({error:"Invalid room"},{status:400});
+ const {state}=await loadStays();
+ if(!validFolioAccount(room,state.stays))return Response.json({error:"Invalid bill account"},{status:400});
  try{
   const rows=await mergedBillRows(room);
   return Response.json({bills:rows.map(row=>({...row.payload,revision:Number(row.revision)||0}))},{headers:{"Cache-Control":"no-store"}});
@@ -46,9 +48,10 @@ export async function PUT(r:Request){
  if(!hasPermission(user,"edit_bills")||!sameOrigin(r))return Response.json({error:"Bill editing permission required"},{status:403});
  try{
   const b=await r.json(),x=b.bill;
+  const {state:accountState}=await loadStays();
+  if(!validFolioAccount(b.room,accountState.stays))return Response.json({error:"Invalid bill account"},{status:400});
 
   if(x?.department==="Excursions"){
-   if(!/^(?:10[1-6]|20[1-4]|30[1-4])$/.test(String(b.room)))return Response.json({error:"Invalid room"},{status:400});
    if(user?.role!=="admin")return Response.json({error:"Only Admin can edit excursion bills."},{status:403});
    let state:any,revision=0;
    try{
@@ -89,7 +92,6 @@ export async function PUT(r:Request){
    }
   }
   if(x?.department==="Transfer"){
-   if(!/^(?:10[1-6]|20[1-4]|30[1-4])$/.test(String(b.room)))return Response.json({error:"Invalid room"},{status:400});
    let state:any,revision=0;
    try{const primary=await readOperationalRecordPrimary(stayKey);if(primary?.payload){state=primary.payload;revision=Number(primary.revision)||0;}}catch{}
    if(!state){const loaded=await loadStays();state=loaded.state;revision=loaded.revision;}
@@ -150,7 +152,7 @@ export async function PUT(r:Request){
     return Response.json({bill:{...result.bill,revision:0},revision:nextHotelRevision,source:'transfer-booking'});
    }
   }
-  if(!/^(?:10[1-6]|20[1-4]|30[1-4])$/.test(String(b.room))||!x||!["Accommodation","Transfer","Excursions"].includes(x.department)||typeof x.id!=="string"||!/^[-A-Z0-9]{1,40}$/.test(x.id)||!Number.isInteger(x.revision)||x.revision<0||typeof x.date!=="string"||!x.date.trim()||x.date.length>100||!["Posted","Pending","Paid","Unpaid","Cancelled"].includes(x.status)||!Array.isArray(x.items)||x.items.length>100||x.items.some((i:any)=>!Array.isArray(i)||i.length!==4||typeof i[0]!=="string"||!i[0].trim()||i[0].length>200||!Number.isInteger(i[1])||i[1]<1||i[1]>10000||!Number.isFinite(i[2])||i[2]<0||i[2]>1000000||!Number.isFinite(i[3])||i[3]<0||i[3]>100))return Response.json({error:"Check bill items, amounts and discounts."},{status:400});
+  if(!x||!["Accommodation","Transfer","Excursions"].includes(x.department)||typeof x.id!=="string"||!/^[-A-Z0-9]{1,40}$/.test(x.id)||!Number.isInteger(x.revision)||x.revision<0||typeof x.date!=="string"||!x.date.trim()||x.date.length>100||!["Posted","Pending","Paid","Unpaid","Cancelled"].includes(x.status)||!Array.isArray(x.items)||x.items.length>100||x.items.some((i:any)=>!Array.isArray(i)||i.length!==4||typeof i[0]!=="string"||!i[0].trim()||i[0].length>200||!Number.isInteger(i[1])||i[1]<1||i[1]>10000||!Number.isFinite(i[2])||i[2]<0||i[2]>1000000||!Number.isFinite(i[3])||i[3]<0||i[3]>100))return Response.json({error:"Check bill items, amounts and discounts."},{status:400});
 
   const bill={id:x.id,department:x.department,date:x.date,status:x.status,items:x.items,total:Math.round(x.items.reduce((s:number,i:any)=>s+Math.round(i[2]*100)*(1-i[3]/100),0))/100};
   const key=prefix(String(b.room))+x.department+":"+x.id;
