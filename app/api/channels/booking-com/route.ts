@@ -2,6 +2,7 @@ import {currentUser,sameOrigin} from '../../../../lib/auth';
 import {
   bootstrapBookingComStaging,
   discoverBookingComMappings,
+  ensureBookingComStagingRoomTypes,
   ensureBookingComWebhook,
   getBookingComChannelState,
   previewBookingComAvailability,
@@ -43,6 +44,7 @@ export async function POST(request:Request){
     const body=await request.json();
     const action=String(body?.action||'');
     if(action==='bootstrap')return Response.json(await bootstrapBookingComStaging(),{headers});
+    if(action==='stagingrooms')return Response.json(await ensureBookingComStagingRoomTypes(),{headers});
     if(action==='selftest')return Response.json(await runBookingComSelfTest(),{headers});
     if(action==='webhook')return Response.json(await ensureBookingComWebhook(new URL(request.url).origin+'/api/channels/booking-com/webhook'),{headers});
     if(action==='test')return Response.json(await testBookingComConnection(),{headers});
