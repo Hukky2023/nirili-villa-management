@@ -359,11 +359,17 @@ export async function ensureBookingComStagingRoomTypes(){
   const existingRooms=rowsOf(roomResult);
   const existingRates=rowsOf(rateResult);
 
-  const roomSpecs=[
-    {title:'Double Room',occupancy:2},
-    {title:'Single Room',occupancy:1},
-    {title:'Suite',occupancy:3}
-  ];
+  const stagingHotelId=String(connection.settings?.stagingBookingHotelId||stagingBookingHotelId);
+  const roomSpecs=stagingHotelId==='10745030'
+    ?[
+      {title:'Holiday Home',occupancy:11},
+      {title:'Studio',occupancy:2}
+    ]
+    :[
+      {title:'Double Room',occupancy:2},
+      {title:'Single Room',occupancy:1},
+      {title:'Suite',occupancy:3}
+    ];
   const rateSpecs=[
     {title:'Bed & Breakfast',meal:'Bed & Breakfast',mealType:'bed_and_breakfast',rates:[50,60,70]},
     {title:'Half Board',meal:'Half Board',mealType:'half_board',rates:[70,80,90]},
@@ -403,7 +409,7 @@ export async function ensureBookingComStagingRoomTypes(){
       channel_room_name:spec.title,
       pms_room_type:'Double Room',
       active:true,
-      settings:{stagingOccupancy:spec.occupancy},
+      settings:{stagingOnly:true,stagingHotelId,stagingOccupancy:spec.occupancy},
       updated_at:isoNow()
     });
 
@@ -414,7 +420,7 @@ export async function ensureBookingComStagingRoomTypes(){
         return String(a.title||a.name||'').trim().toLowerCase()===uniqueRateTitle.toLowerCase();
       });
       if(!rate){
-        const amount=plan.rates[spec.occupancy-1];
+        const amount=plan.rates[Math.min(3,Math.max(1,spec.occupancy))-1];
         const result=await channex(connection,'/rate_plans',{
           method:'POST',
           body:JSON.stringify({rate_plan:{
@@ -440,7 +446,7 @@ export async function ensureBookingComStagingRoomTypes(){
         pms_meal_plan:plan.meal,
         currency:'GBP',
         active:true,
-        settings:{roomTypeId:roomId,stagingOccupancy:spec.occupancy},
+        settings:{roomTypeId:roomId,stagingOnly:true,stagingHotelId,stagingOccupancy:spec.occupancy},
         updated_at:isoNow()
       });
     }
@@ -462,7 +468,8 @@ export async function ensureBookingComStagingRoomTypes(){
       createdRooms,
       roomTypes:roomRows.map(row=>({id:row.channel_room_id,name:row.channel_room_name,occupancy:row.settings.stagingOccupancy})),
       ratePlans:rateRows.length,
-      message:'Booking.com staging room types and rates are ready. Return to Channex Mapping and click Refresh.'
+      stagingHotelId,
+      message:'Booking.com staging room types and rates are ready for test Hotel ID '+stagingHotelId+'. Return to Channex Mapping and click Refresh.'
     }
   };
 }
