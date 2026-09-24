@@ -331,6 +331,23 @@ async function syncMappedEmployeeMetadata(row:LegacyAccountRow){
 
 export async function mirrorLegacyAccount(row:LegacyAccountRow){
   if(!supabaseBridgeConfigured())return false;
+  if(row.role==='guest'&&row.id.startsWith('room-')&&row.active!==0&&row.active!==false&&/^\d{3,10}$/.test(row.username)){
+    const conflicts=await restSelect('legacy_accounts','username=eq.'+encodeURIComponent(row.username)+'&id=neq.'+encodeURIComponent(row.id)+'&select=id,role');
+    if(conflicts.length){
+      const state=(await readOperationalRecordPrimary('hotel-stays-v1'))?.payload;
+      const stays=state?.stays||[];
+      if(!stays.some((s:any)=>s.accountId===row.id&&String(s.room)===row.username&&s.status==='In House'))throw Error('Room account is not linked to a checked-in stay.');
+      for(const previous of conflicts){
+        if(previous.role!=='guest'||!previous.id.startsWith('room-')||stays.some((s:any)=>s.accountId===previous.id&&s.status==='In House'))throw Error('Room login is still in use.');
+        await deactivateSupabaseAccount(previous.id);
+        await deleteLegacySessionsForAccount(previous.id);
+        await sb('/rest/v1/legacy_accounts?id=eq.'+encodeURIComponent(previous.id)+'&username=eq.'+encodeURIComponent(row.username),{
+          method:'PATCH',headers:{Prefer:'return=minimal'},
+          body:JSON.stringify({username:'retired-'+previous.id,active:false,updated_at:new Date().toISOString()})
+        },'secret');
+      }
+    }
+  }
   const legacy={
     id:row.id,
     username:row.username,
@@ -996,6 +1013,18 @@ export async function verifyPrimaryPassword(row:any,password:string){
  return mismatch===0;
 }
 export async function primaryGuestAccount(username:string){
- const rows=await restSelect('legacy_accounts','username=eq.'+encodeURIComponent(username)+'&role=eq.guest&active=eq.true&select=*&limit=1');
- return rows[0]||null;
+ const state=(await readOperationalRecordPrimary('hotel-stays-v1'))?.payload;
+ const stays=(state?.stays||[]).filter((s:any)=>String(s.room)===username&&s.status==='In House');
+ if(stays.length!==1||!String(stays[0].accountId||'').startsWith('room-'))return null;
+ const id=stays[0].accountId;
+ const rows=await restSelect('legacy_accounts','id=eq.'+encodeURIComponent(id)+'&username=eq.'+encodeURIComponent(username)+'&role=eq.guest&active=eq.true&select=*&limit=1');
+ if(rows[0])return rows[0];
+ // Repair an interrupted check-in sync only for the account linked by the
+ // primary checked-in stay. Never fall back to an old account for this room.
+ const local=await env.DB.prepare("SELECT * FROM accounts WHERE id=? AND username=? AND role='guest' AND active=1").bind(id,username).first<LegacyAccountRow>();
+ if(!local)return null;
+ await mirrorLegacyAccount(local);
+ const repaired=await restSelect('legacy_accounts','id=eq.'+encodeURIComponent(id)+'&username=eq.'+encodeURIComponent(username)+'&role=eq.guest&active=eq.true&select=*&limit=1');
+ if(!repaired[0])throw Error('Guest account synchronization is incomplete.');
+ return repaired[0];
 }
