@@ -110,7 +110,14 @@ async function channex(connection:ChannelConnection,path:string,init:RequestInit
   const response=await fetch(channexBase(connection)+path,{...init,headers});
   const text=await response.text();
   let body:any=null;try{body=text?JSON.parse(text):null}catch{body=text}
-  if(!response.ok)throw Error(body?.errors?.title||body?.errors?.code||body?.message||('Channex request failed ('+response.status+')'));
+  if(!response.ok){
+    const errors=body?.errors;
+    const detail=errors?.details&&typeof errors.details==='object'
+      ?Object.entries(errors.details).map(([field,value])=>field+': '+(Array.isArray(value)?value.join(', '):String(value))).join(' · ')
+      :'';
+    const title=errors?.title||errors?.code||body?.message||('Channex request failed ('+response.status+')');
+    throw Error(detail?title+' · '+detail:title);
+  }
   return body;
 }
 
@@ -414,7 +421,7 @@ export async function ensureBookingComStagingRoomTypes(){
             property_id:connection.property_id,
             room_type_id:roomId,
             currency:'GBP',
-            sell_mode:'per_person',
+            sell_mode:'per_room',
             rate_mode:'manual',
             meal_type:plan.mealType,
             options:[{occupancy:spec.occupancy,is_primary:true,rate:amount}]
