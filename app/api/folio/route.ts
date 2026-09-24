@@ -50,6 +50,17 @@ export async function PUT(r:Request){
   const b=await r.json(),x=b.bill;
   const {state:accountState}=await loadStays();
   if(!validFolioAccount(b.room,accountState.stays))return Response.json({error:"Invalid bill account"},{status:400});
+  const deleting=b.action==='delete';
+  if(deleting){
+   if(!x||!["Accommodation","Transfer","Excursions"].includes(x.department)||typeof x.id!=="string"||!/^[-A-Z0-9]{1,40}$/.test(x.id))return Response.json({error:"Invalid bill"},{status:400});
+   const linked=(accountState.orders||[]).find((o:any)=>o.id===x.id&&((x.department==='Transfer'&&o.kind==='transfer')||(x.department==='Excursions'&&o.kind==='excursion')));
+   if(linked)return Response.json({error:"This bill is linked to a booking. Use its transfer or excursion cancellation controls so the booking and payment records stay in sync."},{status:409});
+   const existing=await currentBillRecord(prefix(String(b.room))+x.department+":"+x.id);
+   if(!existing)return Response.json({error:"This bill is not a saved manual charge. Close the editor to discard a new charge, or edit the original booking."},{status:409});
+   if(Number(existing.revision)!==x.revision)return Response.json({error:"Bill changed elsewhere. Reopen it before deleting."},{status:409});
+   Object.assign(x,existing.payload,{revision:x.revision,status:'Cancelled'});
+  }
+
 
   if(x?.department==="Excursions"){
    if(user?.role!=="admin")return Response.json({error:"Only Admin can edit excursion bills."},{status:403});
@@ -154,7 +165,7 @@ export async function PUT(r:Request){
   }
   if(!x||!["Accommodation","Transfer","Excursions"].includes(x.department)||typeof x.id!=="string"||!/^[-A-Z0-9]{1,40}$/.test(x.id)||!Number.isInteger(x.revision)||x.revision<0||typeof x.date!=="string"||!x.date.trim()||x.date.length>100||!["Posted","Pending","Paid","Unpaid","Cancelled"].includes(x.status)||!Array.isArray(x.items)||x.items.length>100||x.items.some((i:any)=>!Array.isArray(i)||i.length!==4||typeof i[0]!=="string"||!i[0].trim()||i[0].length>200||!Number.isInteger(i[1])||i[1]<1||i[1]>10000||!Number.isFinite(i[2])||i[2]<0||i[2]>1000000||!Number.isFinite(i[3])||i[3]<0||i[3]>100))return Response.json({error:"Check bill items, amounts and discounts."},{status:400});
 
-  const bill={id:x.id,department:x.department,date:x.date,status:x.status,items:x.items,total:Math.round(x.items.reduce((s:number,i:any)=>s+Math.round(i[2]*100)*(1-i[3]/100),0))/100};
+  const bill={id:x.id,department:x.department,date:x.date,status:x.status,items:x.items,...(deleting?{deleted:true,deletedAt:new Date().toISOString(),deletedBy:user!.userId}:{}),total:deleting?0:Math.round(x.items.reduce((s:number,i:any)=>s+Math.round(i[2]*100)*(1-i[3]/100),0))/100};
   const key=prefix(String(b.room))+x.department+":"+x.id;
   const current=await currentBillRecord(key);
   if(Number(current?.revision||0)!==x.revision)return Response.json({error:"Bill changed elsewhere. Reopen it before saving."},{status:409});
