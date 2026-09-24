@@ -14,13 +14,12 @@ export function buildWalkInExcursionWhatsAppMessage(booking:any,packageLegs:any[
  const guest=String(booking?.guest||'Guest');
  const hotel=String(booking?.hotel||'').trim();
  const room=String(booking?.room||'').trim();
- const total=Number(booking?.totalCents);
- const status=String(booking?.tripStatus||'Confirmed');
+ const total=packageLegs.length>1?packageLegs.reduce((sum:number,leg:any)=>sum+Math.max(0,Number(leg?.totalCents)||0),0):Number(booking?.totalCents);
  const lines=[
   'Nirili Tours · Dhiffushi',
   '',
   'Hello '+guest+',',
-  'Your excursion booking is '+status.toLowerCase()+'.',
+  'Your excursion booking is confirmed.',
   '',
   'Booking: '+ref,
   'Excursion: '+name
