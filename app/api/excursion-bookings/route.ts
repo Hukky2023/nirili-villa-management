@@ -13,6 +13,7 @@ import {excursionScheduleLoadForOrder,scheduleCanServeRequest} from '../../../li
 import {applyExcursionReassignment} from '../../../lib/excursion-reassignment';
 import {sendGuestPushForExcursionTimeChange} from '../../../lib/web-push';
 import {addGuestNotification} from '../../../lib/guest-notifications';
+import {markWalkInExcursionNotified} from '../../../lib/walkin-excursion-notification';
 
 const headers = {'Cache-Control': 'private, no-store', 'Vary': 'Cookie'};
 const normal = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -120,6 +121,21 @@ export async function PATCH(request: Request) {
     let input: any;
     try { input = await request.json(); } catch {
       return Response.json({error: 'Invalid excursion request.'}, {status: 400, headers});
+    }
+    if(input?.action==='mark-whatsapp-notified'){
+      if(!hasPermission(user,'excursions_manager'))return Response.json({error:'Only Admin or Excursions Manager can confirm walk-in guest notification.'},{status:403,headers});
+      const bookingId=String(input.id||''),packageGroupId=String(input.packageGroupId||''),notified=input.notified===true;
+      if(!bookingId||!Number.isSafeInteger(input.revision)||input.revision<0)return Response.json({error:'Refresh excursion bookings and try again.'},{status:400,headers});
+      const {state,revision}=await loadStays();
+      if(input.revision!==revision)return Response.json({error:'Excursion bookings changed. Refresh and try again.'},{status:409,headers});
+      const selected=(state.orders||[]).find((item:any)=>item.id===bookingId&&item.kind==='excursion');
+      if(!selected)return Response.json({error:'Excursion booking not found.'},{status:404,headers});
+      let result:any;
+      try{result=markWalkInExcursionNotified(state,selected,{notified,by:user.username,channel:'WhatsApp',packageGroupId});}
+      catch(error){return Response.json({error:error instanceof Error?error.message:'Could not update guest notification.'},{status:409,headers});}
+      const saved=await saveStayAccess(state,revision,user.userId);
+      if(!saved)return Response.json({error:'Another excursion update was saved. Refresh and try again.'},{status:409,headers});
+      return Response.json({ok:true,revision:revision+1,notified,notifiedAt:result.notifiedAt,notifiedBy:result.notifiedBy,count:result.targets.length},{headers});
     }
     if(input?.action==='reassign-booking'){
       if(!hasPermission(user,'excursions_manager'))return Response.json({error:'Only Admin or Excursions Manager can reassign confirmed excursion bookings.'},{status:403,headers});
