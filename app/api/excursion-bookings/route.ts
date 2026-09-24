@@ -121,6 +121,32 @@ export async function PATCH(request: Request) {
     try { input = await request.json(); } catch {
       return Response.json({error: 'Invalid excursion request.'}, {status: 400, headers});
     }
+    if(input?.action==='mark-whatsapp-notified'){
+      if(!hasPermission(user,'excursions_manager'))return Response.json({error:'Only Admin or Excursions Manager can confirm walk-in guest notification.'},{status:403,headers});
+      const bookingId=String(input.id||''),packageGroupId=String(input.packageGroupId||''),notified=input.notified===true;
+      if(!bookingId||!Number.isSafeInteger(input.revision)||input.revision<0)return Response.json({error:'Refresh excursion bookings and try again.'},{status:400,headers});
+      const {state,revision}=await loadStays();
+      if(input.revision!==revision)return Response.json({error:'Excursion bookings changed. Refresh and try again.'},{status:409,headers});
+      const selected=(state.orders||[]).find((item:any)=>item.id===bookingId&&item.kind==='excursion');
+      if(!selected)return Response.json({error:'Excursion booking not found.'},{status:404,headers});
+      if(selected.stayId)return Response.json({error:'This action is for walk-in excursion guests.'},{status:409,headers});
+      if(!String(selected.phone||'').trim())return Response.json({error:'Walk-in guest WhatsApp number is missing.'},{status:409,headers});
+      const targets=packageGroupId
+       ?(state.orders||[]).filter((item:any)=>item.kind==='excursion'&&item.packageGroupId===packageGroupId&&item.status!=='Cancelled'&&item.approvalStatus!=='Cancelled')
+       :[selected];
+      const now=new Date().toISOString();
+      for(const order of targets){
+       order.guestNotified=notified;
+       order.guestNotifiedAt=notified?now:null;
+       order.guestNotifiedBy=notified?user.username:null;
+       order.guestNotificationChannel=notified?'WhatsApp':'';
+       order.notificationHistory=Array.isArray(order.notificationHistory)?order.notificationHistory:[];
+       order.notificationHistory.push({at:now,by:user.username,channel:'WhatsApp',status:notified?'Sent':'Reset',bookingId:order.id,packageGroupId:order.packageGroupId||''});
+      }
+      const saved=await saveStayAccess(state,revision,user.userId);
+      if(!saved)return Response.json({error:'Another excursion update was saved. Refresh and try again.'},{status:409,headers});
+      return Response.json({ok:true,revision:revision+1,notified,notifiedAt:notified?now:'',notifiedBy:notified?user.username:'',count:targets.length},{headers});
+    }
     if(input?.action==='reassign-booking'){
       if(!hasPermission(user,'excursions_manager'))return Response.json({error:'Only Admin or Excursions Manager can reassign confirmed excursion bookings.'},{status:403,headers});
       const bookingId=String(input.id||''),scheduleId=String(input.scheduleId||''),scheduleDate=String(input.scheduleDate||''),note=String(input.note||'').trim().slice(0,500);
