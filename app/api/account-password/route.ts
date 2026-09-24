@@ -4,7 +4,7 @@ import {deleteLegacySessionsForAccount,mirrorLegacyAccount,updateSupabaseEmploye
 import {appendAccountHistory} from '../../../lib/account-history';
 
 function canHandleGuestAccess(user:any,target:any){
- return user?.role==='admin'||(target?.role==='guest'&&user?.role==='staff'&&(user.permissions.length===0||hasPermission(user,'guesthouse_reception')));
+ return user?.role==='admin'||(target?.role==='guest'&&user?.role==='staff'&&hasPermission(user,'guesthouse_reception'));
 }
 
 function fiveDigitCode(){
