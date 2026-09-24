@@ -56,8 +56,21 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
   return 'Nirili Villa login\nName: '+user.name+'\nUsername: '+user.username+'\nPassword: '+password+'\n'+(rooms?rooms+'\n':'')+'Login: '+link+'\n\nOpen the link and sign in. You will be taken directly to your assigned page.';
  }
 
+ const guestStay=(user.stays||[]).find((s:any)=>s.status==='In House')||(user.stays||[]).find((s:any)=>s.status==='Confirmed');
+ const guestPhone=String(guestStay?.whatsapp||user.whatsapp||user.walkIn?.phone||'').trim();
+ const whatsappPhone=guestPhone.replace(/[\s()+.-]/g,'').replace(/^00/,'');
+
  async function share(){
   if(!password)return;
+  if(isGuest){
+   if(!/^[1-9]\d{7,14}$/.test(whatsappPhone)){
+    setMessage('Save a valid guest WhatsApp number with country code in the booking details, then reopen guest access.');
+    return;
+   }
+   window.open('https://wa.me/'+whatsappPhone+'?text='+encodeURIComponent(text()),'_blank','noopener,noreferrer');
+   setMessage('WhatsApp opened for the guest. Review the message and tap Send.');
+   return;
+  }
   try{
    if(navigator.share)await navigator.share({title:isGuest?'Nirili Villa guest setup':'Nirili Villa login',text:text()});
    else{await navigator.clipboard.writeText(text());setMessage(isGuest?'Setup details copied. Paste them into WhatsApp or another app.':'Login details copied. Paste them into WhatsApp or another app.');}
@@ -86,8 +99,9 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
    <p><UiText>{isGuest?'Room: ':'Username: '}</UiText><b>{user.username}</b></p>
    {user.stays?.filter((s:any)=>s.status!=='Checked Out').map((s:any)=><p key={s.id}><UiText>Room </UiText><UiText>{s.room}</UiText> · <UiText>{s.meal}</UiText></p>)}
    {password&&<><p><UiText>{isGuest?'Setup code: ':'Password: '}</UiText><b><UiText>{password}</UiText></b></p>
+    {isGuest&&<p><UiText>WhatsApp recipient: </UiText><b>{guestPhone||'No WhatsApp number saved'}</b></p>}
     {isGuest&&<p><UiText>Guest opens booking.nirilihotels.com/stay, chooses Create password, and uses this code once to create a private password.</UiText></p>}
-    <div className="account-password-actions"><button className="primary" onClick={share}><UiText>{isGuest?'Share setup details':'Share login details'}</UiText></button><button onClick={async()=>{try{await navigator.clipboard.writeText(text());setMessage(isGuest?'Setup details copied.':'Login details copied.')}catch{setMessage('Copy unavailable. Select the displayed details to copy.')}}}><UiText>Copy details</UiText></button></div>
+    <div className="account-password-actions"><button className="primary" onClick={share}><UiText>{isGuest?'Open guest WhatsApp':'Share login details'}</UiText></button><button onClick={async()=>{try{await navigator.clipboard.writeText(text());setMessage(isGuest?'Setup details copied.':'Login details copied.')}catch{setMessage('Copy unavailable. Select the displayed details to copy.')}}}><UiText>Copy details</UiText></button></div>
    </>}
 
    {user.role!=='guest'&&<form onSubmit={async e=>{

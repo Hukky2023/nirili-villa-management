@@ -14,7 +14,7 @@ export async function GET(){
   const {state}=await loadStays();
   const shaped=await Promise.all(users.map(async(u:any)=>{
    const stays=u.role==='guest'?accountStays(u.id,state):[];
-   const stayView=stays.map((s:any)=>({id:s.id,room:s.room,status:s.status,meal:s.meal,checkIn:s.checkIn,checkOut:s.checkOut,checkedInAt:s.checkedInAt||'',checkedOutAt:s.checkedOutAt||'',history:s.history||[]}));
+   const stayView=stays.map((s:any)=>({id:s.id,room:s.room,status:s.status,meal:s.meal,whatsapp:s.whatsapp||'',checkIn:s.checkIn,checkOut:s.checkOut,checkedInAt:s.checkedInAt||'',checkedOutAt:s.checkedOutAt||'',history:s.history||[]}));
    const walkIn=u.role==='guest'?walkInExcursionProfile(state,u.id):undefined;
    const currentInHouse=stayView.find((s:any)=>s.status==='In House')||stayView.find((s:any)=>s.status==='Confirmed');
    const audit=await readAccountHistory(u.id);
