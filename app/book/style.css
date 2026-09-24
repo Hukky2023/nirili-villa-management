@@ -76,3 +76,5 @@
 
 /* Real Dhiffushi photograph, shown uncropped with attribution. */
 .hero-card-photo{display:block;width:100%;height:auto;aspect-ratio:1280/959;object-fit:contain;background:#e1edef}.hero-card-copy .hero-photo-credit{margin:12px 0 0;font-size:11px;line-height:1.6;letter-spacing:0;font-weight:400;color:#647b88}.hero-photo-credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+
+.guest-booking-site .hero-card-copy{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}.guest-booking-site .hero-card-copy .hero-photo-credit{margin:4px 0 0}
