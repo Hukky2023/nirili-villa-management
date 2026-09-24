@@ -7,7 +7,6 @@ import './live-dashboard.css';
 import {startLiveRefresh,REFRESH_INTERVALS} from '../lib/live-refresh';
 type Module='Bookings'|'Rooms'|'Guests'|'Transfers'|'Excursions'|'POS'|'Reports';
 const money=(cents:number,currency='USD')=>new Intl.NumberFormat('en-US',{style:'currency',currency,maximumFractionDigits:2}).format(cents/100);
-const localTime=(value:string)=>new Date(value).toLocaleTimeString('en-GB',{timeZone:'Indian/Maldives',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
 const dayLabel=(date:string)=>new Date(date+'T12:00:00+05:00').toLocaleDateString('en-GB',{timeZone:'Indian/Maldives',day:'2-digit',month:'short'});
 function useDashboard(intervalMs:number=REFRESH_INTERVALS.standard){
  const [data,setData]=useState<DashboardData|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
@@ -38,9 +37,11 @@ function useDashboard(intervalMs:number=REFRESH_INTERVALS.standard){
  },[intervalMs]);
  return {data,error,busy,intervalMs,refresh:()=>refresh.current()};
 }
-function LiveStatus({data,error,busy,intervalMs,refresh}:ReturnType<typeof useDashboard>){
- return <div className="nv-live-status"><div><b><UiText>{error?'Update interrupted':data?`Auto update · every ${intervalMs/1000} seconds`:'Loading live data…'}</UiText></b><span>{data&&<><UiText>Last updated</UiText> {localTime(data.updatedAt)} · {dayLabel(data.date)} · <UiText>Maldives time</UiText></>}</span>{error&&<p role="alert"><UiText>{error}</UiText></p>}</div><button type="button" onClick={refresh} disabled={busy}><RefreshCw size={16}/><UiText>{busy?'Updating…':'Refresh'}</UiText></button></div>;
+function LiveStatus({error,busy,refresh}:ReturnType<typeof useDashboard>){
+ if(!error)return null;
+ return <p className="nv-live-note" role="alert"><UiText>{error}</UiText> <button type="button" onClick={refresh} disabled={busy}><RefreshCw size={16}/><UiText>{busy?'Updating…':'Retry'}</UiText></button></p>;
 }
+
 function Weather(){
  const [weather,setWeather]=useState<any>(null),[failed,setFailed]=useState(false);
  useEffect(()=>{
