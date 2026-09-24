@@ -5,6 +5,9 @@ import {
   discoverBookingComMappings,
   ensureBookingComStagingRoomTypes,
   ensureBookingComWebhook,
+  getBookingComCertificationState,
+  bootstrapBookingComCertification,
+  runBookingComCertificationScenario,
   getBookingComChannelState,
   previewBookingComAvailability,
   pullBookingComFeed,
@@ -47,6 +50,9 @@ export async function POST(request:Request){
     if(action==='bootstrap')return Response.json(await bootstrapBookingComStaging(),{headers});
     if(action==='bootstrap-production')return Response.json(await bootstrapBookingComProduction(),{headers});
     if(action==='stagingrooms')return Response.json(await ensureBookingComStagingRoomTypes(),{headers});
+    if(action==='cert-state')return Response.json(await getBookingComCertificationState(),{headers});
+    if(action==='cert-setup')return Response.json(await bootstrapBookingComCertification(),{headers});
+    if(action==='cert-run')return Response.json(await runBookingComCertificationScenario(body.scenario),{headers});
     if(action==='selftest')return Response.json(await runBookingComSelfTest(),{headers});
     if(action==='webhook')return Response.json(await ensureBookingComWebhook(new URL(request.url).origin+'/api/channels/booking-com/webhook'),{headers});
     if(action==='test')return Response.json(await testBookingComConnection(),{headers});
