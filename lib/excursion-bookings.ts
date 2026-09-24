@@ -11,6 +11,7 @@ export type ConfirmedExcursionBooking = {
   notes: string; source: string; createdAt: string; createdBy: string;
   packageGroupId: string; packageName: string; packagePart: number; packageParts: number;
   footSizes: number[]; people: ExcursionGuestPerson[]; attendanceReviewedAt: string;
+  guestNotified: boolean; guestNotifiedAt: string; guestNotifiedBy: string; guestNotificationChannel: string;
 };
 
 const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
@@ -97,5 +98,6 @@ export function toConfirmedExcursionBooking(
     packageGroupId: text(order.packageGroupId), packageName: text(order.packageName), packagePart: Math.max(0,Math.trunc(Number(order.packagePart)||0)), packageParts: Math.max(0,Math.trunc(Number(order.packageParts)||0)),
     createdAt: text(order.createdAt), createdBy: text(order.createdBy),
     footSizes, people, attendanceReviewedAt: text(order.attendanceReviewedAt),
+    guestNotified: order.guestNotified===true, guestNotifiedAt:text(order.guestNotifiedAt), guestNotifiedBy:text(order.guestNotifiedBy), guestNotificationChannel:text(order.guestNotificationChannel),
   };
 }
