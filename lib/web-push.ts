@@ -1,4 +1,5 @@
 import {authDb} from './auth';
+import {sendAdminNativePushNotification} from './firebase-push';
 
 type PushKeys={p256dh:string;auth:string};
 type StoredSubscription={endpoint:string;expirationTime?:number|null;keys:PushKeys;createdAt:string;updatedAt:string};
@@ -227,23 +228,36 @@ export async function removeAdminPushSubscription(accountId:string,endpoint?:str
 }
 
 export async function sendAdminPushNotification(notice:{id?:string;type?:string;title?:string;detail?:string;url?:string;ref?:string}){
- const subscriptions=await readAdminSubscriptions();
- if(!subscriptions.length)return {sent:0,total:0};
- const pair=await storedVapid();
- const payload=JSON.stringify({
-  title:'Nirili Villa · '+String(notice.title||'New notification'),
-  body:String(notice.detail||'You have a new update.'),
-  tag:String(notice.id||notice.ref||('admin:'+Date.now())),
-  url:String(notice.url||'/home'),
-  type:String(notice.type||'change'),
-  ref:String(notice.ref||'')
- });
- const results=await Promise.allSettled(subscriptions.map(subscription=>sendOne(subscription,payload,pair)));
- const stale:Array<{accountId:string;endpoint:string}>=[];
- const sent=results.filter((result,index)=>{
-  if(result.status==='fulfilled'&&result.value.gone)stale.push({accountId:subscriptions[index].accountId,endpoint:subscriptions[index].endpoint});
-  return result.status==='fulfilled'&&result.value.ok;
- }).length;
- for(const item of stale)await deleteAdminSubscription(item.accountId,item.endpoint);
- return {sent,total:subscriptions.length};
+ const [subscriptions,native]=await Promise.all([
+  readAdminSubscriptions(),
+  sendAdminNativePushNotification(notice).catch(()=>({sent:0,total:0,configured:false}))
+ ]);
+ let web={sent:0,total:subscriptions.length};
+ if(subscriptions.length){
+  try{
+   const pair=await storedVapid();
+   const payload=JSON.stringify({
+    title:'Nirili Villa · '+String(notice.title||'New notification'),
+    body:String(notice.detail||'You have a new update.'),
+    tag:String(notice.id||notice.ref||('admin:'+Date.now())),
+    url:String(notice.url||'/home'),
+    type:String(notice.type||'change'),
+    ref:String(notice.ref||'')
+   });
+   const results=await Promise.allSettled(subscriptions.map(subscription=>sendOne(subscription,payload,pair)));
+   const stale:Array<{accountId:string;endpoint:string}>=[];
+   const sent=results.filter((result,index)=>{
+    if(result.status==='fulfilled'&&result.value.gone)stale.push({accountId:subscriptions[index].accountId,endpoint:subscriptions[index].endpoint});
+    return result.status==='fulfilled'&&result.value.ok;
+   }).length;
+   for(const item of stale)await deleteAdminSubscription(item.accountId,item.endpoint);
+   web={sent,total:subscriptions.length};
+  }catch{}
+ }
+ return {
+  sent:web.sent+Number(native.sent||0),
+  total:web.total+Number(native.total||0),
+  web,
+  native
+ };
 }
