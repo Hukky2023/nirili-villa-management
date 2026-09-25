@@ -13,9 +13,9 @@ This desktop application opens the live Nirili Villa Restaurant POS and connects
 
 ## Default server
 
-The desktop app opens:
+The desktop app opens the dedicated Restaurant Cashier login:
 
-https://www.nirilihotels.com/restaurant
+https://nirili-villa.nirili-management.workers.dev/restaurant/cashier-login
 
 The URL can be changed with the environment variable `NIRILI_POS_URL`, the command-line option `--server=https://...`, or by editing `config.json` in the app data folder.
 
