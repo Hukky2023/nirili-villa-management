@@ -7,9 +7,9 @@ import {stayKey} from './stays';
 import {
   mirrorHotelState,
   readOperationalRecordPrimary,
-  saveOperationalRecordPrimary,
-  saveSystemNotifications
+  saveOperationalRecordPrimary
 } from './supabase-bridge';
+import {emitAdminNotification} from './admin-notifications';
 
 const connectionId='booking-com';
 const projectUrl='https://vjbyrjqibzebpzontxgc.supabase.co';
@@ -1134,12 +1134,12 @@ export async function processBookingComRevision(revision:any,eventKey?:string){
     const detail=parsed.status==='cancelled'
       ?'Booking.com cancellation · '+parsed.guestName+' · '+parsed.arrivalDate+' → '+parsed.departureDate
       :'Booking.com '+(parsed.status==='modified'?'booking modified':'new booking')+' · '+parsed.guestName+' · '+parsed.arrivalDate+' → '+parsed.departureDate+(savedRefs.length?' · '+savedRefs.join(', '):'');
-    if(connection.mode==='production')await saveSystemNotifications([{
+    if(connection.mode==='production')await emitAdminNotification({
       id:'booking-com:'+parsed.revisionId,
-      type:'hotel-booking',
+      type:'hotel',
       title:parsed.status==='cancelled'?'Booking.com cancellation':parsed.status==='modified'?'Booking.com booking modified':'New Booking.com reservation',
-      detail,at:isoNow(),read:false
-    }]);
+      detail,at:isoNow(),read:false,ref:savedRefs[0]||parsed.externalReservationId,url:'/home'
+    });
     await recordEvent(key,'inbound','booking_revision','processed',{revisionId:parsed.revisionId,externalReservationId:parsed.externalReservationId,refs:savedRefs});
     await autoPushBookingComAvailability(365);
     return {processed:true,dryRun:false,revisionId:parsed.revisionId,externalReservationId:parsed.externalReservationId,refs:savedRefs};
