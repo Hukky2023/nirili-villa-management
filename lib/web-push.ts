@@ -11,6 +11,7 @@ async function ensureTables(){
  const db=authDb();
  await db.prepare('CREATE TABLE IF NOT EXISTS guest_push_config (key TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at TEXT NOT NULL)').run();
  await db.prepare('CREATE TABLE IF NOT EXISTS guest_push_subscriptions (account_id TEXT NOT NULL, endpoint TEXT NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(account_id,endpoint))').run();
+ await db.prepare('CREATE TABLE IF NOT EXISTS admin_push_subscriptions (account_id TEXT NOT NULL, endpoint TEXT NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(account_id,endpoint))').run();
 }
 
 function concat(...parts:Uint8Array[]){
@@ -191,4 +192,58 @@ export function validPushEndpoint(endpoint:string){
    h==='fcm.googleapis.com'||h==='updates.push.services.mozilla.com'||h==='web.push.apple.com'||
    h.endsWith('.push.apple.com')||h.endsWith('.notify.windows.com'));
  }catch{return false;}
+}
+
+
+async function readAdminSubscriptions():Promise<Array<StoredSubscription&{accountId:string}>>{
+ await ensureTables();
+ const rows=(await authDb().prepare('SELECT account_id,payload FROM admin_push_subscriptions ORDER BY updated_at DESC LIMIT 50').all<any>()).results||[];
+ return rows.map((row:any)=>{try{return {...JSON.parse(row.payload),accountId:String(row.account_id||'')}}catch{return null}}).filter((x:any)=>x?.endpoint&&x?.keys?.p256dh&&x?.keys?.auth&&x?.accountId);
+}
+
+async function writeAdminSubscription(accountId:string,subscription:StoredSubscription){
+ await ensureTables();
+ await authDb().prepare('INSERT INTO admin_push_subscriptions(account_id,endpoint,payload,updated_at) VALUES(?,?,?,?) ON CONFLICT(account_id,endpoint) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(accountId,subscription.endpoint,JSON.stringify(subscription),subscription.updatedAt).run();
+ const extras=(await authDb().prepare('SELECT endpoint FROM admin_push_subscriptions WHERE account_id=? ORDER BY updated_at DESC LIMIT -1 OFFSET 5').bind(accountId).all<any>()).results||[];
+ if(extras.length)await authDb().batch(extras.map((row:any)=>authDb().prepare('DELETE FROM admin_push_subscriptions WHERE account_id=? AND endpoint=?').bind(accountId,String(row.endpoint))));
+}
+
+async function deleteAdminSubscription(accountId:string,endpoint?:string){
+ await ensureTables();
+ if(endpoint)await authDb().prepare('DELETE FROM admin_push_subscriptions WHERE account_id=? AND endpoint=?').bind(accountId,endpoint).run();
+ else await authDb().prepare('DELETE FROM admin_push_subscriptions WHERE account_id=?').bind(accountId).run();
+}
+
+export async function adminPushPublicKey(){return (await storedVapid()).publicKey;}
+
+export async function saveAdminPushSubscription(accountId:string,raw:any){
+ const next=cleanSubscription(raw);
+ await writeAdminSubscription(accountId,next);
+ return next;
+}
+
+export async function removeAdminPushSubscription(accountId:string,endpoint?:string){
+ await deleteAdminSubscription(accountId,endpoint);return true;
+}
+
+export async function sendAdminPushNotification(notice:{id?:string;type?:string;title?:string;detail?:string;url?:string;ref?:string}){
+ const subscriptions=await readAdminSubscriptions();
+ if(!subscriptions.length)return {sent:0,total:0};
+ const pair=await storedVapid();
+ const payload=JSON.stringify({
+  title:'Nirili Villa · '+String(notice.title||'New notification'),
+  body:String(notice.detail||'You have a new update.'),
+  tag:String(notice.id||notice.ref||('admin:'+Date.now())),
+  url:String(notice.url||'/home'),
+  type:String(notice.type||'change'),
+  ref:String(notice.ref||'')
+ });
+ const results=await Promise.allSettled(subscriptions.map(subscription=>sendOne(subscription,payload,pair)));
+ const stale:Array<{accountId:string;endpoint:string}>=[];
+ const sent=results.filter((result,index)=>{
+  if(result.status==='fulfilled'&&result.value.gone)stale.push({accountId:subscriptions[index].accountId,endpoint:subscriptions[index].endpoint});
+  return result.status==='fulfilled'&&result.value.ok;
+ }).length;
+ for(const item of stale)await deleteAdminSubscription(item.accountId,item.endpoint);
+ return {sent,total:subscriptions.length};
 }
