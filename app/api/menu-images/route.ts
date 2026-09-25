@@ -1,6 +1,7 @@
 import {authDb,currentUser,sameOrigin} from '../../../lib/auth';
+import {canTakePayment} from '../../../lib/pos-access';
 export async function POST(r:Request){
- const u=await currentUser();if(u?.role!=='admin'||!sameOrigin(r))return Response.json({error:'Admin access required.'},{status:403});
+ const u=await currentUser();if(!u||!(u.role==='admin'||canTakePayment(u))||!sameOrigin(r))return Response.json({error:'Cashier access required.'},{status:403});
  if(r.headers.get('content-type')!=='image/jpeg'||Number(r.headers.get('content-length'))>200000)return Response.json({error:'Use a JPEG photo under 200 KB.'},{status:400});
  const reader=r.body?.getReader();if(!reader)return Response.json({error:'No image received.'},{status:400});let size=0;const chunks:Uint8Array[]=[];
  for(;;){const {value,done}=await reader.read();if(done)break;size+=value.length;if(size>200000){await reader.cancel();return Response.json({error:'Image is too large.'},{status:413});}chunks.push(value);}
