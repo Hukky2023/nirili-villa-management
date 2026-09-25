@@ -9,6 +9,7 @@ import {folioFor} from '../../../../lib/stays';
 import {autoPushBookingComAvailability} from '../../../../lib/channels';
 import {normalizeTransportPlan} from '../../../../lib/transport-plan';
 import {cancelLinkedTransportBookings} from '../../../../lib/linked-transport-bookings';
+import {emitAdminNotification} from '../../../../lib/admin-notifications';
 
 const headers={'Cache-Control':'private, no-store, max-age=0'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
@@ -78,6 +79,7 @@ export async function POST(request:Request){
     if(!await saveStayAccess(state,revision,'public-booking-manage'))throw Error('The booking changed while you were editing it. Refresh and try again.');
     try{await updatePublicBookingRequestStatus(booking.id,'Pending',{...booking,status:'Pending'});}catch{}
     const mail=await sendBookingUpdatedEmail({...next,reference:booking.id,totalCents:next.estimate,manageToken:token,eventId:change.id,statusLabel:'Confirmation pending'});
+    try{await emitAdminNotification({id:'hotel:change:'+change.id,type:'hotel',title:'Guest booking changed',detail:String(booking.guest||'Guest')+' · '+booking.id+' · '+String(next.checkIn||'')+' → '+String(next.checkOut||''),ref:booking.id,url:'/home'});}catch{}
     return Response.json({ok:true,applied:true,email:mail,booking:bookingManageSnapshot(state,{kind:'request',item:booking})},{headers});
    }
    if(booking.status!=='Confirmed')throw Error('Only confirmed future stays can be changed online.');
@@ -85,6 +87,8 @@ export async function POST(request:Request){
    state.bookingChanges.push(change);
    if(!await saveStayAccess(state,revision,'public-booking-manage'))throw Error('The booking changed while you were editing it. Refresh and try again.');
    const mail=await sendBookingChangeRequestedEmail({email:booking.email,guest:booking.guest,reference:booking.id,room:booking.room,checkIn:booking.checkIn,checkOut:booking.checkOut,meal:booking.meal,pax:booking.pax,totalCents:booking.base||0,manageToken:token,eventId:change.id,requestType:'change'});
+   try{await emitAdminNotification({id:'hotel:change-request:'+change.id,type:'hotel',title:'Guest booking change request',detail:String(booking.guest||'Guest')+' · '+booking.id+' · reception approval required',ref:booking.id,url:'/home'});}catch{}
+   try{await emitAdminNotification({id:'hotel:cancel-request:'+change.id,type:'hotel',title:'Guest cancellation request',detail:String(booking.guest||'Guest')+' · '+booking.id+' · reception approval required',ref:booking.id,url:'/home'});}catch{}
    return Response.json({ok:true,pending:true,email:mail,booking:bookingManageSnapshot(state,{kind:'stay',item:booking})},{headers});
   }
 
@@ -98,6 +102,7 @@ export async function POST(request:Request){
     if(!await saveStayAccess(state,revision,'public-booking-manage'))throw Error('The booking changed while you were cancelling it. Refresh and try again.');
     try{await updatePublicBookingRequestStatus(booking.id,'Cancelled',{id:booking.id,status:'Cancelled'});}catch{}
     const mail=await sendBookingCancelledEmail({email:booking.email,guest:booking.guest,reference:booking.id,checkIn:booking.checkIn,checkOut:booking.checkOut,meal:booking.meal,pax:booking.pax,totalCents:booking.estimate||0,manageToken:token,eventId:change.id,refundRequiredCents:0});
+    try{await emitAdminNotification({id:'hotel:cancel:'+change.id,type:'hotel',title:'Guest cancelled booking',detail:String(booking.guest||'Guest')+' · '+booking.id+' · '+String(booking.checkIn||''),ref:booking.id,url:'/home'});}catch{}
     return Response.json({ok:true,cancelled:true,email:mail,booking:bookingManageSnapshot(state,{kind:'request',item:booking})},{headers});
    }
    if(booking.status!=='Confirmed')throw Error('Only confirmed future stays can be cancelled online.');
@@ -120,6 +125,7 @@ export async function POST(request:Request){
     try{await autoPushBookingComAvailability();}catch{}
     const mail=await sendBookingCancelledEmail({email:booking.email,guest:booking.guest,reference:booking.id,room:booking.room,checkIn:booking.checkIn,checkOut:booking.checkOut,meal:booking.meal,pax:booking.pax,totalCents:booking.base||0,manageToken:token,eventId:change.id,refundRequiredCents});
     const archived=bookingForManageToken(state,token);
+    try{await emitAdminNotification({id:'hotel:cancel:'+change.id,type:'hotel',title:'Guest cancelled booking',detail:String(booking.guest||'Guest')+' · '+booking.id+' · '+String(booking.checkIn||'')+(refundRequiredCents?' · refund review required':''),ref:booking.id,url:'/home'});}catch{}
     return Response.json({ok:true,cancelled:true,autoApproved:true,email:mail,booking:bookingManageSnapshot(state,archived)},{headers});
    }
    const change=actionRecord('cancel',booking.id,booking,null,'Pending');
