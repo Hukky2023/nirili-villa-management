@@ -1,4 +1,4 @@
-import {printUSB} from './usb-thermal';
+import {openCashDrawerUSB,printUSB} from './usb-thermal';
 import {PrinterSettings,readPrinterSettings,normalizeSettings} from './printer-settings';
 let loading:Promise<any>|null=null;
 export async function connectThermal(){
@@ -36,4 +36,17 @@ export async function directThermalPrint(printer:string,options:PrinterSettings=
  if(!printer)throw Error('Select a printer first.');if(settings.transport==='usb'){await printUSB(settings.usbDevice,receiptCanvas(settings,test),settings.copies,settings.feed);return;}const image=receiptRaster(settings,test),qz=await connectThermal();
  const printers=await qz.printers.find();if(!printers.includes(printer))throw Error('The selected printer is unavailable. Reconnect and select it again.');
  await qz.print(qz.configs.create(printer,{forceRaw:true,copies:settings.copies,jobName:'Nirili Villa receipt'}),['\x1b\x40',{type:'raw',format:'image',flavor:'base64',data:image,options:{language:'ESCPOS',dotDensity:'double'}},'\n'.repeat(settings.feed)]);
+}
+
+
+export async function openCashDrawer(options:PrinterSettings=readPrinterSettings()){
+ const settings=normalizeSettings(options);
+ if(!settings.printer)throw Error('Connect the receipt printer first in Printer settings.');
+ if(settings.transport==='usb'){
+  if(!settings.usbDevice)throw Error('Reconnect your USB printer in Printer settings.');
+  await openCashDrawerUSB(settings.usbDevice);return;
+ }
+ const qz=await connectThermal();const printers=await qz.printers.find();
+ if(!printers.includes(settings.printer))throw Error('The selected printer is unavailable. Reconnect it in Printer settings.');
+ await qz.print(qz.configs.create(settings.printer,{forceRaw:true,jobName:'Nirili Villa cash drawer'}),['\x1b\x70\x00\x19\xfa']);
 }
