@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.provider.Settings;
 import android.graphics.Insets;
 import android.net.Uri;
 import android.net.http.SslError;
@@ -271,9 +272,6 @@ public class MainActivity extends Activity {
     }
 
     private String nativeNotificationStatus() {
-        if (!firebaseConfigured() || !firebaseReady) {
-            return "error";
-        }
         if (!notificationsAllowed()) {
             SharedPreferences prefs = getSharedPreferences(PUSH_PREFS, MODE_PRIVATE);
             boolean asked = prefs.getBoolean(PUSH_PERMISSION_ASKED, false);
@@ -284,6 +282,9 @@ public class MainActivity extends Activity {
             }
             return "ready";
         }
+        if (!firebaseConfigured() || !firebaseReady) {
+            return "setup";
+        }
         String token = getSharedPreferences(PUSH_PREFS, MODE_PRIVATE)
                 .getString(PUSH_TOKEN_KEY, "");
         return token == null || token.isEmpty() ? "ready" : "enabled";
@@ -291,12 +292,6 @@ public class MainActivity extends Activity {
 
     private void requestNativeNotifications() {
         runOnUiThread(() -> {
-            ensureFirebase();
-            if (!firebaseReady) {
-                publishNativePushStatus();
-                return;
-            }
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                     && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -308,6 +303,17 @@ public class MainActivity extends Activity {
                         new String[]{Manifest.permission.POST_NOTIFICATIONS},
                         NOTIFICATION_PERMISSION_REQUEST
                 );
+                return;
+            }
+
+            ensureFirebase();
+            if (!firebaseReady) {
+                Toast.makeText(
+                        MainActivity.this,
+                        "Phone notification permission is enabled. Firebase push service still needs to be connected.",
+                        Toast.LENGTH_LONG
+                ).show();
+                publishNativePushStatus();
                 return;
             }
 
@@ -371,6 +377,21 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void requestNotificationPermission() {
             requestNativeNotifications();
+        }
+
+        @JavascriptInterface
+        public void openNotificationSettings() {
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                    intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                    startActivity(intent);
+                } catch (ActivityNotFoundException error) {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                }
+            });
         }
     }
 
