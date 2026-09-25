@@ -1,9 +1,11 @@
-import {authDb,currentUser,sameOrigin,limit} from '../../../lib/auth';
+import {authDb,currentUser,currentGuestUser,sameOrigin,limit} from '../../../lib/auth';
 import {loadStays} from '../../../lib/stays';
 import {chatRecipients,validateChat,mayReadChat} from '../../../lib/guest-chat';
+import {emitAdminNotification} from '../../../lib/admin-notifications';
 const prefix='guest-chat-message:';
+async function chatUser(){return (await currentUser())||(await currentGuestUser());}
 export async function GET(r:Request){
- const u=await currentUser();if(!u||!['admin','guest'].includes(u.role))return Response.json({error:'Please sign in as Admin or guest.'},{status:403});
+ const u=await chatUser();if(!u||!['admin','guest'].includes(u.role))return Response.json({error:'Please sign in as Admin or guest.'},{status:403});
  const db=authDb(),url=new URL(r.url),recipient=url.searchParams.get('recipient')||'',before=url.searchParams.get('before')||'';
  let contacts:any[]=[],inHouseCount=0,withoutLogin=0;
  if(u.role==='admin'){
@@ -23,7 +25,7 @@ export async function GET(r:Request){
  return Response.json({actor:{id:u.userId,name:u.displayName,role:u.role},contacts,inHouseCount,withoutLogin,messages:messages.reverse().map(m=>({id:m.id,text:m.text,sender:m.sender,fromAdmin:m.fromAdmin,broadcast:m.broadcast,createdAt:m.createdAt,...(u.role==='admin'?{recipientCount:m.recipients.length}:{})})),next:rows.results.length>100&&last?last.createdAt+'|'+last.id:null},{headers:{'Cache-Control':'no-store'}});
 }
 export async function POST(r:Request){
- const u=await currentUser();if(!u||!['admin','guest'].includes(u.role)||!sameOrigin(r))return Response.json({error:'Admin or guest access required.'},{status:403});
+ const u=await chatUser();if(!u||!['admin','guest'].includes(u.role)||!sameOrigin(r))return Response.json({error:'Admin or guest access required.'},{status:403});
  try{
  const body=await r.json(),text=validateChat(body),db=authDb(),key=prefix+body.token;
  const existing=await db.prepare('SELECT payload FROM operation_records WHERE key=?').bind(key).first<any>();
@@ -33,6 +35,7 @@ export async function POST(r:Request){
  const recipients=chatRecipients(u,body,accounts,state.stays),message={id:body.token,text,senderId:u.userId,sender:u.role==='admin'?'Nirili Villa · '+u.displayName:u.displayName,fromAdmin:u.role==='admin',broadcast:u.role==='admin'&&body.broadcast===true,recipients,createdAt:new Date().toISOString()};
  const result=await db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(key,JSON.stringify(message),u.userId).run();
  if(!result.meta.changes){const saved=await db.prepare('SELECT payload FROM operation_records WHERE key=?').bind(key).first<any>();if(!saved||JSON.parse(saved.payload).senderId!==u.userId)throw Error('Message could not be saved. Please retry.');}
+ if(u.role==='guest')try{await emitAdminNotification({id:'message:new:'+message.id,type:'message',title:'New guest message',detail:String(u.displayName||'Guest')+' · '+String(text).slice(0,180),ref:u.userId,url:'/home'});}catch{}
  return Response.json({sent:true,count:recipients.length});
  }catch(e){return Response.json({error:(e as Error).message},{status:400});}
 }
