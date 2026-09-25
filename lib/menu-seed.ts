@@ -1,4 +1,26 @@
 export type MenuItem={id:string;category:string;name:string;cents:number;detail:string;fullBoard?:boolean;image?:string};
+export const menuCategories=[
+  "Rice",
+  "Curry with Rice",
+  "Burger",
+  "Pizza",
+  "Noodles",
+  "Spaghetti & Pasta",
+  "Soup",
+  "Sandwiches",
+  "Submarines",
+  "Kottu",
+  "Grilled",
+  "Fish and Chips",
+  "Sea Food",
+  "Salad",
+  "Soft Drink",
+  "Hot Beverages",
+  "Milkshake",
+  "Mojito",
+  "Fresh Drink",
+  "Ice Cream"
+] as const;
 export const menuSeed:MenuItem[]=[
   {
     "id": "menu-1",
