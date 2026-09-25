@@ -4,6 +4,7 @@ import {readOperationalRecordPrimary,submitPublicBookingRequest} from '../../../
 import {sendBookingReceivedEmail} from '../../../lib/booking-email';
 import {createBookingManageToken} from '../../../lib/booking-manage';
 import {normalizeTransportPlan} from '../../../lib/transport-plan';
+import {emitAdminNotification} from '../../../lib/admin-notifications';
 
 const headers={'Cache-Control':'no-store'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
@@ -81,6 +82,11 @@ export async function POST(request:Request){
    if(latest?.payload)await authDb().prepare("INSERT INTO operation_records(key,payload,revision,updated_by) VALUES('hotel-stays-v1',?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by")
     .bind(JSON.stringify(latest.payload),Number(latest.revision)||1,'public-booking-site').run();
   }catch{}
+  if(!result?.duplicate)try{await emitAdminNotification({
+   id:'hotel:new:'+bookingRef,type:'hotel',title:'New hotel booking',
+   detail:guest+' · '+checkIn+' → '+checkOut+' · '+meal+' · '+pax+' guest'+(pax===1?'':'s'),
+   ref:bookingRef,url:'/home'
+  });}catch{}
   return Response.json({ok:true,id:bookingRef,duplicate:!!result?.duplicate,estimateCents:estimate,nights,email:emailResult},{status:201,headers});
  }catch(error){
   const message=error instanceof Error?error.message:'Could not send your booking request.';
