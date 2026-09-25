@@ -1,5 +1,6 @@
 import {currentUser,sameOrigin} from '../../../lib/auth';
 import {clearSystemNotifications,listSystemNotifications,markSystemNotificationsRead,saveSystemNotifications} from '../../../lib/supabase-bridge';
+import {sendAdminPushNotification} from '../../../lib/web-push';
 
 const headers={'Cache-Control':'private, no-store'};
 
@@ -20,6 +21,7 @@ export async function POST(request:Request){
     const body=await request.json();
     const notices=Array.isArray(body?.notifications)?body.notifications:[];
     await saveSystemNotifications(notices);
+    await Promise.allSettled(notices.slice(0,10).map((notice:any)=>sendAdminPushNotification(notice)));
     return Response.json({ok:true,count:notices.length},{headers});
   }catch{return Response.json({error:'Could not save notifications.'},{status:503,headers});}
 }
