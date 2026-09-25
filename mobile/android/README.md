@@ -48,7 +48,28 @@ The repository workflow `.github/workflows/android-apk.yml` builds the APK and u
 - HTTPS is enforced and SSL errors are rejected.
 - Android 16 / API 36 is the target SDK.
 - A progress indicator is displayed while pages load.
+- Native Firebase Cloud Messaging (FCM) delivers high-priority management alerts while the app is backgrounded or the phone is locked.
+- Android 13+ notification permission is requested from the Notifications panel instead of showing `Push unsupported`.
+- Notification taps open the relevant Nirili Villa management route inside the app.
 
 ## Release signing
 
 The current GitHub workflow intentionally produces a debug APK for testing. A Play Store release must use a private upload keystore stored in GitHub Actions secrets. Never commit a keystore or signing password into this repository.
+
+
+## Native push notification configuration
+
+The APK reads these GitHub Actions secrets at build time:
+
+- `NIRILI_FIREBASE_APP_ID`
+- `NIRILI_FIREBASE_API_KEY`
+- `NIRILI_FIREBASE_PROJECT_ID`
+- `NIRILI_FIREBASE_SENDER_ID`
+
+The Cloudflare management deployment also needs these server-side secrets for Firebase HTTP v1 delivery:
+
+- `FCM_PROJECT_ID`
+- `FCM_CLIENT_EMAIL`
+- `FCM_PRIVATE_KEY`
+
+The private key must remain a server secret. Do not add the Firebase service-account JSON or private key to this repository.
