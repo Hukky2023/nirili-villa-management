@@ -9,3 +9,18 @@ export async function chooseUSBPrinter(status:(text:string)=>void=()=>{}){let de
 export function rasterCommands(width:number,height:number,rgba:Uint8ClampedArray){const rowBytes=Math.ceil(width/8),blocks:Uint8Array[]=[];for(let y=0;y<height;y+=128){const rows=Math.min(128,height-y),bytes=new Uint8Array(8+rowBytes*rows);bytes.set([29,118,48,0,rowBytes&255,rowBytes>>8,rows&255,rows>>8]);for(let j=0;j<rows;j++)for(let x=0;x<width;x++){const p=((y+j)*width+x)*4,alpha=rgba[p+3]/255;const luminance=(rgba[p]*.299+rgba[p+1]*.587+rgba[p+2]*.114)*alpha+255*(1-alpha);if(luminance<160)bytes[8+j*rowBytes+(x>>3)]|=128>>(x%8);}blocks.push(bytes);}return blocks;}
 let printing=false;
 export async function printUSB(id:string,canvas:HTMLCanvasElement,copies:number,feed:number){if(printing)throw Error('A USB print job is already running.');printing=true;let device:any,port:any,sent=false;try{const matches=(await usb().getDevices()).filter((d:any)=>usbId(d)===id);if(matches.length!==1)throw Error('Reconnect your USB printer in Printer settings. Connect only one identical printer when it has no serial number.');device=matches[0];const context=canvas.getContext('2d');if(!context)throw Error('Could not prepare the receipt.');const blocks=rasterCommands(canvas.width,canvas.height,context.getImageData(0,0,canvas.width,canvas.height).data);port=await openPrinter(device);async function write(bytes:Uint8Array){sent=true;const result=await device.transferOut(port.endpoint,bytes);if(result.status!=='ok'||result.bytesWritten!==bytes.length)throw Error('Incomplete USB transfer.');}for(let copy=0;copy<copies;copy++){await write(new Uint8Array([27,64]));for(const block of blocks)await write(block);if(feed)await write(new Uint8Array([27,100,feed]));}}catch(e){throw Error((e as Error).message+(sent?' The receipt may have printed partially. Check the paper before retrying.':''));}finally{if(device?.opened){try{if(port)await device.releaseInterface(port.iface);}catch{}try{await device.close();}catch{}}printing=false;}}
+
+
+export async function openCashDrawerUSB(id:string){
+ if(printing)throw Error('The USB printer is busy. Try again in a moment.');
+ printing=true;let device:any,port:any,sent=false;
+ try{
+  const matches=(await usb().getDevices()).filter((d:any)=>usbId(d)===id);
+  if(matches.length!==1)throw Error('Reconnect your USB printer in Printer settings. Connect only one identical printer when it has no serial number.');
+  device=matches[0];port=await openPrinter(device);
+  const command=new Uint8Array([27,112,0,25,250]);
+  sent=true;const result=await device.transferOut(port.endpoint,command);
+  if(result.status!=='ok'||result.bytesWritten!==command.length)throw Error('Incomplete cash drawer command.');
+ }catch(e){throw Error((e as Error).message+(sent?' The drawer command may have been sent; check the drawer before retrying.':''));}
+ finally{if(device?.opened){try{if(port)await device.releaseInterface(port.iface);}catch{}try{await device.close();}catch{}}printing=false;}
+}
