@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const DEFAULT_POS_URL = 'https://www.nirilihotels.com/restaurant';
+const DEFAULT_POS_URL = 'https://nirili-villa.nirili-management.workers.dev/restaurant/cashier-login';
 let mainWindow = null;
 
 function validateServerUrl(value) {
@@ -114,6 +114,7 @@ function offlinePage(serverUrl) {
 function createWindow() {
   const serverUrl = readServerUrl();
   const allowedOrigin = new URL(serverUrl).origin;
+  const cashierLoginUrl = allowedOrigin + '/restaurant/cashier-login';
 
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -152,6 +153,15 @@ function createWindow() {
     } catch {
       event.preventDefault();
     }
+  });
+
+  mainWindow.webContents.on('did-navigate', (_event, url) => {
+    try {
+      const target = new URL(url);
+      if (target.origin === allowedOrigin && target.pathname === '/restaurant/login') {
+        mainWindow.loadURL(cashierLoginUrl).catch(() => {});
+      }
+    } catch {}
   });
 
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, _description, _url, isMainFrame) => {
