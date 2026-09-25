@@ -77,6 +77,11 @@ function buildNotices(previous:Snapshot,current:Snapshot){
 async function getJson(url:string){
  try{const r=await fetch(url,{cache:"no-store"});if(!r.ok)return undefined;return await r.json();}catch{return undefined}
 }
+function applicationKey(value:string){
+ const normalized=value.replace(/-/g,'+').replace(/_/g,'/'),raw=atob(normalized+'='.repeat((4-normalized.length%4)%4)),bytes=new Uint8Array(raw.length);
+ for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+ return bytes;
+}
 function noticeTarget(n:Notice):NoticeTarget|undefined{
  const value=(n.type+" "+n.title+" "+n.detail).toLowerCase();
  if(n.type==="message")return undefined;
@@ -92,10 +97,24 @@ function noticeTarget(n:Notice):NoticeTarget|undefined{
 export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarget)=>void}){
  const [open,setOpen]=useState(false);
  const [notices,setNotices]=useState<Notice[]>([]);
+ const [phoneStatus,setPhoneStatus]=useState<'checking'|'ready'|'enabled'|'blocked'|'unsupported'|'error'>('checking');
+ const [phoneBusy,setPhoneBusy]=useState(false);
  const started=useRef(false);
  const polling=useRef(false);
  useEffect(()=>{
   try{setNotices(JSON.parse(localStorage.getItem(NOTICE_KEY)||"[]"))}catch{}
+  void (async()=>{
+   if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){setPhoneStatus('unsupported');return;}
+   if(Notification.permission==='denied'){setPhoneStatus('blocked');return;}
+   if(Notification.permission!=='granted'){setPhoneStatus('ready');return;}
+   try{
+    const registration=await navigator.serviceWorker.register('/admin-push-sw.js',{scope:'/'});
+    const subscription=await registration.pushManager.getSubscription();
+    if(!subscription){setPhoneStatus('ready');return;}
+    const response=await fetch('/api/admin-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:subscription.toJSON()})});
+    setPhoneStatus(response.ok?'enabled':'error');
+   }catch{setPhoneStatus('error');}
+  })();
   void getJson("/api/notifications").then(server=>{
    if(Array.isArray(server?.notifications)){
     setNotices(server.notifications);
@@ -106,9 +125,21 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
   const poll=async()=>{
    if(stop||polling.current||document.hidden)return;
    polling.current=true;
-   const [stays,services,transport,excursions,chat]=await Promise.all([
-    getJson("/api/stays"),getJson("/api/guest-services"),getJson("/api/transport"),getJson("/api/operations?category=Excursions"),getJson("/api/chat")
+   const [stays,services,transport,excursions,chat,serverNotices]=await Promise.all([
+    getJson("/api/stays"),getJson("/api/guest-services"),getJson("/api/transport"),getJson("/api/operations?category=Excursions"),getJson("/api/chat"),getJson("/api/notifications")
    ]);
+   const serverFingerprints=new Set<string>();
+   if(Array.isArray(serverNotices?.notifications)){
+    for(const n of serverNotices.notifications)serverFingerprints.add(String(n.type||'')+'|'+String(n.title||'')+'|'+String(n.detail||''));
+    setNotices(existing=>{
+     const byId=new Map<string,Notice>();
+     for(const n of existing)byId.set(n.id,n);
+     for(const n of serverNotices.notifications)byId.set(n.id,n);
+     const merged=Array.from(byId.values()).sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,150);
+     try{localStorage.setItem(NOTICE_KEY,JSON.stringify(merged))}catch{}
+     return merged;
+    });
+   }
    const current:Snapshot={};
    if(stays)current.stays=stays;if(services)current.services=services;if(transport)current.transport=transport;if(excursions)current.excursions=excursions;if(chat)current.chat=chat;
    try{
@@ -124,9 +155,6 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
        return merged;
       });
       try{navigator.vibrate?.([120,70,120])}catch{}
-      if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
-       for(const n of added.slice(0,3))try{new Notification("Nirili Villa · "+n.title,{body:n.detail,tag:n.id})}catch{}
-      }
      }
     }
     localStorage.setItem(SNAP_KEY,JSON.stringify({...previous,...current}));
@@ -142,14 +170,31 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
  const markOne=(id:string)=>{save(notices.map(x=>x.id===id?{...x,read:true}:x));void fetch("/api/notifications",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:[id]})}).catch(()=>{})};
  const openNotice=(n:Notice)=>{markOne(n.id);setOpen(false);if(n.type==="message"){window.dispatchEvent(new CustomEvent("nirili:open-chat",{detail:{contactId:n.ref||""}}));return;}const target=noticeTarget(n);if(target)onOpen?.(target)};
  const clear=()=>{save([]);void fetch("/api/notifications",{method:"DELETE"}).catch(()=>{})};
- const enablePhone=async()=>{if(typeof Notification!=="undefined")try{await Notification.requestPermission()}catch{}};
+ const enablePhone=async()=>{
+  if(phoneBusy||phoneStatus==='enabled')return;setPhoneBusy(true);
+  try{
+   if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){setPhoneStatus('unsupported');return;}
+   const permission=await Notification.requestPermission();
+   if(permission!=='granted'){setPhoneStatus(permission==='denied'?'blocked':'ready');return;}
+   const configResponse=await fetch('/api/admin-push',{cache:'no-store'}),config=await configResponse.json();
+   if(!configResponse.ok||!config.publicKey)throw Error(config.error||'Push service is unavailable.');
+   const registration=await navigator.serviceWorker.register('/admin-push-sw.js',{scope:'/'});
+   await navigator.serviceWorker.ready;
+   let subscription=await registration.pushManager.getSubscription();
+   if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:applicationKey(config.publicKey)});
+   const response=await fetch('/api/admin-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:subscription.toJSON()})});
+   if(!response.ok)throw Error('Could not save notification subscription.');
+   setPhoneStatus('enabled');
+  }catch{setPhoneStatus('error');}
+  finally{setPhoneBusy(false);}
+ };
  return <div className="nv-notifications">
   <button className={"nv-notification-trigger "+(unread?"has-unread":"")} onClick={()=>setOpen(v=>!v)} aria-label={"Notifications, "+unread+" unread"} aria-expanded={open}>
    <Bell size={17}/><span><UiText>Notifications</UiText></span><b>{unread}</b>
   </button>
   {open&&<><button className="nv-notification-backdrop" aria-label="Close notifications" onClick={()=>setOpen(false)}/><section className="nv-notification-panel">
    <header><div><strong><UiText>Notifications</UiText></strong><small><UiText>Bookings, messages, guests and system changes</UiText></small></div><button onClick={()=>setOpen(false)} aria-label="Close"><X size={18}/></button></header>
-   <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button><button onClick={enablePhone}><UiText>Enable phone notifications</UiText></button><button onClick={clear}><UiText>Clear</UiText></button></div>
+   <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button><button onClick={enablePhone} disabled={phoneBusy||phoneStatus==='enabled'||phoneStatus==='blocked'||phoneStatus==='unsupported'}><UiText>{phoneBusy?'Enabling…':phoneStatus==='enabled'?'Phone notifications on':phoneStatus==='blocked'?'Notifications blocked':phoneStatus==='unsupported'?'Push unsupported':'Enable phone notifications'}</UiText></button><button onClick={clear}><UiText>Clear</UiText></button></div>
    <div className="nv-notification-list">{notices.length?notices.map(n=><button key={n.id} className={n.read?"read":""} onClick={()=>openNotice(n)}>
     <i className={"type "+n.type}/><span><strong><UiText>{n.title}</UiText></strong><small><UiText>{n.detail}</UiText></small><time>{new Date(n.at).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</time></span>
    </button>):<p className="empty"><UiText>No notifications yet.</UiText></p>}</div>
