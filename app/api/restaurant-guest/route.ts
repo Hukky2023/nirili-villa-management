@@ -10,6 +10,7 @@ import {walkInExcursionProfile} from '../../../lib/walkin-excursion-access';
 import {mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,restoreRestaurantOrdersPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {updateRoomInventory} from '../../../lib/rooms';
 import {restaurantPaymentStatus,syncRestaurantRoomBill} from '../../../lib/pos-room-billing';
+import {emitAdminNotification} from '../../../lib/admin-notifications';
 
 async function identity(r:Request,create=false){
  const diningCookie=await sessionCookieName('nirili_dining');
@@ -152,6 +153,7 @@ export async function POST(r:Request){
    s.history.unshift({date,by:'Guest',detail:billed?'Restaurant order '+id+' charged to room · USD '+(cents/100).toFixed(2):'Restaurant meal-plan order '+id+' · Included · no room charge'});
   }
   if(!await saveRestaurantState(state,revision,who.key))return Response.json({error:'Another order arrived. Please tap Send again.'},{status:409});
+  try{await emitAdminNotification({id:'restaurant:new:'+id,type:'restaurant',title:'New restaurant order',detail:String(order.customer||'Guest')+' · '+String(order.table||'')+(order.room?' · Room '+order.room:'')+' · USD '+(cents/100).toFixed(2),ref:id,url:'/restaurant'});}catch{}
   return Response.json(await view(who));
  }catch(e){return Response.json({error:(e as Error).message},{status:400});}
 }
