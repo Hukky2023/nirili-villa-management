@@ -82,6 +82,17 @@ function applicationKey(value:string){
  for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
  return bytes;
 }
+function nativePushBridge(){
+ if(typeof window==='undefined')return undefined;
+ const bridge=(window as any).NiriliNative;
+ return bridge&&typeof bridge.getNotificationStatus==='function'?bridge:undefined;
+}
+async function saveNativeToken(token:string){
+ const value=String(token||'').trim();
+ if(!value)return false;
+ const response=await fetch('/api/admin-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nativeToken:value,platform:'android'})});
+ return response.ok;
+}
 function noticeTarget(n:Notice):NoticeTarget|undefined{
  const value=(n.type+" "+n.title+" "+n.detail).toLowerCase();
  if(n.type==="message")return undefined;
@@ -104,6 +115,16 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
  useEffect(()=>{
   try{setNotices(JSON.parse(localStorage.getItem(NOTICE_KEY)||"[]"))}catch{}
   void (async()=>{
+   const native=nativePushBridge();
+   if(native){
+    try{
+     const token=String(native.getPushToken?.()||'');
+     const status=String(native.getNotificationStatus?.()||'ready');
+     if(token){setPhoneStatus(await saveNativeToken(token)?'enabled':'error');return;}
+     setPhoneStatus(status==='blocked'?'blocked':status==='error'?'error':'ready');
+    }catch{setPhoneStatus('error');}
+    return;
+   }
    if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){setPhoneStatus('unsupported');return;}
    if(Notification.permission==='denied'){setPhoneStatus('blocked');return;}
    if(Notification.permission!=='granted'){setPhoneStatus('ready');return;}
@@ -121,6 +142,15 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
     try{localStorage.setItem(NOTICE_KEY,JSON.stringify(server.notifications))}catch{}
    }
   });
+  const onNativePushStatus=(event:Event)=>{
+   const detail=(event as CustomEvent).detail||{};
+   const status=String(detail.status||'ready');
+   const token=String(detail.token||'');
+   setPhoneBusy(false);
+   if(token)void saveNativeToken(token).then(ok=>setPhoneStatus(ok?'enabled':'error')).catch(()=>setPhoneStatus('error'));
+   else setPhoneStatus(status==='blocked'?'blocked':status==='error'?'error':'ready');
+  };
+  window.addEventListener('nirili:native-push-status',onNativePushStatus as EventListener);
   let stop=false;
   const poll=async()=>{
    if(stop||polling.current||document.hidden)return;
@@ -162,7 +192,7 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
    polling.current=false;started.current=true;
   };
   poll();const stopLive=startLiveRefresh(poll);
-  return()=>{stop=true;stopLive()};
+  return()=>{stop=true;window.removeEventListener('nirili:native-push-status',onNativePushStatus as EventListener);stopLive()};
  },[]);
  const unread=useMemo(()=>notices.filter(n=>!n.read).length,[notices]);
  const save=(next:Notice[])=>{setNotices(next);try{localStorage.setItem(NOTICE_KEY,JSON.stringify(next))}catch{}};
@@ -171,7 +201,16 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
  const openNotice=(n:Notice)=>{markOne(n.id);setOpen(false);if(n.type==="message"){window.dispatchEvent(new CustomEvent("nirili:open-chat",{detail:{contactId:n.ref||""}}));return;}const target=noticeTarget(n);if(target)onOpen?.(target)};
  const clear=()=>{save([]);void fetch("/api/notifications",{method:"DELETE"}).catch(()=>{})};
  const enablePhone=async()=>{
-  if(phoneBusy||phoneStatus==='enabled')return;setPhoneBusy(true);
+  if(phoneBusy||phoneStatus==='enabled')return;
+  const native=nativePushBridge();
+  if(native){
+   setPhoneBusy(true);
+   try{native.requestNotificationPermission?.();}
+   catch{setPhoneStatus('error');setPhoneBusy(false);}
+   window.setTimeout(()=>setPhoneBusy(false),10000);
+   return;
+  }
+  setPhoneBusy(true);
   try{
    if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){setPhoneStatus('unsupported');return;}
    const permission=await Notification.requestPermission();
@@ -194,7 +233,7 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
   </button>
   {open&&<><button className="nv-notification-backdrop" aria-label="Close notifications" onClick={()=>setOpen(false)}/><section className="nv-notification-panel">
    <header><div><strong><UiText>Notifications</UiText></strong><small><UiText>Bookings, messages, guests and system changes</UiText></small></div><button onClick={()=>setOpen(false)} aria-label="Close"><X size={18}/></button></header>
-   <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button><button onClick={enablePhone} disabled={phoneBusy||phoneStatus==='enabled'||phoneStatus==='blocked'||phoneStatus==='unsupported'}><UiText>{phoneBusy?'Enabling…':phoneStatus==='enabled'?'Phone notifications on':phoneStatus==='blocked'?'Notifications blocked':phoneStatus==='unsupported'?'Push unsupported':'Enable phone notifications'}</UiText></button><button onClick={clear}><UiText>Clear</UiText></button></div>
+   <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button>{phoneStatus!=='unsupported'&&<button onClick={enablePhone} disabled={phoneBusy||phoneStatus==='enabled'||phoneStatus==='blocked'}><UiText>{phoneBusy?'Enabling…':phoneStatus==='enabled'?'Phone notifications on':phoneStatus==='blocked'?'Notifications blocked':phoneStatus==='error'?'Notification setup needed':'Enable phone notifications'}</UiText></button>}<button onClick={clear}><UiText>Clear</UiText></button></div>
    <div className="nv-notification-list">{notices.length?notices.map(n=><button key={n.id} className={n.read?"read":""} onClick={()=>openNotice(n)}>
     <i className={"type "+n.type}/><span><strong><UiText>{n.title}</UiText></strong><small><UiText>{n.detail}</UiText></small><time>{new Date(n.at).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</time></span>
    </button>):<p className="empty"><UiText>No notifications yet.</UiText></p>}</div>
