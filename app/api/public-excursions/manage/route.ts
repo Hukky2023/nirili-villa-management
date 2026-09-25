@@ -8,6 +8,7 @@ import {PRIVATE_BOAT_SURCHARGE_CENTS,isSnorkelingTrip} from '../../../../lib/exc
 import {isRomanticBeachDinner} from '../../../../lib/excursion-services';
 import {externalExcursionForToken,externalExcursionPaymentCents,externalPackageOrders,excursionManageSnapshot,ensureExcursionManageState,pendingExcursionChange,validExcursionManageToken} from '../../../../lib/excursion-manage';
 import {sendExternalExcursionCancelledEmail,sendExternalExcursionRequestEmail,sendExternalExcursionUpdatedEmail} from '../../../../lib/excursion-email';
+import {emitAdminNotification} from '../../../../lib/admin-notifications';
 
 const headers={'Cache-Control':'private, no-store, max-age=0'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
@@ -88,12 +89,15 @@ export async function POST(request:Request){
     order.status=isRomanticBeachDinner(order)?'Awaiting confirmation':'Awaiting scheduling';order.approvalStatus='Pending';order.autoConfirmed=false;order.guestNotified=false;
     const saved=await saveStayAccess(state,revision,'public-excursion-manage');if(!saved)throw Error('The booking changed while you were editing it. Refresh and try again.');
     const email=await sendExternalExcursionUpdatedEmail({...mailFrom(order,'direct-'+Date.now()),status:'Pending'});
+    try{await emitAdminNotification({id:'excursion:change:'+order.id+':'+String(order.updatedAt||Date.now()),type:'excursion',title:'Excursion booking changed',detail:String(order.guest||'Guest')+' · '+String(order.name||'Excursion')+' · '+String(order.date||'')+' · awaiting scheduling',ref:String(order.packageGroupId||order.id),url:'/home'});}catch{}
     return Response.json({ok:true,applied:true,email,booking:excursionManageSnapshot(state,order,null),items},{headers});
    }
    const change=changeRecord(order,'change',proposed);state.excursionChanges.push(change);
    const saved=await saveStayAccess(state,revision,'public-excursion-manage');if(!saved)throw Error('The booking changed while you were editing it. Refresh and try again.');
    const email=await sendExternalExcursionRequestEmail({...mailFrom(order,change.id),requestType:'change'});
-   return Response.json({ok:true,pending:true,email,booking:excursionManageSnapshot(state,order,schedule),items},{headers});
+   try{await emitAdminNotification({id:'excursion:change-request:'+change.id,type:'excursion',title:'Excursion change request',detail:String(order.guest||'Guest')+' · '+String(order.name||'Excursion')+' · review required',ref:String(order.packageGroupId||order.id),url:'/home'});}catch{}
+   try{await emitAdminNotification({id:'excursion:cancel-request:'+change.id,type:'excursion',title:'Excursion cancellation request',detail:String(order.guest||'Guest')+' · '+String(order.name||'Excursion')+' · review required',ref:String(order.packageGroupId||order.id),url:'/home'});}catch{}
+  return Response.json({ok:true,pending:true,email,booking:excursionManageSnapshot(state,order,schedule),items},{headers});
   }
 
   if(action==='cancel'){
@@ -102,6 +106,7 @@ export async function POST(request:Request){
     const saved=await saveStayAccess(state,revision,'public-excursion-manage');if(!saved)throw Error('The package changed while you were cancelling it. Refresh and try again.');
     const first=packageOrders[0],packageEdited=packageOrders.some((item:any)=>Number(item.billingRevision)>0||!!item.billingEditedAt),packageTotal=packageEdited?packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.cents)||0),0):Math.max(0,Number(first.packageTotalCents)||packageOrders.reduce((sum:number,item:any)=>sum+Math.max(0,Number(item.quotedCents)||0),0));
     const email=await sendExternalExcursionRequestEmail({email:first.email,guest:first.guest,reference:first.packageGroupId,excursion:first.packageName||'Special Package',date:first.date,time:first.time||first.schedule?.time||'',quantity:Number(first.quantity)||0,quotedCents:packageTotal,hotel:first.hotel,manageToken:first.manageToken,eventId:change.id,requestType:'cancel'});
+    try{await emitAdminNotification({id:'excursion:cancel-request:'+change.id,type:'excursion',title:'Excursion cancellation request',detail:String(first.guest||'Guest')+' · '+String(first.packageName||'Special Package')+' · review required',ref:String(first.packageGroupId||order.id),url:'/home'});}catch{}
     return Response.json({ok:true,pending:true,email,booking:excursionManageSnapshot(state,order,null),items},{headers});
    }
    const paid=externalExcursionPaymentCents(order),pendingUnscheduled=order.approvalStatus==='Pending'&&order.unscheduledRequest===true&&!order.scheduleId;
@@ -109,6 +114,7 @@ export async function POST(request:Request){
     order.status='Cancelled';order.approvalStatus='Cancelled';order.cents=0;order.cancelledAt=new Date().toISOString();order.cancelledBy='External guest';order.unscheduledRequest=false;order.seatRequest=false;order.guestNotified=false;
     const saved=await saveStayAccess(state,revision,'public-excursion-manage');if(!saved)throw Error('The booking changed while you were cancelling it. Refresh and try again.');
     const email=await sendExternalExcursionCancelledEmail({...mailFrom(order,'cancel-'+Date.now()),refundRequiredCents:0});
+    try{await emitAdminNotification({id:'excursion:cancel:'+order.id+':'+String(order.cancelledAt||Date.now()),type:'excursion',title:'Excursion booking cancelled',detail:String(order.guest||'Guest')+' · '+String(order.name||'Excursion')+' · '+String(order.date||''),ref:String(order.packageGroupId||order.id),url:'/home'});}catch{}
     return Response.json({ok:true,cancelled:true,email,booking:excursionManageSnapshot(state,order,null),items},{headers});
    }
    const change=changeRecord(order,'cancel');state.excursionChanges.push(change);
