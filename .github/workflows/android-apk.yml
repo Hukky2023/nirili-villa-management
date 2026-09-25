@@ -44,6 +44,11 @@ jobs:
 
       - name: Build debug APK
         working-directory: mobile/android
+        env:
+          NIRILI_FIREBASE_APP_ID: ${{ secrets.NIRILI_FIREBASE_APP_ID }}
+          NIRILI_FIREBASE_API_KEY: ${{ secrets.NIRILI_FIREBASE_API_KEY }}
+          NIRILI_FIREBASE_PROJECT_ID: ${{ secrets.NIRILI_FIREBASE_PROJECT_ID }}
+          NIRILI_FIREBASE_SENDER_ID: ${{ secrets.NIRILI_FIREBASE_SENDER_ID }}
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Name APK
