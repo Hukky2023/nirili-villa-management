@@ -88,7 +88,6 @@ export async function POST(request:Request){
    if(!await saveStayAccess(state,revision,'public-booking-manage'))throw Error('The booking changed while you were editing it. Refresh and try again.');
    const mail=await sendBookingChangeRequestedEmail({email:booking.email,guest:booking.guest,reference:booking.id,room:booking.room,checkIn:booking.checkIn,checkOut:booking.checkOut,meal:booking.meal,pax:booking.pax,totalCents:booking.base||0,manageToken:token,eventId:change.id,requestType:'change'});
    try{await emitAdminNotification({id:'hotel:change-request:'+change.id,type:'hotel',title:'Guest booking change request',detail:String(booking.guest||'Guest')+' · '+booking.id+' · reception approval required',ref:booking.id,url:'/home'});}catch{}
-   try{await emitAdminNotification({id:'hotel:cancel-request:'+change.id,type:'hotel',title:'Guest cancellation request',detail:String(booking.guest||'Guest')+' · '+booking.id+' · reception approval required',ref:booking.id,url:'/home'});}catch{}
    return Response.json({ok:true,pending:true,email:mail,booking:bookingManageSnapshot(state,{kind:'stay',item:booking})},{headers});
   }
 
@@ -132,6 +131,7 @@ export async function POST(request:Request){
    state.bookingChanges.push(change);
    if(!await saveStayAccess(state,revision,'public-booking-manage'))throw Error('The booking changed while you were cancelling it. Refresh and try again.');
    const mail=await sendBookingChangeRequestedEmail({email:booking.email,guest:booking.guest,reference:booking.id,room:booking.room,checkIn:booking.checkIn,checkOut:booking.checkOut,meal:booking.meal,pax:booking.pax,totalCents:booking.base||0,manageToken:token,eventId:change.id,requestType:'cancel'});
+   try{await emitAdminNotification({id:'hotel:cancel-request:'+change.id,type:'hotel',title:'Guest cancellation request',detail:String(booking.guest||'Guest')+' · '+booking.id+' · reception approval required',ref:booking.id,url:'/home'});}catch{}
    return Response.json({ok:true,pending:true,email:mail,booking:bookingManageSnapshot(state,{kind:'stay',item:booking})},{headers});
   }
 
