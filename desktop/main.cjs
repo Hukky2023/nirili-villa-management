@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 
 const DEFAULT_POS_URL = 'https://nirili-villa.nirili-management.workers.dev/restaurant/cashier-login';
+const LEGACY_POS_URL = 'https://www.nirilihotels.com/restaurant';
 let mainWindow = null;
 
 function validateServerUrl(value) {
@@ -24,7 +25,14 @@ function readServerUrl() {
   if (process.env.NIRILI_POS_URL) return validateServerUrl(process.env.NIRILI_POS_URL);
   try {
     const saved = JSON.parse(fs.readFileSync(configPath(), 'utf8'));
-    if (saved && saved.serverUrl) return validateServerUrl(saved.serverUrl);
+    if (saved && saved.serverUrl) {
+      const normalized = String(saved.serverUrl).replace(/\/$/, '');
+      if (normalized === LEGACY_POS_URL) {
+        fs.writeFileSync(configPath(), JSON.stringify({serverUrl: DEFAULT_POS_URL}, null, 2));
+        return DEFAULT_POS_URL;
+      }
+      return validateServerUrl(saved.serverUrl);
+    }
   } catch {}
   return DEFAULT_POS_URL;
 }
