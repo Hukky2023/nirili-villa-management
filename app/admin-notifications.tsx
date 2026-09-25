@@ -108,7 +108,7 @@ function noticeTarget(n:Notice):NoticeTarget|undefined{
 export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarget)=>void}){
  const [open,setOpen]=useState(false);
  const [notices,setNotices]=useState<Notice[]>([]);
- const [phoneStatus,setPhoneStatus]=useState<'checking'|'ready'|'enabled'|'blocked'|'unsupported'|'error'>('checking');
+ const [phoneStatus,setPhoneStatus]=useState<'checking'|'ready'|'enabled'|'blocked'|'unsupported'|'setup'|'error'>('checking');
  const [phoneBusy,setPhoneBusy]=useState(false);
  const started=useRef(false);
  const polling=useRef(false);
@@ -121,7 +121,7 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
      const token=String(native.getPushToken?.()||'');
      const status=String(native.getNotificationStatus?.()||'ready');
      if(token){setPhoneStatus(await saveNativeToken(token)?'enabled':'error');return;}
-     setPhoneStatus(status==='blocked'?'blocked':status==='error'?'error':'ready');
+     setPhoneStatus(status==='blocked'?'blocked':status==='setup'?'setup':status==='error'?'error':'ready');
     }catch{setPhoneStatus('error');}
     return;
    }
@@ -148,7 +148,7 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
    const token=String(detail.token||'');
    setPhoneBusy(false);
    if(token)void saveNativeToken(token).then(ok=>setPhoneStatus(ok?'enabled':'error')).catch(()=>setPhoneStatus('error'));
-   else setPhoneStatus(status==='blocked'?'blocked':status==='error'?'error':'ready');
+   else setPhoneStatus(status==='blocked'?'blocked':status==='setup'?'setup':status==='error'?'error':'ready');
   };
   window.addEventListener('nirili:native-push-status',onNativePushStatus as EventListener);
   let stop=false;
@@ -204,6 +204,10 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
   if(phoneBusy||phoneStatus==='enabled')return;
   const native=nativePushBridge();
   if(native){
+   if(phoneStatus==='blocked'){
+    try{native.openNotificationSettings?.();}catch{setPhoneStatus('error');}
+    return;
+   }
    setPhoneBusy(true);
    try{native.requestNotificationPermission?.();}
    catch{setPhoneStatus('error');setPhoneBusy(false);}
@@ -233,7 +237,7 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
   </button>
   {open&&<><button className="nv-notification-backdrop" aria-label="Close notifications" onClick={()=>setOpen(false)}/><section className="nv-notification-panel">
    <header><div><strong><UiText>Notifications</UiText></strong><small><UiText>Bookings, messages, guests and system changes</UiText></small></div><button onClick={()=>setOpen(false)} aria-label="Close"><X size={18}/></button></header>
-   <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button>{phoneStatus!=='unsupported'&&<button onClick={enablePhone} disabled={phoneBusy||phoneStatus==='enabled'||phoneStatus==='blocked'}><UiText>{phoneBusy?'Enabling…':phoneStatus==='enabled'?'Phone notifications on':phoneStatus==='blocked'?'Notifications blocked':phoneStatus==='error'?'Notification setup needed':'Enable phone notifications'}</UiText></button>}<button onClick={clear}><UiText>Clear</UiText></button></div>
+   <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button>{phoneStatus!=='unsupported'&&<button onClick={enablePhone} disabled={phoneBusy||phoneStatus==='enabled'}><UiText>{phoneBusy?'Enabling…':phoneStatus==='enabled'?'Phone notifications on':phoneStatus==='blocked'?'Open notification settings':phoneStatus==='setup'?'Push service setup needed':phoneStatus==='error'?'Retry notifications':'Enable phone notifications'}</UiText></button>}<button onClick={clear}><UiText>Clear</UiText></button></div>
    <div className="nv-notification-list">{notices.length?notices.map(n=><button key={n.id} className={n.read?"read":""} onClick={()=>openNotice(n)}>
     <i className={"type "+n.type}/><span><strong><UiText>{n.title}</UiText></strong><small><UiText>{n.detail}</UiText></small><time>{new Date(n.at).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</time></span>
    </button>):<p className="empty"><UiText>No notifications yet.</UiText></p>}</div>
