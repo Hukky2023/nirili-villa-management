@@ -1,0 +1,47 @@
+{
+  "name": "nirili-pos-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows desktop cashier for Nirili Villa Restaurant POS",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^39.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.nirilivilla.pos",
+    "productName": "Nirili POS",
+    "asar": true,
+    "asarUnpack": [
+      "windows-raw.ps1"
+    ],
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "windows-raw.ps1",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Nirili-POS-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Nirili POS"
+    }
+  }
+}
