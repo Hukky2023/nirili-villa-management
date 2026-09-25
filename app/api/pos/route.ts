@@ -10,6 +10,7 @@ import {loadStays,stayKey} from '../../../lib/stays';
 import {loadMenu} from '../../../lib/menu-server';
 import {loadRestaurantPaymentSettingsWithDailyRates} from '../../../lib/restaurant-payment-settings';
 import {deleteRestaurantOrderPrimary,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,restoreRestaurantOrdersPrimary,saveOperationalRecordPrimary} from '../../../lib/supabase-bridge';
+import {emitAdminNotification} from '../../../lib/admin-notifications';
 import {updateRoomInventory} from '../../../lib/rooms';
 import {mealPlanIncludedOrder,restaurantPaymentStatus,syncRestaurantRoomBill} from '../../../lib/pos-room-billing';
 async function readStateForView(){
@@ -45,7 +46,7 @@ async function view(){
  return {revision,canPay:canTakePayment(actor),canEdit:canTakePayment(actor),canDiscount:canTakePayment(actor),canSetExchange:actor?.role==='admin',paymentSettings,mealPeriod,guestOrders,rooms:state.stays.filter((s:any)=>s.status==='In House').map((s:any)=>{const mp=mealPlanOrderStatus(state,s.id);return {id:s.id,room:s.room,guest:s.guest,meal:s.meal,freeOrderAvailable:mp.available,freeOrdersRemaining:mp.remaining,dailyFreeOrderLimit:mp.limit,includedOrdersToday:mp.used,halfBoardFreeOrderAvailable:mp.available,halfBoardIncludedMeal:'',halfBoardMealLocked:!mp.available};}),orders};
 }
 export async function GET(){if(!canKitchen(await currentUser()))return Response.json({error:'Restaurant kitchen access required.'},{status:403});return Response.json(await view(),{headers:{'Cache-Control':'no-store'}});}
-export async function POST(r:Request){const u=await currentUser();if(!canKitchen(u)||!sameOrigin(r))return Response.json({error:'Restaurant kitchen access required.'},{status:403});try{const b=await r.json();const kitchenOnly=!canPOS(u);if(kitchenOnly&&!['kitchen','guestkitchen'].includes(String(b.action||'')))return Response.json({error:'Kitchen accounts can only update kitchen order status.'},{status:403});const {state,revision}=await readStateForView();state.posOrders??=[];
+export async function POST(r:Request){const u=await currentUser();if(!canKitchen(u)||!sameOrigin(r))return Response.json({error:'Restaurant kitchen access required.'},{status:403});try{const b=await r.json();const kitchenOnly=!canPOS(u);if(kitchenOnly&&!['kitchen','guestkitchen'].includes(String(b.action||'')))return Response.json({error:'Kitchen accounts can only update kitchen order status.'},{status:403});const {state,revision}=await readStateForView();state.posOrders??=[];let adminNotice:any=null;
 if(b.action==='create'&&state.posOrders.some((o:any)=>o.token===b.token&&o.by===u!.userId))return Response.json(await view());
 if(b.revision!==revision)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
 if(b.action==='create'){
@@ -56,6 +57,7 @@ if(b.action==='create'){
  const id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0),date=new Date().toISOString(),mealPlanFreeOrder=items.some((i:any)=>i.included===true);
  const order={id,token:b.token,by:u!.userId,createdBy:u!.username,createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||b.customer.trim()||'Walk-in guest',table:b.table,notes:b.notes.trim(),items,cents,kitchen:'Awaiting cashier',method:s&&cents>0?'Room':'',mealPeriod,mealPlanFreeOrder,dailyFreeOrderLimit:mp.limit,history:[{date,by:u!.username,detail:'Order sent to cashier'}]};
  state.posOrders.push(order);
+ if(!canTakePayment(u))adminNotice={id:'restaurant:new:'+id,type:'restaurant',title:'New restaurant order',detail:String(order.customer||'Guest')+' · '+String(order.table||'')+(order.room?' · Room '+order.room:'')+' · USD '+(cents/100).toFixed(2),ref:id,url:'/restaurant'};
  if(s){s.history??=[];const billed=syncRestaurantRoomBill(s,order);s.history.unshift({date,by:u!.username,detail:billed?'Restaurant bill '+id+' · USD '+(cents/100).toFixed(2):'Restaurant meal-plan order '+id+' · Included · no room charge'});}
 }else if(b.action==='sendguestkitchen'){if(!canTakePayment(u))return Response.json({error:'Cashier access required.'},{status:403});const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.kitchen!=='Awaiting cashier'||o.status==='Cancelled')throw Error('Order is no longer awaiting cashier.');o.kitchen='Sent';o.status='Confirmed';o.updatedBy=u!.username;}else if(b.action==='guestkitchen'){const o=state.orders.find((o:any)=>o.id===b.id&&o.kind==='food');if(!o||o.status==='Completed'||o.status==='Cancelled')throw Error('Order is no longer active.');const next:Record<string,string>={Sent:'Preparing',Preparing:'Ready',Ready:'Served'};if(next[o.kitchen||'Sent']!==b.status)throw Error('Choose the next kitchen status.');o.kitchen=b.status;o.status=b.status==='Served'?'Completed':'Confirmed';o.updatedBy=u!.username;}else{
  const o=state.posOrders.find((o:any)=>o.id===b.id);if(!o)throw Error('Bill not found.');const date=new Date().toISOString();
@@ -129,11 +131,13 @@ if(primaryAvailable){
  }catch{}
  try{await mirrorHotelState(state);}catch{}
  if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+ if(adminNotice)try{await emitAdminNotification(adminNotice);}catch{}
  return Response.json(await view());
 }
 const saved=revision===0?await authDb().prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,JSON.stringify(state),u!.userId).run():await authDb().prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(state),u!.userId,stayKey,revision).run();
 if(!saved.meta.changes)return Response.json({error:'Orders changed. Refresh and try again.'},{status:409});
 try{await Promise.all([mirrorHotelState(state),mirrorOperationalRecord(stayKey,state,revision+1,u!.userId)]);}catch{}
 if(b.action==='delete')try{await deleteRestaurantOrderPrimary(String(b.id||''));}catch{}
+if(adminNotice)try{await emitAdminNotification(adminNotice);}catch{}
 return Response.json(await view());
 }catch(e){return Response.json({error:(e as Error).message},{status:400});}}
