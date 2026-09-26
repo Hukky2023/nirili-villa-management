@@ -12,6 +12,7 @@ import {readOperationalRecordPrimary} from '../../../lib/supabase-bridge';
 import {appendAccountHistory} from '../../../lib/account-history';
 import {autoPushBookingComAvailability} from '../../../lib/channels';
 import {syncTransportBuggy} from '../../../lib/transport-plan';
+import {closeBookingDates,reopenBookingDates} from '../../../lib/booking-closures';
 import {cancelLinkedTransportBookings,staleTransportBookingIds} from '../../../lib/linked-transport-bookings';
 function canViewHotel(u:any){
  if(!u)return false;
@@ -24,14 +25,14 @@ async function loadHotelPrimary(){
  try{
   const primary=await readOperationalRecordPrimary(stayKey);
   if(primary?.payload){
-   const state=primary.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.rooms??=[];updateRoomInventory(state);
+   const state=primary.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.rooms??=[];state.bookingClosures??=[];updateRoomInventory(state);
    return {state,revision:Number(primary.revision)||0};
   }
  }catch{}
  return loadStays();
 }
 async function projectStayState(state:any,revision:number){
- updateRoomInventory(state);state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];
+ updateRoomInventory(state);state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.bookingClosures??=[];
  return {...state,revision,stays:await Promise.all(state.stays.map(async(s:any)=>({...s,folio:await folioFor(s,state.orders)})))};
 }
 export async function GET(){const u=await currentUser();if(!canViewHotel(u)||restaurantOnly(u))return Response.json({error:'Hotel management access required'},{status:403});try{
@@ -44,6 +45,16 @@ export async function GET(){const u=await currentUser();if(!canViewHotel(u)||res
  return Response.json(staffData(u!,await stayView()),{headers:{'Cache-Control':'no-store'}});
 }catch{return Response.json({error:'Could not load stays. Please retry.'},{status:503})}}
 export async function POST(r:Request){const u=await currentUser();if(!u||u.role==='guest'||!sameOrigin(r))return Response.json({error:'Staff login required'},{status:403});try{const b=await r.json();const canManageStay=hasPermission(u,'guesthouse_reception')||hasPermission(u,'edit_bills');if(!canManageStay)return Response.json({error:'Reception or bill editing permission is required.'},{status:403});const {state,revision}=await loadHotelPrimary();
+if(b.action==='close-booking-dates'||b.action==='reopen-booking-dates'){
+ if(u.role!=='admin')return Response.json({error:'Only Admin can close or reopen booking dates.'},{status:403});
+ if(b.revision!==revision)return Response.json({error:'Booking availability changed. Refresh and try again.'},{status:409});
+ const closure=b.action==='close-booking-dates'
+  ?closeBookingDates(state,{from:String(b.from||''),through:String(b.through||''),reason:String(b.reason||''),by:u.username})
+  :reopenBookingDates(state,String(b.id||''));
+ if(!await saveStayAccess(state,revision,u.userId,null,[]))return Response.json({error:'Booking availability changed. Refresh and try again.'},{status:409});
+ await autoPushBookingComAvailability();
+ return Response.json(staffData(u,{...(await projectStayState(state,revision+1)),bookingClosure:closure}));
+}
 if(b.action==='create'){
  if(restaurantOnly(u))return Response.json({error:'Hotel booking access required.'},{status:403});
  const previous=state.stays.find((s:any)=>s.creationRequest===b.requestId&&s.createdBy===u.username);
