@@ -9,6 +9,19 @@ const canonicalCombinedNames:Record<string,string>={
  'dolphin-fishing-dinner':'Dolphin Watching + Fishing with Dinner',
  'fishtank-turtle':'Fish Tank Snorkeling + Turtle Snorkeling'
 };
+function cleanYouTubeUrl(value:any){
+ const raw=String(value||'').trim().slice(0,500);
+ if(!raw)return '';
+ try{
+  const url=new URL(raw);
+  const host=url.hostname.toLowerCase().replace(/^www\./,'');
+  if(!['youtube.com','m.youtube.com','youtu.be','youtube-nocookie.com'].includes(host))throw Error('Only YouTube video links are allowed.');
+  return url.toString();
+ }catch(e){
+  if(e instanceof Error&&e.message==='Only YouTube video links are allowed.')throw e;
+  throw Error('Enter a valid YouTube video link.');
+ }
+}
 function clean(raw:any,id?:string){
  let name=String(raw?.name||'').trim().slice(0,180);
  const recordId=id||String(raw?.id||'');
@@ -19,7 +32,9 @@ function clean(raw:any,id?:string){
  const cents=Math.max(0,Math.min(1000000,Math.round(Number(raw?.cents)||0)));
  const pricingUnit=raw?.pricingUnit==='couple'?'couple':'guest';
  const detail=String(raw?.detail||'').trim().slice(0,1000);
- return {id:recordId,kind:'excursion',name,cents,category,group:categoryGroup(category),pricingUnit,detail,active:raw?.active!==false,updatedAt:new Date().toISOString()};
+ const longDetail=String(raw?.longDetail||'').trim().slice(0,8000);
+ const youtubeUrl=cleanYouTubeUrl(raw?.youtubeUrl);
+ return {id:recordId,kind:'excursion',name,cents,category,group:categoryGroup(category),pricingUnit,detail,longDetail,youtubeUrl,active:raw?.active!==false,updatedAt:new Date().toISOString()};
 }
 function canEdit(user:any){return !!user&&user.role!=='guest'&&(hasPermission(user,'edit_excursions')||hasPermission(user,'excursions_manager'));}
 
