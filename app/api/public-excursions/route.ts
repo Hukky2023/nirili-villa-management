@@ -79,6 +79,8 @@ export async function GET(){
    id:item.id,
    name:item.name,
    detail:item.detail||'',
+   longDetail:item.longDetail||'',
+   youtubeUrl:item.youtubeUrl||'',
    cents:Math.max(0,Number(item.cents)||0),
    pricingUnit:item.pricingUnit==='couple'?'couple':'guest',
    category:item.category||'single',
