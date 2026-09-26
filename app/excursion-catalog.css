@@ -677,3 +677,27 @@
 @media(max-width:430px){
  .guest-option-actions{grid-template-columns:1fr}
 }
+
+
+.guest-option-gallery{
+ display:flex;
+ width:calc(100% + 36px);
+ height:190px;
+ margin:-18px -18px 2px;
+ overflow-x:auto;
+ scroll-snap-type:x mandatory;
+ scrollbar-width:none;
+ border-radius:15px 15px 0 0;
+ background:#eaf5f8;
+}
+.guest-option-gallery::-webkit-scrollbar{display:none}
+.guest-option-gallery img{
+ flex:0 0 100%;
+ width:100%;
+ height:100%;
+ object-fit:cover;
+ scroll-snap-align:start;
+}
+@media(max-width:560px){
+ .guest-option-gallery{height:220px}
+}
