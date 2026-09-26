@@ -1481,3 +1481,175 @@
  line-height:1.4;
  font-weight:500;
 }
+
+
+.excursion-menu-card-gallery{
+ position:relative;
+ height:170px;
+ margin:-1px -1px 16px;
+ overflow:hidden;
+ border-radius:16px 16px 0 0;
+ background:#edf6fa;
+}
+.excursion-menu-card-gallery img{
+ width:100%;
+ height:100%;
+ display:block;
+ object-fit:cover;
+}
+.excursion-menu-card-gallery span{
+ position:absolute;
+ right:10px;
+ bottom:10px;
+ padding:6px 9px;
+ border-radius:999px;
+ background:rgba(7,43,58,.82);
+ color:#fff;
+ font-size:10px;
+ font-weight:850;
+ backdrop-filter:blur(6px);
+}
+.excursion-gallery-linked{
+ display:inline-flex;
+ width:max-content;
+ margin:8px 0 0 7px;
+ padding:5px 8px;
+ border-radius:999px;
+ background:#f0f7ff;
+ color:#356a91;
+ font-size:10px;
+ font-weight:850;
+}
+.excursion-gallery-editor{
+ display:grid;
+ gap:12px;
+ padding:14px;
+ border:1px solid #cfe1e9;
+ border-radius:14px;
+ background:#f8fcfd;
+}
+.excursion-gallery-editor-head{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:14px;
+}
+.excursion-gallery-editor-head>div{
+ display:grid;
+ gap:4px;
+}
+.excursion-gallery-editor-head strong{
+ color:#174158;
+ font-size:13px;
+}
+.excursion-gallery-editor-head small,
+.excursion-gallery-count{
+ color:#6b8491;
+ font-size:11px;
+ line-height:1.45;
+}
+.excursion-gallery-upload{
+ position:relative;
+ min-height:42px;
+ padding:9px 12px;
+ display:inline-flex!important;
+ align-items:center;
+ justify-content:center;
+ gap:7px;
+ border:1px solid #9bc7d5;
+ border-radius:10px;
+ background:#eef8fc;
+ color:#176080!important;
+ font-size:11px!important;
+ font-weight:850!important;
+ cursor:pointer;
+ white-space:nowrap;
+}
+.excursion-gallery-upload svg{width:17px}
+.excursion-gallery-upload input{
+ position:absolute;
+ inset:0;
+ width:100%;
+ height:100%;
+ opacity:0;
+ cursor:pointer;
+}
+.excursion-gallery-upload:has(input:disabled){
+ opacity:.55;
+ cursor:not-allowed;
+}
+.excursion-gallery-editor-grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+ gap:10px;
+}
+.excursion-gallery-editor-grid article{
+ position:relative;
+ overflow:hidden;
+ border:1px solid #d3e3e9;
+ border-radius:12px;
+ background:#fff;
+}
+.excursion-gallery-editor-grid img{
+ width:100%;
+ aspect-ratio:1.35/1;
+ display:block;
+ object-fit:cover;
+}
+.excursion-gallery-editor-grid article>span{
+ position:absolute;
+ left:7px;
+ top:7px;
+ padding:4px 7px;
+ border-radius:999px;
+ background:rgba(5,49,67,.8);
+ color:#fff;
+ font-size:9px;
+ font-weight:850;
+}
+.excursion-gallery-editor-grid article>div{
+ display:grid;
+ grid-template-columns:1fr 1fr 1fr;
+ gap:5px;
+ padding:7px;
+}
+.excursion-gallery-editor-grid button{
+ min-height:32px;
+ border:1px solid #cbdde4;
+ border-radius:8px;
+ background:#fff;
+ color:#315d72;
+ cursor:pointer;
+}
+.excursion-gallery-editor-grid button:disabled{opacity:.35;cursor:not-allowed}
+.excursion-gallery-editor-grid button.remove{color:#9a4038}
+.excursion-gallery-editor-grid button svg{width:14px}
+.excursion-gallery-empty{
+ min-height:90px;
+ padding:16px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:10px;
+ border:1px dashed #bfd5df;
+ border-radius:11px;
+ color:#718b98;
+ text-align:center;
+ font-size:11px;
+ line-height:1.45;
+}
+.excursion-gallery-empty svg{width:23px;flex:0 0 auto;color:#3d829a}
+.excursion-gallery-error{
+ margin:0;
+ padding:9px 10px;
+ border-radius:9px;
+ background:#fff0ef;
+ color:#9b2d24;
+ font-size:11px;
+ font-weight:700;
+}
+@media(max-width:620px){
+ .excursion-gallery-editor-head{flex-direction:column}
+ .excursion-gallery-upload{width:100%}
+ .excursion-gallery-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
