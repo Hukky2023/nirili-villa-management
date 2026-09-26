@@ -6,7 +6,7 @@ export function editBooking(state:any,s:any,b:any,by:string){
  if(s.status==='Checked Out')throw Error('This stay is checked out. Its booking details are closed.');
  if(s.extensions?.length&&(b.checkIn!==s.checkIn||b.checkOut!==s.checkOut||b.rateCents!==(s.rateCents??Math.round(s.base/((Date.parse(s.checkOut)-Date.parse(s.checkIn))/86400000)))))throw Error('This booking has stay extensions. Use Extend Stay to change its dates; other details can still be edited.');
  const trial={...state,stays:state.stays.filter((x:any)=>x.id!==s.id)};
- const validated=createDirectBooking(trial,{...b,requestId:crypto.randomUUID()},by);
+ const validated=createDirectBooking(trial,{...b,requestId:crypto.randomUUID()},by,{allowClosedDates:b.checkIn===s.checkIn&&b.checkOut===s.checkOut});
  if(s.status==='In House'&&b.room!==s.room){const target=state.rooms.find((r:any)=>r.number===b.room);if(target.status!=='Available'||state.stays.some((x:any)=>x.id!==s.id&&x.room===b.room&&x.status==='In House'))throw Error('The destination room must be available before moving an in-house guest.');}
  const previous={guest:s.guest,room:s.room,checkIn:s.checkIn,checkOut:s.checkOut,pax:s.pax,meal:s.meal,source:s.source,base:s.base,rateCents:s.rateCents};
  if(s.status==='In House'&&b.room!==s.room){state.rooms.find((r:any)=>r.number===s.room).status='Cleaning';state.rooms.find((r:any)=>r.number===b.room).status='Occupied';}
