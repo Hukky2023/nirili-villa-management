@@ -10,6 +10,7 @@ import {
   saveOperationalRecordPrimary
 } from './supabase-bridge';
 import {emitAdminNotification} from './admin-notifications';
+import {bookingClosureForStay,isBookingDateClosed} from './booking-closures';
 
 const connectionId='booking-com';
 const projectUrl='https://vjbyrjqibzebpzontxgc.supabase.co';
@@ -815,6 +816,7 @@ export async function previewBookingComAvailability(days=30,startDate=maldivesTo
   const stays=Array.isArray(state.stays)?state.stays:[];
   const values=Array.from({length:count},(_,i)=>{
     const date=addDays(startDate,i);
+    if(isBookingDateClosed(state,date))return {date,availability:0};
     const occupied=new Set(stays.filter((stay:any)=>
       !['Cancelled','Checked Out'].includes(String(stay.status||''))&&
       stay.room&&String(stay.checkIn||'')<=date&&String(stay.checkOut||'')>date
@@ -926,6 +928,7 @@ function roomGuestName(room:any,fallback:string){
 }
 
 function availableRoom(state:any,checkIn:string,checkOut:string,pax:number,excludeStayId?:string){
+  if(bookingClosureForStay(state,checkIn,checkOut))return undefined;
   const rooms=Array.isArray(state.rooms)?state.rooms:[];
   const stays=Array.isArray(state.stays)?state.stays:[];
   return rooms.find((room:any)=>{
@@ -1011,7 +1014,8 @@ function mutateHotelState(state:any,parsed:any,mappings:any,options:{sandbox?:bo
       if(stay.room){
         const current=state.rooms.find((room:any)=>room.number===stay.room);
         const conflict=state.stays.some((other:any)=>other.id!==stay.id&&other.room===stay.room&&!['Checked Out','Cancelled'].includes(String(other.status||''))&&other.checkIn<checkOut&&other.checkOut>checkIn);
-        if(current&&String(current.status||'').toLowerCase()!=='maintenance'&&(Number(current.capacity)||3)>=pax&&!conflict)target=current;
+        const datesUnchanged=checkIn===stay.checkIn&&checkOut===stay.checkOut;
+        if((datesUnchanged||!bookingClosureForStay(state,checkIn,checkOut))&&current&&String(current.status||'').toLowerCase()!=='maintenance'&&(Number(current.capacity)||3)>=pax&&!conflict)target=current;
       }
       if(!target)throw Error('No Nirili room is available for the modified Booking.com dates.');
       Object.assign(stay,{
