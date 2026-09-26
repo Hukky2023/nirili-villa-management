@@ -4,7 +4,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowLeft,ArrowRight,CalendarDays,CheckCircle2,MapPin,Plus,ShieldCheck,ShipWheel,Sparkles,Trash2,Users} from 'lucide-react';
 
 type Excursion={
- id:string;name:string;detail:string;longDetail?:string;youtubeUrl?:string;cents:number;pricingUnit:'guest'|'couple';
+ id:string;name:string;detail:string;longDetail?:string;youtubeUrl?:string;galleryUrls?:string[];cents:number;pricingUnit:'guest'|'couple';
  category:string;group:string;needsFootSizes:boolean;
 };
 type Guest={name:string;ageCategory:'adult'|'child'|'infant';footSize:string};
@@ -136,6 +136,7 @@ export default function ExternalExcursionBooking(){
    {error&&!data.items?.length&&<p className="form-error external-load-error" role="alert">{error}</p>}
    <div className="external-excursion-grid">
     {(data.items||[]).map(item=><article key={item.id} className={selected?.id===item.id?'selected':''}>
+     {item.galleryUrls?.length?<div className="external-card-gallery" aria-label={item.name+' photo gallery'}>{item.galleryUrls.map((url,index)=><img key={url} src={url} loading="lazy" alt={item.name+' photo '+(index+1)}/>)}</div>:null}
      <div className="external-card-icon"><Sparkles/></div>
      <small>{item.group}</small>
      <h3>{item.name}</h3>
