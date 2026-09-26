@@ -1,13 +1,15 @@
 import {nextBookingReference} from './booking-reference';
 import {plans,validDate} from './guest-catalog';
 import {normalizeTransportPlan} from './transport-plan';
+import {assertBookingDatesOpen} from './booking-closures';
 
-export function createDirectBooking(state:any,b:any,by:string){
+export function createDirectBooking(state:any,b:any,by:string,options:{allowClosedDates?:boolean}={}){
  if(typeof b.requestId!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.requestId))throw Error('Invalid booking request. Reopen the form.');
  const existing=state.stays.find((s:any)=>s.creationRequest===b.requestId&&s.createdBy===by);
  if(existing)return existing;
  if(typeof b.guest!=='string'||!b.guest.trim()||b.guest.trim().length>100)throw Error('Enter a guest name of up to 100 characters.');
  if(!validDate(b.checkIn)||!validDate(b.checkOut)||b.checkOut<=b.checkIn)throw Error('Choose a checkout date after check-in.');
+ if(!options.allowClosedDates)assertBookingDatesOpen(state,b.checkIn,b.checkOut);
  const nights=(Date.parse(b.checkOut)-Date.parse(b.checkIn))/86400000;
  if(nights>365)throw Error('Bookings can be up to 365 nights.');
  if(!Number.isInteger(b.pax)||b.pax<1||b.pax>3||!plans.includes(b.meal))throw Error('Choose a valid guest count and meal plan.');
