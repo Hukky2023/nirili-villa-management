@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.application'
+}
+
+def firebaseAppId = providers.gradleProperty("NIRILI_FIREBASE_APP_ID").orElse(providers.environmentVariable("NIRILI_FIREBASE_APP_ID")).orElse("").get()
+def firebaseApiKey = providers.gradleProperty("NIRILI_FIREBASE_API_KEY").orElse(providers.environmentVariable("NIRILI_FIREBASE_API_KEY")).orElse("").get()
+def firebaseProjectId = providers.gradleProperty("NIRILI_FIREBASE_PROJECT_ID").orElse(providers.environmentVariable("NIRILI_FIREBASE_PROJECT_ID")).orElse("").get()
+def firebaseSenderId = providers.gradleProperty("NIRILI_FIREBASE_SENDER_ID").orElse(providers.environmentVariable("NIRILI_FIREBASE_SENDER_ID")).orElse("").get()
+def quoted = { value -> '"' + String.valueOf(value).replace('\\', '\\\\').replace('"', '\\"') + '"' }
+
+android {
+    namespace 'com.nirili.villa.management'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.nirili.villa.management'
+        minSdk 24
+        targetSdk 36
+        versionCode 2
+        versionName '1.1.0'
+
+        buildConfigField 'String', 'FIREBASE_APP_ID', quoted(firebaseAppId)
+        buildConfigField 'String', 'FIREBASE_API_KEY', quoted(firebaseApiKey)
+        buildConfigField 'String', 'FIREBASE_PROJECT_ID', quoted(firebaseProjectId)
+        buildConfigField 'String', 'FIREBASE_SENDER_ID', quoted(firebaseSenderId)
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-messaging'
+}
