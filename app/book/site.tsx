@@ -5,7 +5,7 @@ import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,Shi
 import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
-type Quote={today?:string;plans?:Plan[];availableRooms?:number;nights?:number;estimates?:{name:string;nightlyCents:number;totalCents:number}[];error?:string};
+type Quote={today?:string;plans?:Plan[];availableRooms?:number;bookingClosed?:boolean;nights?:number;estimates?:{name:string;nightlyCents:number;totalCents:number}[];error?:string};
 
 const money=(cents:number)=>'$'+(Math.max(0,Number(cents)||0)/100).toFixed(0);
 const tomorrow=(date:string,days=1)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
@@ -122,7 +122,7 @@ export default function GuestBookingSite(){
     <div className="booking-points"><span><CheckCircle2/> No management-system account</span><span><CheckCircle2/> Live room availability check</span><span><CheckCircle2/> Reception confirms your booking</span></div>
    </div>
    <form className="booking-form" onSubmit={submit}>
-    <div className="form-heading"><div><small>ROOM BOOKING</small><h3>Your trip details</h3></div>{quote.availableRooms!==undefined&&<span className={quote.availableRooms>0?'available':'unavailable'}>{quote.availableRooms>0?quote.availableRooms+' rooms available':'No rooms available'}</span>}</div>
+    <div className="form-heading"><div><small>ROOM BOOKING</small><h3>Your trip details</h3></div>{quote.availableRooms!==undefined&&<span className={quote.availableRooms>0?'available':'unavailable'}>{quote.bookingClosed?'Bookings closed for selected dates':quote.availableRooms>0?quote.availableRooms+' rooms available':'No rooms available'}</span>}</div>
     <div className="form-grid dates">
      <label><span>Check-in</span><input required type="date" min={today||undefined} value={checkIn} onChange={e=>{setCheckIn(e.target.value);if(e.target.value>=checkOut)setCheckOut(tomorrow(e.target.value,1))}}/></label>
      <label><span>Check-out</span><input required type="date" min={checkIn?tomorrow(checkIn,1):today||undefined} value={checkOut} onChange={e=>setCheckOut(e.target.value)}/></label>
@@ -134,7 +134,7 @@ export default function GuestBookingSite(){
     <label><span>Meal plan</span><select value={meal} onChange={e=>setMeal(e.target.value)}>{['Bed & Breakfast','Half Board','Full Board'].map(x=><option key={x}>{x}</option>)}</select></label>
 
     <div className="quote-box">
-     <div><small>{checking?'CHECKING…':quote.availableRooms!==undefined?'LIVE AVAILABILITY':'ESTIMATED STAY'}</small><strong>{quote.nights||Math.max(0,(Date.parse(checkOut)-Date.parse(checkIn))/86400000)||0} nights · {pax} {pax===1?'guest':'guests'}</strong></div>
+     <div><small>{checking?'CHECKING…':quote.bookingClosed?'BOOKINGS CLOSED':quote.availableRooms!==undefined?'LIVE AVAILABILITY':'ESTIMATED STAY'}</small><strong>{quote.nights||Math.max(0,(Date.parse(checkOut)-Date.parse(checkIn))/86400000)||0} nights · {pax} {pax===1?'guest':'guests'}</strong></div>
      <div><small>ESTIMATED ACCOMMODATION</small><strong>{selectedTotal?money(selectedTotal):selectedPlan?money(selectedPlan.nightlyCents)+' / night':'—'}</strong></div>
     </div>
 
