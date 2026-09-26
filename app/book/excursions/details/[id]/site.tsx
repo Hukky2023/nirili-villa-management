@@ -4,7 +4,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {ArrowLeft,ArrowRight,CheckCircle2,MapPin,PlayCircle,ShieldCheck,Sparkles} from 'lucide-react';
 
 type Excursion={
- id:string;name:string;detail:string;longDetail?:string;youtubeUrl?:string;
+ id:string;name:string;detail:string;longDetail?:string;youtubeUrl?:string;galleryUrls?:string[];
  cents:number;pricingUnit:'guest'|'couple';category:string;group:string;
 };
 
@@ -84,6 +84,11 @@ export default function ExcursionDetailsSite({excursionId}:{excursionId:string})
     <div className="detail-section-title"><span>WATCH THE EXPERIENCE</span><h2>See what the excursion feels like.</h2></div>
     {embed?<div className="detail-video-frame"><iframe src={embed} title={item.name+' video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/></div>:<div className="detail-video-empty"><PlayCircle/><strong>Video coming soon</strong><p>Our team can add a YouTube video for this excursion from the Excursion menu in the management system.</p></div>}
    </div>
+
+   {item.galleryUrls?.length?<div className="detail-gallery-section">
+    <div className="detail-section-title"><span>PHOTO GALLERY</span><h2>Moments from the experience.</h2></div>
+    <div className="detail-photo-gallery">{item.galleryUrls.map((url,index)=><img key={url} src={url} loading="lazy" alt={item.name+' gallery photo '+(index+1)}/>)}</div>
+   </div>:null}
 
    <div className="detail-info-section">
     <div className="detail-section-title"><span>EXCURSION DETAILS</span><h2>Everything to know before you go.</h2></div>
