@@ -5,8 +5,8 @@ import './style.css';
 export const dynamic='force-dynamic';
 
 export const metadata:Metadata={
- title:'Nirili Villa Dhiffushi | Stay, Dine & Explore the Maldives',
- description:'Stay at Nirili Villa in Dhiffushi, Maldives. Discover island dining, turtle and reef excursions, sandbanks, dolphin trips, speedboat transfers and direct room booking.',
+ title:'Nirili Hotel Dhiffushi | Stay, Dine & Explore the Maldives',
+ description:'Discover Nirili Hotel in Dhiffushi, Maldives. Book your stay direct, arrange transfers, enjoy island dining and explore turtles, reefs, sandbanks, sharks, dolphins and more with Nirili Tours.',
 };
 
 export default function HotelHomePage(){
