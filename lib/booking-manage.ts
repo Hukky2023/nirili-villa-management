@@ -1,4 +1,5 @@
 import {defaultTransportPlan} from './transport-plan';
+import {bookingClosureForStay} from './booking-closures';
 export const bookingManageHost='https://booking.nirilihotels.com';
 
 export function createBookingManageToken(){
@@ -25,6 +26,7 @@ export function ensureBookingManageState(state:any){
  state.stays??=[];
  state.bookingChanges??=[];
  state.deletedBookings??=[];
+ state.bookingClosures??=[];
  return state;
 }
 
@@ -108,6 +110,7 @@ export function bookingManageSnapshot(state:any,target:any){
 export function roomAvailability(state:any,checkIn:string,checkOut:string,pax:number,excludeStayId=''){
  const rooms=Array.isArray(state?.rooms)?state.rooms:[];
  const stays=Array.isArray(state?.stays)?state.stays:[];
+ if(bookingClosureForStay(state,checkIn,checkOut))return [];
  return rooms.filter((room:any)=>{
   const capacity=Number(room.capacity)||3;
   if(room.status==='Maintenance'||capacity<pax)return false;
