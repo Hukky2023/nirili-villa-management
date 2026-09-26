@@ -1459,3 +1459,25 @@
  box-shadow:0 0 0 2px rgba(201,75,58,.12);
  background:#fff8f6;
 }
+
+
+.excursion-video-linked{
+ display:inline-flex;
+ width:max-content;
+ margin-top:8px;
+ padding:5px 8px;
+ border-radius:999px;
+ background:#edf8ff;
+ color:#176080;
+ font-size:10px;
+ font-weight:850;
+ letter-spacing:.02em;
+}
+.excursion-schedule-form-grid label>small{
+ display:block;
+ margin-top:5px;
+ color:#6b8491;
+ font-size:11px;
+ line-height:1.4;
+ font-weight:500;
+}
