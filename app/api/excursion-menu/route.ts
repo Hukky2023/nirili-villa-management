@@ -22,6 +22,11 @@ function cleanYouTubeUrl(value:any){
   throw Error('Enter a valid YouTube video link.');
  }
 }
+function cleanGallery(value:any){
+ const input=Array.isArray(value)?value:[];
+ const valid=input.map(item=>String(item||'').trim()).filter(url=>/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url));
+ return Array.from(new Set(valid)).slice(0,10);
+}
 function clean(raw:any,id?:string){
  let name=String(raw?.name||'').trim().slice(0,180);
  const recordId=id||String(raw?.id||'');
@@ -34,7 +39,8 @@ function clean(raw:any,id?:string){
  const detail=String(raw?.detail||'').trim().slice(0,1000);
  const longDetail=String(raw?.longDetail||'').trim().slice(0,8000);
  const youtubeUrl=cleanYouTubeUrl(raw?.youtubeUrl);
- return {id:recordId,kind:'excursion',name,cents,category,group:categoryGroup(category),pricingUnit,detail,longDetail,youtubeUrl,active:raw?.active!==false,updatedAt:new Date().toISOString()};
+ const galleryUrls=cleanGallery(raw?.galleryUrls);
+ return {id:recordId,kind:'excursion',name,cents,category,group:categoryGroup(category),pricingUnit,detail,longDetail,youtubeUrl,galleryUrls,active:raw?.active!==false,updatedAt:new Date().toISOString()};
 }
 function canEdit(user:any){return !!user&&user.role!=='guest'&&(hasPermission(user,'edit_excursions')||hasPermission(user,'excursions_manager'));}
 
