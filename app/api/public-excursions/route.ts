@@ -81,6 +81,7 @@ export async function GET(){
    detail:item.detail||'',
    longDetail:item.longDetail||'',
    youtubeUrl:item.youtubeUrl||'',
+   galleryUrls:Array.isArray(item.galleryUrls)?item.galleryUrls.slice(0,10):[],
    cents:Math.max(0,Number(item.cents)||0),
    pricingUnit:item.pricingUnit==='couple'?'couple':'guest',
    category:item.category||'single',
