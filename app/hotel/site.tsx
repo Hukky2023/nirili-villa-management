@@ -6,12 +6,13 @@ import {
 
 const BOOK='https://booking.nirilihotels.com/#book';
 const EXCURSIONS='https://booking.nirilihotels.com/book/excursions';
+const excursionDetails=(id:string)=>EXCURSIONS+'/details/'+encodeURIComponent(id);
 
 const experiences=[
- {title:'Turtle Snorkeling',tag:'UNDERWATER',className:'exp-turtle',copy:'Swim clear reefs and meet one of the Maldives’ most loved ocean residents.'},
- {title:'Shark Adventure',tag:'ADRENALINE',className:'exp-shark',copy:'A bold open-water experience with the Nirili Tours team.'},
- {title:'Sandbank Escape',tag:'BAREFOOT',className:'exp-sandbank',copy:'White sand, lagoon blue and nothing else competing for your attention.'},
- {title:'Dolphin & Sunset',tag:'OPEN WATER',className:'exp-dolphin',copy:'Cruise the atoll for dolphins, golden-hour skies and wide-open ocean.'},
+ {id:'turtle',title:'Turtle Snorkeling',tag:'UNDERWATER',className:'exp-turtle',copy:'Swim clear reefs and meet one of the Maldives’ most loved ocean residents.'},
+ {id:'shark',title:'Shark Snorkeling',tag:'ADRENALINE',className:'exp-shark',copy:'A bold open-water experience with nurse sharks and the Nirili Tours team.'},
+ {id:'sandbank',title:'Sandbank Escape',tag:'BAREFOOT',className:'exp-sandbank',copy:'White sand, lagoon blue and nothing else competing for your attention.'},
+ {id:'dolphin',title:'Dolphin Watching',tag:'OPEN WATER',className:'exp-dolphin',copy:'Cruise the atoll for dolphins, golden-hour skies and wide-open ocean.'},
 ];
 
 function Brand(){
@@ -146,7 +147,7 @@ export default function HotelHome(){
      <div className="experience-body">
       <h3>{item.title}</h3>
       <p>{item.copy}</p>
-      <a className="outline-button small" href={EXCURSIONS}>View details</a>
+      <a className="outline-button small" href={excursionDetails(item.id)}>View details</a>
       <a className="solid-button small" href={EXCURSIONS}>Book experience <ArrowRight/></a>
      </div>
     </article>)}
