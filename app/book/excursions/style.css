@@ -54,3 +54,41 @@
 @media(max-width:620px){.external-excursion-hero{padding:50px 18px 56px}.external-excursion-hero h1{font-size:50px}.external-excursion-grid{grid-template-columns:1fr}.external-excursion-list{padding:65px 16px}.external-booking-zone{padding:70px 16px;gap:34px}.external-roster-head{align-items:flex-start;flex-direction:column}.external-guest-row{grid-template-columns:30px 1fr 36px}.external-guest-row label{grid-column:2/3}.external-guest-row label:nth-of-type(3){grid-column:2/3}.external-guest-number{grid-column:1;grid-row:1;margin-top:23px}.external-remove{grid-column:3;grid-row:1;margin-top:23px}.external-quote{flex-direction:column}.external-quote>div:last-child{text-align:left}}
 
 .external-package-itinerary{width:min(760px,100%);margin:22px auto;text-align:left;background:#f5faf9;border:1px solid #d5e7e5;border-radius:16px;padding:18px}.external-package-itinerary>small{display:block;margin-bottom:10px;font-size:10px;letter-spacing:1.6px;color:#4b7b84;font-weight:800}.external-package-itinerary>div{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:11px 0;border-top:1px solid #dce9e7}.external-package-itinerary>div:first-of-type{border-top:0}.external-package-itinerary>div>b{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#0b536c;color:#fff;font-size:12px}.external-package-itinerary>div>span{display:grid;gap:2px}.external-package-itinerary>div>span strong{font-size:13px}.external-package-itinerary>div>span small{font-size:11px;color:#6b7e83}.external-package-itinerary>div>span em{font-size:10px;color:#70888f;font-style:normal}.external-package-itinerary>div>i{font-style:normal;font-size:10px;font-weight:800;color:#237452;background:#e7f6ee;padding:6px 8px;border-radius:999px}@media(max-width:560px){.external-package-itinerary>div{grid-template-columns:28px 1fr}.external-package-itinerary>div>i{grid-column:2;justify-self:start}}
+
+
+.external-card-actions{
+ display:grid;
+ grid-template-columns:1fr 1.25fr;
+ gap:9px;
+ margin-top:2px;
+}
+.external-card-actions .external-view-details,
+.external-card-actions button{
+ min-height:44px;
+ border-radius:12px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:7px;
+ font-size:12px;
+ font-weight:800;
+}
+.external-card-actions .external-view-details{
+ border:1px solid #9ecbd2;
+ background:#f5fbfc;
+ color:#0c6f82;
+}
+.external-card-actions .external-view-details:hover{
+ background:#eaf7f8;
+ border-color:#72b7c2;
+ transform:none;
+}
+.external-card-actions button{margin:0}
+.external-excursion-grid article.selected .external-card-actions button{
+ background:#123044;
+ color:#fff;
+ border-color:#123044;
+}
+@media(max-width:430px){
+ .external-card-actions{grid-template-columns:1fr}
+}
