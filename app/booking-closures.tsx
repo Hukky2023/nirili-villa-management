@@ -1,6 +1,6 @@
 "use client";
 import {useState} from 'react';
-import {CalendarX2,RotateCcw,X} from 'lucide-react';
+import {CalendarDays,RotateCcw,X} from 'lucide-react';
 import {UiField,UiText} from './ui-language';
 import {islandToday} from '../lib/guest-catalog';
 
@@ -58,7 +58,7 @@ export default function BookingClosures(){
  const closures=[...(data?.bookingClosures||[])].sort((a:any,b:any)=>String(a.start).localeCompare(String(b.start)));
 
  return <>
-  <button type="button" className="booking-close-trigger" onClick={()=>void show()}><CalendarX2/><UiText>Close dates</UiText></button>
+  <button type="button" className="booking-close-trigger" onClick={()=>void show()}><CalendarDays/><UiText>Close dates</UiText></button>
   {open&&<div className="backdrop" style={{zIndex:10002}}>
    <form className="modal booking-close-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-close-title" onSubmit={closeDates}>
     <header><div><small><UiText>ROOM INVENTORY</UiText></small><h2 id="booking-close-title"><UiText>Close booking dates</UiText></h2></div><UiField as="button" type="button" disabled={busy} onClick={()=>setOpen(false)} aria-label="Close"><X/></UiField></header>
@@ -69,7 +69,7 @@ export default function BookingClosures(){
       <label><UiText>Through</UiText><input required type="date" min={from||today} value={through} onChange={e=>setThrough(e.target.value)}/></label>
      </div>
      <label><UiText>Reason (optional)</UiText><input maxLength={200} value={reason} onChange={e=>setReason(e.target.value)} placeholder="Private use, maintenance, group hold…"/></label>
-     <button className="primary booking-close-save" disabled={busy||!data||!from||!through||through<from}><CalendarX2/><UiText>{busy?'Saving…':'Close these dates'}</UiText></button>
+     <button className="primary booking-close-save" disabled={busy||!data||!from||!through||through<from}><CalendarDays/><UiText>{busy?'Saving…':'Close these dates'}</UiText></button>
      {error&&<p className="booking-close-error" role="alert"><UiText>{error}</UiText></p>}
      <section className="booking-close-list"><h3><UiText>Currently closed</UiText></h3>
       {!data?<p><UiText>Loading…</UiText></p>:!closures.length?<p><UiText>No booking dates are closed.</UiText></p>:closures.map((closure:any)=><article key={closure.id}>
