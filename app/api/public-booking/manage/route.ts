@@ -9,6 +9,7 @@ import {folioFor} from '../../../../lib/stays';
 import {autoPushBookingComAvailability} from '../../../../lib/channels';
 import {normalizeTransportPlan} from '../../../../lib/transport-plan';
 import {cancelLinkedTransportBookings} from '../../../../lib/linked-transport-bookings';
+import {assertBookingDatesOpen} from '../../../../lib/booking-closures';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
 
 const headers={'Cache-Control':'private, no-store, max-age=0'};
@@ -69,6 +70,7 @@ export async function POST(request:Request){
 
   if(action==='update'){
    const next=proposal(body);
+   if(next.checkIn!==booking.checkIn||next.checkOut!==booking.checkOut)assertBookingDatesOpen(state,next.checkIn,next.checkOut);
    if(target.kind==='request'){
     if(booking.status!=='Pending')throw Error('This booking is no longer awaiting confirmation.');
     if(!roomAvailability(state,next.checkIn,next.checkOut,next.pax).length)throw Error('No rooms are available for the new dates and guest count.');
