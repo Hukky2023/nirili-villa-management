@@ -61,6 +61,8 @@ jobs:
         run: node --experimental-strip-types --test tests/special-package-structure.test.mjs
       - name: 24-hour time format regression tests
         run: node --test tests/time-format-24h.test.mjs
+      - name: Booking closed-date regression tests
+        run: node --test tests/booking-closures.test.mjs
       - name: Build production worker
         run: pnpm run build && node self-host-config.mjs dc69f294-de1e-4cd4-8322-93da8739eb73
       - name: Excursion timetable and guest-list consistency regression tests
