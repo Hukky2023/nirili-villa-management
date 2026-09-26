@@ -4,7 +4,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowLeft,ArrowRight,CalendarDays,CheckCircle2,MapPin,Plus,ShieldCheck,ShipWheel,Sparkles,Trash2,Users} from 'lucide-react';
 
 type Excursion={
- id:string;name:string;detail:string;cents:number;pricingUnit:'guest'|'couple';
+ id:string;name:string;detail:string;longDetail?:string;youtubeUrl?:string;cents:number;pricingUnit:'guest'|'couple';
  category:string;group:string;needsFootSizes:boolean;
 };
 type Guest={name:string;ageCategory:'adult'|'child'|'infant';footSize:string};
@@ -26,7 +26,11 @@ export default function ExternalExcursionBooking(){
   fetch('/api/public-excursions',{cache:'no-store'}).then(async response=>{
    const payload=await response.json();
    if(!response.ok)throw Error(payload.error||'Could not load excursions.');
-   setData(payload);setDate(payload.today||'');setSelected(payload.items?.[0]||null);
+   setData(payload);setDate(payload.today||'');
+   const requested=new URLSearchParams(window.location.search).get('excursion');
+   const requestedItem=(payload.items||[]).find((item:Excursion)=>item.id===requested);
+   setSelected(requestedItem||payload.items?.[0]||null);
+   if(requestedItem)window.setTimeout(()=>document.getElementById('external-excursion-form')?.scrollIntoView({behavior:'smooth',block:'start'}),80);
   }).catch((reason)=>setError(reason instanceof Error?reason.message:'Could not load excursions.'));
  },[]);
 
@@ -140,7 +144,10 @@ export default function ExternalExcursionBooking(){
       <strong>{item.cents?money(item.cents):'Ask us'}</strong>
       {item.cents>0&&<span>{item.pricingUnit==='couple'?'/ couple':'/ adult'}</span>}
      </div>
-     <button type="button" onClick={()=>choose(item)}>{selected?.id===item.id?'Selected':'Book this excursion'} <ArrowRight/></button>
+     <div className="external-card-actions">
+      <a className="external-view-details" href={'/book/excursions/details/'+encodeURIComponent(item.id)}>View details</a>
+      <button type="button" onClick={()=>choose(item)}>{selected?.id===item.id?'Selected':'Book this excursion'} <ArrowRight/></button>
+     </div>
     </article>)}
    </div>
   </section>
