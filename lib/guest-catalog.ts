@@ -1,3 +1,4 @@
+import {roomRates,type RoomRates} from './room-rates.ts';
 export const catalog=[
 {id:'airport-arrival',kind:'transfer',name:'Airport → Dhiffushi',cents:3500,detail:'Shared speedboat arrival transfer, per person. Add your flight details and preferred time. Reception confirms the available departure.'},
 {id:'airport-departure',kind:'transfer',name:'Dhiffushi → Airport',cents:3500,detail:'Shared speedboat departure transfer, per person. Include your flight time so reception can help arrange a suitable boat.'},
@@ -25,7 +26,7 @@ export const catalog=[
 {"id": "renewal-vows-dinner", "kind": "excursion", "name": "Renewal of Vows Dinner", "cents": 100000, "group": "Excursions", "minGuests": 1, "pricingUnit": "couple", "detail": "Celebrate your love again with a private beach setup, sunset views and special photo moments."},
 {"id": "resort-adaaran-hudhuranfushi", "kind": "excursion", "name": "Private Resort Visit - Adaaran Hudhuranfushi", "cents": 18000, "group": "Excursions", "minGuests": 1, "pricingUnit": "guest", "detail": "Enjoy a luxury day trip to Adaaran Hudhuranfushi with relaxation and resort experiences."},
 {"id": "resort-club-med-kani", "kind": "excursion", "name": "Private Resort Visit - Club Med Kani Resort", "cents": 25000, "group": "Excursions", "minGuests": 1, "pricingUnit": "guest", "detail": "Experience Club Med Kani with sandy beaches, crystal-clear lagoons, resort dining and activities."},
-{"id": "clownfish", "kind": "excursion", "name": "Clown Fish Snorkeling", "cents": 0, "group": "Excursions", "minGuests": 1, "pricingUnit": "guest", "detail": "Snorkel among colorful clown fish and reef life. Price can be set by Admin from the Excursion menu."},
+{"id": "clownfish", "kind": "excursion", "name": "Clown Fish Snorkeling", "cents": 0, "group": "Excursions", "minGuests": 1, "pricingUnit": "guest", "detail": "Snorkel among colorful clown fish and vibrant reef life around Dhiffushi."},
 {"id": "manta", "kind": "excursion", "name": "Manta Snorkeling", "cents": 8000, "group": "Excursions", "minGuests": 1, "pricingUnit": "guest", "detail": "Get close to graceful manta rays in their natural habitat for an unforgettable Maldives experience."},
 {"id": "romantic-sandbank-dinner", "kind": "excursion", "name": "Romantic Sandbank Dinner", "cents": 15000, "group": "Excursions", "minGuests": 1, "pricingUnit": "guest", "detail": "Enjoy a magical dinner by the ocean with a private sandbank setting under the stars."},
 {"id": "shark-turtle", "kind": "excursion", "name": "Shark Snorkeling (Nurse Shark) + Turtle Snorkeling", "cents": 11000, "group": "Combined packages", "minGuests": 1, "detail": "Shark Snorkeling (Nurse Shark) and Turtle Snorkeling combined in one excursion."},
@@ -35,7 +36,7 @@ export const catalog=[
 {"id": "special-package", "kind": "excursion", "name": "Special Package", "cents": 22000, "group": "Special package", "minGuests": 1, "detail": "Turtle Snorkeling + Shark Snorkeling + Sandbank + Coral Garden + Dolphin Watching + Fishing with Dinner."}
 ];
 export const plans=['Bed & Breakfast','Half Board','Full Board'];
-export function nightly(plan:string,pax:number){return ({'Bed & Breakfast':[5000,6000,7000],'Half Board':[7000,8000,9000],'Full Board':[8000,10000,12000]} as any)[plan]?.[pax-1]||0;}
+export function nightly(plan:string,pax:number,rates?:RoomRates){return roomRates(rates)[plan]?.[pax-1]??0;}
 export const islandToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 export const validDate=(x:any)=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x;
 

@@ -86,7 +86,7 @@ export async function GET(){
    pricingUnit:item.pricingUnit==='couple'?'couple':'guest',
    category:item.category||'single',
    group:item.group||'Excursions',
-   needsFootSizes:item.id==='special-package'||isSnorkelingTrip(item.name)
+   needsFootSizes:item.id==='special-package'||isSnorkelingTrip(item.scheduleName||item.name)
   }));
   return Response.json({today:islandToday(),items,childPolicy:excursionChildPolicyText(),privateBoatSurchargeCents:PRIVATE_BOAT_SURCHARGE_CENTS},{headers});
  }catch{
@@ -110,7 +110,7 @@ export async function POST(request:Request){
   const menu=await loadExcursionMenu();
   const item=menu.find((entry:any)=>entry.id===menuItemId&&entry.kind==='excursion'&&entry.active!==false);
   if(!item)throw Error('This excursion is no longer available.');
-  const footSizes=cleanFootSizes(body.footSizes,mix.total,item.id==='special-package'||isSnorkelingTrip(item.name));
+  const footSizes=cleanFootSizes(body.footSizes,mix.total,item.id==='special-package'||isSnorkelingTrip(item.scheduleName||item.name));
   const privateBoatRequested=mix.total>=4&&body.privateBoatRequested===true;
   const buggyRequested=body.buggyRequested===true;
   const pricingUnit=item.pricingUnit==='couple'?'couple':'guest';
@@ -137,7 +137,7 @@ export async function POST(request:Request){
   const id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString(),manageToken=createExcursionManageToken();
   const common={
    id,token,manageToken,guest:leadGuest,groupName,room:'',phone,email,hotel,externalRoom,pickupLocation:hotel,externalGuest:true,
-   kind:'excursion',menuItemId:item.id,name:item.name,quantity:mix.total,adults:mix.adults,children:mix.children,infants:mix.infants,
+   kind:'excursion',menuItemId:item.id,name:item.name,scheduleName:item.scheduleName||item.name,quantity:mix.total,adults:mix.adults,children:mix.children,infants:mix.infants,
    guestNames,guestCategories,excursionGuestRoster:makeGuestRoster(id,guestNames,guestCategories),footSizes,pricingUnit,buggyRequested,
    quotedCents,baseQuotedCents,unitPriceCents,privateBoatRequested,privateBoatSurchargeCents,notes,date,
    createdAt,createdBy:'External guest',source:'External guest website'
@@ -173,7 +173,7 @@ export async function POST(request:Request){
 
   // Private boats need a dedicated vessel/crew assignment.
   if(privateBoatRequested){
-   const fallback=suggestedTripWindow(item.name);
+   const fallback=suggestedTripWindow(item.scheduleName||item.name);
    state.orders.push({...common,cents:0,time:'',preferredTime:fallback.time,preferredEndTime:fallback.endTime,status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:item.id!=='special-package',unscheduledRequest:true,autoConfirmed:false,guestNotified:false});
    const saved=await saveStayAccess(state,revision,'public-excursion-site');
    if(!saved)return Response.json({error:'Another booking was saved at the same time. Please submit again.'},{status:409,headers});
@@ -213,8 +213,8 @@ export async function POST(request:Request){
   await ensureStandardDailyExcursions(date);
   const allSchedules=(await schedulesForDate(date)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
   const candidates=allSchedules
-   .filter((schedule:any)=>scheduleCanServeRequest(item.name,schedule.name))
-   .map((schedule:any)=>({schedule,...candidateLoad(schedule,allSchedules,state.orders),rank:scheduleMatchRank(item.name,schedule.name)}))
+   .filter((schedule:any)=>scheduleCanServeRequest(item.scheduleName||item.name,schedule.name))
+   .map((schedule:any)=>({schedule,...candidateLoad(schedule,allSchedules,state.orders),rank:scheduleMatchRank(item.scheduleName||item.name,schedule.name)}))
    .sort((a:any,b:any)=>(a.remaining>=mix.total?0:1)-(b.remaining>=mix.total?0:1)||String(a.schedule.time).localeCompare(String(b.schedule.time))||a.rank-b.rank||b.remaining-a.remaining);
   const chosen=candidates.find((candidate:any)=>candidate.remaining>=mix.total);
 
@@ -235,7 +235,7 @@ export async function POST(request:Request){
    return Response.json({ok:true,booking:{id,manageUrl:excursionManageUrl(manageToken),email:emailResult,status:'Confirmed',requiresApproval:false,requiresScheduling:false,date,time:schedule.time,endTime:schedule.endTime||'',quotedCents}},{status:201,headers});
   }
 
-  const fallback=suggestedTripWindow(item.name);
+  const fallback=suggestedTripWindow(item.scheduleName||item.name);
   state.orders.push({...common,cents:0,time:'',preferredTime:fallback.time,preferredEndTime:fallback.endTime,status:'Awaiting scheduling',approvalStatus:'Pending',seatRequest:true,unscheduledRequest:true,autoConfirmed:false,guestNotified:false});
   const saved=await saveStayAccess(state,revision,'public-excursion-site');
   if(!saved)return Response.json({error:'Another booking was saved at the same time. Please submit again.'},{status:409,headers});

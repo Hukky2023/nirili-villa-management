@@ -7,7 +7,7 @@ const require=createRequire(import.meta.url),ts=require('typescript');
 function load(file){
  const m={exports:{}};
  const src=ts.transpileModule(readFileSync(new URL(file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
- new Function('require','module','exports',src)(id=>load('../lib/'+id.replace('./','')+'.ts'),m,m.exports);
+ new Function('require','module','exports',src)(id=>load('../lib/'+id.replace('./','')+(id.endsWith('.ts')?'':'.ts')),m,m.exports);
  return m.exports;
 }
 

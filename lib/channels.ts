@@ -1002,8 +1002,8 @@ function mutateHotelState(state:any,parsed:any,mappings:any,options:{sandbox?:bo
     if(pax<1||pax>3)throw Error('Booking.com room '+(index+1)+' has '+pax+' guests; Nirili rooms allow up to 3 guests.');
     const nights=Math.max(1,Math.round((Date.parse(checkOut)-Date.parse(checkIn))/86400000));
     const externalAmount=roomAmount(parsed,incoming);
-    const amountCents=options.sandbox?nightly(meal,pax)*nights:Math.max(0,Math.round(externalAmount*100));
-    const rateCents=options.sandbox?nightly(meal,pax):Math.max(0,Math.round(amountCents/nights));
+    const amountCents=options.sandbox?nightly(meal,pax,state.roomRates)*nights:Math.max(0,Math.round(externalAmount*100));
+    const rateCents=options.sandbox?nightly(meal,pax,state.roomRates):Math.max(0,Math.round(amountCents/nights));
     const guest=roomGuestName(incoming,parsed.guestName);
     let stay=existing.find((item:any)=>Number(item?.channel?.roomIndex)===index);
 

@@ -5,7 +5,7 @@ import {useEffect,useRef,useState} from 'react';
 import {X} from 'lucide-react';
 import TimeField24 from './time-field-24';
 import './booking-guests.css';
-import {islandToday,plans} from '../lib/guest-catalog';
+import {islandToday,plans,nightly} from '../lib/guest-catalog';
 
 export default function DirectBookingForm({close,onSaved,booking}:{close:()=>void;onSaved:(stay:any)=>void;booking?:any}){
  const [data,setData]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
@@ -22,6 +22,7 @@ export default function DirectBookingForm({close,onSaved,booking}:{close:()=>voi
  async function photo(i:number,file:File|undefined){if(!file)return;setUploading(true);setError('');try{if(file.size>10000000)throw Error('Choose a photo smaller than 10 MB.');if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Choose a JPEG, PNG or WebP photo.');const bitmap=await createImageBitmap(file);const scale=Math.min(1,1400/Math.max(bitmap.width,bitmap.height));const canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);const ctx=canvas.getContext('2d');if(!ctx)throw Error('Unable to process photo.');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();let quality=.85,result=canvas.toDataURL('image/jpeg',quality);while(result.length>330000&&quality>.3){quality-=.1;result=canvas.toDataURL('image/jpeg',quality);}if(result.length>330000)throw Error('This photo is too large. Crop it to the passport page and try again.');updateGuest(i,{photo:result});}catch(e){setError((e as Error).message);}finally{setUploading(false);}}
  async function refresh(){const r=await fetch('/api/stays',{cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error||'Could not load room availability.');setData(d);return d;}
  useEffect(()=>{token.current=crypto.randomUUID();refresh().catch(e=>setError(e.message));},[]);
+ useEffect(()=>{if(!booking&&data)setRate((nightly(meal,pax+children,data.roomRates)/100).toFixed(2));},[meal,pax,children,data?.roomRates,!!data,booking]);
  const closed=(data?.bookingClosures||[]).some((c:any)=>c.start<checkOut&&c.endExclusive>checkIn)&&!(booking&&checkIn===booking.checkIn&&checkOut===booking.checkOut);
  const available=closed?[]:(data?.rooms||[]).filter((r:any)=>r.status!=='Maintenance'&&pax+children<=r.capacity&&!data.stays.some((s:any)=>s.id!==booking?.id&&s.room===r.number&&s.status!=='Checked Out'&&s.checkIn<checkOut&&s.checkOut>checkIn));
  const nights=Math.max(0,(Date.parse(checkOut)-Date.parse(checkIn))/86400000)||0;

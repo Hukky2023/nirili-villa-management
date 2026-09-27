@@ -19,7 +19,7 @@ function loader(mocks = {}) {
     assert.equal(diagnostics.length, 0, relative + ' must compile');
     const module = {exports: {}};
     const localRequire = id => Object.hasOwn(mocks, id) ? mocks[id] : id.startsWith('.')
-      ? load(path.relative(root, path.resolve(path.dirname(filename), id + '.ts'))) : require(id);
+      ? load(path.relative(root, path.resolve(path.dirname(filename), id + (id.endsWith('.ts') ? '' : '.ts')))) : require(id);
     new Function('require', 'module', 'exports', outputText)(localRequire, module, module.exports);
     cache.set(relative, module.exports);
     return module.exports;

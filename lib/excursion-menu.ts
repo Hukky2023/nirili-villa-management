@@ -20,13 +20,14 @@ export function categoryGroup(category:ExcursionCategory){
 export function baseExcursionMenu(){
  return catalog.filter((x:any)=>x.kind==='excursion').map((x:any)=>({
   ...x,
+  scheduleName:x.name,
   minGuests:1,
   category:excursionCategoryFromGroup(x.group,x.name),
   group:categoryGroup(excursionCategoryFromGroup(x.group,x.name)),
   active:x.active!==false
  }));
 }
-export async function loadExcursionMenu(){
+export async function loadExcursionMenu(includeInactive=false){
  const base=baseExcursionMenu();
  let rawRows:any[]=[];
  try{rawRows=await readOperationalRecordsPrimary(PREFIX);}catch{}
@@ -40,33 +41,14 @@ export async function loadExcursionMenu(){
   if(!override)return item;
   overrides.delete(item.id);
   const category=(override.category||item.category) as ExcursionCategory;
-  const mergedItem={...item,...override,kind:'excursion',minGuests:1,category,group:categoryGroup(category),active:override.active!==false};
-  const canonicalCombined:any={
-   'shark-turtle':{
-    name:'Shark Snorkeling (Nurse Shark) + Turtle Snorkeling',
-    detail:'Shark Snorkeling (Nurse Shark) and Turtle Snorkeling combined in one excursion.'
-   },
-   'coral-sandbank':{
-    name:'Coral Garden Snorkeling + Sandbank Trip',
-    detail:'Coral Garden Snorkeling and Sandbank Trip combined in one excursion.'
-   },
-   'dolphin-fishing-dinner':{
-    name:'Dolphin Watching + Fishing with Dinner',
-    detail:'Dolphin watching and fishing with dinner included as part of the same excursion.'
-   },
-   'fishtank-turtle':{
-    name:'Fish Tank Snorkeling + Turtle Snorkeling',
-    detail:'Fish Tank Snorkeling and Turtle Snorkeling combined in one excursion.'
-   }
-  };
-  if(canonicalCombined[item.id])Object.assign(mergedItem,canonicalCombined[item.id]);
+  const mergedItem={...item,...override,kind:'excursion',scheduleName:item.scheduleName||item.name,minGuests:1,category,group:categoryGroup(category),active:override.active!==false};
   return mergedItem;
  });
  for(const item of overrides.values()){
   const category=excursionCategoryFromGroup(item.category||item.group,item.name);
-  merged.push({...item,kind:'excursion',minGuests:1,category,group:categoryGroup(category),active:item.active!==false});
+  merged.push({...item,scheduleName:item.scheduleName||item.name,kind:'excursion',minGuests:1,category,group:categoryGroup(category),active:item.active!==false});
  }
- return merged.filter((x:any)=>x.active!==false).sort((a:any,b:any)=>{
+ return merged.filter((x:any)=>includeInactive||x.active!==false).sort((a:any,b:any)=>{
   const order:any={single:0,combined:1,special:2};
   return (order[a.category]??9)-(order[b.category]??9)||String(a.name).localeCompare(String(b.name));
  });

@@ -39,14 +39,14 @@ export async function GET(request:Request){
   const adults=Math.max(1,Math.min(3,Number(url.searchParams.get('adults')||1)));
   const children=Math.max(0,Math.min(2,Number(url.searchParams.get('children')||0)));
   const pax=adults+children;
-  const base={today,plans:plans.map(plan=>({name:plan,nightlyCents:nightly(plan,Math.min(3,pax))}))};
+  const {state}=await hotelState();
+  const base={today,plans:plans.map(plan=>({name:plan,nightlyCents:nightly(plan,Math.min(3,pax),state.roomRates)}))};
   if(!checkIn||!checkOut)return Response.json(base,{headers});
   if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||pax<1||pax>3)return Response.json({...base,error:'Choose valid stay dates and up to 3 guests per room.'},{status:400,headers});
-  const {state}=await hotelState();
   const bookingClosed=!!bookingClosureForStay(state,checkIn,checkOut);
   const rooms=availability(state,checkIn,checkOut,pax);
   const nights=nightsBetween(checkIn,checkOut);
-  return Response.json({...base,availableRooms:rooms.length,bookingClosed,nights,estimates:plans.map(plan=>({name:plan,totalCents:nightly(plan,pax)*nights,nightlyCents:nightly(plan,pax)}))},{headers});
+  return Response.json({...base,availableRooms:rooms.length,bookingClosed,nights,estimates:plans.map(plan=>({name:plan,totalCents:nightly(plan,pax,state.roomRates)*nights,nightlyCents:nightly(plan,pax,state.roomRates)}))},{headers});
  }catch{return Response.json({error:'Could not check room availability. Please try again.'},{status:503,headers});}
 }
 
@@ -70,7 +70,7 @@ export async function POST(request:Request){
   if(bookingClosureForStay(state,checkIn,checkOut))return Response.json({error:'Bookings are closed for one or more selected dates. Please choose different dates or contact reception.'},{status:409,headers});
   const rooms=availability(state,checkIn,checkOut,pax);
   if(!rooms.length)return Response.json({error:'No rooms are currently available for these dates and guest count. Try different dates or contact reception.'},{status:409,headers});
-  const estimate=nightly(meal,pax)*nights;
+  const estimate=nightly(meal,pax,state.roomRates)*nights;
   const id='REQ-'+crypto.randomUUID().slice(0,8).toUpperCase(),manageToken=createBookingManageToken();
   const booking={
    id,token,manageToken,guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes,transportPlan,

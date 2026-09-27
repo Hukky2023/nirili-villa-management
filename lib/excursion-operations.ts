@@ -266,8 +266,8 @@ export function chooseAutoAssignmentCandidate(order:any,allSchedules:any[],order
  if(!order||order.kind!=='excursion'||!order.date||order.privateBoatRequested===true||order.specialPackage===true||order.packageGroupId)return null;
  const quantity=Math.max(1,Number(order.quantity)||1);
  const candidates=allSchedules
-  .filter((schedule:any)=>schedule.status==='Open'&&scheduleCanServeRequest(order.name,schedule.name))
-  .map((schedule:any)=>({schedule,...excursionScheduleLoadForOrder(schedule,allSchedules,orders||[],order.id),rank:scheduleMatchRank(order.name,schedule.name)}))
+  .filter((schedule:any)=>schedule.status==='Open'&&scheduleCanServeRequest(order.scheduleName||order.name,schedule.name))
+  .map((schedule:any)=>({schedule,...excursionScheduleLoadForOrder(schedule,allSchedules,orders||[],order.id),rank:scheduleMatchRank(order.scheduleName||order.name,schedule.name)}))
   .sort((a:any,b:any)=>(a.remaining>=quantity?0:1)-(b.remaining>=quantity?0:1)||String(a.schedule.time).localeCompare(String(b.schedule.time))||a.rank-b.rank||b.remaining-a.remaining);
  return candidates.find((candidate:any)=>candidate.remaining>=quantity)||null;
 }

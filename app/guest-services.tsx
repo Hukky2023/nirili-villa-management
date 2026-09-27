@@ -72,7 +72,7 @@ export function BookingReview(){
   const stay=data.stays.find((s:any)=>s.id===change.bookingId);
   if(!stay){setMessage('The linked booking is no longer active. Refresh the list.');return;}
   const p=change.proposed||stay;
-  setSelectedChange({change,stay});setRoom(stay.room);setRate((nightly(p.meal||stay.meal,p.pax||stay.pax)/100).toFixed(2));setNote('');setMessage('');
+  setSelectedChange({change,stay});setRoom(stay.room);setRate((nightly(p.meal||stay.meal,p.pax||stay.pax,data?.roomRates)/100).toFixed(2));setNote('');setMessage('');
  }
 
  async function decide(approve:boolean){
@@ -100,7 +100,7 @@ export function BookingReview(){
   {error&&<p role="alert"><UiText>{error}</UiText></p>}{message&&<p role="status"><UiText>{message}</UiText></p>}
 
   <h3><UiText>New room bookings</UiText></h3>
-  {!pending.length?<p><UiText>No new room bookings.</UiText></p>:pending.map((q:any)=><article key={q.id}><div><b>{q.guest}</b><p><UiText>{q.checkIn}</UiText> → <UiText>{q.checkOut}</UiText> · <UiText>{q.pax}</UiText> <UiText>guests · </UiText><UiText>{q.meal}</UiText></p><small>{q.whatsapp}{q.email?' · '+q.email:''} <UiText>· Estimated </UiText><UiText>{usd(q.estimate)}</UiText>{q.source?' · '+q.source:''}</small><TransportPlanBrief plan={q.transportPlan}/></div><button className="primary" onClick={()=>{setSelected(q);setRoom('');setRate((nightly(q.meal,q.pax)/100).toFixed(2));setMessage('')}}><UiText>Review & allocate</UiText></button></article>)}
+  {!pending.length?<p><UiText>No new room bookings.</UiText></p>:pending.map((q:any)=><article key={q.id}><div><b>{q.guest}</b><p><UiText>{q.checkIn}</UiText> → <UiText>{q.checkOut}</UiText> · <UiText>{q.pax}</UiText> <UiText>guests · </UiText><UiText>{q.meal}</UiText></p><small>{q.whatsapp}{q.email?' · '+q.email:''} <UiText>· Estimated </UiText><UiText>{usd(q.estimate)}</UiText>{q.source?' · '+q.source:''}</small><TransportPlanBrief plan={q.transportPlan}/></div><button className="primary" onClick={()=>{setSelected(q);setRoom('');setRate((nightly(q.meal,q.pax,data?.roomRates)/100).toFixed(2));setMessage('')}}><UiText>Review & allocate</UiText></button></article>)}
 
   <h3 style={{marginTop:28}}><UiText>Guest changes & cancellations</UiText></h3>
   {!changes.length?<p><UiText>No guest change or cancellation requests.</UiText></p>:changes.map((item:any)=>{const stay=data.stays.find((s:any)=>s.id===item.bookingId);return <article key={item.id}><div><b>{item.type==='cancel'?'Cancellation request':'Booking change request'} · {item.bookingId}</b><p>{stay?.guest||item.current?.guest||'Guest'} · {item.type==='change'?(item.proposed?.checkIn+' → '+item.proposed?.checkOut+' · '+item.proposed?.pax+' guests · '+item.proposed?.meal):'Confirmed booking remains active until approval'}</p><small>{item.id} · {new Date(item.requestedAt).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</small></div><button className="primary" onClick={()=>openChange(item)}><UiText>Review request</UiText></button></article>})}
