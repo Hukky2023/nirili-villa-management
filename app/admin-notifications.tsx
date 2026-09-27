@@ -208,6 +208,12 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
    else if(data?.total===0)alert('No Android phone token is registered yet. Keep the app open and logged in for 10 seconds, then try again.');
    else {
     const failure=data?.native?.failures?.[0];
+    if(failure?.code==='UNREGISTERED'){
+     const native=nativePushBridge();
+     try{native?.refreshPushToken?.();}catch{}
+     alert('The old phone notification token expired. A fresh token is being created now. Keep the app open for 10 seconds, then tap Send test notification again.');
+     return;
+    }
     const detail=failure?(' Status '+String(failure.status||0)+(failure.code?' · '+failure.code:'')+(failure.message?' · '+failure.message:'')):'';
     alert('Firebase could not deliver the test notification.'+detail);
    }
