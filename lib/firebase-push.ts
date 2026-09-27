@@ -124,7 +124,13 @@ async function sendOne(cfg:FcmConfig,oauthToken:string,token:string,notice:any){
  });
  const data:any=await response.json().catch(()=>({}));
  const code=String(data?.error?.details?.[0]?.errorCode||data?.error?.status||'');
- return {ok:response.ok,gone:response.status===404||code==='UNREGISTERED',status:response.status};
+ return {
+  ok:response.ok,
+  gone:response.status===404||code==='UNREGISTERED',
+  status:response.status,
+  code:code||'',
+  message:String(data?.error?.message||'').slice(0,300)
+ };
 }
 
 export async function sendAdminNativePushNotification(notice:{id?:string;type?:string;title?:string;detail?:string;url?:string;ref?:string}){
@@ -136,12 +142,20 @@ export async function sendAdminNativePushNotification(notice:{id?:string;type?:s
  const results=await Promise.allSettled(tokens.map(item=>sendOne(cfg,oauthToken,item.token,notice)));
  const stale:NativeToken[]=[];
  let sent=0;
+ const failures:Array<{status:number;code:string;message:string}>=[];
  results.forEach((result,index)=>{
   if(result.status==='fulfilled'){
    if(result.value.ok)sent++;
+   else failures.push({
+    status:Number(result.value.status)||0,
+    code:String(result.value.code||''),
+    message:String(result.value.message||'')
+   });
    if(result.value.gone)stale.push(tokens[index]);
+  }else{
+   failures.push({status:0,code:'SEND_EXCEPTION',message:String(result.reason instanceof Error?result.reason.message:result.reason||'Unknown send error').slice(0,300)});
   }
  });
  for(const item of stale)await authDb().prepare('DELETE FROM admin_native_push_tokens WHERE account_id=? AND token=?').bind(item.accountId,item.token).run();
- return {sent,total:tokens.length,configured:true};
+ return {sent,total:tokens.length,configured:true,failures:failures.slice(0,5)};
 }
