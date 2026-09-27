@@ -28,11 +28,13 @@ function DirectHotelWhatsApp({message}:{message:string}){
 
 export default function GuestChat(){
  const pathname=usePathname();
+ const publicSite=pathname.startsWith('/hotel')||pathname.startsWith('/book');
  const [data,setData]=useState<any>(null);
  const [open,setOpen]=useState(false);
  const [error,setError]=useState('');
 
  useEffect(()=>{
+  if(publicSite)return;
   let alive=true;
   async function refresh(){
    try{
@@ -46,7 +48,7 @@ export default function GuestChat(){
   void refresh();
   const stop=startLiveRefresh(refresh,REFRESH_INTERVALS.standard);
   return()=>{alive=false;stop();};
- },[]);
+ },[publicSite]);
 
  const guestMessage=useMemo(()=>{
   const stay=data?.stay;
@@ -57,7 +59,7 @@ export default function GuestChat(){
  },[data]);
 
  // Public hotel and booking pages already render their own official WhatsApp button.
- if(pathname.startsWith('/hotel')||pathname.startsWith('/book'))return null;
+ if(publicSite)return null;
 
  // Keep WhatsApp available on the guest portal even before sign-in.
  if(pathname.startsWith('/stay')&&!data)return <DirectHotelWhatsApp message="Hello Nirili Villa, I need help with the guest portal or my stay."/>;
