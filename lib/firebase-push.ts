@@ -138,7 +138,21 @@ export async function sendAdminNativePushNotification(notice:{id?:string;type?:s
  if(!cfg)return {sent:0,total:0,configured:false};
  const tokens=await readTokens();
  if(!tokens.length)return {sent:0,total:0,configured:true};
- const oauthToken=await accessToken(cfg);
+ let oauthToken='';
+ try{
+  oauthToken=await accessToken(cfg);
+ }catch(error){
+  return {
+   sent:0,
+   total:tokens.length,
+   configured:true,
+   failures:[{
+    status:0,
+    code:'FCM_AUTH_EXCEPTION',
+    message:String(error instanceof Error?error.message:error||'Firebase authorization failed.').slice(0,300)
+   }]
+  };
+ }
  const results=await Promise.allSettled(tokens.map(item=>sendOne(cfg,oauthToken,item.token,notice)));
  const stale:NativeToken[]=[];
  let sent=0;
