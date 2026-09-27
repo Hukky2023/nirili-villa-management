@@ -1,5 +1,5 @@
 import {currentUser,sameOrigin} from '../../../lib/auth';
-import {adminPushPublicKey,removeAdminPushSubscription,saveAdminPushSubscription} from '../../../lib/web-push';
+import {adminPushPublicKey,removeAdminPushSubscription,saveAdminPushSubscription,sendAdminPushNotification} from '../../../lib/web-push';
 import {adminNativePushConfigured,removeAdminNativePushToken,saveAdminNativePushToken} from '../../../lib/firebase-push';
 
 const headers={'Cache-Control':'private, no-store'};
@@ -16,6 +16,17 @@ export async function POST(request:Request){
  if(!user||!sameOrigin(request))return Response.json({error:'Staff login required.'},{status:403,headers});
  try{
   const body=await request.json();
+  if(body?.test===true){
+   const result=await sendAdminPushNotification({
+    id:'native:test:'+Date.now(),
+    type:'test',
+    title:'Test notification',
+    detail:'Background notifications are connected to this phone.',
+    url:'/home',
+    ref:'android-test'
+   });
+   return Response.json({ok:result.sent>0,...result},{headers});
+  }
   if(body?.nativeToken){
    if(!adminNativePushConfigured())return Response.json({error:'Native phone notifications are not configured on the server.'},{status:503,headers});
    await saveAdminNativePushToken(user.userId,body.nativeToken,body?.platform||'android');
