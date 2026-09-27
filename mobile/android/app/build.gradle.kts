@@ -5,7 +5,7 @@ plugins {
 }
 
 val firebaseApplicationId = System.getenv("NIRILI_ANDROID_APPLICATION_ID")
-    ?: "com.nirilivilla.management"
+    ?: "com.nirili.villa.management"
 
 android {
     namespace = "com.nirilivilla.management"
