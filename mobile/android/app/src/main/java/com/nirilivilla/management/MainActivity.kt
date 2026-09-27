@@ -49,13 +49,24 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                if (!url.isNullOrBlank() && url.startsWith(BuildConfig.MANAGEMENT_URL)) {
+                    getSharedPreferences(PREFS, MODE_PRIVATE)
+                        .edit()
+                        .putString(KEY_LAST_URL, url)
+                        .apply()
+                }
                 dispatchNativePushStatus(notificationStatus(), currentPushToken())
             }
         }
         webView.webChromeClient = WebChromeClient()
         webView.addJavascriptInterface(NativeBridge(), "NiriliNative")
 
-        webView.loadUrl(BuildConfig.MANAGEMENT_URL)
+        val lastUrl = getSharedPreferences(PREFS, MODE_PRIVATE)
+            .getString(KEY_LAST_URL, BuildConfig.MANAGEMENT_URL)
+            .orEmpty()
+            .takeIf { it.startsWith(BuildConfig.MANAGEMENT_URL) }
+            ?: BuildConfig.MANAGEMENT_URL
+        webView.loadUrl(lastUrl)
         requestNotificationPermissionIfNeeded()
         refreshFcmToken()
     }
@@ -209,5 +220,6 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "NiriliPush"
         private const val PREFS = "nirili_push"
         private const val KEY_FCM_TOKEN = "fcm_token"
+        private const val KEY_LAST_URL = "last_url"
     }
 }
