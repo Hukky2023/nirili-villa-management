@@ -144,3 +144,10 @@
 .buggy-pickup-card.on-trip,.buggy-pickup-card.completed{border-color:#bcdccc;background:#fbfffd}
 
 .buggy-status.assigned{background:#f1f5ff;color:#3557a5}.buggy-pickup-card.assigned{border-color:#cbd7f3;background:#fbfcff}
+
+
+.buggy-actions .whatsapp{border:1px solid #1fbd5a;background:#25d366;color:#fff}
+.buggy-actions .whatsapp:hover{background:#1fbd5a}
+.buggy-whatsapp-inline{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:5px 9px;border:0;border-radius:999px;background:#e8f8ee;color:#167445;font:800 12px/1 Arial,sans-serif;cursor:pointer}
+.buggy-whatsapp-inline:hover{background:#d9f2e2}
+.buggy-whatsapp-inline:focus-visible,.buggy-actions .whatsapp:focus-visible{outline:3px solid #85d9a6;outline-offset:2px}
