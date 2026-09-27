@@ -10,8 +10,8 @@ const enc=new TextEncoder();
 function config():FcmConfig|null{
  const values=env as unknown as Record<string,string|undefined>;
  const read=(key:string)=>String(values[key]||'').trim();
- const projectId=read('FCM_PROJECT_ID')||'nirili-villa-management';
- const clientEmail=read('FCM_CLIENT_EMAIL')||'firebase-adminsdk-fbsvc@nirili-villa-management.iam.gserviceaccount.com';
+ const projectId='nirili-villa-management';
+ const clientEmail='firebase-adminsdk-fbsvc@nirili-villa-management.iam.gserviceaccount.com';
  const privateKey=read('FCM_PRIVATE_KEY').replace(/\\n/g,'\n');
  if(!privateKey)return null;
  return {projectId,clientEmail,privateKey};
@@ -90,7 +90,10 @@ async function accessToken(cfg:FcmConfig){
   redirect:'manual'
  });
  const data:any=await response.json().catch(()=>({}));
- if(!response.ok||!data?.access_token)throw Error('FCM authorization failed.');
+ if(!response.ok||!data?.access_token){
+  const reason=String(data?.error_description||data?.error||('HTTP '+response.status)).slice(0,300);
+  throw Error('FCM authorization failed: '+reason);
+ }
  cachedAccessToken={token:String(data.access_token),expiresAt:Date.now()+Math.max(300,Number(data.expires_in)||3600)*1000};
  return cachedAccessToken.token;
 }
