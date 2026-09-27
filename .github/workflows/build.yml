@@ -31,6 +31,8 @@ jobs:
         run: node --test tests/account-history.test.mjs
       - name: Guest transport plan regression tests
         run: node --experimental-strip-types --test tests/transport-plan.test.mjs
+      - name: Buggy WhatsApp notification regression tests
+        run: node --experimental-strip-types --test tests/buggy-whatsapp.test.mjs
       - name: Admin manual guest transfer regression tests
         run: node --test tests/admin-manual-transfer.test.mjs
       - name: Restaurant meal-plan regression tests
