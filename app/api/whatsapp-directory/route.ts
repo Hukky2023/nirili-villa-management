@@ -19,7 +19,7 @@ function stayWhatsApp(stay:any){
 async function currentHotelState(){
  try{
   const primary=await readOperationalRecordPrimary(stayKey);
-  if(primary?.payload)return primary.payload;
+  if(primary?.payload)return typeof primary.payload==='string'?JSON.parse(primary.payload):primary.payload;
  }catch{}
  return (await loadStays()).state;
 }
