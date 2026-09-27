@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nirili Villa Management</string>
+    <string name="default_notification_channel_id">nirili_critical_alerts</string>
+    <string name="default_notification_channel_name">Nirili Villa Alerts</string>
+    <string name="default_notification_channel_description">Bookings, messages, transport, restaurant and excursion alerts.</string>
+</resources>
