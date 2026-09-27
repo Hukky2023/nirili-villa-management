@@ -42,6 +42,8 @@ export async function loadExcursionMenu(includeInactive=false){
   overrides.delete(item.id);
   const category=(override.category||item.category) as ExcursionCategory;
   const mergedItem={...item,...override,kind:'excursion',scheduleName:item.scheduleName||item.name,minGuests:1,category,group:categoryGroup(category),active:override.active!==false};
+  // Replace the old seeded setup note while preserving admin-written descriptions.
+  if(mergedItem.id==='clownfish'&&mergedItem.detail==='Snorkel among colorful clown fish and reef life. Price can be set by Admin from the Excursion menu.')mergedItem.detail=item.detail;
   return mergedItem;
  });
  for(const item of overrides.values()){
