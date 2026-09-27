@@ -1,27 +1,101 @@
 'use client';
-import {useMovableChat} from './use-movable-chat';
-import {startLiveRefresh,REFRESH_INTERVALS} from '../lib/live-refresh';
-import {UiText,UiField,UiOption} from './ui-language';
-import {localizedConfirm,localizedAlert} from '../lib/i18n/runtime';
 
-import {useEffect,useRef,useState} from 'react';
-import {MessageCircle,X,Send} from 'lucide-react';
+import {useEffect,useMemo,useState} from 'react';
+import {usePathname} from 'next/navigation';
+import {ExternalLink,X} from 'lucide-react';
+import {startLiveRefresh,REFRESH_INTERVALS} from '../lib/live-refresh';
 import './guest-chat.css';
+
+const HOTEL_WHATSAPP='9609413977';
+
+function WhatsAppLogo({size=24}:{size?:number}){
+ return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M20.52 3.48A11.91 11.91 0 0 0 12.05 0C5.46 0 .1 5.36.1 11.95c0 2.11.55 4.17 1.6 5.99L0 24l6.24-1.64a11.94 11.94 0 0 0 5.81 1.48h.01c6.58 0 11.94-5.36 11.94-11.95 0-3.19-1.24-6.19-3.48-8.41ZM12.05 21.82a9.9 9.9 0 0 1-5.04-1.38l-.36-.21-3.7.97.99-3.61-.24-.37a9.87 9.87 0 0 1-1.51-5.27c0-5.48 4.46-9.94 9.95-9.94a9.88 9.88 0 0 1 7.03 2.92 9.88 9.88 0 0 1 2.91 7.04c0 5.48-4.46 9.94-9.94 9.94Zm5.45-7.44c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.39-1.47-.88-.79-1.48-1.77-1.65-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.35.19 1.86.11.57-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"/></svg>;
+}
+
+function whatsappUrl(phone:string,message:string){
+ const digits=String(phone||'').replace(/\D/g,'');
+ if(!digits)return '';
+ return 'https://wa.me/'+digits+'?text='+encodeURIComponent(message);
+}
+
+function DirectHotelWhatsApp({message}:{message:string}){
+ return <div className="nv-wa-root">
+  <a className="nv-wa-launch" href={whatsappUrl(HOTEL_WHATSAPP,message)} target="_blank" rel="noopener noreferrer" aria-label="Chat with Nirili Villa on WhatsApp" title="WhatsApp Nirili Villa">
+   <WhatsAppLogo size={25}/>
+  </a>
+ </div>;
+}
+
 export default function GuestChat(){
- const movable=useMovableChat();
- const [open,setOpen]=useState(false),[data,setData]=useState<any>(null),[target,setTarget]=useState(''),[text,setText]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[tick,setTick]=useState(0),[older,setOlder]=useState<any[]>([]),[olderCursor,setOlderCursor]=useState<string|null|undefined>(undefined),[loadingOlder,setLoadingOlder]=useState(false);
- const [seen,setSeen]=useState<Record<string,string>>({});
- const token=useRef(''),generation=useRef(0),end=useRef<HTMLDivElement>(null);
- useEffect(()=>{let alive=true;const current=++generation.current;async function refresh(){try{const r=await fetch('/api/chat?recipient='+encodeURIComponent(target),{cache:'no-store'});if(!alive||current!==generation.current)return;if(r.status===401||r.status===403){setData(null);return;}const d=await r.json();if(!r.ok)throw Error(d.error||'Could not load messages.');if(alive&&current===generation.current){setData(d);setError('');}}catch(e){if(alive)setError((e as Error).message);}}refresh();const stopLive=startLiveRefresh(refresh,REFRESH_INTERVALS.live);return()=>{alive=false;stopLive()}},[target,open,tick]);
- useEffect(()=>{if(open&&!older.length)end.current?.scrollIntoView({block:'nearest'});},[open,data?.messages?.at(-1)?.id,older.length]);
- useEffect(()=>{if(!data?.actor?.id)return;try{setSeen(JSON.parse(localStorage.getItem('nv-chat-seen:'+data.actor.id)||'{}'));}catch{setSeen({})}},[data?.actor?.id]);
- useEffect(()=>{if(!open||!data)return;const admin=data.actor.role==='admin';const latest=data.messages.filter((m:any)=>m.fromAdmin!==admin).at(-1)?.createdAt;if(!latest)return;const key=admin?target:'reception';setSeen(old=>{if((old[key]||'')>=latest)return old;const next={...old,[key]:latest};try{localStorage.setItem('nv-chat-seen:'+data.actor.id,JSON.stringify(next));}catch{}return next;});},[open,target,data?.messages?.at(-1)?.id]);
- useEffect(()=>{const openFromNotification=(event:Event)=>{const contactId=String((event as CustomEvent<{contactId?:string}>).detail?.contactId||'');if(contactId)setTarget(contactId);setOpen(true);setTick(v=>v+1)};window.addEventListener('nirili:open-chat',openFromNotification);return()=>window.removeEventListener('nirili:open-chat',openFromNotification)},[]);
+ const pathname=usePathname();
+ const publicSite=pathname.startsWith('/hotel')||pathname.startsWith('/book');
+ const [data,setData]=useState<any>(null);
+ const [open,setOpen]=useState(false);
+ const [error,setError]=useState('');
+
+ useEffect(()=>{
+  if(publicSite)return;
+  let alive=true;
+  async function refresh(){
+   try{
+    const response=await fetch('/api/whatsapp-directory',{cache:'no-store'});
+    if(response.status===401||response.status===403){if(alive)setData(null);return;}
+    const result=await response.json();
+    if(!response.ok)throw Error(result.error||'Could not load WhatsApp contacts.');
+    if(alive){setData(result);setError('');}
+   }catch(err){if(alive)setError(err instanceof Error?err.message:'Could not load WhatsApp contacts.');}
+  }
+  void refresh();
+  const stop=startLiveRefresh(refresh,REFRESH_INTERVALS.standard);
+  return()=>{alive=false;stop();};
+ },[publicSite]);
+
+ const guestMessage=useMemo(()=>{
+  const stay=data?.stay;
+  const identity=stay?.guest||data?.actor?.name||'Guest';
+  const room=stay?.room?' in Room '+stay.room:'';
+  const ref=stay?.id?' ('+stay.id+')':'';
+  return 'Hello Nirili Villa, this is '+identity+room+ref+'. I need assistance with my stay.';
+ },[data]);
+
+ // Public hotel and booking pages already render their own official WhatsApp button.
+ if(publicSite)return null;
+
+ // Keep WhatsApp available on the guest portal even before sign-in.
+ if(pathname.startsWith('/stay')&&!data)return <DirectHotelWhatsApp message="Hello Nirili Villa, I need help with the guest portal or my stay."/>;
  if(!data)return null;
- const admin=data.actor.role==='admin',broadcast=admin&&!target,contact=data.contacts.find((c:any)=>c.id===target),next=olderCursor===undefined?data.next:olderCursor;
- const unread=admin?data.contacts.filter((c:any)=>c.lastGuestMessage>(seen[c.id]||'')).length:data.messages.filter((m:any)=>m.fromAdmin&&m.createdAt>(seen.reception||'')).length;
- const messages=[...new Map([...older,...data.messages].map((m:any)=>[m.id,m])).values()] as any[];
- async function loadOlder(){if(!next||loadingOlder)return;const current=generation.current;setLoadingOlder(true);try{const r=await fetch('/api/chat?recipient='+encodeURIComponent(target)+'&before='+encodeURIComponent(next),{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error);if(current!==generation.current)return;setOlder(v=>[...d.messages,...v]);setOlderCursor(d.next);}catch(e){setError((e as Error).message)}finally{setLoadingOlder(false)}}
- async function send(e:React.FormEvent){e.preventDefault();if(busy||!text.trim())return;if(broadcast&&!localizedConfirm('Send this announcement to '+data.inHouseCount+' checked-in guest accounts?'))return;setBusy(true);setError('');setNotice('');token.current||=crypto.randomUUID();try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,recipient:target,broadcast,token:token.current})}),d=await r.json();if(!r.ok)throw Error(d.error||'Message was not sent.');setText('');token.current='';setNotice(broadcast?'Announcement saved for '+d.count+' guest accounts.':'Message sent.');setOlder([]);setOlderCursor(undefined);setTick(v=>v+1);}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
- return <div className="nv-chat-root"><UiField as="button" className="nv-chat-launch" aria-label={admin?'Guest messages':'Chat with reception'} title={admin?'Guest messages':'Chat with reception'} aria-expanded={open} style={movable.style} data-dragging={movable.dragging} onPointerDown={movable.onPointerDown} onPointerMove={movable.onPointerMove} onPointerUp={movable.onPointerUp} onPointerCancel={movable.onPointerCancel} onLostPointerCapture={movable.onLostPointerCapture} onClick={e=>{if(movable.allowClick(e))setOpen(v=>!v)}}><MessageCircle size={22} aria-hidden="true"/><UiText>{unread>0&&<UiField as="span" className="nv-chat-unread" aria-label={unread+' unread conversations'}><UiText>{unread}</UiText></UiField>}</UiText></UiField><UiText>{open&&<UiField as="section" className="nv-chat-panel" role="dialog" aria-label={admin?'Guest messages':'Chat with reception'}><header><div><strong><UiText>{admin?'Guest messages':'Nirili Villa reception'}</UiText></strong><small><UiText>Messages refresh automatically</UiText></small></div><UiField as="button" aria-label="Close messages" onClick={()=>setOpen(false)}><X size={21}/></UiField></header><UiText>{admin&&<div className="nv-chat-audience"><label><UiText>Send to</UiText><select disabled={busy} value={target} onChange={e=>{setTarget(e.target.value);setData((d:any)=>({...d,messages:[],next:null}));setOlder([]);setOlderCursor(undefined);setText('');token.current='';setError('');setNotice('');}}><UiOption value="">All in-house guests ({data.inHouseCount})</UiOption><UiText>{data.contacts.map((c:any)=><UiOption key={c.id} value={c.id}>{c.lastGuestMessage>(seen[c.id]||'')?'● New · ':''}{c.name}{c.rooms.length?' · Room '+c.rooms.join(', '):''}{!c.active?' · Archived':''}</UiOption>)}</UiText></select></label><UiText>{broadcast&&<p><UiText>Announcement to guests currently checked in with an active login.</UiText><UiText>{data.withoutLogin>0?' '+data.withoutLogin+' occupied bookings need a guest login before they can receive messages.':''}</UiText></p>}<UiText></UiText>{contact&&!contact.active&&<p><UiText>This account is archived. Conversation is read-only.</UiText></p>}</UiText></div>}</UiText><UiField as="div" className="nv-chat-messages" aria-label="Conversation"><UiText>{next&&<button className="nv-chat-older" disabled={loadingOlder} onClick={loadOlder}><UiText>{loadingOlder?'Loading…':'Load earlier messages'}</UiText></button>}<UiText></UiText>{!messages.length&&<p className="nv-chat-empty"><UiText>{broadcast?'Send an announcement to everyone currently staying with us.':'Start a conversation. Messages stay saved here.'}</UiText></p>}<UiText></UiText>{messages.map(m=><article key={m.id} className={m.fromAdmin===admin?'nv-chat-mine':''}><small><UiText>{m.sender}<UiText></UiText>{m.broadcast?' · Announcement':''}</UiText></small><p>{m.text}</p><time dateTime={m.createdAt}><UiText>{new Date(m.createdAt).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</UiText></time></article>)}</UiText><div ref={end}/></UiField><form onSubmit={send}><label className="nv-chat-input-label"><UiText>{broadcast?'Announcement':'Message'}</UiText><UiField as="textarea" required maxLength={2000} rows={3} placeholder={broadcast?'Write an announcement…':'Write a message…'} disabled={busy||(admin&&!!contact&&!contact.active)} value={text} onChange={e=>{setText(e.target.value);token.current='';}}/></label><UiText>{error&&<p role="alert" className="nv-chat-error"><UiText>{error}</UiText></p>}<UiText></UiText>{notice&&<p role="status"><UiText>{notice}</UiText></p>}</UiText><footer><small><UiText>{text.length}</UiText>/2,000</small><button type="submit" disabled={busy||!text.trim()||(broadcast&&!data.inHouseCount)||(admin&&!!contact&&!contact.active)}><Send size={17}/><UiText>{busy?'Sending…':broadcast?'Send to all':'Send message'}</UiText></button></footer></form></UiField>}</UiText></div>;
+
+ if(data.actor?.role==='guest'||pathname.startsWith('/stay')){
+  return <DirectHotelWhatsApp message={guestMessage}/>;
+ }
+
+ const contacts=Array.isArray(data.contacts)?data.contacts:[];
+ return <div className="nv-wa-root">
+  <button type="button" className="nv-wa-launch" aria-expanded={open} aria-label="Open guest WhatsApp contacts" title="Guest WhatsApp" onClick={()=>setOpen(value=>!value)}>
+   <WhatsAppLogo size={25}/>
+  </button>
+  {open&&<section className="nv-wa-panel" role="dialog" aria-label="Guest WhatsApp contacts">
+   <header>
+    <div><strong>WhatsApp guests</strong><small>Open an in-house guest chat in WhatsApp</small></div>
+    <button type="button" aria-label="Close WhatsApp contacts" onClick={()=>setOpen(false)}><X size={21}/></button>
+   </header>
+   <div className="nv-wa-summary"><strong>In-house guests ({contacts.length})</strong><span>Messages open in WhatsApp and are not stored in the PMS.</span></div>
+   <div className="nv-wa-contacts">
+    {!contacts.length&&<p className="nv-wa-empty">No in-house guests are currently available.</p>}
+    {contacts.map((contact:any)=>{
+     const message='Hello '+contact.guest+', this is Nirili Villa regarding your stay'+(contact.room?' in Room '+contact.room:'')+(contact.id?' ('+contact.id+')':'')+'.';
+     const href=whatsappUrl(contact.phone,message);
+     return <article key={contact.id||contact.room||contact.guest}>
+      <div className="nv-wa-contact-copy">
+       <strong>{contact.guest}</strong>
+       <span>{contact.room?'Room '+contact.room:'Room not assigned'}{contact.id?' · '+contact.id:''}</span>
+       <small>{contact.phone?'+'+contact.phone:'No WhatsApp number saved'}</small>
+      </div>
+      {href?<a className="nv-wa-open" href={href} target="_blank" rel="noopener noreferrer"><WhatsAppLogo size={18}/><span>Open</span><ExternalLink size={15}/></a>:<button type="button" className="nv-wa-open disabled" disabled>Missing number</button>}
+     </article>;
+    })}
+   </div>
+   {error&&<p className="nv-wa-error" role="status">{error}</p>}
+  </section>}
+ </div>;
 }
