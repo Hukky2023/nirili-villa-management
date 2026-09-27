@@ -10,10 +10,10 @@ const enc=new TextEncoder();
 function config():FcmConfig|null{
  const values=env as unknown as Record<string,string|undefined>;
  const read=(key:string)=>String(values[key]||'').trim();
- const projectId=read('FCM_PROJECT_ID');
- const clientEmail=read('FCM_CLIENT_EMAIL');
+ const projectId=read('FCM_PROJECT_ID')||'nirili-villa-management';
+ const clientEmail=read('FCM_CLIENT_EMAIL')||'firebase-adminsdk-fbsvc@nirili-villa-management.iam.gserviceaccount.com';
  const privateKey=read('FCM_PRIVATE_KEY').replace(/\\n/g,'\n');
- if(!projectId||!clientEmail||!privateKey)return null;
+ if(!privateKey)return null;
  return {projectId,clientEmail,privateKey};
 }
 
