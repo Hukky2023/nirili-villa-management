@@ -10,7 +10,7 @@ import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requ
 import {excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
 import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,planSpecialPackageSchedules,PRIVATE_BOAT_SURCHARGE_CENTS,scheduleCanServeRequest,scheduleMatchRank,specialPackageCoverage,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
-import {mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
+import {mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,readOperationalRecordPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 import {sendExternalExcursionDeclinedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
 import {sendGuestPushForExcursionTimeChange} from '../../../lib/web-push';
 import {addGuestNotification} from '../../../lib/guest-notifications';
@@ -349,9 +349,17 @@ export async function PATCH(r:Request){
    if(!id||!validDate(date))throw Error('Choose a valid scheduled excursion.');
    if(!reason)throw Error('Enter a reason for cancelling this excursion.');
    const db=authDb(),key=prefix+date+':'+id;
-   const row=await db.prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(key).first<any>();
-   if(!row)throw Error('Scheduled excursion not found.');
-   const schedule=JSON.parse(row.payload);
+   // The schedule list is Supabase-primary during the migration. A schedule can
+   // therefore be visible in the UI even when its D1 mirror is missing or stale.
+   // Resolve the exact record from the primary store first, then fall back to D1.
+   let primaryRow:any=null;
+   try{primaryRow=await readOperationalRecordPrimary(key);}catch{}
+   const d1Row=await db.prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(key).first<any>();
+   const row=primaryRow||d1Row;
+   if(!row)throw Error('Scheduled excursion not found. Reload the schedule and try again.');
+   const schedule=typeof row.payload==='string'?JSON.parse(row.payload):row.payload;
+   const scheduleRevision=Number(row.revision)||0;
+   if(!schedule||schedule.id!==id||schedule.date!==date)throw Error('Scheduled excursion record does not match this trip. Reload and try again.');
    if(schedule.status==='Cancelled')return Response.json({ok:true,alreadyCancelled:true,reason:schedule.cancellationReason||''});
    const {state,revision}=await loadStays();
    const now=new Date().toISOString();
@@ -378,7 +386,7 @@ export async function PATCH(r:Request){
    const cancelledSchedule={...schedule,status:'Cancelled',cancellationReason:reason,cancelledAt:now,cancelledBy:user.username,updatedAt:now};
    let pair:any=null,primaryAvailable=true,primaryConflict=false;
    try{
-    pair=await saveOperationalPairPrimary(key,cancelledSchedule,Number(row.revision),stayKey,state,revision,user.userId);
+    pair=await saveOperationalPairPrimary(key,cancelledSchedule,scheduleRevision,stayKey,state,revision,user.userId);
    }catch(error){
     const message=error instanceof Error?error.message:String(error||'');
     if(message.includes('CAS_CONFLICT'))primaryConflict=true;else primaryAvailable=false;
@@ -394,15 +402,16 @@ export async function PATCH(r:Request){
     try{await Promise.all([mirrorExcursionScheduleRecord(key,{...cancelledSchedule,revision:pair.revisionA,updatedBy:user.userId}),mirrorHotelState(state)]);}catch{}
     return Response.json({ok:true,cancelledBookings,rescheduledPackageSegments,reason,status:'Cancelled'});
    }
+   if(!d1Row)return Response.json({error:'The excursion could not be saved to the primary database. Reload and try again.'},{status:503});
    const stayPayload=JSON.stringify(state);
    const statements:any[]=[
-    db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(cancelledSchedule),user.userId,key,Number(row.revision))
+    db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(JSON.stringify(cancelledSchedule),user.userId,key,Number(d1Row.revision))
    ];
    if(revision===0)statements.push(db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,stayPayload,user.userId));
    else statements.push(db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(stayPayload,user.userId,stayKey,revision));
    const results=await db.batch(statements);
    if(!results[0].meta.changes||!results[1].meta.changes)return Response.json({error:'The excursion changed elsewhere. Reload and try again.'},{status:409});
-   try{await mirrorExcursionScheduleRecord(key,{...cancelledSchedule,revision:Number(row.revision)+1,updatedBy:user.userId});await mirrorHotelState(state);}catch{}
+   try{await mirrorExcursionScheduleRecord(key,{...cancelledSchedule,revision:Number(d1Row.revision)+1,updatedBy:user.userId});await mirrorHotelState(state);}catch{}
    return Response.json({ok:true,cancelledBookings,rescheduledPackageSegments,reason,status:'Cancelled'});
   }
 
