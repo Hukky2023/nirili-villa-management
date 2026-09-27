@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -43,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         webView = WebView(this)
         setContentView(webView)
 
+        CookieManager.getInstance().setAcceptCookie(true)
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.setSupportZoom(false)
@@ -50,10 +52,27 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 if (!url.isNullOrBlank() && url.startsWith(BuildConfig.MANAGEMENT_URL)) {
-                    getSharedPreferences(PREFS, MODE_PRIVATE)
-                        .edit()
-                        .putString(KEY_LAST_URL, url)
-                        .apply()
+                    when {
+                        isAuthenticatedUrl(url) -> {
+                            getSharedPreferences(PREFS, MODE_PRIVATE)
+                                .edit()
+                                .putString(KEY_LAST_URL, url)
+                                .apply()
+                            // Once login succeeds, never let Android Back navigate
+                            // into the old sign-in page that was behind the dashboard.
+                            view?.clearHistory()
+                        }
+                        isLoginUrl(url) -> {
+                            // Reaching the login screen normally means the user
+                            // explicitly signed out or the server ended the session.
+                            getSharedPreferences(PREFS, MODE_PRIVATE)
+                                .edit()
+                                .putString(KEY_LAST_URL, BuildConfig.MANAGEMENT_URL)
+                                .apply()
+                            view?.clearHistory()
+                        }
+                    }
+                    CookieManager.getInstance().flush()
                 }
                 dispatchNativePushStatus(notificationStatus(), currentPushToken())
             }
@@ -122,6 +141,45 @@ class MainActivity : AppCompatActivity() {
         return getSharedPreferences(PREFS, MODE_PRIVATE)
             .getString(KEY_FCM_TOKEN, "")
             .orEmpty()
+    }
+
+    private fun isLoginUrl(value: String): Boolean {
+        return try {
+            val uri = Uri.parse(value)
+            val path = uri.path.orEmpty()
+            val portal = uri.getQueryParameter("portal").orEmpty()
+            path.contains("/login") || (path == "/" && portal.isBlank())
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun isAuthenticatedUrl(value: String): Boolean {
+        return try {
+            val uri = Uri.parse(value)
+            val path = uri.path.orEmpty()
+            val portal = uri.getQueryParameter("portal").orEmpty()
+            if (isLoginUrl(value)) return false
+            portal in setOf("admin", "staff") ||
+                path.startsWith("/home") ||
+                path.startsWith("/transport") ||
+                path.startsWith("/restaurant") ||
+                path.startsWith("/crew") ||
+                path.startsWith("/buggy-driver")
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun isAuthenticatedHome(value: String?): Boolean {
+        if (value.isNullOrBlank()) return false
+        return try {
+            val uri = Uri.parse(value)
+            uri.path.orEmpty() == "/" &&
+                uri.getQueryParameter("portal").orEmpty() in setOf("admin", "staff")
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun notificationStatus(): String {
@@ -208,12 +266,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onPause() {
+        CookieManager.getInstance().flush()
+        super.onPause()
+    }
+
     override fun onBackPressed() {
-        if (::webView.isInitialized && webView.canGoBack()) {
-            webView.goBack()
-        } else {
+        if (!::webView.isInitialized) {
             super.onBackPressed()
+            return
         }
+
+        val current = webView.url
+        if (isAuthenticatedHome(current)) {
+            // On the logged-in dashboard, Back exits the Android app.
+            // It must never expose the sign-in page underneath.
+            moveTaskToBack(true)
+            return
+        }
+
+        if (webView.canGoBack()) {
+            val history = webView.copyBackForwardList()
+            val previousIndex = history.currentIndex - 1
+            val previousUrl =
+                if (previousIndex >= 0) history.getItemAtIndex(previousIndex)?.url else null
+
+            if (!previousUrl.isNullOrBlank() && isLoginUrl(previousUrl) && isAuthenticatedUrl(current.orEmpty())) {
+                moveTaskToBack(true)
+            } else {
+                webView.goBack()
+            }
+            return
+        }
+
+        moveTaskToBack(true)
     }
 
     companion object {
