@@ -87,7 +87,7 @@ async function accessToken(cfg:FcmConfig){
   method:'POST',
   headers:{'Content-Type':'application/x-www-form-urlencoded'},
   body:body.toString(),
-  redirect:'error'
+  redirect:'manual'
  });
  const data:any=await response.json().catch(()=>({}));
  if(!response.ok||!data?.access_token)throw Error('FCM authorization failed.');
@@ -118,7 +118,7 @@ async function sendOne(cfg:FcmConfig,oauthToken:string,token:string,notice:any){
  };
  const response=await fetch('https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(cfg.projectId)+'/messages:send',{
   method:'POST',
-  redirect:'error',
+  redirect:'manual',
   headers:{Authorization:'Bearer '+oauthToken,'Content-Type':'application/json'},
   body:JSON.stringify(payload)
  });
