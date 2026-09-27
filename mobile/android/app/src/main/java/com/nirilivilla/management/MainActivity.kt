@@ -140,6 +140,17 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    private fun forceRefreshFcmToken() {
+        FirebaseMessaging.getInstance().deleteToken()
+            .addOnCompleteListener {
+                getSharedPreferences(PREFS, MODE_PRIVATE)
+                    .edit()
+                    .remove(KEY_FCM_TOKEN)
+                    .apply()
+                refreshFcmToken()
+            }
+    }
+
     private fun currentPushToken(): String {
         return getSharedPreferences(PREFS, MODE_PRIVATE)
             .getString(KEY_FCM_TOKEN, "")
@@ -251,6 +262,13 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
+            }
+        }
+
+        @JavascriptInterface
+        fun refreshPushToken() {
+            runOnUiThread {
+                forceRefreshFcmToken()
             }
         }
 
