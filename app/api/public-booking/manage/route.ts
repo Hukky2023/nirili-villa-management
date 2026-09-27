@@ -24,7 +24,7 @@ async function hotelState(){
  return {state:ensureBookingManageState(row.payload),revision:Number(row.revision)||0};
 }
 
-function proposal(body:any){
+function proposal(body:any,state:any){
  const guest=safe(body.guest,100),email=safe(body.email,254).toLowerCase(),whatsapp=cleanPhone(body.whatsapp);
  const checkIn=String(body.checkIn||''),checkOut=String(body.checkOut||''),meal=String(body.meal||'');
  const adults=Number(body.adults),children=Number(body.children),pax=adults+children,notes=safe(body.notes,1000),transportPlan=normalizeTransportPlan(body.transportPlan,checkIn,checkOut);
@@ -33,7 +33,7 @@ function proposal(body:any){
  if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||!Number.isInteger(nights)||nights<1||nights>365)throw Error('Choose valid stay dates.');
  if(!Number.isInteger(adults)||adults<1||adults>3||!Number.isInteger(children)||children<0||children>2||pax<1||pax>3)throw Error('A room can accommodate up to 3 guests.');
  if(!plans.includes(meal))throw Error('Choose a valid meal plan.');
- return {guest,email,whatsapp,checkIn,checkOut,meal,adults,children,pax,notes,transportPlan,nights,estimate:nightly(meal,pax)*nights};
+ return {guest,email,whatsapp,checkIn,checkOut,meal,adults,children,pax,notes,transportPlan,nights,estimate:nightly(meal,pax,state.roomRates)*nights};
 }
 
 function actionRecord(type:string,bookingId:string,current:any,proposed:any=null,status='Pending'){
@@ -69,7 +69,7 @@ export async function POST(request:Request){
   if(pending)return Response.json({error:'A change or cancellation is already waiting for reception approval.',booking:bookingManageSnapshot(state,target)},{status:409,headers});
 
   if(action==='update'){
-   const next=proposal(body);
+   const next=proposal(body,state);
    if(next.checkIn!==booking.checkIn||next.checkOut!==booking.checkOut)assertBookingDatesOpen(state,next.checkIn,next.checkOut);
    if(target.kind==='request'){
     if(booking.status!=='Pending')throw Error('This booking is no longer awaiting confirmation.');

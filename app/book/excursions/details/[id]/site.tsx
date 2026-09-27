@@ -82,7 +82,7 @@ export default function ExcursionDetailsSite({excursionId}:{excursionId:string})
   <section className="excursion-detail-content">
    <div className="detail-video-section">
     <div className="detail-section-title"><span>WATCH THE EXPERIENCE</span><h2>See what the excursion feels like.</h2></div>
-    {embed?<div className="detail-video-frame"><iframe src={embed} title={item.name+' video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/></div>:<div className="detail-video-empty"><PlayCircle/><strong>Video coming soon</strong><p>Our team can add a YouTube video for this excursion from the Excursion menu in the management system.</p></div>}
+    {embed?<div className="detail-video-frame"><iframe src={embed} title={item.name+' video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/></div>:<div className="detail-video-empty"><PlayCircle/><strong>Video coming soon</strong><p>Explore the excursion description and photos below.</p></div>}
    </div>
 
    {item.galleryUrls?.length?<div className="detail-gallery-section">

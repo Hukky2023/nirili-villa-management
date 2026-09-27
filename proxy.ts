@@ -40,7 +40,9 @@ function bookingSiteResponse(url:URL){
  return NextResponse.redirect(url);
 }
 
-function hotelSiteResponse(url:URL){
+function hotelSiteResponse(url:URL,method='GET'){
+ // Public photo reads only; uploads and management APIs remain private.
+ if(['GET','HEAD'].includes(method)&&/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url.pathname))return NextResponse.next();
  if(url.pathname==='/'){
   url.pathname='/hotel';
   const response=NextResponse.rewrite(url);
@@ -91,7 +93,7 @@ function routeRequest(request:NextRequest){
 
  // Dedicated public websites stay isolated from the management application.
  // Root domain serves the dedicated /hotel homepage; booking subdomain serves /book.
- if(host===publicHotelHost)return hotelSiteResponse(url);
+ if(host===publicHotelHost)return hotelSiteResponse(url,request.method);
  if(host===guestBookingHost)return bookingSiteResponse(url);
 
  const id=requestTab(request,url),valid=tabPattern.test(id);

@@ -1,3 +1,4 @@
+import {loadExcursionMenu} from '../../lib/excursion-menu';
 import WebsiteChat from '../website-chat';
 import {
  ArrowRight, BedDouble, CheckCircle2, Clock3, Compass, MapPin, Menu,
@@ -5,10 +6,10 @@ import {
 } from 'lucide-react';
 
 const BOOK='https://booking.nirilihotels.com/#book';
-const EXCURSIONS='https://booking.nirilihotels.com/book/excursions';
-const excursionDetails=(id:string)=>EXCURSIONS+'/details/'+encodeURIComponent(id);
+const EXCURSIONS='/hotel/excursions';
+const excursionDetails=(id:string)=>EXCURSIONS+'/'+encodeURIComponent(id);
 
-const experiences=[
+const experienceStyles=[
  {id:'turtle',title:'Turtle Snorkeling',tag:'UNDERWATER',className:'exp-turtle',copy:'Swim clear reefs and meet one of the Maldives’ most loved ocean residents.'},
  {id:'shark',title:'Shark Snorkeling',tag:'ADRENALINE',className:'exp-shark',copy:'A bold open-water experience with nurse sharks and the Nirili Tours team.'},
  {id:'sandbank',title:'Sandbank Escape',tag:'BAREFOOT',className:'exp-sandbank',copy:'White sand, lagoon blue and nothing else competing for your attention.'},
@@ -22,7 +23,9 @@ function Brand(){
  </a>;
 }
 
-export default function HotelHome(){
+export default async function HotelHome(){
+ let menu:any[]=[];try{menu=await loadExcursionMenu();}catch{}
+ const experiences=menu.map((item:any)=>({id:item.id,title:item.name,tag:item.group,copy:item.detail,className:experienceStyles.find(style=>style.id===item.id)?.className||'exp-catalog',image:item.galleryUrls?.[0]}));
  return <main className="nirili-site" id="top">
   <header className="site-header">
    <Brand/>
@@ -142,8 +145,8 @@ export default function HotelHome(){
    </div>
 
    <div className="experience-scroll">
-    {experiences.map(item=><article className="experience-card" key={item.title}>
-     <div className={'experience-image '+item.className}><span>{item.tag}</span></div>
+    {experiences.map(item=><article className="experience-card" key={item.id}>
+     <div className={'experience-image '+item.className} style={item.image?{backgroundImage:'url('+item.image+')'}:undefined}><span>{item.tag}</span></div>
      <div className="experience-body">
       <h3>{item.title}</h3>
       <p>{item.copy}</p>
