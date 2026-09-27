@@ -26,14 +26,14 @@ jobs:
 
       - name: Restore Firebase Android configuration
         env:
-          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_GOOGLE_SERVICES_JSON_BASE64 }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.FIREBASE_GOOGLE_SERVICES_JSON }}
         run: |
-          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-            echo "::error::Missing repository secret FIREBASE_GOOGLE_SERVICES_JSON_BASE64"
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::Missing repository secret FIREBASE_GOOGLE_SERVICES_JSON"
             exit 1
           fi
 
-          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > mobile/android/app/google-services.json
+          printf '%s' "$GOOGLE_SERVICES_JSON" > mobile/android/app/google-services.json
 
           APP_ID="$(jq -r '.client[0].client_info.android_client_info.package_name' mobile/android/app/google-services.json)"
           if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
