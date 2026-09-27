@@ -104,13 +104,13 @@ export async function currentGuestUser():Promise<Actor|null>{
 export function hasPermission(user:Actor|null,permission:Permission){return !!user&&(user.role==="admin"||(user.role==="staff"&&user.permissions.includes(permission)));}
 export function sameOrigin(r:Request){return r.headers.get("origin")===new URL(r.url).origin;}
 export async function issueSession(id:string,tab?:string){
-const token=randomToken(),tokenHash=await digest(token),expiresAt=Date.now()+12*60*60*1000;let primary=false;
+const token=randomToken(),tokenHash=await digest(token),expiresAt=Date.now()+365*24*60*60*1000;let primary=false;
 if(supabaseBridgeConfigured()){
  primary=await upsertLegacySession(tokenHash,id,expiresAt);
  if(!primary)throw Error('Account service unavailable');
 }
 try{await authDb().prepare("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(tokenHash,id,expiresAt).run();}catch(error){if(!primary)throw error;}
-return (tab?cookieName+"_"+tab:await sessionCookieName())+"="+token+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200";}
+return (tab?cookieName+"_"+tab:await sessionCookieName())+"="+token+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=31536000";}
 
 export async function issueGuestSession(id:string){
  const token=randomToken(),tokenHash=await digest(token),expiresAt=Date.now()+12*60*60*1000;let primary=false;
