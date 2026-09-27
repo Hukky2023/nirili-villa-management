@@ -1,9 +1,12 @@
 'use client';
 
 import {useEffect,useMemo,useState} from 'react';
+import {usePathname} from 'next/navigation';
 import {ExternalLink,X} from 'lucide-react';
 import {startLiveRefresh,REFRESH_INTERVALS} from '../lib/live-refresh';
 import './guest-chat.css';
+
+const HOTEL_WHATSAPP='9609413977';
 
 function WhatsAppLogo({size=24}:{size?:number}){
  return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M20.52 3.48A11.91 11.91 0 0 0 12.05 0C5.46 0 .1 5.36.1 11.95c0 2.11.55 4.17 1.6 5.99L0 24l6.24-1.64a11.94 11.94 0 0 0 5.81 1.48h.01c6.58 0 11.94-5.36 11.94-11.95 0-3.19-1.24-6.19-3.48-8.41ZM12.05 21.82a9.9 9.9 0 0 1-5.04-1.38l-.36-.21-3.7.97.99-3.61-.24-.37a9.87 9.87 0 0 1-1.51-5.27c0-5.48 4.46-9.94 9.95-9.94a9.88 9.88 0 0 1 7.03 2.92 9.88 9.88 0 0 1 2.91 7.04c0 5.48-4.46 9.94-9.94 9.94Zm5.45-7.44c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.39-1.47-.88-.79-1.48-1.77-1.65-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.35.19 1.86.11.57-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"/></svg>;
@@ -15,7 +18,16 @@ function whatsappUrl(phone:string,message:string){
  return 'https://wa.me/'+digits+'?text='+encodeURIComponent(message);
 }
 
+function DirectHotelWhatsApp({message}:{message:string}){
+ return <div className="nv-wa-root">
+  <a className="nv-wa-launch" href={whatsappUrl(HOTEL_WHATSAPP,message)} target="_blank" rel="noopener noreferrer" aria-label="Chat with Nirili Villa on WhatsApp" title="WhatsApp Nirili Villa">
+   <WhatsAppLogo size={25}/>
+  </a>
+ </div>;
+}
+
 export default function GuestChat(){
+ const pathname=usePathname();
  const [data,setData]=useState<any>(null);
  const [open,setOpen]=useState(false);
  const [error,setError]=useState('');
@@ -44,15 +56,15 @@ export default function GuestChat(){
   return 'Hello Nirili Villa, this is '+identity+room+ref+'. I need assistance with my stay.';
  },[data]);
 
+ // Public hotel and booking pages already render their own official WhatsApp button.
+ if(pathname.startsWith('/hotel')||pathname.startsWith('/book'))return null;
+
+ // Keep WhatsApp available on the guest portal even before sign-in.
+ if(pathname.startsWith('/stay')&&!data)return <DirectHotelWhatsApp message="Hello Nirili Villa, I need help with the guest portal or my stay."/>;
  if(!data)return null;
 
- if(data.actor?.role==='guest'){
-  const href=whatsappUrl(data.hotelPhone,guestMessage);
-  return <div className="nv-wa-root">
-   <a className="nv-wa-launch" href={href} target="_blank" rel="noopener noreferrer" aria-label="Chat with Nirili Villa on WhatsApp" title="WhatsApp Nirili Villa">
-    <WhatsAppLogo size={25}/>
-   </a>
-  </div>;
+ if(data.actor?.role==='guest'||pathname.startsWith('/stay')){
+  return <DirectHotelWhatsApp message={guestMessage}/>;
  }
 
  const contacts=Array.isArray(data.contacts)?data.contacts:[];
@@ -75,7 +87,7 @@ export default function GuestChat(){
       <div className="nv-wa-contact-copy">
        <strong>{contact.guest}</strong>
        <span>{contact.room?'Room '+contact.room:'Room not assigned'}{contact.id?' · '+contact.id:''}</span>
-       <small>{contact.phone?'+ '+contact.phone:'No WhatsApp number saved'}</small>
+       <small>{contact.phone?'+'+contact.phone:'No WhatsApp number saved'}</small>
       </div>
       {href?<a className="nv-wa-open" href={href} target="_blank" rel="noopener noreferrer"><WhatsAppLogo size={18}/><span>Open</span><ExternalLink size={15}/></a>:<button type="button" className="nv-wa-open disabled" disabled>Missing number</button>}
      </article>;
