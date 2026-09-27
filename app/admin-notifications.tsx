@@ -206,7 +206,11 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
    const data=await response.json();
    if(response.ok&&data?.sent>0)alert('Test notification sent to '+data.sent+' phone'+(data.sent===1?'':'s')+'. Lock the phone and check the notification.');
    else if(data?.total===0)alert('No Android phone token is registered yet. Keep the app open and logged in for 10 seconds, then try again.');
-   else alert('Firebase could not deliver the test notification. Check the FCM server credentials in Cloudflare.');
+   else {
+    const failure=data?.native?.failures?.[0];
+    const detail=failure?(' Status '+String(failure.status||0)+(failure.code?' · '+failure.code:'')+(failure.message?' · '+failure.message:'')):'';
+    alert('Firebase could not deliver the test notification.'+detail);
+   }
   }catch{alert('Could not send the test notification. Please retry.')}
  };
  const enablePhone=async()=>{
