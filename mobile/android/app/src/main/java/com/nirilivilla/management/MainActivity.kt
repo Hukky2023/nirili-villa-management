@@ -4,10 +4,14 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -23,7 +27,11 @@ class MainActivity : AppCompatActivity() {
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             Log.i(TAG, "Notification permission granted=$granted")
-            if (granted) refreshFcmToken()
+            if (granted) {
+                refreshFcmToken()
+            } else {
+                dispatchNativePushStatus("blocked", currentPushToken())
+            }
         }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -31,7 +39,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         createNotificationChannel()
-        requestNotificationPermissionIfNeeded()
 
         webView = WebView(this)
         setContentView(webView)
@@ -39,23 +46,30 @@ class MainActivity : AppCompatActivity() {
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.setSupportZoom(false)
-        webView.webViewClient = WebViewClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                dispatchNativePushStatus(notificationStatus(), currentPushToken())
+            }
+        }
         webView.webChromeClient = WebChromeClient()
+        webView.addJavascriptInterface(NativeBridge(), "NiriliNative")
 
         webView.loadUrl(BuildConfig.MANAGEMENT_URL)
+        requestNotificationPermissionIfNeeded()
         refreshFcmToken()
     }
 
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
 
-        when {
+        if (
             ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED -> Unit
-
-            else -> notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -85,21 +99,101 @@ class MainActivity : AppCompatActivity() {
                     .apply()
 
                 Log.i(TAG, "FCM token refreshed")
-                sendTokenToWebApp(token)
+                dispatchNativePushStatus(notificationStatus(), token)
             }
             .addOnFailureListener { error ->
                 Log.e(TAG, "Unable to obtain FCM token", error)
+                dispatchNativePushStatus("error", currentPushToken())
             }
     }
 
-    private fun sendTokenToWebApp(token: String) {
+    private fun currentPushToken(): String {
+        return getSharedPreferences(PREFS, MODE_PRIVATE)
+            .getString(KEY_FCM_TOKEN, "")
+            .orEmpty()
+    }
+
+    private fun notificationStatus(): String {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return "blocked"
+        }
+
+        val manager = getSystemService(NotificationManager::class.java)
+        return if (manager.areNotificationsEnabled()) "enabled" else "blocked"
+    }
+
+    private fun dispatchNativePushStatus(status: String, token: String) {
         if (!::webView.isInitialized) return
-        val escaped = token.replace("\\", "\\\\").replace("'", "\\'")
+        val safeStatus = jsEscape(status)
+        val safeToken = jsEscape(token)
         webView.post {
             webView.evaluateJavascript(
-                "window.dispatchEvent(new CustomEvent('nirili-fcm-token',{detail:'$escaped'}));",
+                "window.dispatchEvent(new CustomEvent('nirili:native-push-status',{detail:{status:'$safeStatus',token:'$safeToken'}}));",
                 null
             )
+        }
+    }
+
+    private fun jsEscape(value: String): String {
+        return value
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+    }
+
+    private fun openNotificationSettings() {
+        val intent = Intent().apply {
+            action = Settings.ACTION_APP_NOTIFICATION_SETTINGS
+            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            data = Uri.parse("package:$packageName")
+        }
+        startActivity(intent)
+    }
+
+    inner class NativeBridge {
+
+        @JavascriptInterface
+        fun getPushToken(): String = currentPushToken()
+
+        @JavascriptInterface
+        fun getNotificationStatus(): String = notificationStatus()
+
+        @JavascriptInterface
+        fun requestNotificationPermission() {
+            runOnUiThread {
+                if (
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    refreshFcmToken()
+                } else {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun openNotificationSettings() {
+            runOnUiThread {
+                this@MainActivity.openNotificationSettings()
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::webView.isInitialized) {
+            dispatchNativePushStatus(notificationStatus(), currentPushToken())
         }
     }
 
