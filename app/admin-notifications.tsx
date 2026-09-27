@@ -200,6 +200,15 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
  const markOne=(id:string)=>{save(notices.map(x=>x.id===id?{...x,read:true}:x));void fetch("/api/notifications",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:[id]})}).catch(()=>{})};
  const openNotice=(n:Notice)=>{markOne(n.id);setOpen(false);if(n.type==="message"){window.dispatchEvent(new CustomEvent("nirili:open-chat",{detail:{contactId:n.ref||""}}));return;}const target=noticeTarget(n);if(target)onOpen?.(target)};
  const clear=()=>{save([]);void fetch("/api/notifications",{method:"DELETE"}).catch(()=>{})};
+ const testPhone=async()=>{
+  try{
+   const response=await fetch('/api/admin-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({test:true})});
+   const data=await response.json();
+   if(response.ok&&data?.sent>0)alert('Test notification sent to '+data.sent+' phone'+(data.sent===1?'':'s')+'. Lock the phone and check the notification.');
+   else if(data?.total===0)alert('No Android phone token is registered yet. Keep the app open and logged in for 10 seconds, then try again.');
+   else alert('Firebase could not deliver the test notification. Check the FCM server credentials in Cloudflare.');
+  }catch{alert('Could not send the test notification. Please retry.')}
+ };
  const enablePhone=async()=>{
   if(phoneBusy||phoneStatus==='enabled')return;
   const native=nativePushBridge();
@@ -237,7 +246,7 @@ export default function AdminNotifications({onOpen}:{onOpen?:(module:NoticeTarge
   </button>
   {open&&<><button className="nv-notification-backdrop" aria-label="Close notifications" onClick={()=>setOpen(false)}/><section className="nv-notification-panel">
    <header><div><strong><UiText>Notifications</UiText></strong><small><UiText>Bookings, messages, guests and system changes</UiText></small></div><button onClick={()=>setOpen(false)} aria-label="Close"><X size={18}/></button></header>
-   <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button>{phoneStatus!=='unsupported'&&<button onClick={enablePhone} disabled={phoneBusy||phoneStatus==='enabled'}><UiText>{phoneBusy?'Enabling…':phoneStatus==='enabled'?'Phone notifications on':phoneStatus==='blocked'?'Open notification settings':phoneStatus==='setup'?'Push service setup needed':phoneStatus==='error'?'Retry notifications':'Enable phone notifications'}</UiText></button>}<button onClick={clear}><UiText>Clear</UiText></button></div>
+   <div className="nv-notification-actions"><button onClick={markAll} disabled={!unread}><CheckCheck size={15}/><UiText>Mark all read</UiText></button>{phoneStatus!=='unsupported'&&<button onClick={enablePhone} disabled={phoneBusy||phoneStatus==='enabled'}><UiText>{phoneBusy?'Enabling…':phoneStatus==='enabled'?'Phone notifications on':phoneStatus==='blocked'?'Open notification settings':phoneStatus==='setup'?'Push service setup needed':phoneStatus==='error'?'Retry notifications':'Enable phone notifications'}</UiText></button>}{phoneStatus==='enabled'&&<button onClick={testPhone}><UiText>Send test notification</UiText></button>}<button onClick={clear}><UiText>Clear</UiText></button></div>
    <div className="nv-notification-list">{notices.length?notices.map(n=><button key={n.id} className={n.read?"read":""} onClick={()=>openNotice(n)}>
     <i className={"type "+n.type}/><span><strong><UiText>{n.title}</UiText></strong><small><UiText>{n.detail}</UiText></small><time>{new Date(n.at).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</time></span>
    </button>):<p className="empty"><UiText>No notifications yet.</UiText></p>}</div>
