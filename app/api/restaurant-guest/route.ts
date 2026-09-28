@@ -11,7 +11,6 @@ import {mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,re
 import {updateRoomInventory} from '../../../lib/rooms';
 import {restaurantPaymentStatus,syncRestaurantRoomBill} from '../../../lib/pos-room-billing';
 import {emitAdminNotification} from '../../../lib/admin-notifications';
-import {loadRestaurantPaymentSettings} from '../../../lib/restaurant-payment-settings';
 
 async function identity(r:Request,create=false){
  const diningCookie=await sessionCookieName('nirili_dining');
@@ -85,7 +84,6 @@ async function view(id:any){
   tables:restaurantTables,
   mealPeriod:restaurantMealPeriod(),
   mode:id.mode,
-  usdToMvrRate:paymentSettings.usdToMvrRate,
   stays,
   assignedRoom,
   guest:id.user?.displayName||profile?.name||'',
@@ -149,11 +147,10 @@ export async function POST(r:Request){
   });
   const date=new Date().toISOString(),id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0),mealPlanFreeOrder=items.some((i:any)=>i.included===true);
   const localDelivery=delivery&&/^\+960[79]/.test(String(b.deliveryPhone||'').replace(/[\s()-]/g,''));
-  const paymentSettings=localDelivery?await loadRestaurantPaymentSettings():null;
   const order={
    id,token:b.token,guestKey:who.key,by:who.key,
    createdBy:who.mode==='inhouse'?'In-house guest':who.mode==='account'?'Walk-in guest account':'Walk-in customer',
-   createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:delivery?b.deliveryName.trim():s?.guest||who.user?.displayName||walkName,table:delivery?'Delivery':b.table,orderType:delivery?'delivery':'table',deliveryLocation:delivery?b.deliveryLocation.trim():'',deliveryPhone:delivery?b.deliveryPhone.trim():'',displayCurrency:localDelivery?'MVR':'USD',displayExchangeRate:localDelivery?paymentSettings!.usdToMvrRate:0,notes:b.notes.trim(),items,cents,
+   createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:delivery?b.deliveryName.trim():s?.guest||who.user?.displayName||walkName,table:delivery?'Delivery':b.table,orderType:delivery?'delivery':'table',deliveryLocation:delivery?b.deliveryLocation.trim():'',deliveryPhone:delivery?b.deliveryPhone.trim():'',displayCurrency:localDelivery?'MVR':'USD',displayExchangeRate:localDelivery?15.42:0,notes:b.notes.trim(),items,cents,
    kitchen:'Awaiting cashier',method:s&&cents>0?'Room':'',mealPeriod,mealPlanFreeOrder,dailyFreeOrderLimit:mp.limit,history:[{date,by:who.mode,detail:'Guest order sent to cashier'}]
   };
   state.posOrders.push(order);
