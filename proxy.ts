@@ -6,7 +6,7 @@ const publicHotelWwwHost='www.nirilihotels.com';
 const tabPattern=/^[a-f0-9]{32}$/;
 
 function bookingSiteResponse(url:URL){
- const guestApi=new Set(['/api/excursion-weather','/api/public-booking','/api/public-booking/manage','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/guest-excursion-schedules']);
+ const guestApi=new Set(['/api/excursion-weather','/api/public-booking','/api/public-booking/manage','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules']);
  // Uploaded menu photos are public; the upload endpoint remains blocked.
  if(/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url.pathname))return NextResponse.next();
  if(guestApi.has(url.pathname)){
