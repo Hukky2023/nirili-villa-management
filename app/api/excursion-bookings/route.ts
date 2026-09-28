@@ -33,12 +33,17 @@ async function schedulesForDate(date:string){
 export async function GET(request?: Request) {
   try {
     const user = await currentUser();
-    if (!hasPermission(user, 'edit_excursions') && !hasPermission(user, 'excursions_manager')) {
+    const url=request?new URL(request.url):null;
+    const stayId=String(url?.searchParams.get('stayId')||'').slice(0,120);
+    const excursionAccess=hasPermission(user,'edit_excursions')||hasPermission(user,'excursions_manager');
+    const guestScheduleAccess=!!stayId&&(hasPermission(user,'guesthouse_reception')||hasPermission(user,'edit_bills'));
+    if (!excursionAccess && !guestScheduleAccess) {
       return Response.json({error: 'Excursion access is required.'}, {status: 403, headers});
     }
     const {state, revision} = await loadStays();state.excursionChanges??=[];
+    if(stayId&&!state.stays?.some((stay:any)=>String(stay.id)===stayId))return Response.json({error:'Guest stay not found.'},{status:404,headers});
     const canReassign=hasPermission(user,'excursions_manager');
-    const url=request?new URL(request.url):null,bookingId=String(url?.searchParams.get('bookingId')||''),scheduleDate=String(url?.searchParams.get('scheduleDate')||'');
+    const bookingId=String(url?.searchParams.get('bookingId')||''),scheduleDate=String(url?.searchParams.get('scheduleDate')||'');
     if(bookingId||scheduleDate){
       if(!canReassign)return Response.json({error:'Only Admin or Excursions Manager can view reassignment options.'},{status:403,headers});
       if(!bookingId||!validDate(scheduleDate)||scheduleDate<islandToday())return Response.json({error:'Choose a valid booking and today or a future trip date.'},{status:400,headers});
@@ -83,7 +88,7 @@ export async function GET(request?: Request) {
     }
     const stays = new Map((state.stays || []).map((s: any) => [s.id, s]));
     const resources = excursionResources(state);
-    const bookings = (state.orders || []).filter(isConfirmedExcursion).map((order: any) => {
+    const bookings = (state.orders || []).filter((order:any)=>isConfirmedExcursion(order)&&(!stayId||String(order.stayId||'')===stayId)).map((order: any) => {
       const bookedDate = order.date || order.schedule?.date || '';
       let schedule = order.scheduleId ? byDateAndId.get(String(bookedDate) + '|' + String(order.scheduleId)) : undefined;
       if (order.scheduleId && !schedule) {
@@ -101,7 +106,7 @@ export async function GET(request?: Request) {
         billingHistory: user!.role === 'admin' ? (order.billingHistory || []) : undefined};
     });
     bookings.sort((a: any, b: any) => (a.date || '9999').localeCompare(b.date || '9999') || a.time.localeCompare(b.time) || a.id.localeCompare(b.id));
-    const manageRequests=(state.excursionChanges||[]).filter((change:any)=>change.status==='Pending').map((change:any)=>{
+    const manageRequests=stayId?[]:(state.excursionChanges||[]).filter((change:any)=>change.status==='Pending').map((change:any)=>{
       const order=(state.orders||[]).find((item:any)=>item.id===change.bookingId&&item.kind==='excursion');
       return {id:change.id,type:change.type,bookingId:change.packageGroupId||change.bookingId,internalBookingId:change.bookingId,packageGroupId:change.packageGroupId||'',requestedAt:change.requestedAt,current:change.current||null,proposed:change.proposed||null,guest:order?.guest||change.current?.guest||'',excursion:change.packageGroupId?(order?.packageName||'Special Package'):(order?.name||change.current?.name||''),date:order?.date||change.current?.date||'',time:order?.time||order?.schedule?.time||'',quantity:Number(order?.quantity||change.current?.quantity||0),hotel:order?.hotel||'',email:order?.email||'',phone:order?.phone||''};
     });
