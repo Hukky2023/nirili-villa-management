@@ -13,7 +13,7 @@ export default function PublicRestaurantPage(){
     <div className="restaurant-meta">
      <article><b>Location</b><small>Nirili Villa, Dhiffushi, Kaafu Atoll, Maldives</small></article>
      <article><b>Breakfast</b><small>07:00–09:00</small></article>
-     <article><b>Lunch</b><small>12:00–15:00</small></article>
+     <article><b>Lunch</b><small>12:00–15:00 · Friday 13:30–15:00</small></article>
      <article><b>Dinner</b><small>18:00–22:00</small></article>
     </div>
    </div>
