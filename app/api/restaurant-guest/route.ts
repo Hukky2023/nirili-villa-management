@@ -120,8 +120,7 @@ export async function POST(r:Request){
   let walkName=who.user?.displayName||'';
   if(who.mode==='walkin'){
    const visit=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind('dining-visit:'+who.key).first<any>();
-   if(!visit)throw Error('Enter your name and table on the guest welcome page first.');
-   walkName=JSON.parse(visit.payload).name;
+   walkName=visit?JSON.parse(visit.payload).name:'Walk-in Guest';
   }
   if(!await limit('dining:'+who.key,30,900000)||!await limit('dining-ip:'+(r.headers.get('cf-connecting-ip')||'unknown'),100,900000))throw Error('Please contact the cashier to place another order.');
   const {state,revision}=await restaurantState();
