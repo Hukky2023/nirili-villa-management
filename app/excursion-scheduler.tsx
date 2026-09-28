@@ -157,8 +157,11 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
   try{
    const r=await fetch('/api/excursion-schedules',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reject-unscheduled-request',requestId:req.id})}),d:any=await r.json();
    if(!r.ok)throw Error(d.error||'Could not reject booking request.');
-   setUnscheduledRequests(current=>current.filter((item:any)=>item.id!==req.id));
-   setMessage('Excursion rejected and removed from Trips waiting to be scheduled.');
+   const rejectedIds=new Set<string>(Array.isArray(d.rejectedIds)?d.rejectedIds:[req.id]);
+   setUnscheduledRequests(current=>current.filter((item:any)=>!rejectedIds.has(String(item.id))));
+   setMessage(d.rejectedCount>1
+    ?'Excursion package rejected. '+d.rejectedCount+' waiting trip legs were removed.'
+    :'Excursion rejected and removed from Trips waiting to be scheduled.');
    await load(date,true);
    window.dispatchEvent(new Event('services-updated'));
   }catch(e){setMessage(e instanceof Error?e.message:'Could not reject booking request.')}
