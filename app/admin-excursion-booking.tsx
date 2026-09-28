@@ -170,7 +170,7 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
  const estimatedTotal=(selectedPrice||otherPrice)+(form.privateBoatRequested?PRIVATE_BOAT_SURCHARGE_CENTS:0);
 
  return <>
-  <button type="button" className="excursion-secondary-btn" onClick={()=>{setOpen(true);setBookingDate(date);setDaySchedules(schedules);setDayGroups(sharedBoatGroups);setForm({...blankForm(),scheduleId:initialScheduleId||''});setFormError('')}}>{triggerLabel}</button>
+  <button type="button" className="excursion-primary-btn admin-excursion-book-trigger" onClick={()=>{setOpen(true);setBookingDate(date);setDaySchedules(schedules);setDayGroups(sharedBoatGroups);setForm({...blankForm(),scheduleId:initialScheduleId||''});setFormError('')}}>{triggerLabel}</button>
   {open&&<div className="excursion-schedule-overlay"><form className="excursion-schedule-dialog admin-excursion-booking" onSubmit={submit} noValidate>
    <header><div><small>ADMIN BOOKING</small><h3>Book excursion on any day</h3><p>{formatDateDMY(bookingDate)} · Add every guest, then confirm a scheduled trip or send it to Awaiting Scheduling.</p></div><button type="button" className="excursion-dialog-close" aria-label="Close" onClick={close}><X/></button></header>
    <div className="excursion-schedule-form-grid">
