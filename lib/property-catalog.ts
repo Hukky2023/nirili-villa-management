@@ -67,12 +67,14 @@ export function changePropertyCatalog(state:any,body:any,by:string){
    const allowedMeals=['Bed & Breakfast','Half Board','Full Board'];
    const excursions=Array.isArray(raw.excursions)?Array.from(new Set(raw.excursions.map((value:any)=>text(value,100)).filter(Boolean))).slice(0,30):[];
    const includeTransfer=raw.includeTransfer===true;
-   const cents=Number(raw.cents);
+   const singleCents=Number(raw.singleCents??raw.cents??0);
+   const doubleCents=Number(raw.doubleCents??raw.cents??0);
+   const tripleCents=Number(raw.tripleCents??raw.cents??0);
    const validFrom=text(raw.validFrom,10),validTo=text(raw.validTo,10);
    if(!name)throw Error('Enter a package name.');
    if(!Number.isInteger(nights)||nights<1||nights>30)throw Error('Choose package duration from 1 to 30 nights.');
    if(!allowedMeals.includes(mealPlan))throw Error('Choose a valid meal plan.');
-   if(!Number.isInteger(cents)||cents<0||cents>10000000)throw Error('Enter a package price between $0 and $100,000.');
+   if([singleCents,doubleCents,tripleCents].some(value=>!Number.isInteger(value)||value<0||value>10000000))throw Error('Enter Single, Double and Triple package prices between $0 and $100,000.');
    if(validFrom&&!/^\d{4}-\d{2}-\d{2}$/.test(validFrom))throw Error('Choose a valid package start date.');
    if(validTo&&!/^\d{4}-\d{2}-\d{2}$/.test(validTo))throw Error('Choose a valid package end date.');
    if(validFrom&&validTo&&validTo<validFrom)throw Error('Package end date must be after the start date.');
@@ -86,7 +88,12 @@ export function changePropertyCatalog(state:any,body:any,by:string){
     excursions,
     includeTransfer,
     transferLabel:includeTransfer?(text(raw.transferLabel,120)||'Return airport transfer'):'',
-    cents,
+    singleCents,
+    doubleCents,
+    tripleCents,
+    // Keep cents for older consumers; double occupancy is the default package headline price.
+    cents:doubleCents,
+    childPolicy:'Maximum 3 guests per room. 1 adult + up to 2 children, or 2 adults + 1 child. Children are included within the 3-person room capacity.',
     promotionTitle:text(raw.promotionTitle,160),
     promotionDetail:text(raw.promotionDetail,2000),
     validFrom,
