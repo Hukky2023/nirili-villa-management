@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:workers';
-import {limit,sameOrigin} from '../../../../lib/auth';
+import {authDb,limit,sameOrigin} from '../../../../lib/auth';
 
 function normalizePhone(value:any){
  let digits=String(value||'').replace(/\D/g,'').replace(/^00/,'');
@@ -35,6 +35,8 @@ export async function POST(r:Request){
    if(!/^\d{4,10}$/.test(code))throw Error('Enter the OTP code.');
    const data=await twilio('/VerificationCheck',new URLSearchParams({To:phone,Code:code}));
    if(data.status!=='approved')throw Error('Incorrect or expired OTP.');
+   await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=operation_records.revision+1,updated_by=excluded.updated_by')
+    .bind('restaurant-delivery-verified:'+phone.replace(/\D/g,''),JSON.stringify({phone,verifiedAt:Date.now(),expiresAt:Date.now()+30*60*1000}),'restaurant-delivery-otp').run();
    return Response.json({ok:true,verified:true});
   }
   throw Error('Unsupported action.');
