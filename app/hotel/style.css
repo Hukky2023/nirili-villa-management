@@ -976,3 +976,50 @@
 }
 
 .experience-image.exp-catalog{background-image:linear-gradient(145deg,#127890,#85d4de);}
+
+
+/* Five-service Nirili guest hub */
+.service-home{background:#f7fbff}
+.service-hero{
+ width:min(1320px,calc(100% - 20px));
+ min-height:610px;
+ margin:0 auto 74px;
+ border-radius:38px;
+ overflow:hidden;
+ position:relative;
+ display:flex;
+ align-items:flex-end;
+ justify-content:space-between;
+ gap:30px;
+ padding:64px;
+ color:#fff;
+ background:
+  linear-gradient(90deg,rgba(2,45,78,.80),rgba(2,73,100,.34)),
+  url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2200&q=90") center/cover;
+ box-shadow:0 30px 80px rgba(0,69,126,.16)
+}
+.service-hero-copy{max-width:850px}
+.service-hero-copy>span,.hub-heading>span,.service-island span{font-size:10px;font-weight:950;letter-spacing:.18em}
+.service-hero-copy h1{font-size:clamp(62px,8vw,118px);line-height:.82;letter-spacing:-.07em;margin:18px 0 24px}
+.service-hero-copy h1 em{font-style:normal;color:#dff6ff}
+.service-hero-copy p{font-size:17px;line-height:1.7;max-width:700px;color:#eaf8ff}
+.service-hero-copy>a{margin-top:28px;display:inline-flex;align-items:center;gap:9px;min-height:54px;padding:0 22px;border-radius:14px;background:#fff;color:#07588d!important;font-weight:900;font-size:13px}
+.service-hero-copy>a svg{width:18px}
+.service-hero-note{min-width:180px;padding:22px;border:1px solid #ffffff45;border-radius:20px;background:#ffffff14;backdrop-filter:blur(12px);display:grid;gap:5px}
+.service-hero-note svg{width:26px}.service-hero-note strong{font-size:24px}.service-hero-note small{color:#dff4ff}
+.service-hub{max-width:1180px;margin:0 auto;padding:0 20px 110px}
+.hub-heading{max-width:760px;margin-bottom:32px}
+.hub-heading>span{color:#0877d1}.hub-heading h2{font-size:clamp(44px,6vw,78px);line-height:.95;letter-spacing:-.055em;margin:10px 0}.hub-heading p{color:#60798e;line-height:1.7}
+.hub-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.hub-card{grid-column:span 4;min-height:340px;padding:26px;border:1px solid #dbeaf5;border-radius:25px;background:#fff;display:flex;flex-direction:column;align-items:flex-start;box-shadow:0 18px 50px rgba(6,74,125,.08);position:relative;overflow:hidden}
+.hub-card.hub-primary{grid-column:span 8}
+.hub-card:after{content:"";position:absolute;width:190px;height:190px;border-radius:50%;right:-70px;bottom:-70px;background:#0877d10d}
+.hub-icon{width:56px;height:56px;border-radius:17px;display:grid;place-items:center;background:#e8f5ff;color:#0877d1;margin-bottom:28px}.hub-icon svg{width:27px}
+.hub-card>span{font-size:9px;letter-spacing:.16em;font-weight:950;color:#718b9e}.hub-card h3{font-size:34px;letter-spacing:-.045em;margin:8px 0 12px;color:#0a2940}.hub-card p{color:#637d8f;line-height:1.65;margin:0 0 24px;max-width:530px}.hub-card b{margin-top:auto;display:flex;align-items:center;gap:8px;color:#0877d1}.hub-card b svg{width:17px}
+.hub-primary{background:linear-gradient(135deg,#066fae,#08a2a1);color:#fff}.hub-primary h3,.hub-primary p,.hub-primary b,.hub-primary>span{color:#fff}.hub-primary .hub-icon{background:#ffffff22;color:#fff}
+.hub-excursions .hub-icon{background:#e7f8f1;color:#07846c}.hub-transfer .hub-icon{background:#fff0f3;color:#dc4664}.hub-ride .hub-icon{background:#ecf5ff;color:#376cd6}.hub-restaurant .hub-icon{background:#fff6df;color:#bb7b00}
+.connection-strip{max-width:1180px;margin:0 auto 100px;padding:22px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;border-radius:24px;background:#082f4c;color:#fff}
+.connection-strip article{padding:18px;border-right:1px solid #ffffff1e;display:grid;gap:5px}.connection-strip article:last-child{border-right:0}.connection-strip strong{font-size:20px}.connection-strip span{font-size:12px;color:#cfe5f2;line-height:1.45}
+.service-island{max-width:1180px;margin:0 auto 100px;padding:50px;border-radius:30px;background:#e9f7fb;display:flex;justify-content:space-between;gap:30px;align-items:flex-end}.service-island>div:first-child{max-width:760px}.service-island span{color:#0877d1}.service-island h2{font-size:56px;margin:8px 0;letter-spacing:-.05em}.service-island p{color:#5c7688;line-height:1.7}.island-service-links{display:grid;gap:10px;min-width:240px}.island-service-links a{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-radius:12px;background:#fff;color:#0877d1!important;font-weight:850}.island-service-links svg{width:17px}
+@media(max-width:900px){.hub-card,.hub-card.hub-primary{grid-column:span 6}.connection-strip{grid-template-columns:1fr 1fr}.service-island{align-items:flex-start;flex-direction:column}.island-service-links{width:100%}}
+@media(max-width:640px){.site-header{min-height:92px}.desktop-nav,.header-book{display:none}.mobile-menu{display:block}.service-hero{min-height:620px;margin:0 8px 55px;width:calc(100% - 16px);padding:34px 22px;border-radius:26px;align-items:flex-end}.service-hero-note{display:none}.service-hero-copy h1{font-size:62px}.service-hub{padding:0 12px 70px}.hub-grid{display:grid;grid-template-columns:1fr}.hub-card,.hub-card.hub-primary{grid-column:auto;min-height:300px}.hub-heading h2{font-size:45px}.connection-strip{margin:0 12px 70px;grid-template-columns:1fr}.connection-strip article{border-right:0;border-bottom:1px solid #ffffff1e}.connection-strip article:last-child{border-bottom:0}.service-island{margin:0 12px 70px;padding:30px 22px}.service-island h2{font-size:42px}.site-footer{padding-left:20px;padding-right:20px}}
