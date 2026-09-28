@@ -11,12 +11,13 @@ export const maldivesDay=(value:string|Date=new Date())=>{
 export function restaurantOrderingStatus(value:string|Date=new Date()){
  const d=value instanceof Date?value:new Date(value);
  if(Number.isNaN(d.getTime()))return {open:false,period:'',reason:'Ordering is temporarily unavailable.'};
- const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Indian/Maldives',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d);
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Indian/Maldives',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d);
  const get=(type:string)=>parts.find(part=>part.type===type)?.value||'';
  const minutes=(Number(get('hour'))||0)*60+(Number(get('minute'))||0);
- if(minutes>=12*60&&minutes<15*60)return {open:true,period:'Lunch',reason:'Lunch ordering is open until 15:00.'};
+ const lunchStart=get('weekday')==='Fri'?13*60+30:12*60;
+ if(minutes>=lunchStart&&minutes<15*60)return {open:true,period:'Lunch',reason:'Lunch ordering is open until 15:00.'};
  if(minutes>=18*60&&minutes<22*60)return {open:true,period:'Dinner',reason:'Dinner ordering is open until 22:00.'};
- if(minutes<12*60)return {open:false,period:'',reason:'Ordering is closed. Lunch ordering opens at 12:00.'};
+ if(minutes<lunchStart)return {open:false,period:'',reason:get('weekday')==='Fri'?'Ordering is closed. Friday lunch ordering opens at 13:30.':'Ordering is closed. Lunch ordering opens at 12:00.'};
  if(minutes<18*60)return {open:false,period:'',reason:'Ordering is closed between lunch and dinner. Dinner ordering opens at 18:00.'};
  return {open:false,period:'',reason:'Ordering is closed for today. Lunch ordering opens tomorrow at 12:00.'};
 }
@@ -29,7 +30,8 @@ export function restaurantMealPeriod(value:string|Date=new Date()):RestaurantMea
  const get=(type:string)=>parts.find(part=>part.type===type)?.value||'';
  const minutes=(Number(get('hour'))||0)*60+(Number(get('minute'))||0);
  if(minutes>=7*60&&minutes<9*60)return 'Breakfast';
- if(minutes>=12*60&&minutes<15*60)return 'Lunch';
+ const lunchStart=get('weekday')==='Fri'?13*60+30:12*60;
+ if(minutes>=lunchStart&&minutes<15*60)return 'Lunch';
  if(minutes>=18*60&&minutes<22*60)return 'Dinner';
  return '';
 }
