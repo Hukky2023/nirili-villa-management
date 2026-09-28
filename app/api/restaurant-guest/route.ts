@@ -11,6 +11,7 @@ import {mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,re
 import {updateRoomInventory} from '../../../lib/rooms';
 import {restaurantPaymentStatus,syncRestaurantRoomBill} from '../../../lib/pos-room-billing';
 import {emitAdminNotification} from '../../../lib/admin-notifications';
+import {loadRestaurantPaymentSettings} from '../../../lib/restaurant-payment-settings';
 
 async function identity(r:Request,create=false){
  const diningCookie=await sessionCookieName('nirili_dining');
@@ -84,11 +85,12 @@ async function view(id:any){
   tables:restaurantTables,
   mealPeriod:restaurantMealPeriod(),
   mode:id.mode,
+  usdToMvrRate:paymentSettings.usdToMvrRate,
   stays,
   assignedRoom,
   guest:id.user?.displayName||profile?.name||'',
   orders:(state.posOrders||[]).filter((o:any)=>o.guestKey===id.key).map((o:any)=>({
-   id:o.id,table:o.table,items:o.items,cents:o.cents,kitchen:o.kitchen,createdAt:o.createdAt,
+   id:o.id,table:o.table,orderType:o.orderType||'table',deliveryLocation:o.deliveryLocation||'',deliveryPhone:o.deliveryPhone||'',displayCurrency:o.displayCurrency||'USD',displayExchangeRate:o.displayExchangeRate||0,items:o.items,cents:o.cents,kitchen:o.kitchen,createdAt:o.createdAt,
    paymentStatus:restaurantPaymentStatus(o,state.stays.find((s:any)=>s.id===o.stayId))
   }))
  };
@@ -127,7 +129,13 @@ export async function POST(r:Request){
   state.posOrders??=[];
   if(typeof b.token!=='string'||!/^[-a-zA-Z0-9]{12,80}$/.test(b.token))throw Error('Refresh the menu and try again.');
   if(state.posOrders.some((o:any)=>o.guestKey===who.key&&o.token===b.token))return Response.json(await view(who));
-  if(!restaurantTables.includes(b.table)||!Array.isArray(b.items)||!b.items.length||b.items.length>40||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Select a table and menu items.');
+  const delivery=who.mode==='walkin'&&b.orderType==='delivery';
+  if(delivery){
+   if(typeof b.deliveryName!=='string'||!b.deliveryName.trim()||b.deliveryName.length>100)throw Error('Enter your name for delivery.');
+   if(typeof b.deliveryLocation!=='string'||!b.deliveryLocation.trim()||b.deliveryLocation.length>200)throw Error('Enter your delivery location.');
+   if(typeof b.deliveryPhone!=='string'||!b.deliveryPhone.trim()||b.deliveryPhone.length>30)throw Error('Enter your phone number.');
+  }else if(!restaurantTables.includes(b.table))throw Error('Select a table.');
+  if(!Array.isArray(b.items)||!b.items.length||b.items.length>40||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Select menu items.');
   const s=who.mode==='inhouse'&&who.user?diningOrderRoom(state.stays,who.user,b.stayId):null;
   const menu=(await loadMenu()).items,seen=new Set(),mealPeriod=restaurantMealPeriod(),mp=mealPlanOrderStatus(state,s?.id);
   const items=b.items.map((x:any)=>{
@@ -140,10 +148,12 @@ export async function POST(r:Request){
    return {id:i.id,name:i.category+' · '+i.name+(included?' (meal plan included)':''),quantity:x.quantity,unitCents:included?0:i.cents,cents:included?0:i.cents*x.quantity,included,menuCents:i.cents};
   });
   const date=new Date().toISOString(),id='POS-'+crypto.randomUUID().slice(0,8).toUpperCase(),cents=items.reduce((n:number,i:any)=>n+i.cents,0),mealPlanFreeOrder=items.some((i:any)=>i.included===true);
+  const localDelivery=delivery&&/^\+960[79]/.test(String(b.deliveryPhone||'').replace(/[\s()-]/g,''));
+  const paymentSettings=localDelivery?await loadRestaurantPaymentSettings():null;
   const order={
    id,token:b.token,guestKey:who.key,by:who.key,
    createdBy:who.mode==='inhouse'?'In-house guest':who.mode==='account'?'Walk-in guest account':'Walk-in customer',
-   createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:s?.guest||who.user?.displayName||walkName,table:b.table,notes:b.notes.trim(),items,cents,
+   createdAt:date,stayId:s?.id||'',room:s?.room||'',customer:delivery?b.deliveryName.trim():s?.guest||who.user?.displayName||walkName,table:delivery?'Delivery':b.table,orderType:delivery?'delivery':'table',deliveryLocation:delivery?b.deliveryLocation.trim():'',deliveryPhone:delivery?b.deliveryPhone.trim():'',displayCurrency:localDelivery?'MVR':'USD',displayExchangeRate:localDelivery?paymentSettings!.usdToMvrRate:0,notes:b.notes.trim(),items,cents,
    kitchen:'Awaiting cashier',method:s&&cents>0?'Room':'',mealPeriod,mealPlanFreeOrder,dailyFreeOrderLimit:mp.limit,history:[{date,by:who.mode,detail:'Guest order sent to cashier'}]
   };
   state.posOrders.push(order);
@@ -152,7 +162,7 @@ export async function POST(r:Request){
    s.history.unshift({date,by:'Guest',detail:billed?'Restaurant order '+id+' charged to room · USD '+(cents/100).toFixed(2):'Restaurant meal-plan order '+id+' · Included · no room charge'});
   }
   if(!await saveRestaurantState(state,revision,who.key))return Response.json({error:'Another order arrived. Please tap Send again.'},{status:409});
-  try{await emitAdminNotification({id:'restaurant:new:'+id,type:'restaurant',title:'New restaurant order',detail:String(order.customer||'Guest')+' · '+String(order.table||'')+(order.room?' · Room '+order.room:'')+' · USD '+(cents/100).toFixed(2),ref:id,url:'/restaurant'});}catch{}
+  try{await emitAdminNotification({id:'restaurant:new:'+id,type:'restaurant',title:'New restaurant order',detail:String(order.customer||'Guest')+' · '+String(order.table||'')+(order.deliveryLocation?' · '+order.deliveryLocation:'')+(order.deliveryPhone?' · '+order.deliveryPhone:'')+(order.room?' · Room '+order.room:'')+' · '+(order.displayCurrency==='MVR'?'Rf '+((cents/100)*order.displayExchangeRate).toFixed(2):'USD '+(cents/100).toFixed(2)),ref:id,url:'/restaurant'});}catch{}
   return Response.json(await view(who));
  }catch(e){return Response.json({error:(e as Error).message},{status:400});}
 }
