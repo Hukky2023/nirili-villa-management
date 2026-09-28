@@ -1,6 +1,6 @@
 import {diningRoom,diningOrderRoom} from '../../../lib/dining-room';
 import {sessionCookieName} from '../../../lib/tab-session';
-import {mealItemIncluded,mealPlanOrderStatus,restaurantMealPeriod} from '../../../lib/meal-access';
+import {mealItemIncluded,mealPlanOrderStatus,restaurantMealPeriod,restaurantOrderingStatus} from '../../../lib/meal-access';
 import {cookies} from 'next/headers';
 import {currentGuestUser,authDb,randomToken,digest,sameOrigin,limit} from '../../../lib/auth';
 import {loadStays,stayKey} from '../../../lib/stays';
@@ -85,6 +85,7 @@ async function view(id:any){
   tables:restaurantTables,
   mealPeriod:restaurantMealPeriod(),
   mode:id.mode,
+  ordering:restaurantOrderingStatus(),
   stays,
   assignedRoom,
   guest:id.user?.displayName||profile?.name||'',
@@ -118,6 +119,8 @@ export async function POST(r:Request){
   }
   if(b.action==='end')return Response.json({ok:true},{headers:{'Set-Cookie':diningCookie+'=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0'}});
   const who=await identity(r);
+  const ordering=restaurantOrderingStatus();
+  if(!ordering.open)throw Error(ordering.reason);
   let walkName=who.user?.displayName||'';
   if(who.mode==='walkin'){
    const visit=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind('dining-visit:'+who.key).first<any>();
