@@ -15,6 +15,8 @@ type Props={
  date:string;
  onSaved:()=>Promise<void>|void;
  onMessage:(message:string)=>void;
+ initialScheduleId?:string;
+ triggerLabel?:string;
 };
 
 const categoriesFor=(adults:number,children:number,infants:number)=>[
@@ -23,14 +25,14 @@ const categoriesFor=(adults:number,children:number,infants:number)=>[
  ...Array.from({length:Math.max(0,infants)},()=> 'infant')
 ];
 const blankForm=()=>({
- scheduleId:'',menuItemId:'',guestType:'inhouse',stayId:'',guest:'',hotel:'',externalRoom:'',phone:'',
+ scheduleId:'',menuItemId:'',guestType:'inhouse',stayId:'',guest:'',hotel:'',externalRoom:'',phone:'',email:'',
  quantity:1,adults:1,children:0,infants:0,groupName:'',guestNames:[''],guestCategories:['adult'],footSizes:[''],
  notes:'',vesselId:'',buggyRequested:false,privateBoatRequested:false
 });
 function maldivesToday(){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()),g=(t:string)=>p.find(x=>x.type===t)?.value||'';return g('year')+'-'+g('month')+'-'+g('day');}
 const ageLabel=(value:string)=>value==='child'?'Child (3–11)':value==='infant'?'Under 3':'Adult (12+)';
 
-export default function AdminExcursionBooking({schedules,sharedBoatGroups,resources,stays,menu,date,onSaved,onMessage}:Props){
+export default function AdminExcursionBooking({schedules,sharedBoatGroups,resources,stays,menu,date,onSaved,onMessage,initialScheduleId='',triggerLabel='+ Book guest'}:Props){
  const [open,setOpen]=useState(false),[saving,setSaving]=useState(false),[loadingDay,setLoadingDay]=useState(false),[loadingMenu,setLoadingMenu]=useState(false),[formError,setFormError]=useState('');
  const [bookingDate,setBookingDate]=useState(date),[daySchedules,setDaySchedules]=useState<any[]>(schedules),[dayGroups,setDayGroups]=useState<Record<string,any>>(sharedBoatGroups);
  const [form,setForm]=useState<any>(blankForm());
@@ -85,7 +87,7 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
  });
  const money=(c:number)=>'$'+((Number(c)||0)/100).toFixed(2);
 
- function reset(){setForm(blankForm());setBookingDate(date);setDaySchedules(schedules);setDayGroups(sharedBoatGroups);setFormError('');}
+ function reset(){setForm({...blankForm(),scheduleId:initialScheduleId||''});setBookingDate(date);setDaySchedules(schedules);setDayGroups(sharedBoatGroups);setFormError('');}
  function fail(message:string){setFormError(message);onMessage('');}
  function close(){if(saving)return;setOpen(false);reset();}
  function resizeGuestArrays(current:any,total:number,categories:string[]){
@@ -138,13 +140,13 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
   const footSizes=(form.footSizes||[]).slice(0,total);
   if(snorkeling&&(footSizes.length!==total||footSizes.some((value:any)=>!Number.isInteger(Number(value))||Number(value)<15||Number(value)>50))){const missing=footSizes.findIndex((value:any)=>!Number.isInteger(Number(value))||Number(value)<15||Number(value)>50);fail('Enter an EU foot size from 15 to 50 for '+(guestNames[missing]||('Guest '+(missing+1)))+'. Foot size is required for snorkeling fins.');return;}
   if(form.guestType==='inhouse'&&!form.stayId){fail('Choose an in-house guest.');return;}
-  if(form.guestType==='walkin'&&(!form.guest.trim()||!form.hotel.trim()||!form.phone.trim())){fail('Enter the walk-in guest name, hotel and WhatsApp number.');return;}
+  if(form.guestType==='walkin'&&(!form.guest.trim()||!form.phone.trim()||!form.email.trim())){fail('Enter the walk-in guest name, phone number and email address.');return;}
   if(needsExtraVessel&&!form.vesselId){fail('This departure does not have enough seats. Choose an extra vessel for this booking.');return;}
   setSaving(true);onMessage('');
   try{
    const payload=selected?{action:'admin-booking',date:bookingDate,scheduleId:selected.id}:{action:'admin-booking-auto',date:bookingDate,menuItemId:selectedOther.id,forceUnscheduled:true};
    const r=await fetch('/api/excursion-schedules',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    ...payload,guestType:form.guestType,stayId:form.stayId,guest:form.guest,hotel:form.hotel,externalRoom:form.externalRoom,phone:form.phone,
+    ...payload,guestType:form.guestType,stayId:form.stayId,guest:form.guest,hotel:form.hotel,externalRoom:form.externalRoom,phone:form.phone,email:form.email,
     quantity:total,adults:Number(form.adults)||0,children:Number(form.children)||0,infants:Number(form.infants)||0,
     groupName:form.groupName,guestNames,guestCategories,footSizes:snorkeling?footSizes.map((value:any)=>Number(value)):[],
     privateBoatRequested:privateBoatEligible&&!!form.privateBoatRequested,vesselId:needsExtraVessel?form.vesselId:'',
@@ -168,14 +170,14 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
  const estimatedTotal=(selectedPrice||otherPrice)+(form.privateBoatRequested?PRIVATE_BOAT_SURCHARGE_CENTS:0);
 
  return <>
-  <button type="button" className="excursion-secondary-btn" onClick={()=>{setOpen(true);setBookingDate(date);setDaySchedules(schedules);setDayGroups(sharedBoatGroups)}}>+ Book guest</button>
+  <button type="button" className="excursion-secondary-btn" onClick={()=>{setOpen(true);setBookingDate(date);setDaySchedules(schedules);setDayGroups(sharedBoatGroups);setForm({...blankForm(),scheduleId:initialScheduleId||''});setFormError('')}}>{triggerLabel}</button>
   {open&&<div className="excursion-schedule-overlay"><form className="excursion-schedule-dialog admin-excursion-booking" onSubmit={submit} noValidate>
    <header><div><small>ADMIN BOOKING</small><h3>Book excursion on any day</h3><p>{formatDateDMY(bookingDate)} · Add every guest, then confirm a scheduled trip or send it to Awaiting Scheduling.</p></div><button type="button" className="excursion-dialog-close" aria-label="Close" onClick={close}><X/></button></header>
    <div className="excursion-schedule-form-grid">
     <label>Date<input required type="date" min={maldivesToday()} value={bookingDate} onChange={e=>loadDay(e.target.value)}/><small>Change the date to load that day's excursion schedule.</small></label>
     <label>Available trip<select required disabled={loadingDay} value={form.scheduleId} onChange={e=>{const value=e.target.value;setForm({...form,scheduleId:value,menuItemId:value==='__other__'?form.menuItemId:'',vesselId:'',privateBoatRequested:false});if(value==='__other__')void loadExcursionMenu();}}><option value="">{loadingDay?'Loading trips…':'Choose available trip'}</option>{bookableSchedules.map((trip:any)=>{const tripGroup=trip.sharedBoatKey?dayGroups[trip.sharedBoatKey]:null;const tripBooked=Number(tripGroup?.bookedPax??trip.bookedPax??0);const tripCapacity=Number(tripGroup?.capacity??trip.capacity??0);const left=Math.max(0,tripCapacity-tripBooked);return <option key={trip.id} value={trip.id}>{trip.time} · {trip.name} · {left>0?left+' seat'+(left===1?'':'s')+' left':'FULL · extra vessel required'}</option>})}<option value="__other__">Other trip</option></select><small>{selected?selected.time+' Maldives time · '+remaining+' of '+capacity+' seats available':choosingOther?'Choose the excursion below. Admin will schedule the trip after booking.':'Choose a scheduled trip or Other trip.'}</small></label>
     {choosingOther&&<label>Excursion<select required disabled={loadingMenu} value={form.menuItemId} onChange={e=>setForm({...form,menuItemId:e.target.value,privateBoatRequested:false})}><option value="">{loadingMenu?'Loading excursion menu…':'Choose excursion'}</option>{excursionMenu.map((item:any)=><option key={item.id} value={item.id}>{item.name}</option>)}</select><small>{loadingMenu?'Loading the latest excursion menu…':'All active excursions come directly from the Excursion menu. Other trip bookings go to Awaiting Scheduling.'}</small></label>}
-    <label>Guest type<select value={form.guestType} onChange={e=>setForm({...form,guestType:e.target.value,stayId:'',guest:'',hotel:'',externalRoom:'',phone:'',buggyRequested:false})}><option value="inhouse">In-house guest</option><option value="walkin">Walk-in guest</option></select></label>
+    <label>Guest type<select value={form.guestType} onChange={e=>setForm({...form,guestType:e.target.value,stayId:'',guest:'',hotel:'',externalRoom:'',phone:'',email:'',buggyRequested:false})}><option value="inhouse">In-house guest</option><option value="walkin">Walk-in guest</option></select></label>
     <label>Family / group name<input maxLength={100} placeholder="Optional" value={form.groupName} onChange={e=>setForm({...form,groupName:e.target.value})}/><small>One booking and one combined payment can cover the whole family/group.</small></label>
     <div className="full admin-child-policy"><strong>Children policy</strong><span>{excursionChildPolicyText()}</span></div>
 
@@ -186,8 +188,9 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
 
     {form.guestType==='inhouse'?<label className="full">In-house guest<select required value={form.stayId} onChange={e=>selectInHouse(e.target.value)}><option value="">Choose room / guest</option>{inHouse.map((s:any)=><option key={s.id} value={s.id}>Room {s.room} · {s.guest}</option>)}</select><small>The excursion charge will be added to the room's main bill. Buggy pickup is included automatically.</small></label>:<>
      <label>Lead guest<input required maxLength={100} value={form.guest} onChange={e=>updateWalkInLead(e.target.value)}/></label>
-     <label>WhatsApp<input required placeholder="+960..." maxLength={30} value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label>
-     <label>Hotel / accommodation<input required maxLength={150} value={form.hotel} onChange={e=>setForm({...form,hotel:e.target.value})}/></label>
+     <label>Phone / WhatsApp<input required placeholder="+960..." maxLength={30} value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label>
+     <label>Email<input required type="email" maxLength={200} placeholder="guest@example.com" value={form.email||''} onChange={e=>setForm({...form,email:e.target.value})}/><small>Booking confirmation is sent automatically after the excursion is saved.</small></label>
+     <label>Hotel / accommodation<input maxLength={150} placeholder="Optional" value={form.hotel} onChange={e=>setForm({...form,hotel:e.target.value})}/></label>
      <label>Room number<input maxLength={50} value={form.externalRoom} onChange={e=>setForm({...form,externalRoom:e.target.value})}/></label>
      <label className="full guest-buggy-request"><span><input type="checkbox" checked={!!form.buggyRequested} onChange={e=>setForm({...form,buggyRequested:e.target.checked})}/> Request buggy pickup</span><small>The guest should be ready outside the hotel or meeting location 15 minutes before departure.</small></label>
     </>}
