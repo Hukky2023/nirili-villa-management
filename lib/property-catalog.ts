@@ -10,6 +10,11 @@ export function propertyPackages(state:any){
   .filter((item:any)=>item&&item.removed!==true)
   .sort((a:any,b:any)=>String(a.name||'').localeCompare(String(b.name||'')));
 }
+export function propertyPromotions(state:any){
+ return (Array.isArray(state.propertyPromotions)?state.propertyPromotions:[])
+  .filter((item:any)=>item&&item.removed!==true)
+  .sort((a:any,b:any)=>String(a.name||'').localeCompare(String(b.name||'')));
+}
 export function propertyCatalog(state:any,revision:number){
  updateRoomInventory(state);
  return {
@@ -17,6 +22,7 @@ export function propertyCatalog(state:any,revision:number){
   rates:roomRates(state.roomRates),
   services:transferServices(state),
   packages:propertyPackages(state),
+  promotions:propertyPromotions(state),
   revision
  };
 }
@@ -70,14 +76,10 @@ export function changePropertyCatalog(state:any,body:any,by:string){
    const singleCents=Number(raw.singleCents??raw.cents??0);
    const doubleCents=Number(raw.doubleCents??raw.cents??0);
    const tripleCents=Number(raw.tripleCents??raw.cents??0);
-   const validFrom=text(raw.validFrom,10),validTo=text(raw.validTo,10);
    if(!name)throw Error('Enter a package name.');
    if(!Number.isInteger(nights)||nights<1||nights>30)throw Error('Choose package duration from 1 to 30 nights.');
    if(!allowedMeals.includes(mealPlan))throw Error('Choose a valid meal plan.');
    if([singleCents,doubleCents,tripleCents].some(value=>!Number.isInteger(value)||value<0||value>10000000))throw Error('Enter Single, Double and Triple package prices between $0 and $100,000.');
-   if(validFrom&&!/^\d{4}-\d{2}-\d{2}$/.test(validFrom))throw Error('Choose a valid package start date.');
-   if(validTo&&!/^\d{4}-\d{2}-\d{2}$/.test(validTo))throw Error('Choose a valid package end date.');
-   if(validFrom&&validTo&&validTo<validFrom)throw Error('Package end date must be after the start date.');
    const item={
     id:id||'package-'+crypto.randomUUID(),
     kind:'package',
@@ -94,10 +96,6 @@ export function changePropertyCatalog(state:any,body:any,by:string){
     // Keep cents for older consumers; double occupancy is the default package headline price.
     cents:doubleCents,
     childPolicy:'Maximum 3 guests per room. 1 adult + up to 2 children, or 2 adults + 1 child. Children are included within the 3-person room capacity.',
-    promotionTitle:text(raw.promotionTitle,160),
-    promotionDetail:text(raw.promotionDetail,2000),
-    validFrom,
-    validTo,
     active:raw.active!==false,
     updatedAt:at,
     updatedBy:by
@@ -106,6 +104,46 @@ export function changePropertyCatalog(state:any,body:any,by:string){
    detail=(id?'Updated package ':'Added package ')+item.name;
   }
   state.propertyPackages=packages;
+ }else if(body.action==='save-promotion'||body.action==='remove-promotion'){
+  const promotions=propertyPromotions(state).map((item:any)=>({...item,packageIds:Array.isArray(item.packageIds)?[...item.packageIds]:[],roomTypes:Array.isArray(item.roomTypes)?[...item.roomTypes]:[]}));
+  const id=text(body.id,100),index=promotions.findIndex((item:any)=>item.id===id);
+  if(id&&index<0)throw Error('Promotion not found. Refresh and try again.');
+  if(body.action==='remove-promotion'){
+   if(index<0)throw Error('Choose a promotion.');
+   detail='Removed promotion '+promotions[index].name;
+   promotions.splice(index,1);
+  }else{
+   const raw=body.promotion||{};
+   const name=text(raw.name,160);
+   const detailText=text(raw.detail,2000);
+   const validFrom=text(raw.validFrom,10),validTo=text(raw.validTo,10);
+   const packageIds=Array.isArray(raw.packageIds)?Array.from(new Set(raw.packageIds.map((value:any)=>text(value,100)).filter(Boolean))).slice(0,100):[];
+   const roomTypes=Array.isArray(raw.roomTypes)?Array.from(new Set(raw.roomTypes.map((value:any)=>text(value,80)).filter(Boolean))).slice(0,50):[];
+   const packageSet=new Set(propertyPackages(state).map((item:any)=>item.id));
+   const roomTypeSet=new Set((state.rooms||[]).map((room:any)=>text(room.type,80)).filter(Boolean));
+   if(!name)throw Error('Enter a promotion name.');
+   if(!validFrom||!/^\d{4}-\d{2}-\d{2}$/.test(validFrom))throw Error('Choose the promotion start date.');
+   if(!validTo||!/^\d{4}-\d{2}-\d{2}$/.test(validTo))throw Error('Choose the promotion end date.');
+   if(validTo<validFrom)throw Error('Promotion end date must be after the start date.');
+   if(!packageIds.length||packageIds.some(id=>!packageSet.has(id)))throw Error('Choose at least one valid package for this promotion.');
+   if(!roomTypes.length||roomTypes.some(type=>!roomTypeSet.has(type)))throw Error('Choose at least one valid room type for this promotion.');
+   const item={
+    id:id||'promotion-'+crypto.randomUUID(),
+    kind:'promotion',
+    name,
+    detail:detailText,
+    packageIds,
+    roomTypes,
+    validFrom,
+    validTo,
+    active:raw.active!==false,
+    updatedAt:at,
+    updatedBy:by
+   };
+   if(index<0)promotions.push(item);else promotions[index]=item;
+   detail=(id?'Updated promotion ':'Added promotion ')+item.name;
+  }
+  state.propertyPromotions=promotions;
  }else if(body.action==='save-service'||body.action==='remove-service'){
   const services=transferServices(state).map((item:any)=>({...item}));
   const id=text(body.id,100),index=services.findIndex((item:any)=>item.id===id);
