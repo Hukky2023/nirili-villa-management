@@ -17,6 +17,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebSettings
+import android.webkit.WebResourceRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -52,6 +53,18 @@ class MainActivity : AppCompatActivity() {
         webView.settings.setSupportZoom(false)
         webView.clearCache(true)
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val target = request?.url?.toString().orEmpty()
+                if (target.isBlank() || !target.startsWith(BuildConfig.MANAGEMENT_URL)) return false
+
+                val preserved = preserveSessionTab(target)
+                if (preserved != target) {
+                    view?.loadUrl(preserved)
+                    return true
+                }
+                return false
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 if (!url.isNullOrBlank() && url.startsWith(BuildConfig.MANAGEMENT_URL)) {
@@ -64,6 +77,7 @@ class MainActivity : AppCompatActivity() {
                             // Once login succeeds, never let Android Back navigate
                             // into the old sign-in page that was behind the dashboard.
                             view?.clearHistory()
+                            injectTabPersistence(view, url)
                         }
                         isLoginUrl(url) -> {
                             // Reaching the login screen normally means the user
@@ -155,6 +169,75 @@ class MainActivity : AppCompatActivity() {
         return getSharedPreferences(PREFS, MODE_PRIVATE)
             .getString(KEY_FCM_TOKEN, "")
             .orEmpty()
+    }
+
+    private fun currentTabId(): String {
+        val current = if (::webView.isInitialized) webView.url.orEmpty() else ""
+        return try {
+            Uri.parse(current).getQueryParameter("tab").orEmpty()
+                .takeIf { it.matches(Regex("^[a-f0-9]{32}$")) }
+                ?: getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_TAB_ID, "").orEmpty()
+        } catch (_: Exception) {
+            getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_TAB_ID, "").orEmpty()
+        }
+    }
+
+    private fun preserveSessionTab(value: String): String {
+        if (!value.startsWith(BuildConfig.MANAGEMENT_URL)) return value
+        return try {
+            val uri = Uri.parse(value)
+            val existing = uri.getQueryParameter("tab").orEmpty()
+            if (existing.matches(Regex("^[a-f0-9]{32}$"))) {
+                getSharedPreferences(PREFS, MODE_PRIVATE)
+                    .edit()
+                    .putString(KEY_TAB_ID, existing)
+                    .apply()
+                return value
+            }
+            val tab = currentTabId()
+            if (!tab.matches(Regex("^[a-f0-9]{32}$"))) return value
+            uri.buildUpon().appendQueryParameter("tab", tab).build().toString()
+        } catch (_: Exception) {
+            value
+        }
+    }
+
+    private fun injectTabPersistence(view: WebView?, pageUrl: String) {
+        if (view == null) return
+        val tab = try { Uri.parse(pageUrl).getQueryParameter("tab").orEmpty() } catch (_: Exception) { "" }
+        if (!tab.matches(Regex("^[a-f0-9]{32}$"))) return
+
+        getSharedPreferences(PREFS, MODE_PRIVATE)
+            .edit()
+            .putString(KEY_TAB_ID, tab)
+            .apply()
+
+        val script = """
+            (function(){
+              const tab='$tab';
+              const sameOrigin=(u)=>{try{return new URL(u,location.href).origin===location.origin}catch(e){return false}};
+              const withTab=(u)=>{
+                try{
+                  const x=new URL(u,location.href);
+                  if(x.origin!==location.origin)return u;
+                  if(!x.searchParams.get('tab'))x.searchParams.set('tab',tab);
+                  return x.pathname+x.search+x.hash;
+                }catch(e){return u}
+              };
+              const ps=history.pushState.bind(history);
+              const rs=history.replaceState.bind(history);
+              history.pushState=(s,t,u)=>ps(s,t,u?withTab(u):u);
+              history.replaceState=(s,t,u)=>rs(s,t,u?withTab(u):u);
+              document.addEventListener('click',function(e){
+                const a=e.target&&e.target.closest?e.target.closest('a[href]'):null;
+                if(!a)return;
+                const href=a.getAttribute('href');
+                if(!href||href.startsWith('#')||!sameOrigin(href))return;
+                a.setAttribute('href',withTab(href));
+              },true);
+            })();
+        """.trimIndent()
+        view.evaluateJavascript(script, null)
     }
 
     private fun isLoginUrl(value: String): Boolean {
@@ -328,5 +411,6 @@ class MainActivity : AppCompatActivity() {
         private const val PREFS = "nirili_push"
         private const val KEY_FCM_TOKEN = "fcm_token"
         private const val KEY_LAST_URL = "last_url"
+        private const val KEY_TAB_ID = "tab_id"
     }
 }
