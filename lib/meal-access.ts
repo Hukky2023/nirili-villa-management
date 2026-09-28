@@ -29,9 +29,8 @@ export function restaurantMealPeriod(value:string|Date=new Date()):RestaurantMea
  const get=(type:string)=>parts.find(part=>part.type===type)?.value||'';
  const minutes=(Number(get('hour'))||0)*60+(Number(get('minute'))||0);
  if(minutes>=7*60&&minutes<9*60)return 'Breakfast';
- const lunchStart=get('weekday')==='Fri'?13*60+30:12*60;
- if(minutes>=lunchStart&&minutes<15*60)return 'Lunch';
- if(minutes>=18*60&&minutes<23*60)return 'Dinner';
+ if(minutes>=12*60&&minutes<15*60)return 'Lunch';
+ if(minutes>=18*60&&minutes<22*60)return 'Dinner';
  return '';
 }
 
