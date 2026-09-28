@@ -534,8 +534,8 @@ export async function PATCH(r:Request){
     if(!stay)throw Error('Choose a valid in-house guest.');
     guest=stay.guest;phone=stay.whatsapp||'';hotel='Nirili Villa';room=stay.room;accountId=stay.accountId;stayId=stay.id;
    }else{
-    guest=String(b.guest||'').trim().slice(0,100);phone=String(b.phone||'').replace(/[ ()-]/g,'');hotel=String(b.hotel||'').trim().slice(0,150);room=String(b.externalRoom||'').trim().slice(0,50);
-    if(!guest||!hotel||!/^\+[1-9]\d{7,14}$/.test(phone))throw Error('Enter the walk-in guest name, hotel and WhatsApp number with country code.');
+    guest=String(b.guest||'').trim().slice(0,100);phone=String(b.phone||'').replace(/[ ()-]/g,'');email=String(b.email||'').trim().toLowerCase().slice(0,200);hotel=String(b.hotel||'').trim().slice(0,150)||'Walk-in guest';room=String(b.externalRoom||'').trim().slice(0,50);
+    if(!guest||!/^\+[1-9]\d{7,14}$/.test(phone)||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw Error('Enter the walk-in guest name, phone number with country code and a valid email address.');
    }
    const details=cleanAdminGuestDetails(b,quantity,guest,item.name,mix);
    const unitPriceCents=Math.max(0,Number(item.cents)||0),pricingUnit=item.pricingUnit==='couple'?'couple':'guest';
@@ -635,8 +635,8 @@ export async function PATCH(r:Request){
     if(!stay)throw Error('Choose a valid in-house guest.');
     guest=stay.guest;phone=stay.whatsapp||'';hotel='Nirili Villa';room=stay.room;accountId=stay.accountId;stayId=stay.id;
    }else{
-    guest=String(b.guest||'').trim().slice(0,100);phone=String(b.phone||'').replace(/[ ()-]/g,'');hotel=String(b.hotel||'').trim().slice(0,150);room=String(b.externalRoom||'').trim().slice(0,50);
-    if(!guest||!hotel||!/^\+[1-9]\d{7,14}$/.test(phone))throw Error('Enter the walk-in guest name, hotel and WhatsApp number with country code.');
+    guest=String(b.guest||'').trim().slice(0,100);phone=String(b.phone||'').replace(/[ ()-]/g,'');email=String(b.email||'').trim().toLowerCase().slice(0,200);hotel=String(b.hotel||'').trim().slice(0,150)||'Walk-in guest';room=String(b.externalRoom||'').trim().slice(0,50);
+    if(!guest||!/^\+[1-9]\d{7,14}$/.test(phone)||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw Error('Enter the walk-in guest name, phone number with country code and a valid email address.');
    }
    const details=cleanAdminGuestDetails(b,quantity,guest,schedule.name,mix);
    const crew=resources.crew.filter((c:any)=>schedule.crewIds?.includes(c.id)),unitPriceCents=Math.max(0,Number(schedule.priceCents)||0),baseQuotedCents=excursionPriceCents(unitPriceCents,'guest',mix),privateBoatSurchargeCents=privateBoatRequested?PRIVATE_BOAT_SURCHARGE_CENTS:0,cents=baseQuotedCents+privateBoatSurchargeCents,id='EXC-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
