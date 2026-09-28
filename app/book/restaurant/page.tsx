@@ -11,7 +11,7 @@ export default function PublicRestaurantPage(){
     <h1>Island dining,<br/>connected to Nirili POS.</h1>
     <p>View the live Nirili menu and choose dine-in or delivery. Dine-in guests can select a table, while delivery guests can enter their name, location and phone number before sending the order directly to the cashier and kitchen.</p>
     <div className="restaurant-meta">
-     <article><b>Location</b><small>Nirili Villa, Dhiffushi, Kaafu Atoll, Maldives</small></article>
+     <article><b><a href="https://maps.app.goo.gl/NHLJpj1y72SZTDWU7?g_st=ac" target="_blank" rel="noopener noreferrer">Location</a></b><small>Nirili Villa, Dhiffushi, Kaafu Atoll, Maldives</small></article>
      <article><b>Breakfast</b><small>07:00–09:00</small></article>
      <article><b>Lunch</b><small>12:00–15:00<br/>Friday 13:30–15:00</small></article>
      <article><b>Dinner</b><small>18:00–22:00</small></article>
