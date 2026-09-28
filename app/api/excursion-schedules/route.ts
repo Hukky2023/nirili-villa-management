@@ -493,19 +493,62 @@ export async function PATCH(r:Request){
    const {state,revision}=await loadStays();
    const order=(state.orders||[]).find((o:any)=>o.id===requestId&&o.kind==='excursion'&&o.unscheduledRequest===true&&o.approvalStatus==='Pending'&&o.status!=='Cancelled');
    if(!order)throw Error('This scheduling request has already been handled.');
-   if(order.specialPackage===true&&order.packageGroupId)throw Error('A Special Package leg cannot be rejected individually. Reschedule this leg or cancel the full package.');
-   order.approvalStatus='Declined';
-   order.status='Cancelled';
-   order.unscheduledRequest=false;
-   order.seatRequest=false;
-   order.cents=0;
-   order.rejectedAt=new Date().toISOString();
-   order.rejectedBy=user.username;
-   order.guestNotified=false;
+
+   // Package requests appear as multiple unscheduled excursion legs. Rejecting any
+   // one of those rows means rejecting the complete package request so no orphan
+   // legs remain in "Trips waiting to be scheduled".
+   const packageGroupId=String(order.packageGroupId||'');
+   const targets=packageGroupId
+    ?(state.orders||[]).filter((item:any)=>
+      item.kind==='excursion'&&String(item.packageGroupId||'')===packageGroupId&&
+      item.unscheduledRequest===true&&item.approvalStatus==='Pending'&&item.status!=='Cancelled'
+     )
+    :[order];
+
+   if(!targets.length)throw Error('This scheduling request has already been handled.');
+   const now=new Date().toISOString();
+   for(const target of targets){
+    target.approvalStatus='Declined';
+    target.status='Cancelled';
+    target.unscheduledRequest=false;
+    target.seatRequest=false;
+    target.requestedOverCapacity=false;
+    target.cents=0;
+    target.rejectedAt=now;
+    target.rejectedBy=user.username;
+    target.guestNotified=false;
+   }
+
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
-   if(order.source==='External guest website'&&order.email&&order.manageToken)try{await sendExternalExcursionDeclinedEmail({email:order.email,guest:order.guest,reference:order.id,excursion:order.name,date:order.date,time:order.time||'',quantity:Number(order.quantity)||0,quotedCents:Number(order.quotedCents)||0,hotel:order.hotel,manageToken:order.manageToken,eventId:'decline-'+order.rejectedAt});}catch{}
-   return Response.json({ok:true,requestId,status:'Rejected'});
+
+   // One decline email is enough for a package; do not send one email per leg.
+   const emailOrder=targets[0];
+   if(emailOrder.source==='External guest website'&&emailOrder.email&&emailOrder.manageToken)try{
+    await sendExternalExcursionDeclinedEmail({
+     email:emailOrder.email,
+     guest:emailOrder.guest,
+     reference:packageGroupId||emailOrder.id,
+     excursion:packageGroupId?(emailOrder.packageName||'Excursion package'):emailOrder.name,
+     date:emailOrder.date,
+     time:emailOrder.time||'',
+     quantity:Number(emailOrder.quantity)||0,
+     quotedCents:packageGroupId?Math.max(0,Number(emailOrder.packageTotalCents)||0):Math.max(0,Number(emailOrder.quotedCents)||0),
+     hotel:emailOrder.hotel,
+     manageToken:emailOrder.manageToken,
+     eventId:'decline-'+now
+    });
+   }catch{}
+
+   const rejectedIds=targets.map((item:any)=>String(item.id));
+   return Response.json({
+    ok:true,
+    requestId,
+    rejectedIds,
+    packageGroupId:packageGroupId||null,
+    rejectedCount:rejectedIds.length,
+    status:'Rejected'
+   });
   }
 
   if(b.action==='admin-booking-auto'){
