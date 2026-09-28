@@ -40,7 +40,26 @@ export async function GET(request:Request){
   const children=Math.max(0,Math.min(2,Number(url.searchParams.get('children')||0)));
   const pax=adults+children;
   const {state}=await hotelState();
-  const base={today,plans:plans.map(plan=>({name:plan,nightlyCents:nightly(plan,Math.min(3,pax),state.roomRates)}))};
+  const packages=(Array.isArray(state.propertyPackages)?state.propertyPackages:[])
+   .filter((item:any)=>item&&item.active!==false)
+   .map((item:any)=>({
+    id:String(item.id||''),
+    name:String(item.name||'Package'),
+    nights:Number(item.nights)||1,
+    days:Number(item.days)||Number(item.nights||1)+1,
+    mealPlan:String(item.mealPlan||'Bed & Breakfast'),
+    excursions:Array.isArray(item.excursions)?item.excursions:[],
+    includeTransfer:item.includeTransfer===true,
+    transferLabel:String(item.transferLabel||''),
+    singleCents:Number(item.singleCents??item.cents??0),
+    doubleCents:Number(item.doubleCents??item.cents??0),
+    tripleCents:Number(item.tripleCents??item.cents??0),
+    childPolicy:String(item.childPolicy||'')
+   }));
+  const promotions=(Array.isArray(state.propertyPromotions)?state.propertyPromotions:[])
+   .filter((item:any)=>item&&item.active!==false)
+   .map((item:any)=>({id:String(item.id||''),name:String(item.name||'Promotion'),detail:String(item.detail||''),packageIds:Array.isArray(item.packageIds)?item.packageIds:[],roomTypes:Array.isArray(item.roomTypes)?item.roomTypes:[],validFrom:String(item.validFrom||''),validTo:String(item.validTo||'')}));
+  const base={today,plans:plans.map(plan=>({name:plan,nightlyCents:nightly(plan,Math.min(3,pax),state.roomRates)})),packages,promotions};
   if(!checkIn||!checkOut)return Response.json(base,{headers});
   if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||pax<1||pax>3)return Response.json({...base,error:'Choose valid stay dates and up to 3 guests per room.'},{status:400,headers});
   const bookingClosed=!!bookingClosureForStay(state,checkIn,checkOut);
@@ -57,6 +76,7 @@ export async function POST(request:Request){
   const guest=safeText(body.guest,100),phone=cleanPhone(body.phone),email=safeText(body.email,254).toLowerCase();
   const checkIn=String(body.checkIn||''),checkOut=String(body.checkOut||''),meal=String(body.meal||'');
   const adults=Number(body.adults),children=Number(body.children),pax=adults+children;
+  const packageId=safeText(body.packageId,100);
   const notes=safeText(body.notes,1000),token=String(body.token||''),transportPlan=normalizeTransportPlan(body.transportPlan,checkIn,checkOut);
   const today=islandToday(),nights=nightsBetween(checkIn,checkOut);
   if(!guest||!phonePattern.test(phone)||!email||!emailPattern.test(email))throw Error('Enter your name, WhatsApp number with country code, and a valid email address.');
@@ -70,10 +90,16 @@ export async function POST(request:Request){
   if(bookingClosureForStay(state,checkIn,checkOut))return Response.json({error:'Bookings are closed for one or more selected dates. Please choose different dates or contact reception.'},{status:409,headers});
   const rooms=availability(state,checkIn,checkOut,pax);
   if(!rooms.length)return Response.json({error:'No rooms are currently available for these dates and guest count. Try different dates or contact reception.'},{status:409,headers});
-  const estimate=nightly(meal,pax,state.roomRates)*nights;
+  const selectedPackage=packageId?(Array.isArray(state.propertyPackages)?state.propertyPackages:[]).find((item:any)=>String(item.id)===packageId&&item.active!==false):null;
+  if(packageId&&!selectedPackage)throw Error('The selected package is no longer available. Refresh and choose again.');
+  if(selectedPackage&&Number(selectedPackage.nights)!==nights)throw Error('The selected package requires '+selectedPackage.nights+' nights. Update your stay dates.');
+  if(selectedPackage&&String(selectedPackage.mealPlan||'')!==meal)throw Error('The selected package uses '+selectedPackage.mealPlan+'. Refresh and choose the package again.');
+  const packagePrice=selectedPackage?(pax<=1?Number(selectedPackage.singleCents??selectedPackage.cents??0):pax===2?Number(selectedPackage.doubleCents??selectedPackage.cents??0):Number(selectedPackage.tripleCents??selectedPackage.cents??0)):0;
+  const estimate=selectedPackage?packagePrice:nightly(meal,pax,state.roomRates)*nights;
   const id='REQ-'+crypto.randomUUID().slice(0,8).toUpperCase(),manageToken=createBookingManageToken();
   const booking={
    id,token,manageToken,guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes,transportPlan,
+   ...(selectedPackage?{packageId:selectedPackage.id,packageName:selectedPackage.name,packageQuotedCents:packagePrice}:{}),
    status:'Pending',source:'Guest booking website',createdAt:new Date().toISOString(),estimate
   };
   const result:any=await submitPublicBookingRequest(booking);
@@ -88,7 +114,7 @@ export async function POST(request:Request){
   }catch{}
   if(!result?.duplicate)try{await emitAdminNotification({
    id:'hotel:new:'+bookingRef,type:'hotel',title:'New hotel booking',
-   detail:guest+' · '+checkIn+' → '+checkOut+' · '+meal+' · '+pax+' guest'+(pax===1?'':'s'),
+   detail:guest+' · '+checkIn+' → '+checkOut+' · '+(selectedPackage?selectedPackage.name+' · ':'')+meal+' · '+pax+' guest'+(pax===1?'':'s'),
    ref:bookingRef,url:'/home'
   });}catch{}
   return Response.json({ok:true,id:bookingRef,duplicate:!!result?.duplicate,estimateCents:estimate,nights,email:emailResult},{status:201,headers});
