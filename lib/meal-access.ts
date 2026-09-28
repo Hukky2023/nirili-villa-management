@@ -8,6 +8,19 @@ export const maldivesDay=(value:string|Date=new Date())=>{
  return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
 };
 
+export function restaurantOrderingStatus(value:string|Date=new Date()){
+ const d=value instanceof Date?value:new Date(value);
+ if(Number.isNaN(d.getTime()))return {open:false,period:'',reason:'Ordering is temporarily unavailable.'};
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Indian/Maldives',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d);
+ const get=(type:string)=>parts.find(part=>part.type===type)?.value||'';
+ const minutes=(Number(get('hour'))||0)*60+(Number(get('minute'))||0);
+ if(minutes>=12*60&&minutes<15*60)return {open:true,period:'Lunch',reason:'Lunch ordering is open until 15:00.'};
+ if(minutes>=18*60&&minutes<22*60)return {open:true,period:'Dinner',reason:'Dinner ordering is open until 22:00.'};
+ if(minutes<12*60)return {open:false,period:'',reason:'Ordering is closed. Lunch ordering opens at 12:00.'};
+ if(minutes<18*60)return {open:false,period:'',reason:'Ordering is closed between lunch and dinner. Dinner ordering opens at 18:00.'};
+ return {open:false,period:'',reason:'Ordering is closed for today. Lunch ordering opens tomorrow at 12:00.'};
+}
+
 // Kept as informational metadata only. Meal-plan inclusion no longer depends on service time.
 export function restaurantMealPeriod(value:string|Date=new Date()):RestaurantMealPeriod|''{
  const d=value instanceof Date?value:new Date(value);
