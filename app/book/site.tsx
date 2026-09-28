@@ -5,14 +5,16 @@ import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,Shi
 import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
-type Quote={today?:string;plans?:Plan[];availableRooms?:number;bookingClosed?:boolean;nights?:number;estimates?:{name:string;nightlyCents:number;totalCents:number}[];error?:string};
+type Package={id:string;name:string;nights:number;days:number;mealPlan:string;excursions:string[];includeTransfer:boolean;transferLabel:string;singleCents:number;doubleCents:number;tripleCents:number;childPolicy:string};
+type Promotion={id:string;name:string;detail:string;packageIds:string[];roomTypes:string[];validFrom:string;validTo:string};
+type Quote={today?:string;plans?:Plan[];packages?:Package[];promotions?:Promotion[];availableRooms?:number;bookingClosed?:boolean;nights?:number;estimates?:{name:string;nightlyCents:number;totalCents:number}[];error?:string};
 
 const money=(cents:number)=>'$'+(Math.max(0,Number(cents)||0)/100).toFixed(0);
 const tomorrow=(date:string,days=1)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 
 export default function GuestBookingSite(){
  const [today,setToday]=useState(''),[checkIn,setCheckIn]=useState(''),[checkOut,setCheckOut]=useState('');
- const [adults,setAdults]=useState(2),[children,setChildren]=useState(0),[meal,setMeal]=useState('Bed & Breakfast');
+ const [adults,setAdults]=useState(2),[children,setChildren]=useState(0),[meal,setMeal]=useState('Bed & Breakfast'),[packageId,setPackageId]=useState('');
  const [guest,setGuest]=useState(''),[phone,setPhone]=useState(''),[email,setEmail]=useState(''),[notes,setNotes]=useState('');
  const [transportPlan,setTransportPlan]=useState<any>({
   arrival:{needTransfer:'later',from:'Velana International Airport',flightNumber:'',flightTime:'',ownTransport:'',dhiffushiArrivalTime:'',buggyRequired:true},
@@ -26,7 +28,9 @@ export default function GuestBookingSite(){
 
  const pax=adults+children;
  const selectedPlan=quote.estimates?.find(x=>x.name===meal)||quote.plans?.find(x=>x.name===meal);
- const selectedTotal=quote.estimates?.find(x=>x.name===meal)?.totalCents||0;
+ const selectedPackage=quote.packages?.find(x=>x.id===packageId);
+ const packageTotal=selectedPackage?(pax<=1?selectedPackage.singleCents:pax===2?selectedPackage.doubleCents:selectedPackage.tripleCents):0;
+ const selectedTotal=selectedPackage?packageTotal:(quote.estimates?.find(x=>x.name===meal)?.totalCents||0);
 
  useEffect(()=>{if(children>Math.max(0,3-adults))setChildren(Math.max(0,3-adults))},[adults,children]);
 
@@ -46,7 +50,7 @@ export default function GuestBookingSite(){
   e.preventDefault();if(busy)return;setBusy(true);setError('');
   try{
    const r=await fetch('/api/public-booking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    token:token.current,guest,phone,email,checkIn,checkOut,adults,children,meal,notes,transportPlan:{arrival:{...transportPlan.arrival,date:checkIn},departure:{...transportPlan.departure,date:checkOut}}
+    token:token.current,guest,phone,email,checkIn,checkOut,adults,children,meal,packageId,notes,transportPlan:{arrival:{...transportPlan.arrival,date:checkIn},departure:{...transportPlan.departure,date:checkOut}}
    })});
    const d=await r.json();if(!r.ok)throw Error(d.error||'Could not complete your booking.');
    setSuccess(d);
@@ -64,7 +68,7 @@ export default function GuestBookingSite(){
    <div className="success-details">
     <span><CalendarDays/> {checkIn} → {checkOut}</span>
     <span><Users/> {pax} {pax===1?'guest':'guests'}</span>
-    <span><Sparkles/> {meal}</span>
+    <span><Sparkles/> {selectedPackage?selectedPackage.name:meal}</span>
    </div>
    <p className="success-note">{success.email?.sent?'We sent a booking received email to '+email+'. Final confirmation will follow after room allocation.':'Your booking is saved, but the confirmation email could not be sent yet. Please keep this booking reference and contact reception if you do not receive an email.'}</p>
    <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();setGuest('');setPhone('');setEmail('');setNotes('');setTransportPlan({arrival:{needTransfer:'later',from:'Velana International Airport',flightNumber:'',flightTime:'',ownTransport:'',dhiffushiArrivalTime:'',buggyRequired:true},departure:{needTransfer:'later',destination:'Velana International Airport',flightNumber:'',flightTime:'',ownDepartureTime:'',buggyRequired:true}})}}>Make another booking <ArrowRight/></button>
@@ -77,7 +81,7 @@ export default function GuestBookingSite(){
     <span className="brand-sun">☀</span>
     <div><strong>Nirili Villa</strong><small>DHIFFUSHI · MALDIVES</small></div>
    </a>
-   <nav><a href="#stay">Stay</a><a href="/book/excursions">Excursions</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
+   <nav><a href="#stay">Stay</a><a href="#packages">Packages</a><a href="/book/excursions">Excursions</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
    <a className="nav-book" href="#book"><span>Book Now</span><ArrowRight/></a>
   </header>
 
@@ -101,15 +105,31 @@ export default function GuestBookingSite(){
    <article><Globe2/><div><strong>Simple booking</strong><span>Book direct — no account or portal access</span></div></article>
   </section>
 
+  <section className="packages-section" id="packages">
+   <div className="section-head"><span className="eyebrow">NIRILI STAY PACKAGES</span><h2>Book more than a room.</h2><p>These packages are created and updated by Nirili Management. Select one and the booking form will automatically use its duration and meal plan.</p></div>
+   <div className="package-public-grid">
+    {(quote.packages||[]).map(pkg=>{const active=packageId===pkg.id;const promos=(quote.promotions||[]).filter(p=>p.packageIds.includes(pkg.id));return <article className={active?'selected':''} key={pkg.id}>
+     <small>{pkg.nights} NIGHTS · {pkg.days} DAYS</small>
+     <h3>{pkg.name}</h3>
+     <p>{pkg.mealPlan}{pkg.includeTransfer?' · '+(pkg.transferLabel||'Return transfer included'):''}</p>
+     {!!pkg.excursions.length&&<p className="package-inclusions">{pkg.excursions.length} excursion{pkg.excursions.length===1?'':'s'} included</p>}
+     {promos.map(p=><span className="package-promo" key={p.id}>{p.name}</span>)}
+     <div className="package-public-prices"><span><b>{money(pkg.singleCents)}</b><small>Single</small></span><span><b>{money(pkg.doubleCents)}</b><small>Double</small></span><span><b>{money(pkg.tripleCents)}</b><small>Triple</small></span></div>
+     <button type="button" onClick={()=>{setPackageId(pkg.id);setMeal(pkg.mealPlan);if(checkIn)setCheckOut(tomorrow(checkIn,pkg.nights));document.getElementById('book')?.scrollIntoView({behavior:'smooth'})}}>{active?'Package selected':'Choose package'} <ArrowRight/></button>
+    </article>})}
+   </div>
+   {!(quote.packages||[]).length&&<p className="package-empty">No stay packages are currently active. You can still book using the room rates below.</p>}
+  </section>
+
   <section className="rates" id="rates">
    <div className="section-head"><span className="eyebrow">ROOM + MEALS</span><h2>Choose the stay that fits your trip.</h2><p>Rates below update for your selected number of guests. Final room allocation is confirmed by reception.</p></div>
    <div className="rate-grid">
-    {(quote.estimates||quote.plans||[]).map((plan:any,index:number)=><article className={meal===plan.name?'selected':''} key={plan.name} onClick={()=>setMeal(plan.name)}>
+    {(quote.estimates||quote.plans||[]).map((plan:any,index:number)=><article className={meal===plan.name?'selected':''} key={plan.name} onClick={()=>{setMeal(plan.name);setPackageId('')}}>
      <small>{index===0?'FLEXIBLE STAY':index===1?'MORE INCLUDED':'FULL ISLAND DAYS'}</small>
      <h3>{plan.name}</h3>
      <div className="price"><strong>{money(plan.nightlyCents)}</strong><span>/ room / night</span></div>
      <p>{plan.name==='Bed & Breakfast'?'Breakfast included. Keep lunch and dinner flexible.':plan.name==='Half Board'?'Breakfast plus one main daily meal included.':'Breakfast, lunch and dinner included during your stay.'}</p>
-     <button type="button" onClick={()=>{setMeal(plan.name);document.getElementById('book')?.scrollIntoView({behavior:'smooth'})}}>Choose {plan.name}</button>
+     <button type="button" onClick={()=>{setMeal(plan.name);setPackageId('');document.getElementById('book')?.scrollIntoView({behavior:'smooth'})}}>Choose {plan.name}</button>
     </article>)}
    </div>
   </section>
@@ -131,11 +151,11 @@ export default function GuestBookingSite(){
      <label><span>Adults</span><select value={adults} onChange={e=>setAdults(Number(e.target.value))}>{[1,2,3].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
      <label><span>Children</span><select value={children} onChange={e=>setChildren(Number(e.target.value))}>{Array.from({length:Math.max(1,4-adults)},(_,i)=><option key={i} value={i}>{i}</option>)}</select></label>
     </div>
-    <label><span>Meal plan</span><select value={meal} onChange={e=>setMeal(e.target.value)}>{['Bed & Breakfast','Half Board','Full Board'].map(x=><option key={x}>{x}</option>)}</select></label>
+    <label><span>Meal plan</span><select value={meal} onChange={e=>{setMeal(e.target.value);setPackageId('')}}>{['Bed & Breakfast','Half Board','Full Board'].map(x=><option key={x}>{x}</option>)}</select></label>
 
     <div className="quote-box">
      <div><small>{checking?'CHECKING…':quote.bookingClosed?'BOOKINGS CLOSED':quote.availableRooms!==undefined?'LIVE AVAILABILITY':'ESTIMATED STAY'}</small><strong>{quote.nights||Math.max(0,(Date.parse(checkOut)-Date.parse(checkIn))/86400000)||0} nights · {pax} {pax===1?'guest':'guests'}</strong></div>
-     <div><small>ESTIMATED ACCOMMODATION</small><strong>{selectedTotal?money(selectedTotal):selectedPlan?money(selectedPlan.nightlyCents)+' / night':'—'}</strong></div>
+     <div><small>ESTIMATED ACCOMMODATION</small><strong>{selectedTotal?money(selectedTotal):selectedPlan?money(selectedPlan.nightlyCents)+' / night':'—'}</strong>{selectedPackage&&<small>{selectedPackage.name}</small>}</div>
     </div>
 
     <div className="form-divider"><span>Guest details</span></div>
