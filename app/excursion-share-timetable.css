@@ -44,3 +44,23 @@
  .excursion-share-summary{gap:8px}
  .excursion-share-summary strong{font-size:12px;padding:9px 10px}
 }
+
+.guest-schedule-share-button{
+  min-height:46px!important;
+  padding:10px 18px!important;
+  border:1px solid #07849b!important;
+  border-radius:10px!important;
+  background:linear-gradient(100deg,#0877d2,#0ca9a1)!important;
+  color:#fff!important;
+  font-weight:800!important;
+  box-shadow:0 8px 20px #0877d226!important;
+}
+.restaurant-bills>footer .guest-schedule-share-button{
+  flex:1 1 220px!important;
+}
+@media(max-width:680px){
+  .restaurant-bills>footer .guest-schedule-share-button{
+    width:100%!important;
+    flex-basis:100%!important;
+  }
+}
