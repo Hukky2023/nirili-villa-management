@@ -83,7 +83,7 @@ export default function GuestExcursionScheduleShare({stayId,guest,room,disabled=
  }
 
  return <>
-  <button type="button" className="excursion-secondary-btn excursion-share-trigger" disabled={disabled} onClick={show}>Share Guest Schedule</button>
+  <button type="button" className="excursion-secondary-btn excursion-share-trigger guest-schedule-share-button" disabled={disabled} onClick={show}>Share Guest Schedule</button>
   <dialog ref={dialog} className="excursion-share-dialog" aria-labelledby={titleId} onCancel={()=>setOpen(false)} onClose={()=>setOpen(false)}>
    <header className="excursion-share-heading"><div><small>NIRILI VILLA · EXCURSIONS</small><h3 id={titleId}>Guest excursion schedule</h3><p>{guest}{room?' · Room '+room:''} · Maldives time (UTC+5)</p></div><button type="button" className="excursion-share-close" onClick={close} aria-label="Close guest schedule">×</button></header>
    <div className="excursion-share-body" aria-busy={loading}>
