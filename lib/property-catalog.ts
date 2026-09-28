@@ -5,9 +5,20 @@ import {updateRoomInventory} from './rooms';
 export function transferServices(state:any){
  return (Array.isArray(state.transferServices)?state.transferServices:catalog.filter(item=>item.kind==='transfer')).filter((item:any)=>item.active!==false);
 }
+export function propertyPackages(state:any){
+ return (Array.isArray(state.propertyPackages)?state.propertyPackages:[])
+  .filter((item:any)=>item&&item.removed!==true)
+  .sort((a:any,b:any)=>String(a.name||'').localeCompare(String(b.name||'')));
+}
 export function propertyCatalog(state:any,revision:number){
  updateRoomInventory(state);
- return {rooms:state.rooms,rates:roomRates(state.roomRates),services:transferServices(state),revision};
+ return {
+  rooms:state.rooms,
+  rates:roomRates(state.roomRates),
+  services:transferServices(state),
+  packages:propertyPackages(state),
+  revision
+ };
 }
 const text=(value:any,max:number)=>typeof value==='string'?value.trim().slice(0,max):'';
 export function changePropertyCatalog(state:any,body:any,by:string){
@@ -40,6 +51,54 @@ export function changePropertyCatalog(state:any,body:any,by:string){
   state.rooms=state.rooms.filter((item:any)=>item.number!==room.number);
   state.roomCatalogManaged=true;
   detail='Removed room '+room.number+' from available inventory';
+ }else if(body.action==='save-package'||body.action==='remove-package'){
+  const packages=propertyPackages(state).map((item:any)=>({...item,excursions:Array.isArray(item.excursions)?[...item.excursions]:[]}));
+  const id=text(body.id,100),index=packages.findIndex((item:any)=>item.id===id);
+  if(id&&index<0)throw Error('Package not found. Refresh and try again.');
+  if(body.action==='remove-package'){
+   if(index<0)throw Error('Choose a package.');
+   detail='Removed package '+packages[index].name;
+   packages.splice(index,1);
+  }else{
+   const raw=body.package||{};
+   const name=text(raw.name,160);
+   const nights=Number(raw.nights);
+   const mealPlan=text(raw.mealPlan,80);
+   const allowedMeals=['Bed & Breakfast','Half Board','Full Board'];
+   const excursions=Array.isArray(raw.excursions)?Array.from(new Set(raw.excursions.map((value:any)=>text(value,100)).filter(Boolean))).slice(0,30):[];
+   const includeTransfer=raw.includeTransfer===true;
+   const cents=Number(raw.cents);
+   const validFrom=text(raw.validFrom,10),validTo=text(raw.validTo,10);
+   if(!name)throw Error('Enter a package name.');
+   if(!Number.isInteger(nights)||nights<1||nights>30)throw Error('Choose package duration from 1 to 30 nights.');
+   if(!allowedMeals.includes(mealPlan))throw Error('Choose a valid meal plan.');
+   if(!Number.isInteger(cents)||cents<0||cents>10000000)throw Error('Enter a package price between $0 and $100,000.');
+   if(validFrom&&!/^\d{4}-\d{2}-\d{2}$/.test(validFrom))throw Error('Choose a valid package start date.');
+   if(validTo&&!/^\d{4}-\d{2}-\d{2}$/.test(validTo))throw Error('Choose a valid package end date.');
+   if(validFrom&&validTo&&validTo<validFrom)throw Error('Package end date must be after the start date.');
+   const item={
+    id:id||'package-'+crypto.randomUUID(),
+    kind:'package',
+    name,
+    nights,
+    days:nights+1,
+    mealPlan,
+    excursions,
+    includeTransfer,
+    transferLabel:includeTransfer?(text(raw.transferLabel,120)||'Return airport transfer'):'',
+    cents,
+    promotionTitle:text(raw.promotionTitle,160),
+    promotionDetail:text(raw.promotionDetail,2000),
+    validFrom,
+    validTo,
+    active:raw.active!==false,
+    updatedAt:at,
+    updatedBy:by
+   };
+   if(index<0)packages.push(item);else packages[index]=item;
+   detail=(id?'Updated package ':'Added package ')+item.name;
+  }
+  state.propertyPackages=packages;
  }else if(body.action==='save-service'||body.action==='remove-service'){
   const services=transferServices(state).map((item:any)=>({...item}));
   const id=text(body.id,100),index=services.findIndex((item:any)=>item.id===id);
