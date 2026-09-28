@@ -78,3 +78,24 @@
 .hero-card-photo{display:block;width:100%;height:auto;aspect-ratio:1280/959;object-fit:contain;background:#e1edef}.hero-card-copy .hero-photo-credit{margin:12px 0 0;font-size:11px;line-height:1.6;letter-spacing:0;font-weight:400;color:#647b88}.hero-photo-credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 
 .guest-booking-site .hero-card-copy{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}.guest-booking-site .hero-card-copy .hero-photo-credit{margin:4px 0 0}
+
+
+/* Management-connected stay packages */
+.packages-section{padding:90px 5vw;background:#f4fbff}
+.packages-section .section-head{max-width:900px;margin:0 auto 30px;text-align:center}
+.package-public-grid{max-width:1160px;margin:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.package-public-grid article{background:#fff;border:1px solid #d6e7ef;border-radius:22px;padding:24px;display:flex;flex-direction:column;min-height:370px;box-shadow:0 18px 45px #0a4b6c0d}
+.package-public-grid article.selected{border-color:#0b8991;box-shadow:0 0 0 2px #0b899124,0 18px 45px #0a4b6c12}
+.package-public-grid article>small{color:#0b8991;font-size:10px;font-weight:900;letter-spacing:.14em}
+.package-public-grid h3{font-size:27px;margin:9px 0;color:#15384c}
+.package-public-grid p{color:#637c8b;line-height:1.55;margin:4px 0 10px}
+.package-inclusions{font-weight:800;color:#36677b!important}
+.package-promo{align-self:flex-start;padding:6px 9px;border-radius:999px;background:#fff2d7;color:#9b6800;font-size:11px;font-weight:850;margin:5px 0}
+.package-public-prices{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:18px 0}
+.package-public-prices span{padding:10px 6px;border-radius:11px;background:#f0f8fb;text-align:center;display:grid;gap:2px}
+.package-public-prices b{font-size:17px;color:#124b64}.package-public-prices small{color:#668291;font-size:10px}
+.package-public-grid article>button{margin-top:auto;min-height:48px;border:0;border-radius:12px;background:#087d8b;color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px}
+.package-public-grid article>button svg{width:17px}
+.package-empty{max-width:800px;margin:auto;text-align:center;padding:20px;border-radius:14px;background:#fff;color:#647c89}
+@media(max-width:900px){.package-public-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.packages-section{padding:60px 14px}.package-public-grid{grid-template-columns:1fr}.package-public-grid article{min-height:330px}}
