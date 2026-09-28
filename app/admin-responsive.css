@@ -323,27 +323,41 @@
   .admin .top {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
     align-items: center;
+    column-gap: 10px;
+    row-gap: 10px;
+    padding: 12px;
   }
   .admin .top > .brand-home {
     grid-column: 1 / -1;
     grid-row: 1;
     justify-self: end;
+    align-self: center;
     text-align: right;
+    margin: 0;
   }
   .admin .top > button.mobile-menu-trigger {
     grid-column: 1;
     grid-row: 2;
     align-self: center;
+    justify-self: start;
+    margin: 0;
+    height: 44px;
+    min-height: 44px;
   }
   .admin .top .nv-header-actions {
     grid-column: 2;
     grid-row: 2;
     width: auto;
-    margin-left: 0;
+    margin: 0;
     justify-self: end;
     align-self: center;
     flex-wrap: nowrap;
+    min-height: 44px;
+  }
+  .admin .top .nv-header-actions > * {
+    align-self: center;
   }
 }
 
