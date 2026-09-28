@@ -11,6 +11,7 @@ import {mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,re
 import {updateRoomInventory} from '../../../lib/rooms';
 import {restaurantPaymentStatus,syncRestaurantRoomBill} from '../../../lib/pos-room-billing';
 import {emitAdminNotification} from '../../../lib/admin-notifications';
+// Restaurant guest API
 
 async function identity(r:Request,create=false){
  const diningCookie=await sessionCookieName('nirili_dining');
