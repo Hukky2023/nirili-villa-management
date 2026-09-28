@@ -507,17 +507,26 @@ export async function PATCH(r:Request){
 
    if(!targets.length)throw Error('This scheduling request has already been handled.');
    const now=new Date().toISOString();
-   for(const target of targets){
-    target.approvalStatus='Declined';
-    target.status='Cancelled';
-    target.unscheduledRequest=false;
-    target.seatRequest=false;
-    target.requestedOverCapacity=false;
-    target.cents=0;
-    target.rejectedAt=now;
-    target.rejectedBy=user.username;
-    target.guestNotified=false;
-   }
+   const rejectedSnapshots=targets.map((target:any)=>({
+    ...target,
+    approvalStatus:'Declined',
+    status:'Cancelled',
+    unscheduledRequest:false,
+    seatRequest:false,
+    requestedOverCapacity:false,
+    cents:0,
+    rejectedAt:now,
+    rejectedBy:user.username,
+    guestNotified:false
+   }));
+
+   // Keep an audit trail, but remove rejected waiting requests from the active
+   // excursion order list completely so they can never be projected back into
+   // "Trips waiting to be scheduled" after refresh.
+   state.rejectedExcursionRequests=Array.isArray(state.rejectedExcursionRequests)?state.rejectedExcursionRequests:[];
+   state.rejectedExcursionRequests.push(...rejectedSnapshots);
+   const rejectedIdSet=new Set(rejectedSnapshots.map((item:any)=>String(item.id)));
+   state.orders=(state.orders||[]).filter((item:any)=>!rejectedIdSet.has(String(item.id)));
 
    const saved=await saveStayAccess(state,revision,user.userId);
    if(!saved)return Response.json({error:'Another update was saved at the same time. Reload and try again.'},{status:409});
