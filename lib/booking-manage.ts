@@ -1,6 +1,6 @@
 import {defaultTransportPlan} from './transport-plan';
 import {bookingClosureForStay} from './booking-closures';
-export const bookingManageHost='https://booking.nirilihotels.com';
+export const bookingManageHost='https://stay.nirilihotels.com';
 
 export function createBookingManageToken(){
  const bytes=crypto.getRandomValues(new Uint8Array(24));

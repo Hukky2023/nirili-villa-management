@@ -23,7 +23,7 @@ function staySiteResponse(url:URL){
 
  if(url.pathname==='/book'||url.pathname==='/book/manage'){
   const response=NextResponse.next();
-  response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
+  response.headers.set('Cache-Control',url.pathname==='/book/manage'?'private, no-store, max-age=0':'public, max-age=0, must-revalidate');
   return response;
  }
 
@@ -34,26 +34,30 @@ function staySiteResponse(url:URL){
 }
 
 function bookingSiteResponse(url:URL){
- const guestApi=new Set(['/api/excursion-weather','/api/public-booking','/api/public-booking/manage','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules']);
+ const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules']);
  // Uploaded menu photos are public; the upload endpoint remains blocked.
  if(/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url.pathname))return NextResponse.next();
  if(guestApi.has(url.pathname)){
   const response=NextResponse.next();
-  response.headers.set('Cache-Control',(url.pathname==='/api/public-booking'||url.pathname==='/api/public-excursions')?'public, max-age=0, must-revalidate':'private, no-store, max-age=0');
+  response.headers.set('Cache-Control',url.pathname==='/api/public-excursions'?'public, max-age=0, must-revalidate':'private, no-store, max-age=0');
   return response;
  }
 
- // Until the dedicated Stay subdomain is connected, the booking host root is Nirili Stay.
- if(url.pathname==='/'){
-  url.pathname='/book';
-  const response=NextResponse.rewrite(url);
-  response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
-  return response;
+ // Nirili Stay now lives on its dedicated production subdomain.
+ if(url.pathname==='/'||url.pathname==='/book'||url.pathname==='/book/manage'){
+  const stayUrl=new URL('https://stay.nirilihotels.com');
+  if(url.pathname==='/book/manage')stayUrl.pathname='/book/manage';
+  stayUrl.search=url.search;
+  return NextResponse.redirect(stayUrl,308);
  }
 
- if(url.pathname==='/book'||url.pathname.startsWith('/book/')){
+ if(
+  url.pathname==='/book/excursions'||url.pathname.startsWith('/book/excursions/')||
+  url.pathname==='/book/transfers'||url.pathname.startsWith('/book/transfers/')||
+  url.pathname==='/book/restaurant'||url.pathname.startsWith('/book/restaurant/')
+ ){
   const response=NextResponse.next();
-  response.headers.set('Cache-Control',url.pathname==='/book/manage'?'private, no-store, max-age=0':'public, max-age=0, must-revalidate');
+  response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
   return response;
  }
 
