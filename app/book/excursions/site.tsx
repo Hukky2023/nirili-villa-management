@@ -81,7 +81,7 @@ export default function ExternalExcursionBooking(){
  if(success)return <main className="guest-booking-site external-excursion-site">
   <section className="booking-success external-success">
    <div className="success-mark"><CheckCircle2/></div>
-   <span className="eyebrow">NIRILI TOURS · DHIFFUSHI</span>
+   <span className="eyebrow">NIRILI EXCURSIONS · DHIFFUSHI</span>
    <h1>{success.status==='Confirmed'?'Your excursion is booked.':'Your excursion request is received.'}</h1>
    <p>{success.status==='Confirmed'
     ?'Your seats are reserved. Keep this reference and be ready for the departure details shown below.'
@@ -106,7 +106,7 @@ export default function ExternalExcursionBooking(){
   <header className="guest-nav">
    <a className="guest-brand" href="/book" aria-label="Nirili Villa booking home">
     <span className="brand-sun">☀</span>
-    <div><strong>Nirili Tours</strong><small>DHIFFUSHI · MALDIVES</small></div>
+    <div><strong>Nirili Excursions</strong><small>NIRILI TOURS · DHIFFUSHI</small></div>
    </a>
    <nav><a href="/book">Stay</a><a href="#excursions">Excursions</a><a href="#external-excursion-form">Book now</a></nav>
    <a className="nav-book" href="#external-excursion-form"><span>Book excursion</span><ArrowRight/></a>
@@ -129,7 +129,7 @@ export default function ExternalExcursionBooking(){
 
   <section className="external-excursion-list" id="excursions">
    <div className="section-head">
-    <span className="eyebrow">NIRILI TOURS EXPERIENCES</span>
+    <span className="eyebrow">NIRILI EXCURSIONS</span>
     <h2>Choose your island adventure.</h2>
     <p>{data.childPolicy||'Children under 3 are free and children aged 3–11 receive 50% off.'}</p>
    </div>
@@ -226,7 +226,7 @@ export default function ExternalExcursionBooking(){
   </section>
 
   <footer className="guest-footer">
-   <div className="guest-brand"><span className="brand-sun">☀</span><div><strong>Nirili Tours</strong><small>DHIFFUSHI · MALDIVES</small></div></div>
+   <div className="guest-brand"><span className="brand-sun">☀</span><div><strong>Nirili Excursions</strong><small>NIRILI TOURS · DHIFFUSHI</small></div></div>
    <p>Arrive as a Guest, Leave as a Friend.</p>
    <a href="/book"><ArrowLeft/> Nirili Villa stays</a>
   </footer>
