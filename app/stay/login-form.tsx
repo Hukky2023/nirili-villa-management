@@ -51,18 +51,18 @@ export default function GuestStayLogin(){
  const setup=mode==='setup';
  return <main className="nv-guest-entry">
   <header className="nge-header">
-   <a className="nge-brand" href="/hotel"><span className="nge-mark" aria-hidden="true"><Sun size={22}/><Waves size={30}/></span><span>Nirili Villa<small><UiText>DHIFFUSHI · MALDIVES</UiText></small></span></a>
+   <a className="nge-brand" href="/hotel"><span className="nge-mark" aria-hidden="true"><Sun size={22}/><Waves size={30}/></span><span>Nirili Guest Portal<small><UiText>IN-HOUSE GUESTS · DHIFFUSHI</UiText></small></span></a>
    <div className="nge-language"><span><UiText>Language</UiText></span><div className="nge-language-control"><Globe2 size={21} aria-hidden="true"/><LanguageSelector inline/></div></div>
   </header>
   <section className="nge-layout">
    <aside className="nge-welcome">
-    <span className="nge-overline"><UiText>YOUR STAY AT NIRILI VILLA</UiText></span>
+    <span className="nge-overline"><UiText>PRIVATE IN-HOUSE GUEST PORTAL</UiText></span>
     <h1><UiText>A little island.</UiText><br/><em><UiText>All yours to enjoy.</UiText></em></h1>
-    <p><UiText>Everything for your stay, in one place.</UiText></p>
+    <p><UiText>This separate portal is only for guests staying with Nirili Villa. Use your room access to reach Nirili services more conveniently.</UiText></p>
     <ul className="nge-services">
-     <li><Utensils size={20}/><UiText>Order your favourite meals</UiText></li>
-     <li><Compass size={20}/><UiText>Discover island excursions</UiText></li>
-     <li><Car size={20}/><UiText>Arrange your transfers & buggy</UiText></li>
+     <li><Utensils size={20}/><UiText>Order from Nirili Restaurant</UiText></li>
+     <li><Compass size={20}/><UiText>Book Nirili Excursions</UiText></li>
+     <li><Car size={20}/><UiText>Use Nirili Ride & Nirili Transfers</UiText></li>
     </ul>
     <footer><p><UiText>Arrive as a Guest, Leave as a Friend.</UiText></p><span><MapPin size={16}/><UiText>Dhiffushi Island, Maldives</UiText></span></footer>
    </aside>
@@ -72,7 +72,7 @@ export default function GuestStayLogin(){
      <button type="button" disabled={busy} aria-pressed={!setup} className={!setup?'selected':''} onClick={()=>switchMode('login')}><UiText>Sign in</UiText></button>
     </div>
     <div className="nge-heading">
-     <span className="nge-overline"><UiText>GUEST PORTAL</UiText></span>
+     <span className="nge-overline"><UiText>IN-HOUSE GUEST PORTAL</UiText></span>
      <h2 id="nge-title"><UiText>{setup?'Make yourself at home.':'Welcome back.'}</UiText></h2>
      <p><UiText>{setup?'Use your room number and the setup code from reception to create your password.':'Enter your room number and private password to open your stay.'}</UiText></p>
     </div>
