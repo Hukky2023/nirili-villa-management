@@ -12,7 +12,7 @@ const services=[
   cta:'Book Rooms & Packages'
  },
  {
-  title:'Book Excursions',
+  title:'Nirili Excursions',
   eyebrow:'NIRILI TOURS',
   copy:'Book snorkeling, sharks, turtles, sandbanks, dolphins, fishing and other Nirili experiences directly into our excursion system.',
   href:'https://booking.nirilihotels.com/book/excursions',
@@ -21,31 +21,22 @@ const services=[
   cta:'Explore & Book Excursions'
  },
  {
-  title:'Airport Transfer',
-  eyebrow:'VELANA ↔ DHIFFUSHI',
-  copy:'Choose your transfer date and launch. Your reservation goes directly into Nirili Villa Transport management.',
-  href:'https://booking.nirilihotels.com/book/transfers',
-  icon:Plane,
-  className:'hub-transfer',
-  cta:'Book Airport Transfer'
- },
- {
-  title:'Nirili Ride',
-  eyebrow:'RIDE · RENT · EXPLORE',
-  copy:'Open Nirili Ride for island transport and vehicle rental services.',
-  href:'https://ride.nirilihotels.com',
-  icon:Bike,
-  className:'hub-ride',
-  cta:'Open Nirili Ride'
- },
- {
   title:'Nirili Restaurant',
-  eyebrow:'MENU · WALK-IN ORDER',
-  copy:'See our live restaurant menu, location and service times, then order as a walk-in guest directly into Nirili POS.',
+  eyebrow:'MENU · DINE-IN · DELIVERY',
+  copy:'See our live restaurant menu, location and service times, then order directly into Nirili POS.',
   href:'https://booking.nirilihotels.com/book/restaurant',
   icon:UtensilsCrossed,
   className:'hub-restaurant',
   cta:'View Menu & Order'
+ },
+ {
+  title:'Nirili Travels',
+  eyebrow:'RIDE · TRANSFERS',
+  copy:'Your Nirili transport division for local island rides and speedboat airport transfers.',
+  href:'#travels',
+  icon:Plane,
+  className:'hub-travels',
+  cta:'Choose Ride or Transfers'
  }
 ];
 
@@ -60,21 +51,22 @@ export default function HotelHome(){
  return <main className="nirili-site service-home" id="top">
   <header className="site-header">
    <Brand/>
-   <nav className="desktop-nav" aria-label="Guest services">
-    <a href="#services">Services</a>
-    <a href="#dhiffushi">Dhiffushi</a>
-    <a href="https://booking.nirilihotels.com/#packages">Stay</a>
+   <nav className="desktop-nav" aria-label="Nirili services">
+    <a href="https://booking.nirilihotels.com/#packages">Nirili Stay</a>
+    <a href="https://booking.nirilihotels.com/book/excursions">Nirili Excursions</a>
+    <a href="https://booking.nirilihotels.com/book/restaurant">Nirili Restaurant</a>
+    <a href="#travels">Nirili Travels</a>
    </nav>
    <a className="header-book" href="https://booking.nirilihotels.com/#packages">Book stay <ArrowRight/></a>
    <details className="mobile-menu">
     <summary aria-label="Open menu"><Menu/></summary>
     <div>
-     <a href="#services">Guest services</a>
      <a href="https://booking.nirilihotels.com/#packages">Nirili Stay</a>
-     <a href="https://booking.nirilihotels.com/book/excursions">Excursions</a>
-     <a href="https://booking.nirilihotels.com/book/transfers">Airport Transfer</a>
-     <a href="https://ride.nirilihotels.com">Nirili Ride</a>
-     <a href="https://booking.nirilihotels.com/book/restaurant">Restaurant</a>
+     <a href="https://booking.nirilihotels.com/book/excursions">Nirili Excursions</a>
+     <a href="https://booking.nirilihotels.com/book/restaurant">Nirili Restaurant</a>
+     <a href="#travels">Nirili Travels</a>
+     <a className="mobile-subservice" href="https://ride.nirilihotels.com">↳ Nirili Ride</a>
+     <a className="mobile-subservice" href="https://booking.nirilihotels.com/book/transfers">↳ Nirili Transfers</a>
     </div>
    </details>
   </header>
@@ -82,8 +74,8 @@ export default function HotelHome(){
   <section className="service-hero">
    <div className="service-hero-copy">
     <span>WELCOME TO NIRILI · DHIFFUSHI</span>
-    <h1>Stay. Explore.<br/><em>Ride. Dine.</em></h1>
-    <p>Your Dhiffushi experience in one place. Book rooms and packages, ocean adventures, airport transfers, island rides and restaurant orders with the Nirili team.</p>
+    <h1>Stay. Explore.<br/><em>Dine. Travel.</em></h1>
+    <p>Nirili brings your Dhiffushi experience together through four connected services: Nirili Stay, Nirili Excursions, Nirili Restaurant and Nirili Travels.</p>
     <div className="service-hero-actions"><a className="hero-primary" href="#services">Explore Nirili <ArrowRight/></a><a className="hero-secondary" href="https://booking.nirilihotels.com/#packages">Book your stay</a></div>
    </div>
    <div className="service-hero-note">
@@ -95,13 +87,13 @@ export default function HotelHome(){
 
   <section className="service-hub" id="services">
    <div className="hub-heading">
-    <span>YOUR NIRILI EXPERIENCE</span>
-    <h2>Everything you need,<br/>one tap away.</h2>
-    <p>Choose a service below. Every booking goes directly to the relevant Nirili team and management system.</p>
+    <span>THE NIRILI FAMILY</span>
+    <h2>Four services.<br/>One connected experience.</h2>
+    <p>Choose the Nirili service you need. Each public service connects to the same operational management system behind the scenes.</p>
    </div>
    <div className="hub-grid">
-    {services.map(({title,eyebrow,copy,href,icon:Icon,className,cta},index)=><a className={'hub-card '+className+(index===0?' hub-primary':'')} href={href} key={title}>
-     <div className="hub-card-top"><div className="hub-icon"><Icon/></div><span className="hub-number">0{index+1}</span></div>
+    {services.map(({title,eyebrow,copy,href,icon:Icon,className,cta})=><a className={'hub-card '+className} href={href} key={title}>
+     <div className="hub-card-top"><div className="hub-icon"><Icon/></div></div>
      <span>{eyebrow}</span>
      <h3>{title}</h3>
      <p>{copy}</p>
@@ -110,29 +102,59 @@ export default function HotelHome(){
    </div>
   </section>
 
+  <section className="travel-division" id="travels">
+   <div className="travel-division-copy">
+    <span>NIRILI TRAVELS</span>
+    <h2>One travel division.<br/>Two ways to move.</h2>
+    <p>Nirili Travels is the parent transport service. Choose Nirili Ride for local island buggy transport, or Nirili Transfers for speedboat and airport transfers.</p>
+   </div>
+   <div className="travel-child-grid">
+    <a href="https://ride.nirilihotels.com" className="travel-child-card">
+     <div><Bike/></div>
+     <small>NIRILI TRAVELS</small>
+     <h3>Nirili Ride</h3>
+     <p>Buggy and local island transport, with driver dispatch and ride status updates.</p>
+     <b>Open Nirili Ride <ArrowRight/></b>
+    </a>
+    <a href="https://booking.nirilihotels.com/book/transfers" className="travel-child-card">
+     <div><Plane/></div>
+     <small>NIRILI TRAVELS</small>
+     <h3>Nirili Transfers</h3>
+     <p>Speedboat and airport transfers between Velana International Airport, Dhiffushi and supported routes.</p>
+     <b>Book Nirili Transfers <ArrowRight/></b>
+    </a>
+   </div>
+  </section>
+
   <section className="connection-strip">
-   <article><strong>Stay your way</strong><span>Live rooms, meal plans and Nirili packages</span></article>
-   <article><strong>Explore the ocean</strong><span>Nirili Tours excursions connected live</span></article>
-   <article><strong>Move with ease</strong><span>Airport transfers and Nirili Ride</span></article>
-   <article><strong>Dine with Nirili</strong><span>Live menu and POS-connected walk-in orders</span></article>
+   <article><strong>Nirili Stay</strong><span>Rooms, packages, meal plans and stay bookings</span></article>
+   <article><strong>Nirili Excursions</strong><span>Nirili Tours experiences and excursion booking</span></article>
+   <article><strong>Nirili Restaurant</strong><span>Live menu, dine-in and delivery ordering</span></article>
+   <article><strong>Nirili Travels</strong><span>Nirili Ride plus speedboat airport transfers</span></article>
   </section>
 
   <section className="service-island" id="dhiffushi">
    <div>
     <span>DHIFFUSHI · KAAFU ATOLL</span>
     <h2>Dhiffushi, made easy.</h2>
-    <p>Wake up close to turquoise water, explore the atoll by day and return to a relaxed local island. Nirili connects your stay, transfers, experiences, rides and dining so your trip feels effortless.</p>
+    <p>Wake up close to turquoise water, explore the atoll by day and return to a relaxed local island. Nirili connects your stay, excursions, dining and travel so your trip feels effortless.</p>
    </div>
    <div className="island-service-links">
-    <a href="https://booking.nirilihotels.com/#packages">Book a stay <ArrowRight/></a>
-    <a href="https://booking.nirilihotels.com/book/excursions">Plan ocean days <ArrowRight/></a>
+    <a href="https://booking.nirilihotels.com/#packages">Book Nirili Stay <ArrowRight/></a>
+    <a href="https://booking.nirilihotels.com/book/excursions">Book Nirili Excursions <ArrowRight/></a>
+    <a href="#travels">Open Nirili Travels <ArrowRight/></a>
    </div>
   </section>
 
   <footer className="site-footer">
    <Brand/>
    <p>Arrive as a Guest, Leave as a Friend.</p>
-   <div><a href="https://booking.nirilihotels.com/#packages">Stay</a><a href="https://booking.nirilihotels.com/book/excursions">Excursions</a><a href="https://booking.nirilihotels.com/book/transfers">Transfers</a><a href="https://booking.nirilihotels.com/book/restaurant">Restaurant</a></div>
+   <div>
+    <a href="https://booking.nirilihotels.com/#packages">Nirili Stay</a>
+    <a href="https://booking.nirilihotels.com/book/excursions">Nirili Excursions</a>
+    <a href="https://booking.nirilihotels.com/book/restaurant">Nirili Restaurant</a>
+    <a href="#travels">Nirili Travels</a>
+   </div>
   </footer>
   <WebsiteChat/>
  </main>;
