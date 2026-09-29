@@ -6,6 +6,7 @@ import {createBookingManageToken} from '../../../lib/booking-manage';
 import {normalizeTransportPlan} from '../../../lib/transport-plan';
 import {emitAdminNotification} from '../../../lib/admin-notifications';
 import {bookingClosureForStay} from '../../../lib/booking-closures';
+import {loadExcursionMenu} from '../../../lib/excursion-menu';
 
 const headers={'Cache-Control':'no-store'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
@@ -40,6 +41,8 @@ export async function GET(request:Request){
   const children=Math.max(0,Math.min(2,Number(url.searchParams.get('children')||0)));
   const pax=adults+children;
   const {state}=await hotelState();
+  const excursionMenu=await loadExcursionMenu();
+  const excursionNames=new Map(excursionMenu.map((item:any)=>[String(item.id),String(item.name||item.id)]));
   const packages=(Array.isArray(state.propertyPackages)?state.propertyPackages:[])
    .filter((item:any)=>item&&item.active!==false)
    .map((item:any)=>({
@@ -49,6 +52,7 @@ export async function GET(request:Request){
     days:Number(item.days)||Number(item.nights||1)+1,
     mealPlan:String(item.mealPlan||'Bed & Breakfast'),
     excursions:Array.isArray(item.excursions)?item.excursions:[],
+    excursionNames:Array.isArray(item.excursions)?item.excursions.map((id:any)=>excursionNames.get(String(id))||String(id)):[],
     includeTransfer:item.includeTransfer===true,
     transferLabel:String(item.transferLabel||''),
     singleCents:Number(item.singleCents??item.cents??0),
@@ -94,12 +98,13 @@ export async function POST(request:Request){
   if(packageId&&!selectedPackage)throw Error('The selected package is no longer available. Refresh and choose again.');
   if(selectedPackage&&Number(selectedPackage.nights)!==nights)throw Error('The selected package requires '+selectedPackage.nights+' nights. Update your stay dates.');
   if(selectedPackage&&String(selectedPackage.mealPlan||'')!==meal)throw Error('The selected package uses '+selectedPackage.mealPlan+'. Refresh and choose the package again.');
-  const packagePrice=selectedPackage?(pax<=1?Number(selectedPackage.singleCents??selectedPackage.cents??0):pax===2?Number(selectedPackage.doubleCents??selectedPackage.cents??0):Number(selectedPackage.tripleCents??selectedPackage.cents??0)):0;
+  const packageRatePerGuest=selectedPackage?(pax<=1?Number(selectedPackage.singleCents??selectedPackage.cents??0):pax===2?Number(selectedPackage.doubleCents??selectedPackage.cents??0):Number(selectedPackage.tripleCents??selectedPackage.cents??0)):0;
+  const packagePrice=selectedPackage?packageRatePerGuest*pax:0;
   const estimate=selectedPackage?packagePrice:nightly(meal,pax,state.roomRates)*nights;
   const id='REQ-'+crypto.randomUUID().slice(0,8).toUpperCase(),manageToken=createBookingManageToken();
   const booking={
    id,token,manageToken,guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes,transportPlan,
-   ...(selectedPackage?{packageId:selectedPackage.id,packageName:selectedPackage.name,packageQuotedCents:packagePrice}:{}),
+   ...(selectedPackage?{packageId:selectedPackage.id,packageName:selectedPackage.name,packageRatePerGuestCents:packageRatePerGuest,packageQuotedCents:packagePrice}:{}),
    status:'Pending',source:'Guest booking website',createdAt:new Date().toISOString(),estimate
   };
   const result:any=await submitPublicBookingRequest(booking);
