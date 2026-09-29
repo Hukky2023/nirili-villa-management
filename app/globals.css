@@ -29,3 +29,11 @@
 a.brand-home{color:inherit;text-decoration:none;cursor:pointer}a.brand-home:focus-visible{outline:2px solid currentColor;outline-offset:5px;border-radius:4px}
 
 .menu-product-photo{display:block;width:100%;height:110px;object-fit:cover;border-radius:8px;margin-bottom:8px}.dining-products .menu-product-photo{height:150px}.menu-photo-editor{display:grid;gap:8px}.menu-photo-editor input{max-width:100%}@media print{.menu-product-photo{display:none}}
+
+
+/* Nirili business architecture navigation groups */
+.admin>aside nav .management-nav-group{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+.admin>aside nav .management-nav-label{padding:7px 11px 4px;color:#80b8d4;font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.admin>aside nav .management-nav-group button{width:100%}
+.phone-navigation .phone-nav-group{display:grid;gap:2px;margin-bottom:8px}
+.phone-navigation .phone-nav-group-label{padding:8px 12px 3px;color:#648397;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
