@@ -107,7 +107,7 @@ export default function GuestBookingSite(){
   </section>
 
   <section className="packages-section" id="packages">
-   <div className="section-head"><span className="eyebrow">NIRILI STAY PACKAGES</span><h2>Book more than a room.</h2><p>These packages are created and updated by Nirili Management. Select one and the booking form will automatically use its duration and meal plan.</p></div>
+   <div className="section-head"><span className="eyebrow">NIRILI STAY PACKAGES</span><h2>Book more than a room.</h2><p>These packages are created and updated by Nirili Management. Select one, and the booking form will automatically use its duration and meal plan.</p></div>
    <div className="package-public-grid">
     {(quote.packages||[]).map(pkg=>{const active=packageId===pkg.id;const promos=(quote.promotions||[]).filter(p=>p.packageIds.includes(pkg.id));return <article className={active?'selected':''} key={pkg.id}>
      <small>{pkg.nights} NIGHTS · {pkg.days} DAYS</small>
