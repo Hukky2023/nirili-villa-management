@@ -1,17 +1,16 @@
 import {NextResponse,NextRequest} from 'next/server';
 
-const guestBookingHost='booking.nirilihotels.com';
+const publicBookingHost='booking.nirilihotels.com';
+const niriliStayHost='stay.nirilihotels.com';
 const publicHotelHost='nirilihotels.com';
 const publicHotelWwwHost='www.nirilihotels.com';
 const tabPattern=/^[a-f0-9]{32}$/;
 
-function bookingSiteResponse(url:URL){
- const guestApi=new Set(['/api/excursion-weather','/api/public-booking','/api/public-booking/manage','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules']);
- // Uploaded menu photos are public; the upload endpoint remains blocked.
- if(/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url.pathname))return NextResponse.next();
- if(guestApi.has(url.pathname)){
+function staySiteResponse(url:URL){
+ const stayApi=new Set(['/api/public-booking','/api/public-booking/manage']);
+ if(stayApi.has(url.pathname)){
   const response=NextResponse.next();
-  response.headers.set('Cache-Control',(url.pathname==='/api/public-booking'||url.pathname==='/api/public-excursions')?'public, max-age=0, must-revalidate':'private, no-store, max-age=0');
+  response.headers.set('Cache-Control',url.pathname==='/api/public-booking'?'public, max-age=0, must-revalidate':'private, no-store, max-age=0');
   return response;
  }
 
@@ -22,12 +21,47 @@ function bookingSiteResponse(url:URL){
   return response;
  }
 
- if(url.pathname==='/book'||url.pathname.startsWith('/book/')){
+ if(url.pathname==='/book'||url.pathname==='/book/manage'){
   const response=NextResponse.next();
   response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
   return response;
  }
 
+ if(url.pathname.startsWith('/api/'))return new NextResponse('Not Found',{status:404});
+ url.pathname='/';
+ url.search='';
+ return NextResponse.redirect(url);
+}
+
+function bookingSiteResponse(url:URL){
+ const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules']);
+ // Uploaded menu photos are public; the upload endpoint remains blocked.
+ if(/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url.pathname))return NextResponse.next();
+ if(guestApi.has(url.pathname)){
+  const response=NextResponse.next();
+  response.headers.set('Cache-Control',url.pathname==='/api/public-excursions'?'public, max-age=0, must-revalidate':'private, no-store, max-age=0');
+  return response;
+ }
+
+ // Room booking has its own dedicated Nirili Stay address.
+ if(url.pathname==='/'||url.pathname==='/book'||url.pathname==='/book/manage'){
+  const stayUrl=new URL('https://stay.nirilihotels.com');
+  if(url.pathname==='/book/manage')stayUrl.pathname='/book/manage';
+  stayUrl.search=url.search;
+  return NextResponse.redirect(stayUrl,308);
+ }
+
+ if(
+  url.pathname==='/book/excursions'||url.pathname.startsWith('/book/excursions/')||
+  url.pathname==='/book/transfers'||url.pathname.startsWith('/book/transfers/')||
+  url.pathname==='/book/restaurant'||url.pathname.startsWith('/book/restaurant/')
+ ){
+  const response=NextResponse.next();
+  response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
+  return response;
+ }
+
+ // The private in-house guest portal remains separate from all public business pages.
  if(url.pathname==='/stay'||url.pathname.startsWith('/stay/')){
   const response=NextResponse.next();
   response.headers.set('Cache-Control','private, no-store, max-age=0');
@@ -92,9 +126,9 @@ function routeRequest(request:NextRequest){
  }
 
  // Dedicated public websites stay isolated from the management application.
- // Root domain serves the dedicated /hotel homepage; booking subdomain serves /book.
  if(host===publicHotelHost)return hotelSiteResponse(url,request.method);
- if(host===guestBookingHost)return bookingSiteResponse(url);
+ if(host===niriliStayHost)return staySiteResponse(url);
+ if(host===publicBookingHost)return bookingSiteResponse(url);
 
  const id=requestTab(request,url),valid=tabPattern.test(id);
  if(!valid&&!url.pathname.startsWith('/api/')&&request.method==='GET'){
