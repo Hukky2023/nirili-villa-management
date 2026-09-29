@@ -5,7 +5,7 @@ import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,Shi
 import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
-type Package={id:string;name:string;nights:number;days:number;mealPlan:string;excursions:string[];includeTransfer:boolean;transferLabel:string;singleCents:number;doubleCents:number;tripleCents:number;childPolicy:string;roomPhoto?:string;excursionPhoto?:string;youtubeUrl?:string};
+type Package={id:string;name:string;nights:number;days:number;mealPlan:string;excursions:string[];excursionNames?:string[];includeTransfer:boolean;transferLabel:string;singleCents:number;doubleCents:number;tripleCents:number;childPolicy:string;roomPhoto?:string;excursionPhoto?:string;youtubeUrl?:string};
 type Promotion={id:string;name:string;detail:string;packageIds:string[];roomTypes:string[];validFrom:string;validTo:string};
 type Quote={today?:string;plans?:Plan[];packages?:Package[];promotions?:Promotion[];availableRooms?:number;bookingClosed?:boolean;nights?:number;estimates?:{name:string;nightlyCents:number;totalCents:number}[];error?:string};
 
@@ -29,7 +29,8 @@ export default function GuestBookingSite(){
  const pax=adults+children;
  const selectedPlan=quote.estimates?.find(x=>x.name===meal)||quote.plans?.find(x=>x.name===meal);
  const selectedPackage=quote.packages?.find(x=>x.id===packageId);
- const packageTotal=selectedPackage?(pax<=1?selectedPackage.singleCents:pax===2?selectedPackage.doubleCents:selectedPackage.tripleCents):0;
+ const packageRatePerGuest=selectedPackage?(pax<=1?selectedPackage.singleCents:pax===2?selectedPackage.doubleCents:selectedPackage.tripleCents):0;
+ const packageTotal=selectedPackage?packageRatePerGuest*pax:0;
  const selectedTotal=selectedPackage?packageTotal:(quote.estimates?.find(x=>x.name===meal)?.totalCents||0);
 
  useEffect(()=>{if(children>Math.max(0,3-adults))setChildren(Math.max(0,3-adults))},[adults,children]);
@@ -116,7 +117,7 @@ export default function GuestBookingSite(){
      <p>{pkg.mealPlan}{pkg.includeTransfer?' · '+(pkg.transferLabel||'Return transfer included'):''}</p>
      {!!pkg.excursions.length&&<p className="package-inclusions">{pkg.excursions.length} excursion{pkg.excursions.length===1?'':'s'} included</p>}
      {promos.map(p=><span className="package-promo" key={p.id}>{p.name}</span>)}
-     <div className="package-public-prices"><span><b>{money(pkg.singleCents)}</b><small>Single</small></span><span><b>{money(pkg.doubleCents)}</b><small>Double</small></span><span><b>{money(pkg.tripleCents)}</b><small>Triple</small></span></div>
+     <div className="package-public-prices"><span><b>{money(pkg.singleCents)}</b><small>Single / person</small></span><span><b>{money(pkg.doubleCents)}</b><small>Double / person</small></span><span><b>{money(pkg.tripleCents)}</b><small>Triple / person</small></span></div>
      <button type="button" onClick={()=>{setPackageId(pkg.id);setMeal(pkg.mealPlan);if(checkIn)setCheckOut(tomorrow(checkIn,pkg.nights));document.getElementById('book')?.scrollIntoView({behavior:'smooth'})}}>{active?'Package selected':'Choose package'} <ArrowRight/></button>
     </article>})}
    </div>
@@ -160,6 +161,17 @@ export default function GuestBookingSite(){
      <div><small>ESTIMATED ACCOMMODATION</small><strong>{selectedTotal?money(selectedTotal):selectedPlan?money(selectedPlan.nightlyCents)+' / night':'—'}</strong>{selectedPackage&&<small>{selectedPackage.name}</small>}</div>
     </div>
 
+    {selectedPackage&&<section className="selected-package-details">
+     <div className="selected-package-head"><div><small>SELECTED PACKAGE</small><h4>{selectedPackage.name}</h4></div><strong>{money(packageTotal)} total</strong></div>
+     <div className="selected-package-summary">
+      <span><CalendarDays/> {selectedPackage.nights} nights / {selectedPackage.days} days</span>
+      <span><Users/> {pax} {pax===1?'guest':'guests'} × {money(packageRatePerGuest)} per person</span>
+      <span><Sparkles/> {selectedPackage.mealPlan}</span>
+      {selectedPackage.includeTransfer&&<span><ShipWheel/> {selectedPackage.transferLabel||'Return airport transfer included'}</span>}
+     </div>
+     {!!(selectedPackage.excursionNames?.length||selectedPackage.excursions.length)&&<div className="selected-package-inclusions"><strong>Excursions included</strong><ul>{(selectedPackage.excursionNames?.length?selectedPackage.excursionNames:selectedPackage.excursions).map((name,index)=><li key={index}><CheckCircle2/>{name}</li>)}</ul></div>}
+     {selectedPackage.childPolicy&&<p className="selected-package-policy">{selectedPackage.childPolicy}</p>}
+    </section>}
     <div className="form-divider"><span>Guest details</span></div>
     <label><span>Lead guest name</span><input required maxLength={100} autoComplete="name" value={guest} onChange={e=>setGuest(e.target.value)} placeholder="Full name"/></label>
     <div className="form-grid">
