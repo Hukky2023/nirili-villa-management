@@ -18,7 +18,7 @@ export default function GuestAccountForm({stayId,standalone=false,embedded=false
   <h3><UiText>{standalone?'In-house guest access':'Guest access'}</UiText></h3>
   {error&&<p role="alert"><UiText>{error}</UiText></p>}
   {!data&&!error&&<p><UiText>Loading guest access…</UiText></p>}
-  {data&&account?.active&&<div><p><UiText>Portal: </UiText><a href={data.portalUrl} target="_blank" rel="noreferrer">booking.nirilihotels.com/stay</a></p><p><UiText>Username / room: </UiText><b>{account.username}</b></p><AccountPassword key={account.id} user={account} autoReveal/><p><UiText>Share the room number and one-time setup code with the guest. The guest creates their own private password on the stay portal. Access expires automatically at checkout, and a room move creates a new room login.</UiText></p></div>}
+  {data&&account?.active&&<div><p><UiText>Portal: </UiText><a href={data.portalUrl} target="_blank" rel="noreferrer">guest.nirilihotels.com</a></p><p><UiText>Username / room: </UiText><b>{account.username}</b></p><AccountPassword key={account.id} user={account} autoReveal/><p><UiText>Share the room number and one-time setup code with the guest. The guest creates their own private password on the stay portal. Access expires automatically at checkout, and a room move creates a new room login.</UiText></p></div>}
   {data&&!account?.active&&<p><UiText>{stay?.status==='Checked Out'?'Guest access expired at checkout.':stay?.status==='In House'?'No active guest access is linked. Re-run check-in only after confirming the booking state.':'Guest access will be created automatically when this booking is checked in.'}</UiText></p>}
  </section>;
 }
