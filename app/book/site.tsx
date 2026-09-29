@@ -62,7 +62,7 @@ export default function GuestBookingSite(){
  if(success)return <main className="guest-booking-site">
   <section className="booking-success">
    <div className="success-mark"><CheckCircle2/></div>
-   <span className="eyebrow">NIRILI VILLA · DHIFFUSHI</span>
+   <span className="eyebrow">NIRILI STAY · DHIFFUSHI</span>
    <h1>Your booking has been received.</h1>
    <p>Thank you, {guest}. Reception will review the booking, allocate your room and send your final confirmation by email.</p>
    <div className="success-ref"><small>BOOKING REFERENCE</small><strong>{success.id}</strong></div>
@@ -80,7 +80,7 @@ export default function GuestBookingSite(){
   <header className="guest-nav">
    <a className="guest-brand" href="/book" aria-label="Nirili Villa guest booking home">
     <span className="brand-sun">☀</span>
-    <div><strong>Nirili Villa</strong><small>DHIFFUSHI · MALDIVES</small></div>
+    <div><strong>Nirili Stay</strong><small>NIRILI VILLA · DHIFFUSHI</small></div>
    </a>
    <nav><a href="#stay">Stay</a><a href="#packages">Packages</a><a href="/book/excursions">Excursions</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
    <a className="nav-book" href="#book"><span>Book Now</span><ArrowRight/></a>
@@ -157,7 +157,7 @@ export default function GuestBookingSite(){
   <section className="booking-zone" id="book">
    <div className="booking-intro">
     <span className="eyebrow">BOOK DIRECT</span>
-    <h2>Book your Nirili Villa stay.</h2>
+    <h2>Book your Nirili Stay.</h2>
     <p>Choose your dates and stay details. Your booking goes directly to reception for room allocation and confirmation.</p>
     <div className="booking-points"><span><CheckCircle2/> No management-system account</span><span><CheckCircle2/> Live room availability check</span><span><CheckCircle2/> Reception confirms your booking</span></div>
    </div>
@@ -236,7 +236,7 @@ export default function GuestBookingSite(){
   </section>
 
   <footer className="guest-footer">
-   <div className="guest-brand"><span className="brand-sun">☀</span><div><strong>Nirili Villa</strong><small>DHIFFUSHI · MALDIVES</small></div></div>
+   <div className="guest-brand"><span className="brand-sun">☀</span><div><strong>Nirili Stay</strong><small>NIRILI VILLA · DHIFFUSHI</small></div></div>
    <p>Arrive as a Guest, Leave as a Friend.</p>
    <a href="#book">Book your stay <ArrowRight/></a>
   </footer>
