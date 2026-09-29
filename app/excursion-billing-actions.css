@@ -1,6 +1,8 @@
 .excursion-billing-actions{margin:14px 0 4px;min-width:0}
 .excursion-price-buttons,.excursion-price-summary{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .excursion-price-buttons button{min-height:42px}
+.excursion-price-buttons .excursion-delete-btn{border-color:#b42318;color:#b42318;background:#fff}
+.excursion-price-buttons .excursion-delete-btn:hover:not(:disabled){background:#fff4f2}
 .excursion-price-summary{padding:12px 14px;margin-bottom:12px;background:#f1f7f4;border:1px solid #d6e7dd;border-radius:10px;gap:12px 24px;font-size:13px;color:#314d40}
 .excursion-price-summary span{display:flex;gap:8px;flex-wrap:wrap}
 .excursion-price-notice{font-size:13px;color:#245c41;margin:10px 0;overflow-wrap:anywhere}
