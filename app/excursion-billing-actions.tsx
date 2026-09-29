@@ -101,7 +101,7 @@ export default function ExcursionBillingActions({booking, canAdjust, revision, o
       window.dispatchEvent(new Event('services-updated'));
       window.dispatchEvent(new Event('nirili:auto-refresh'));
     }catch(cause){
-      setError(cause instanceof Error?cause.message:'Could not delete the excursion booking. Please retry.');
+      setNotice(cause instanceof Error?'Delete failed: '+cause.message:'Delete failed. Please retry.');
     }finally{setDeleteBusy(false);}
   }
 
