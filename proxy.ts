@@ -6,8 +6,8 @@ const excursionsHost='excursions.nirilihotels.com';
 const restaurantHost='restaurant.nirilihotels.com';
 const transfersHost='transfers.nirilihotels.com';
 const guestPortalHost='guest.nirilihotels.com';
-const publicHotelHost='nirilihotels.com';
-const publicHotelWwwHost='www.nirilihotels.com';
+const publicHotelHost='www.nirilihotels.com';
+const publicHotelRootHost='nirilihotels.com';
 const tabPattern=/^[a-f0-9]{32}$/;
 
 function publicRewrite(url:URL,pathname:string,cache='public, max-age=0, must-revalidate'){
@@ -156,8 +156,8 @@ function routeRequest(request:NextRequest){
  const url=new URL(request.url);
  const host=(request.headers.get('host')||'').split(':')[0].toLowerCase();
 
- // Canonicalize www to the main hotel domain.
- if(host===publicHotelWwwHost){
+ // Keep www.nirilihotels.com as the canonical main public website.
+ if(host===publicHotelRootHost){
   url.hostname=publicHotelHost;
   url.port='';
   return NextResponse.redirect(url,308);
