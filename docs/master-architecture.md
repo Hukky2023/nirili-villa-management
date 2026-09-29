@@ -19,15 +19,15 @@ www.nirilihotels.com
 ### Public entry points
 
 - **Nirili Stay** → `https://stay.nirilihotels.com/` for room availability, packages, meal plans and room booking. It does not expose the separate Nirili Excursions catalogue.
-- **Nirili Excursions** → Nirili Tours experiences, excursion details and excursion booking on the public booking service.
-- **Nirili Restaurant** → restaurant information, menu, dine-in ordering and delivery ordering.
-- **Nirili Travels** → parent travel division.
+- **Nirili Excursions** → `https://excursions.nirilihotels.com/` for Nirili Tours experiences and excursion booking.
+- **Nirili Restaurant** → `https://restaurant.nirilihotels.com/` for restaurant information, menu, dine-in ordering and delivery ordering.
+- **Nirili Travels** → `https://travels.nirilihotels.com/` as the parent travel division.
   - **Nirili Ride** → buggy and local island rides.
-  - **Nirili Transfers** → speedboat and airport transfers.
+  - **Nirili Transfers** → `https://transfers.nirilihotels.com/` for speedboat and airport transfers.
 
 ## Guest Portal
 
-The Guest Portal is a separate private interface for in-house guests. It is not a fifth public business division and must not be presented as a normal public service on the main website.
+The Guest Portal is a separate private interface for in-house guests at `https://guest.nirilihotels.com/`. It is not a public business division and must not be presented as a normal public service on the main website.
 
 ```text
 Guest Portal
@@ -77,11 +77,13 @@ For in-house guests, eligible restaurant, excursion, transfer and ride charges f
 
 ## Public domain separation
 
-- `nirilihotels.com` / `www.nirilihotels.com` → main Nirili public website.
-- `stay.nirilihotels.com` → Nirili Stay only.
-- `booking.nirilihotels.com/book/excursions` → Nirili Excursions.
-- `booking.nirilihotels.com/book/restaurant` → Nirili Restaurant ordering.
-- `booking.nirilihotels.com/book/transfers` → Nirili Transfers booking.
+- `www.nirilihotels.com` → canonical main Nirili public website; `nirilihotels.com` redirects to `www`.
+- `stay.nirilihotels.com` → Nirili Stay.
+- `excursions.nirilihotels.com` → Nirili Excursions.
+- `restaurant.nirilihotels.com` → Nirili Restaurant.
+- `travels.nirilihotels.com` → Nirili Travels.
+- `transfers.nirilihotels.com` → Nirili Transfers.
 - `ride.nirilihotels.com` → Nirili Ride.
+- `guest.nirilihotels.com` → private in-house Guest Portal.
 
-The old room-booking root at `booking.nirilihotels.com` redirects to the dedicated Nirili Stay subdomain.
+`booking.nirilihotels.com` is no longer part of the active architecture. No live page or generated guest link depends on it. It may be removed from Cloudflare after the new service subdomains are connected.
