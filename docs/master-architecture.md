@@ -18,8 +18,8 @@ www.nirilihotels.com
 
 ### Public entry points
 
-- **Nirili Stay** → room availability, packages, meal plans and room booking.
-- **Nirili Excursions** → Nirili Tours experiences, excursion details and excursion booking.
+- **Nirili Stay** → `https://stay.nirilihotels.com/` for room availability, packages, meal plans and room booking. It does not expose the separate Nirili Excursions catalogue.
+- **Nirili Excursions** → Nirili Tours experiences, excursion details and excursion booking on the public booking service.
 - **Nirili Restaurant** → restaurant information, menu, dine-in ordering and delivery ordering.
 - **Nirili Travels** → parent travel division.
   - **Nirili Ride** → buggy and local island rides.
@@ -73,3 +73,15 @@ The management navigation follows the same business structure:
 There is one operational source of truth. Public booking pages, the private Guest Portal, management, POS, excursion operations, transfer operations, ride/driver interfaces and mobile clients must use the shared backend rather than maintaining disconnected copies of bookings or bills.
 
 For in-house guests, eligible restaurant, excursion, transfer and ride charges flow to the linked room folio/main bill.
+
+
+## Public domain separation
+
+- `nirilihotels.com` / `www.nirilihotels.com` → main Nirili public website.
+- `stay.nirilihotels.com` → Nirili Stay only.
+- `booking.nirilihotels.com/book/excursions` → Nirili Excursions.
+- `booking.nirilihotels.com/book/restaurant` → Nirili Restaurant ordering.
+- `booking.nirilihotels.com/book/transfers` → Nirili Transfers booking.
+- `ride.nirilihotels.com` → Nirili Ride.
+
+The former room-booking entry at `booking.nirilihotels.com` redirects to the dedicated Nirili Stay domain.
