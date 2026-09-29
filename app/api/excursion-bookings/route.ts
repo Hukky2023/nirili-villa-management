@@ -127,6 +127,23 @@ export async function PATCH(request: Request) {
     try { input = await request.json(); } catch {
       return Response.json({error: 'Invalid excursion request.'}, {status: 400, headers});
     }
+    if(input?.action==='delete-booking'){
+      if(user.role!=='admin')return Response.json({error:'Only Admin can delete excursion bookings and their linked bills.'},{status:403,headers});
+      const bookingId=String(input.id||'');
+      if(!bookingId||!Number.isSafeInteger(input.revision)||input.revision<0)return Response.json({error:'Refresh excursion bookings and try again.'},{status:400,headers});
+      const {state,revision}=await loadStays();
+      if(input.revision!==revision)return Response.json({error:'Excursion bookings changed. Refresh and try again.'},{status:409,headers});
+      const index=(state.orders||[]).findIndex((item:any)=>item.id===bookingId&&item.kind==='excursion');
+      if(index<0)return Response.json({error:'Excursion booking not found.'},{status:404,headers});
+      const order=state.orders[index];
+      const stay=(state.stays||[]).find((item:any)=>item.id===order.stayId);
+      if(stay?.paidBills&&typeof stay.paidBills==='object')delete stay.paidBills['Excursions:'+bookingId];
+      state.orders.splice(index,1);
+      if(Array.isArray(state.excursionChanges))state.excursionChanges=state.excursionChanges.filter((change:any)=>String(change.bookingId||'')!==bookingId);
+      const saved=await saveStayAccess(state,revision,user.userId);
+      if(!saved)return Response.json({error:'Another excursion update was saved. Refresh and try again.'},{status:409,headers});
+      return Response.json({ok:true,revision:revision+1,deletedId:bookingId,linkedBillRemoved:true,paymentsPreserved:true},{headers});
+    }
     if(input?.action==='mark-whatsapp-notified'){
       if(!hasPermission(user,'excursions_manager'))return Response.json({error:'Only Admin or Excursions Manager can confirm walk-in guest notification.'},{status:403,headers});
       const bookingId=String(input.id||''),packageGroupId=String(input.packageGroupId||''),notified=input.notified===true;
