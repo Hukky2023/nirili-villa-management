@@ -58,7 +58,10 @@ export async function GET(request:Request){
     singleCents:Number(item.singleCents??item.cents??0),
     doubleCents:Number(item.doubleCents??item.cents??0),
     tripleCents:Number(item.tripleCents??item.cents??0),
-    childPolicy:String(item.childPolicy||'')
+    childPolicy:String(item.childPolicy||''),
+    roomPhoto:String(item.roomPhoto||''),
+    excursionPhoto:String(item.excursionPhoto||''),
+    youtubeUrl:String(item.youtubeUrl||'')
    }));
   const promotions=(Array.isArray(state.propertyPromotions)?state.propertyPromotions:[])
    .filter((item:any)=>item&&item.active!==false)
