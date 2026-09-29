@@ -1,3 +1,4 @@
+import {hotelMetadata} from '../seo';
 import Link from 'next/link';
 import {ArrowRight,Waves} from 'lucide-react';
 import {baseExcursionMenu,loadExcursionMenu} from '../../../lib/excursion-menu';
@@ -7,7 +8,7 @@ import '../home.css';
 import './style.css';
 
 export const dynamic='force-dynamic';
-export const metadata={title:'Excursions | Nirili Tours · Dhiffushi',description:'Discover Nirili Tours excursions, videos and photos from Dhiffushi, Maldives.'};
+export const metadata=hotelMetadata('Dhiffushi Excursions | Snorkelling & Boat Trips | Nirili Tours','Explore Dhiffushi excursions with Nirili Tours: turtle and nurse shark snorkelling, coral gardens, sandbanks, dolphin watching and fishing. Guests from all hotels welcome.','/hotel/excursions');
 
 type Excursion={id:string;name:string;detail?:string;category?:string;galleryUrls?:string[]};
 
@@ -25,7 +26,7 @@ export default async function HotelExcursions(){
   <section className="nh-page-hero" style={{backgroundImage:`url("${img('1629267776059-e6b10c44d744',2200)}")`}}>
    <div className="nh-page-hero-inner">
     <p className="nh-kicker nh-kicker-light">Nirili Tours · Dhiffushi</p>
-    <h1>Explore the ocean <em>with us.</em></h1>
+    <h1>Dhiffushi excursions <em>with Nirili Tours.</em></h1>
     <p>Turtles, nurse sharks, mantas and sandbanks are all a short boat ride away. Open an excursion to see its video, photos and details.</p>
    </div>
   </section>

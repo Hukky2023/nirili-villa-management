@@ -1,3 +1,5 @@
+import {cache} from 'react';
+import {hotelMetadata} from '../../seo';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {ArrowLeft,ArrowRight,CalendarCheck,MapPin,Sailboat} from 'lucide-react';
@@ -9,13 +11,23 @@ import '../../home.css';
 import '../style.css';
 
 export const dynamic='force-dynamic';
-export const metadata={title:'Excursion Details | Nirili Tours · Dhiffushi',description:'Explore Nirili Tours excursion videos, photos and details in Dhiffushi, Maldives.'};
+const getExcursions=cache(async()=>loadExcursionMenu().catch(()=>baseExcursionMenu()));
+export async function generateMetadata({params}:{params:Promise<{id:string}>}){
+ const {id}=await params;
+ const item=(await getExcursions()).find(entry=>entry.id===id);
+ if(!item)notFound();
+ return hotelMetadata(
+  item.name+' in Dhiffushi | Nirili Tours',
+  (item.detail||('Explore '+item.name+' from Dhiffushi, Maldives with Nirili Tours. View trip details, photos and booking options.')).replace(/\\s+/g,' ').trim().slice(0,160),
+  '/hotel/excursions/'+encodeURIComponent(item.id)
+ );
+}
 
 type Excursion={id:string;name:string;detail?:string;longDetail?:string;category?:string;youtubeUrl?:string;galleryUrls?:string[]};
 
 export default async function HotelExcursionPage({params}:{params:Promise<{id:string}>}){
  const {id}=await params;
- const items:Excursion[]=await loadExcursionMenu().catch(()=>baseExcursionMenu());
+ const items:Excursion[]=await getExcursions();
  const item=items.find(entry=>entry.id===id);
  if(!item)notFound();
  const video=youtubeEmbed(item.youtubeUrl||'');

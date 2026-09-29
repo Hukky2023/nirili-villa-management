@@ -39,7 +39,7 @@ export default async function HotelHome(){
   <section className="nh-hero" style={{backgroundImage:`url("${IMAGES.hero}")`}}>
    <div className="nh-hero-inner">
     <p className="nh-kicker nh-kicker-light"><MapPin/> Dhiffushi, Kaafu Atoll</p>
-    <h1>Barefoot days on a<br/><em>Maldivian island.</em></h1>
+    <h1>Nirili Villa, Dhiffushi.<br/><em>Your Maldives island stay.</em></h1>
     <p className="nh-hero-lede">A friendly island hotel with turquoise water at the door. Stay with us, swim with turtles, eat by the sea, and let us arrange the boat that gets you here.</p>
     <div className="nh-hero-actions">
      <a className="nh-btn nh-btn-light" href={STAY}>Check availability <ArrowRight/></a>
@@ -57,7 +57,7 @@ export default async function HotelHome(){
   <section className="nh-intro">
    <p className="nh-kicker">Welcome to Nirili</p>
    <h2>Arrive as a guest, <em>leave as a friend.</em></h2>
-   <p>Nirili is a small, locally run hotel on Dhiffushi, a laid-back island in the North Malé Atoll. Everything you need is in one place: your room, days out on the reef, fresh meals and the speedboat from the airport, all arranged by the same team.</p>
+   <p>Nirili Villa is a small, locally run hotel on Dhiffushi, a laid-back island in the North Malé Atoll. Everything you need is in one place: your room, days out on the reef, fresh meals and the speedboat from the airport, all arranged by the same team.</p>
    <ul className="nh-pillars">
     <li><Sun/><strong>Local island life</strong><span>Sandy lanes, a friendly village and the lagoon a short walk away.</span></li>
     <li><Compass/><strong>Our own tours</strong><span>Snorkelling, sandbanks and sunset trips run by Nirili Tours.</span></li>
