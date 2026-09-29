@@ -6,6 +6,7 @@ import {ArrowRight,ArrowUpRight,BedDouble,Bike,Coffee,Compass,MapPin,Menu,Messag
 const STAY='https://stay.nirilihotels.com/';
 const EXCURSIONS='https://excursions.nirilihotels.com/';
 const RESTAURANT='https://restaurant.nirilihotels.com/';
+const TRAVELS='https://travels.nirilihotels.com/';
 const TRANSFERS='https://transfers.nirilihotels.com/';
 const RIDE='https://ride.nirilihotels.com';
 const WHATSAPP='https://wa.me/9609413977?text=Hello%20Nirili%2C%20I%27d%20like%20help%20planning%20my%20trip%20to%20Dhiffushi.';
@@ -38,7 +39,7 @@ const NAV=[
  {label:'Stay',href:STAY},
  {label:'Excursions',href:EXCURSIONS},
  {label:'Dining',href:RESTAURANT},
- {label:'Travel',href:'#travel'},
+ {label:'Travel',href:TRAVELS},
 ];
 
 type MenuItem={id:string;name:string;detail?:string;cents?:number;pricingUnit?:string;galleryUrls?:string[]};
