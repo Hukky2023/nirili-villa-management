@@ -1,7 +1,10 @@
+import type {Metadata} from 'next';
 import DiningMenu from '../../restaurant/guest/menu';
 import './style.css';
 
 export const dynamic='force-dynamic';
+
+export const metadata:Metadata={title:'Nirili Restaurant | Dhiffushi',description:'View the live Nirili Restaurant menu and order dine-in or delivery in Dhiffushi.',alternates:{canonical:'https://restaurant.nirilihotels.com/'},robots:{index:true,follow:true}};
 
 export default function PublicRestaurantPage(){
  return <main className="nirili-public-restaurant">
