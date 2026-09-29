@@ -18,7 +18,7 @@ www.nirilihotels.com
 
 ### Public entry points
 
-- **Nirili Stay** → `https://stay.nirilihotels.com/` for room availability, packages, meal plans and room booking. It does not expose the separate Nirili Excursions catalogue.
+- **Nirili Stay** → `https://booking.nirilihotels.com/` temporarily for room availability, packages, meal plans and room booking until the dedicated Stay subdomain is connected. It does not expose the separate Nirili Excursions catalogue.
 - **Nirili Excursions** → Nirili Tours experiences, excursion details and excursion booking on the public booking service.
 - **Nirili Restaurant** → restaurant information, menu, dine-in ordering and delivery ordering.
 - **Nirili Travels** → parent travel division.
@@ -78,10 +78,10 @@ For in-house guests, eligible restaurant, excursion, transfer and ride charges f
 ## Public domain separation
 
 - `nirilihotels.com` / `www.nirilihotels.com` → main Nirili public website.
-- `stay.nirilihotels.com` → Nirili Stay only.
+- `booking.nirilihotels.com/` → Nirili Stay for now; planned dedicated address: `stay.nirilihotels.com`.
 - `booking.nirilihotels.com/book/excursions` → Nirili Excursions.
 - `booking.nirilihotels.com/book/restaurant` → Nirili Restaurant ordering.
 - `booking.nirilihotels.com/book/transfers` → Nirili Transfers booking.
 - `ride.nirilihotels.com` → Nirili Ride.
 
-The former room-booking entry at `booking.nirilihotels.com` redirects to the dedicated Nirili Stay domain.
+When `stay.nirilihotels.com` is connected later, Nirili Stay can move there without changing the Stay UI or backend.
