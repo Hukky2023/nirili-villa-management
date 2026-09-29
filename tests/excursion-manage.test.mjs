@@ -19,7 +19,7 @@ const state=()=>({orders:[],excursionChanges:[]});
 test('external excursion manage links keep the secret in the URL fragment',()=>{
  const a=createExcursionManageToken(),b=createExcursionManageToken();
  assert.equal(a.length,48);assert.equal(validExcursionManageToken(a),true);assert.notEqual(a,b);
- const url=excursionManageUrl(a);assert.match(url,/\/book\/excursions\/manage#/);assert.equal(url.includes('?token='),false);
+ const url=excursionManageUrl(a);assert.match(url,/^https:\/\/excursions\.nirilihotels\.com\/manage#/);assert.equal(url.includes('?token='),false);
 });
 
 test('snapshot exposes live payment and locks while a guest action is pending',()=>{
