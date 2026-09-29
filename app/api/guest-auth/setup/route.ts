@@ -5,7 +5,7 @@ import {emitAdminNotification} from '../../../../lib/admin-notifications';
 
 function guestHostAllowed(r:Request){
  const host=(r.headers.get('host')||new URL(r.url).host).split(':')[0].toLowerCase();
- return host==='booking.nirilihotels.com'||host==='localhost'||host==='127.0.0.1';
+ return host==='guest.nirilihotels.com'||host==='localhost'||host==='127.0.0.1';
 }
 
 export async function POST(r:Request){
@@ -66,7 +66,7 @@ export async function POST(r:Request){
 
   const cookie=await issueGuestSession(row.id);
   try{await emitAdminNotification({id:'guest:joined:'+row.id+':'+Date.now(),type:'guest',title:'New guest joined',detail:String(row.name||'Guest')+' · Room '+username+' · guest portal activated',ref:row.id,url:'/home'});}catch{}
-  return Response.json({ok:true,redirect:'/stay'},{headers:{...headers,'Set-Cookie':cookie}});
+  return Response.json({ok:true,redirect:'/'},{headers:{...headers,'Set-Cookie':cookie}});
  }catch{
   return Response.json({error:'Could not create the guest password. Please try again or contact reception.'},{status:503,headers});
  }
