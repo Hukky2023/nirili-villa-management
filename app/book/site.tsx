@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useRef,useState} from 'react';
-import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
+import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,ExternalLink,Globe2,Heart,MapPin,ShieldCheck,ShipWheel,Sparkles,Users,X} from 'lucide-react';
 import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
@@ -22,7 +22,7 @@ export default function GuestBookingSite(){
  });
  function setTransport(leg:'arrival'|'departure',changes:any){setTransportPlan((old:any)=>({...old,[leg]:{...old[leg],...changes}}));}
  const [quote,setQuote]=useState<Quote>({}),[checking,setChecking]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
- const [success,setSuccess]=useState<any>(null);
+ const [success,setSuccess]=useState<any>(null),[detailsPackage,setDetailsPackage]=useState<Package|null>(null);
  const token=useRef('');
  useEffect(()=>{token.current=crypto.randomUUID();fetch('/api/public-booking',{cache:'no-store'}).then(r=>r.json()).then((d:Quote)=>{setToday(d.today||'');const start=d.today||new Date().toISOString().slice(0,10);setCheckIn(start);setCheckOut(tomorrow(start,3));setQuote(d)}).catch(()=>{})},[]);
 
@@ -118,11 +118,46 @@ export default function GuestBookingSite(){
      {!!pkg.excursions.length&&<p className="package-inclusions">{pkg.excursions.length} excursion{pkg.excursions.length===1?'':'s'} included</p>}
      {promos.map(p=><span className="package-promo" key={p.id}>{p.name}</span>)}
      <div className="package-public-prices"><span><b>{money(pkg.singleCents)}</b><small>Single / person</small></span><span><b>{money(pkg.doubleCents)}</b><small>Double / person</small></span><span><b>{money(pkg.tripleCents)}</b><small>Triple / person</small></span></div>
-     <button type="button" onClick={()=>{setPackageId(pkg.id);setMeal(pkg.mealPlan);if(checkIn)setCheckOut(tomorrow(checkIn,pkg.nights));document.getElementById('book')?.scrollIntoView({behavior:'smooth'})}}>{active?'Package selected':'Choose package'} <ArrowRight/></button>
+     <div className="package-card-actions">
+      <button className="package-select-button" type="button" onClick={()=>{setPackageId(pkg.id);setMeal(pkg.mealPlan);if(checkIn)setCheckOut(tomorrow(checkIn,pkg.nights));document.getElementById('book')?.scrollIntoView({behavior:'smooth'})}}>{active?'Package selected':'Choose package'} <ArrowRight/></button>
+      <button className="package-details-button" type="button" onClick={()=>setDetailsPackage(pkg)}>View details</button>
+     </div>
     </article>})}
    </div>
    {!(quote.packages||[]).length&&<p className="package-empty">No stay packages are currently active. You can still book using the room rates below.</p>}
   </section>
+
+  {detailsPackage&&<div className="package-details-overlay" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)setDetailsPackage(null)}}>
+   <section className="package-details-modal" role="dialog" aria-modal="true" aria-labelledby="package-details-title">
+    <header>
+     <div><small>{detailsPackage.nights} NIGHTS · {detailsPackage.days} DAYS</small><h2 id="package-details-title">{detailsPackage.name}</h2></div>
+     <button type="button" className="package-details-close" aria-label="Close package details" onClick={()=>setDetailsPackage(null)}><X/></button>
+    </header>
+    {(detailsPackage.roomPhoto||detailsPackage.excursionPhoto)&&<div className="package-details-gallery">
+     {detailsPackage.roomPhoto&&<figure><img src={detailsPackage.roomPhoto} alt={detailsPackage.name+' room'}/><figcaption>Room</figcaption></figure>}
+     {detailsPackage.excursionPhoto&&<figure><img src={detailsPackage.excursionPhoto} alt={detailsPackage.name+' excursion'}/><figcaption>Excursion</figcaption></figure>}
+    </div>}
+    <div className="package-details-facts">
+     <span><CalendarDays/> {detailsPackage.nights} nights / {detailsPackage.days} days</span>
+     <span><Sparkles/> {detailsPackage.mealPlan}</span>
+     {detailsPackage.includeTransfer&&<span><ShipWheel/> {detailsPackage.transferLabel||'Return airport transfer included'}</span>}
+    </div>
+    <div className="package-details-section"><h3>Meals included</h3>
+     <p>{detailsPackage.mealPlan==='Full Board'?'Breakfast, lunch and dinner are included for the package stay.':detailsPackage.mealPlan==='Half Board'?'Breakfast plus one main meal per day (lunch or dinner) are included.':'Breakfast is included each day.'}</p>
+    </div>
+    <div className="package-details-section"><h3>Excursions included</h3>
+     {(detailsPackage.excursionNames?.length||detailsPackage.excursions.length)?<ul>{(detailsPackage.excursionNames?.length?detailsPackage.excursionNames:detailsPackage.excursions).map((name,index)=><li key={index}><CheckCircle2/>{name}</li>)}</ul>:<p>No excursions included.</p>}
+    </div>
+    <div className="package-details-section"><h3>Package prices</h3><div className="package-details-prices">
+     <span><b>{money(detailsPackage.singleCents)}</b><small>Single / person</small></span>
+     <span><b>{money(detailsPackage.doubleCents)}</b><small>Double / person</small></span>
+     <span><b>{money(detailsPackage.tripleCents)}</b><small>Triple / person</small></span>
+    </div></div>
+    {detailsPackage.childPolicy&&<div className="package-details-section"><h3>Child policy</h3><p>{detailsPackage.childPolicy}</p></div>}
+    {detailsPackage.youtubeUrl&&<a className="package-youtube-button" href={detailsPackage.youtubeUrl} target="_blank" rel="noopener noreferrer">Watch on YouTube <ExternalLink/></a>}
+    <button className="package-details-select" type="button" onClick={()=>{setPackageId(detailsPackage.id);setMeal(detailsPackage.mealPlan);if(checkIn)setCheckOut(tomorrow(checkIn,detailsPackage.nights));setDetailsPackage(null);setTimeout(()=>document.getElementById('book')?.scrollIntoView({behavior:'smooth'}),50)}}>Choose this package <ArrowRight/></button>
+   </section>
+  </div>}
 
   <section className="rates" id="rates">
    <div className="section-head"><span className="eyebrow">ROOM + MEALS</span><h2>Choose the stay that fits your trip.</h2><p>Rates below update for your selected number of guests. Final room allocation is confirmed by reception.</p></div>
