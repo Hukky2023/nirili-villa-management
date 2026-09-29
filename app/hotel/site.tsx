@@ -6,7 +6,7 @@ const services=[
   title:'Nirili Stay',
   eyebrow:'ROOMS · PACKAGES',
   copy:'Check live room availability, choose your meal plan and book Nirili stay packages created by our management team.',
-  href:'https://booking.nirilihotels.com/',
+  href:'https://stay.nirilihotels.com/',
   icon:BedDouble,
   className:'hub-stay',
   cta:'Book Rooms & Packages'
@@ -52,16 +52,16 @@ export default function HotelHome(){
   <header className="site-header">
    <Brand/>
    <nav className="desktop-nav" aria-label="Nirili services">
-    <a href="https://booking.nirilihotels.com/">Nirili Stay</a>
+    <a href="https://stay.nirilihotels.com/">Nirili Stay</a>
     <a href="https://booking.nirilihotels.com/book/excursions">Nirili Excursions</a>
     <a href="https://booking.nirilihotels.com/book/restaurant">Nirili Restaurant</a>
     <a href="#travels">Nirili Travels</a>
    </nav>
-   <a className="header-book" href="https://booking.nirilihotels.com/">Book stay <ArrowRight/></a>
+   <a className="header-book" href="https://stay.nirilihotels.com/">Book stay <ArrowRight/></a>
    <details className="mobile-menu">
     <summary aria-label="Open menu"><Menu/></summary>
     <div>
-     <a href="https://booking.nirilihotels.com/">Nirili Stay</a>
+     <a href="https://stay.nirilihotels.com/">Nirili Stay</a>
      <a href="https://booking.nirilihotels.com/book/excursions">Nirili Excursions</a>
      <a href="https://booking.nirilihotels.com/book/restaurant">Nirili Restaurant</a>
      <a href="#travels">Nirili Travels</a>
@@ -76,7 +76,7 @@ export default function HotelHome(){
     <span>WELCOME TO NIRILI · DHIFFUSHI</span>
     <h1>Stay. Explore.<br/><em>Dine. Travel.</em></h1>
     <p>Nirili brings your Dhiffushi experience together through four connected services: Nirili Stay, Nirili Excursions, Nirili Restaurant and Nirili Travels.</p>
-    <div className="service-hero-actions"><a className="hero-primary" href="#services">Explore Nirili <ArrowRight/></a><a className="hero-secondary" href="https://booking.nirilihotels.com/">Book your stay</a></div>
+    <div className="service-hero-actions"><a className="hero-primary" href="#services">Explore Nirili <ArrowRight/></a><a className="hero-secondary" href="https://stay.nirilihotels.com/">Book your stay</a></div>
    </div>
    <div className="service-hero-note">
     <MapPin/>
@@ -140,7 +140,7 @@ export default function HotelHome(){
     <p>Wake up close to turquoise water, explore the atoll by day and return to a relaxed local island. Nirili connects your stay, excursions, dining and travel so your trip feels effortless.</p>
    </div>
    <div className="island-service-links">
-    <a href="https://booking.nirilihotels.com/">Book Nirili Stay <ArrowRight/></a>
+    <a href="https://stay.nirilihotels.com/">Book Nirili Stay <ArrowRight/></a>
     <a href="https://booking.nirilihotels.com/book/excursions">Book Nirili Excursions <ArrowRight/></a>
     <a href="#travels">Open Nirili Travels <ArrowRight/></a>
    </div>
@@ -150,7 +150,7 @@ export default function HotelHome(){
    <Brand/>
    <p>Arrive as a Guest, Leave as a Friend.</p>
    <div>
-    <a href="https://booking.nirilihotels.com/">Nirili Stay</a>
+    <a href="https://stay.nirilihotels.com/">Nirili Stay</a>
     <a href="https://booking.nirilihotels.com/book/excursions">Nirili Excursions</a>
     <a href="https://booking.nirilihotels.com/book/restaurant">Nirili Restaurant</a>
     <a href="#travels">Nirili Travels</a>
