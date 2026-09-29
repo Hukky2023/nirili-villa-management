@@ -25,6 +25,7 @@ export default function ExcursionBillingActions({booking, canAdjust, revision, o
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [conflict, setConflict] = useState(false);
   const [billEdit,setBillEdit]=useState<any|null>(null),[billBusy,setBillBusy]=useState(false),[billError,setBillError]=useState('');
+  const [deleteBusy,setDeleteBusy]=useState(false);
   const dialog = useRef<HTMLDialogElement>(null),editDialog=useRef<HTMLDialogElement>(null), saving = useRef(false);
   const titleId = useId(),editTitleId=useId();
 
@@ -83,6 +84,27 @@ export default function ExcursionBillingActions({booking, canAdjust, revision, o
     } finally {saving.current = false; setBusy(false);}
   }
 
+  async function deleteBooking(){
+    if(!canAdjust||busy||billBusy||deleteBusy)return;
+    const ok=window.confirm(
+      'Delete '+booking.excursion+' for '+booking.guest+'?\n\nThis permanently removes the excursion booking and its linked bill. Payments already received are kept and are not automatically refunded.'
+    );
+    if(!ok)return;
+    setDeleteBusy(true);setError('');setBillError('');setNotice('');
+    try{
+      const response=await fetch('/api/excursion-bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        action:'delete-booking',id:booking.id,revision
+      })});
+      const result=await response.json();
+      if(!response.ok)throw new Error(result.error||'Could not delete the excursion booking.');
+      await onUpdated();
+      window.dispatchEvent(new Event('services-updated'));
+      window.dispatchEvent(new Event('nirili:auto-refresh'));
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:'Could not delete the excursion booking. Please retry.');
+    }finally{setDeleteBusy(false);}
+  }
+
   async function saveBill(event:FormEvent){
     event.preventDefault();
     if(!canAdjust||!billEdit||billBusy||!billEdit.items.length)return;
@@ -111,10 +133,11 @@ export default function ExcursionBillingActions({booking, canAdjust, revision, o
       <span>Total <b>{money(p.totalCents)}</b></span>
     </div>}
     {canAdjust && <div className="excursion-price-buttons">
-      <button type="button" className="excursion-secondary-btn" disabled={busy||billBusy} onClick={openBill}>Edit Bill</button>
-      <button type="button" className="excursion-secondary-btn" disabled={busy || billBusy || p.complimentary} onClick={() => open('free')}>Make Free</button>
-      <button type="button" className="excursion-secondary-btn" disabled={busy||billBusy} onClick={() => open('discount')}>{p.adjusted && !p.complimentary ? 'Edit Discount' : 'Add Discount'}</button>
-      {p.adjusted && <button type="button" className="excursion-secondary-btn" disabled={busy||billBusy} onClick={() => open('restore')}>Remove adjustment</button>}
+      <button type="button" className="excursion-secondary-btn" disabled={busy||billBusy||deleteBusy} onClick={openBill}>Edit Bill</button>
+      <button type="button" className="excursion-secondary-btn" disabled={busy || billBusy || deleteBusy || p.complimentary} onClick={() => open('free')}>Make Free</button>
+      <button type="button" className="excursion-secondary-btn" disabled={busy||billBusy||deleteBusy} onClick={() => open('discount')}>{p.adjusted && !p.complimentary ? 'Edit Discount' : 'Add Discount'}</button>
+      <button type="button" className="excursion-secondary-btn excursion-delete-btn" disabled={busy||billBusy||deleteBusy} onClick={()=>void deleteBooking()}>{deleteBusy?'Deleting…':'Delete'}</button>
+      {p.adjusted && <button type="button" className="excursion-secondary-btn" disabled={busy||billBusy||deleteBusy} onClick={() => open('restore')}>Remove adjustment</button>}
     </div>}
     {notice && <p className="excursion-price-notice" role="status">{notice}</p>}
     {canAdjust && !!booking.billingHistory?.length && <details className="excursion-price-history">
