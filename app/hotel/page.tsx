@@ -1,6 +1,6 @@
 import type {Metadata} from 'next';
 import HotelHome from './site';
-import './style.css';
+import './home.css';
 
 export const dynamic='force-dynamic';
 
