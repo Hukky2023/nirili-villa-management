@@ -77,7 +77,7 @@ For in-house guests, eligible restaurant, excursion, transfer and ride charges f
 
 ## Public domain separation
 
-- `nirilihotels.com` / `www.nirilihotels.com` → main Nirili public website.
+- `www.nirilihotels.com` → canonical main Nirili public website; `nirilihotels.com` redirects to `www`.
 - `stay.nirilihotels.com` → Nirili Stay.
 - `excursions.nirilihotels.com` → Nirili Excursions.
 - `restaurant.nirilihotels.com` → Nirili Restaurant.
