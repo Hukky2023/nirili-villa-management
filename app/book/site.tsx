@@ -5,7 +5,7 @@ import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,Shi
 import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
-type Package={id:string;name:string;nights:number;days:number;mealPlan:string;excursions:string[];includeTransfer:boolean;transferLabel:string;singleCents:number;doubleCents:number;tripleCents:number;childPolicy:string};
+type Package={id:string;name:string;nights:number;days:number;mealPlan:string;excursions:string[];includeTransfer:boolean;transferLabel:string;singleCents:number;doubleCents:number;tripleCents:number;childPolicy:string;roomPhoto?:string;excursionPhoto?:string;youtubeUrl?:string};
 type Promotion={id:string;name:string;detail:string;packageIds:string[];roomTypes:string[];validFrom:string;validTo:string};
 type Quote={today?:string;plans?:Plan[];packages?:Package[];promotions?:Promotion[];availableRooms?:number;bookingClosed?:boolean;nights?:number;estimates?:{name:string;nightlyCents:number;totalCents:number}[];error?:string};
 
@@ -111,6 +111,8 @@ export default function GuestBookingSite(){
     {(quote.packages||[]).map(pkg=>{const active=packageId===pkg.id;const promos=(quote.promotions||[]).filter(p=>p.packageIds.includes(pkg.id));return <article className={active?'selected':''} key={pkg.id}>
      <small>{pkg.nights} NIGHTS · {pkg.days} DAYS</small>
      <h3>{pkg.name}</h3>
+     {(pkg.roomPhoto||pkg.excursionPhoto)&&<div className="package-public-media">{pkg.roomPhoto&&<figure><img src={pkg.roomPhoto} alt={pkg.name+' room'}/><figcaption>Room</figcaption></figure>}{pkg.excursionPhoto&&<figure><img src={pkg.excursionPhoto} alt={pkg.name+' excursion'}/><figcaption>Excursion</figcaption></figure>}</div>}
+     {pkg.youtubeUrl&&<a className="package-video-link" href={pkg.youtubeUrl} target="_blank" rel="noopener noreferrer">Watch package video</a>}
      <p>{pkg.mealPlan}{pkg.includeTransfer?' · '+(pkg.transferLabel||'Return transfer included'):''}</p>
      {!!pkg.excursions.length&&<p className="package-inclusions">{pkg.excursions.length} excursion{pkg.excursions.length===1?'':'s'} included</p>}
      {promos.map(p=><span className="package-promo" key={p.id}>{p.name}</span>)}
