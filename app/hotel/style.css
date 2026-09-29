@@ -1215,3 +1215,90 @@
   font-size:12px;
  }
 }
+
+
+/* Architecture: four Nirili divisions + Nirili Travels children */
+.service-home .hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.service-home .hub-card,.service-home .hub-card.hub-primary{grid-column:auto;min-height:360px}
+.service-home .hub-travels{
+ background:linear-gradient(145deg,#f2f7ff,#fff);
+ border-color:#ccdcf3;
+}
+.service-home .hub-travels .hub-icon{background:#e8efff;color:#345fbd}
+.travel-division{
+ max-width:1180px;
+ margin:0 auto 95px;
+ padding:52px;
+ border-radius:32px;
+ background:linear-gradient(135deg,#062f4f,#075d83);
+ color:#fff;
+ display:grid;
+ grid-template-columns:.85fr 1.15fr;
+ gap:36px;
+ align-items:stretch;
+}
+.travel-division-copy{align-self:center}
+.travel-division-copy>span{
+ font-size:10px;
+ font-weight:950;
+ letter-spacing:.18em;
+ color:#9de8ef;
+}
+.travel-division-copy h2{
+ margin:10px 0 17px;
+ font-size:clamp(42px,5vw,65px);
+ line-height:.94;
+ letter-spacing:-.055em;
+}
+.travel-division-copy p{
+ margin:0;
+ max-width:520px;
+ color:#d8edf7;
+ line-height:1.7;
+}
+.travel-child-grid{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:14px;
+}
+.travel-child-card{
+ min-height:330px;
+ padding:25px;
+ border:1px solid rgba(255,255,255,.16);
+ border-radius:24px;
+ background:rgba(255,255,255,.09);
+ color:#fff!important;
+ display:flex;
+ flex-direction:column;
+ align-items:flex-start;
+ backdrop-filter:blur(8px);
+ transition:transform .2s ease,background .2s ease;
+}
+.travel-child-card:hover{transform:translateY(-3px);background:rgba(255,255,255,.14)}
+.travel-child-card>div{
+ width:53px;height:53px;
+ border-radius:16px;
+ display:grid;
+ place-items:center;
+ background:#fff;
+ color:#0868a6;
+ margin-bottom:24px;
+}
+.travel-child-card>div svg{width:26px}
+.travel-child-card small{font-size:9px;font-weight:950;letter-spacing:.15em;color:#9de8ef}
+.travel-child-card h3{margin:8px 0 10px;font-size:30px;letter-spacing:-.04em}
+.travel-child-card p{margin:0 0 22px;color:#d9edf6;line-height:1.55;font-size:13px}
+.travel-child-card b{margin-top:auto;display:flex;align-items:center;gap:8px;font-size:13px}
+.travel-child-card b svg{width:17px}
+.mobile-menu .mobile-subservice{padding-left:28px;font-size:12px;opacity:.85}
+@media(max-width:900px){
+ .travel-division{grid-template-columns:1fr;padding:38px}
+ .travel-child-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+ .service-home .hub-grid{grid-template-columns:1fr}
+ .travel-division{margin:0 12px 70px;padding:30px 22px;border-radius:28px}
+ .travel-division-copy h2{font-size:44px}
+ .travel-child-grid{grid-template-columns:1fr}
+ .travel-child-card{min-height:285px}
+}
