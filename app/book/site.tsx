@@ -78,11 +78,11 @@ export default function GuestBookingSite(){
 
  return <main className="guest-booking-site">
   <header className="guest-nav">
-   <a className="guest-brand" href="/book" aria-label="Nirili Villa guest booking home">
+   <a className="guest-brand" href="/book" aria-label="Nirili Stay booking home">
     <span className="brand-sun">☀</span>
     <div><strong>Nirili Stay</strong><small>NIRILI VILLA · DHIFFUSHI</small></div>
    </a>
-   <nav><a href="#stay">Stay</a><a href="#packages">Packages</a><a href="/book/excursions">Excursions</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
+   <nav><a href="#stay">Stay</a><a href="#packages">Packages</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
    <a className="nav-book" href="#book"><span>Book Now</span><ArrowRight/></a>
   </header>
 
@@ -90,7 +90,7 @@ export default function GuestBookingSite(){
    <div className="hero-copy">
     <span className="eyebrow"><MapPin/> DHIFFUSHI ISLAND · MALDIVES</span>
     <h1>Island days.<br/><em>Easy stays.</em></h1>
-    <p>Stay close to the beach, explore the Maldives with our local team, and arrange your room, meals, transfers and island experiences from one place.</p>
+    <p>Stay close to the beach and arrange your room, meal plan, arrival details and departure details directly with the Nirili Stay team.</p>
     <div className="hero-actions"><a className="primary" href="#book">Check your dates <ArrowRight/></a><a href="#rates">View room rates <ChevronDown/></a></div>
     <div className="trust-row"><span><Heart/> Local Dhiffushi hospitality</span></div>
    </div>
@@ -101,9 +101,9 @@ export default function GuestBookingSite(){
   </section>
 
   <section className="quick-strip">
-   <article><ShipWheel/><div><strong>Airport transfers</strong><span>Shared speedboat arrangements available</span></div></article>
-   <article><Sparkles/><div><strong>Island experiences</strong><span>Snorkeling, sandbanks, fishing and more</span><a className="inline-excursion-cta" href="/book/excursions">External guest? Book excursions <ArrowRight/></a></div></article>
-   <article><Globe2/><div><strong>Simple booking</strong><span>Book direct — no account or portal access</span></div></article>
+   <article><ShipWheel/><div><strong>Arrival planning</strong><span>Share your speedboat and harbour pickup needs with your stay booking</span></div></article>
+   <article><Sparkles/><div><strong>Room + meal plans</strong><span>Choose Bed & Breakfast, Half Board or Full Board for your stay</span></div></article>
+   <article><Globe2/><div><strong>Simple booking</strong><span>Book Nirili Stay direct — no guest-portal account required</span></div></article>
   </section>
 
   <section className="packages-section" id="packages">

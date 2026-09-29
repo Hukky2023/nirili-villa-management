@@ -20,7 +20,7 @@ test('manage tokens are high entropy and links keep the token in the URL fragmen
  const a=createBookingManageToken(),b=createBookingManageToken();
  assert.equal(a.length,48);assert.equal(b.length,48);assert.notEqual(a,b);
  assert.equal(validBookingManageToken(a),true);assert.equal(validBookingManageToken('short'),false);
- const url=bookingManageUrl(a);assert.match(url,/\/book\/manage#/);assert.equal(url.includes('?token='),false);
+ const url=bookingManageUrl(a);assert.match(url,/^https:\/\/stay\.nirilihotels\.com\/book\/manage#/);assert.equal(url.includes('?token='),false);
 });
 
 test('pending public booking can be found and safely projected',()=>{

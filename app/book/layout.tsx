@@ -2,11 +2,12 @@ import WebsiteChat from '../website-chat';
 import type {Metadata} from 'next';
 
 export const metadata:Metadata={
- title:'Book Nirili Villa | Dhiffushi, Maldives',
- description:'Check room availability and request your stay at Nirili Villa, Dhiffushi. Bed & Breakfast, Half Board and Full Board options available.',
+ title:'Nirili Stay | Book Nirili Villa, Dhiffushi',
+ description:'Nirili Stay is the dedicated room-booking website for Nirili Villa in Dhiffushi. Check room availability, packages and meal plans.',
+ alternates:{canonical:'https://stay.nirilihotels.com/'},
  robots:{index:true,follow:true},
  openGraph:{
-  title:'Nirili Villa · Dhiffushi, Maldives',
+  title:'Nirili Stay · Nirili Villa · Dhiffushi, Maldives',
   description:'Book your island stay directly with Nirili Villa.',
   type:'website'
  }
