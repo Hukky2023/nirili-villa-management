@@ -5,7 +5,8 @@ import './style.css';
 export const metadata:Metadata={
  title:'Manage Booking | Nirili Villa · Dhiffushi',
  description:'View, change or cancel your Nirili Villa room booking.',
- referrer:'no-referrer'
+ referrer:'no-referrer',
+ robots:{index:false,follow:false}
 };
 
 export default function ManageBookingPage(){return <ManageBookingSite/>}
