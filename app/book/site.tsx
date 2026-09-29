@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useRef,useState} from 'react';
-import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,ExternalLink,Globe2,Heart,MapPin,ShieldCheck,ShipWheel,Sparkles,Users,X} from 'lucide-react';
+import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
 import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
@@ -22,7 +22,7 @@ export default function GuestBookingSite(){
  });
  function setTransport(leg:'arrival'|'departure',changes:any){setTransportPlan((old:any)=>({...old,[leg]:{...old[leg],...changes}}));}
  const [quote,setQuote]=useState<Quote>({}),[checking,setChecking]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
- const [success,setSuccess]=useState<any>(null),[detailsPackage,setDetailsPackage]=useState<Package|null>(null);
+ const [success,setSuccess]=useState<any>(null);
  const token=useRef('');
  useEffect(()=>{token.current=crypto.randomUUID();fetch('/api/public-booking',{cache:'no-store'}).then(r=>r.json()).then((d:Quote)=>{setToday(d.today||'');const start=d.today||new Date().toISOString().slice(0,10);setCheckIn(start);setCheckOut(tomorrow(start,3));setQuote(d)}).catch(()=>{})},[]);
 
@@ -112,52 +112,34 @@ export default function GuestBookingSite(){
     {(quote.packages||[]).map(pkg=>{const active=packageId===pkg.id;const promos=(quote.promotions||[]).filter(p=>p.packageIds.includes(pkg.id));return <article className={active?'selected':''} key={pkg.id}>
      <small>{pkg.nights} NIGHTS · {pkg.days} DAYS</small>
      <h3>{pkg.name}</h3>
-     {(pkg.roomPhoto||pkg.excursionPhoto)&&<div className="package-public-media">{pkg.roomPhoto&&<figure><img src={pkg.roomPhoto} alt={pkg.name+' room'}/><figcaption>Room</figcaption></figure>}{pkg.excursionPhoto&&<figure><img src={pkg.excursionPhoto} alt={pkg.name+' excursion'}/><figcaption>Excursion</figcaption></figure>}</div>}
-     {pkg.youtubeUrl&&<a className="package-video-link" href={pkg.youtubeUrl} target="_blank" rel="noopener noreferrer">Watch package video</a>}
      <p>{pkg.mealPlan}{pkg.includeTransfer?' · '+(pkg.transferLabel||'Return transfer included'):''}</p>
      {!!pkg.excursions.length&&<p className="package-inclusions">{pkg.excursions.length} excursion{pkg.excursions.length===1?'':'s'} included</p>}
      {promos.map(p=><span className="package-promo" key={p.id}>{p.name}</span>)}
      <div className="package-public-prices"><span><b>{money(pkg.singleCents)}</b><small>Single / person</small></span><span><b>{money(pkg.doubleCents)}</b><small>Double / person</small></span><span><b>{money(pkg.tripleCents)}</b><small>Triple / person</small></span></div>
      <div className="package-card-actions">
       <button className="package-select-button" type="button" onClick={()=>{setPackageId(pkg.id);setMeal(pkg.mealPlan);if(checkIn)setCheckOut(tomorrow(checkIn,pkg.nights));document.getElementById('book')?.scrollIntoView({behavior:'smooth'})}}>{active?'Package selected':'Choose package'} <ArrowRight/></button>
-      <button className="package-details-button" type="button" onClick={()=>setDetailsPackage(pkg)}>View details</button>
+      <details className="package-inline-details">
+       <summary>View details</summary>
+       <div className="package-inline-details-body">
+        {(pkg.roomPhoto||pkg.excursionPhoto)&&<div className="package-inline-gallery">
+         {pkg.roomPhoto&&<div className="package-inline-photo" style={{backgroundImage:'url("'+pkg.roomPhoto.replace(/"/g,'%22')+'")'}}><span>Room photo</span></div>}
+         {pkg.excursionPhoto&&<div className="package-inline-photo" style={{backgroundImage:'url("'+pkg.excursionPhoto.replace(/"/g,'%22')+'")'}}><span>Excursion photo</span></div>}
+        </div>}
+        <div className="package-inline-facts">
+         <p><b>Stay:</b> {pkg.nights} nights / {pkg.days} days</p>
+         <p><b>Meals:</b> {pkg.mealPlan==='Full Board'?'Breakfast, lunch and dinner included':pkg.mealPlan==='Half Board'?'Breakfast plus one lunch or dinner per day included':'Breakfast included each day'}</p>
+         {pkg.includeTransfer&&<p><b>Transfer:</b> {pkg.transferLabel||'Return airport transfer included'}</p>}
+        </div>
+        <div className="package-inline-excursions"><b>Excursions included</b>{(pkg.excursionNames?.length||pkg.excursions.length)?<ul>{(pkg.excursionNames?.length?pkg.excursionNames:pkg.excursions).map((name,index)=><li key={index}><CheckCircle2/>{name}</li>)}</ul>:<p>No excursions included.</p>}</div>
+        {pkg.childPolicy&&<p className="package-inline-policy"><b>Child policy:</b> {pkg.childPolicy}</p>}
+        {pkg.youtubeUrl&&<a className="package-inline-youtube" href={pkg.youtubeUrl} target="_blank" rel="noopener noreferrer">Watch package video on YouTube</a>}
+       </div>
+      </details>
      </div>
     </article>})}
    </div>
    {!(quote.packages||[]).length&&<p className="package-empty">No stay packages are currently active. You can still book using the room rates below.</p>}
   </section>
-
-  {detailsPackage&&<div className="package-details-overlay" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)setDetailsPackage(null)}}>
-   <section className="package-details-modal" role="dialog" aria-modal="true" aria-labelledby="package-details-title">
-    <header>
-     <div><small>{detailsPackage.nights} NIGHTS · {detailsPackage.days} DAYS</small><h2 id="package-details-title">{detailsPackage.name}</h2></div>
-     <button type="button" className="package-details-close" aria-label="Close package details" onClick={()=>setDetailsPackage(null)}><X/></button>
-    </header>
-    {(detailsPackage.roomPhoto||detailsPackage.excursionPhoto)&&<div className="package-details-gallery">
-     {detailsPackage.roomPhoto&&<figure><img src={detailsPackage.roomPhoto} alt={detailsPackage.name+' room'}/><figcaption>Room</figcaption></figure>}
-     {detailsPackage.excursionPhoto&&<figure><img src={detailsPackage.excursionPhoto} alt={detailsPackage.name+' excursion'}/><figcaption>Excursion</figcaption></figure>}
-    </div>}
-    <div className="package-details-facts">
-     <span><CalendarDays/> {detailsPackage.nights} nights / {detailsPackage.days} days</span>
-     <span><Sparkles/> {detailsPackage.mealPlan}</span>
-     {detailsPackage.includeTransfer&&<span><ShipWheel/> {detailsPackage.transferLabel||'Return airport transfer included'}</span>}
-    </div>
-    <div className="package-details-section"><h3>Meals included</h3>
-     <p>{detailsPackage.mealPlan==='Full Board'?'Breakfast, lunch and dinner are included for the package stay.':detailsPackage.mealPlan==='Half Board'?'Breakfast plus one main meal per day (lunch or dinner) are included.':'Breakfast is included each day.'}</p>
-    </div>
-    <div className="package-details-section"><h3>Excursions included</h3>
-     {(detailsPackage.excursionNames?.length||detailsPackage.excursions.length)?<ul>{(detailsPackage.excursionNames?.length?detailsPackage.excursionNames:detailsPackage.excursions).map((name,index)=><li key={index}><CheckCircle2/>{name}</li>)}</ul>:<p>No excursions included.</p>}
-    </div>
-    <div className="package-details-section"><h3>Package prices</h3><div className="package-details-prices">
-     <span><b>{money(detailsPackage.singleCents)}</b><small>Single / person</small></span>
-     <span><b>{money(detailsPackage.doubleCents)}</b><small>Double / person</small></span>
-     <span><b>{money(detailsPackage.tripleCents)}</b><small>Triple / person</small></span>
-    </div></div>
-    {detailsPackage.childPolicy&&<div className="package-details-section"><h3>Child policy</h3><p>{detailsPackage.childPolicy}</p></div>}
-    {detailsPackage.youtubeUrl&&<a className="package-youtube-button" href={detailsPackage.youtubeUrl} target="_blank" rel="noopener noreferrer">Watch on YouTube <ExternalLink/></a>}
-    <button className="package-details-select" type="button" onClick={()=>{setPackageId(detailsPackage.id);setMeal(detailsPackage.mealPlan);if(checkIn)setCheckOut(tomorrow(checkIn,detailsPackage.nights));setDetailsPackage(null);setTimeout(()=>document.getElementById('book')?.scrollIntoView({behavior:'smooth'}),50)}}>Choose this package <ArrowRight/></button>
-   </section>
-  </div>}
 
   <section className="rates" id="rates">
    <div className="section-head"><span className="eyebrow">ROOM + MEALS</span><h2>Choose the stay that fits your trip.</h2><p>Rates below update for your selected number of guests. Final room allocation is confirmed by reception.</p></div>
