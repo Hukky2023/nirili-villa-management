@@ -12,7 +12,7 @@ export function validBookingManageToken(value:unknown):value is string{
 }
 
 export function bookingManageUrl(token:string){
- return bookingManageHost+'/book/manage#'+encodeURIComponent(token);
+ return bookingManageHost+'/manage#'+encodeURIComponent(token);
 }
 
 export function bookingCancellationNeedsApproval(checkIn:string,today=new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())){
