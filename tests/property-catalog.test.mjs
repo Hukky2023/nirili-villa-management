@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {existsSync,readFileSync} from 'node:fs';
 import {resolve,dirname} from 'node:path';
 import {createRequire} from 'node:module';
 
@@ -14,7 +14,7 @@ function load(path,stubs={},cache=new Map()){
  new Function('require','module','exports',source)(id=>{
   if(Object.hasOwn(stubs,id))return stubs[id];
   if(id.endsWith('.css'))return {};
-  if(id.startsWith('.'))return load(resolve(dirname(file),id)+(id.endsWith('.ts')?'':'.ts'),stubs,cache);
+  if(id.startsWith('.')){const base=resolve(dirname(file),id);return load(/\.tsx?$/.test(id)?base:existsSync(base+'.tsx')?base+'.tsx':base+'.ts',stubs,cache);}
   return require(id);
  },module,module.exports);
  return module.exports;
