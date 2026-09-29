@@ -4,6 +4,7 @@ const legacyBookingHost='booking.nirilihotels.com';
 const stayHost='stay.nirilihotels.com';
 const excursionsHost='excursions.nirilihotels.com';
 const restaurantHost='restaurant.nirilihotels.com';
+const travelsHost='travels.nirilihotels.com';
 const transfersHost='transfers.nirilihotels.com';
 const guestPortalHost='guest.nirilihotels.com';
 const publicHotelHost='www.nirilihotels.com';
@@ -74,6 +75,13 @@ function restaurantSiteResponse(url:URL,method='GET'){
  if(url.pathname==='/book/restaurant')return publicRedirect(url,'https://restaurant.nirilihotels.com','/');
  if(url.pathname.startsWith('/api/'))return new NextResponse('Not Found',{status:404});
  return publicRedirect(url,'https://restaurant.nirilihotels.com','/');
+}
+
+function travelsSiteResponse(url:URL){
+ if(url.pathname==='/')return publicRewrite(url,'/travels');
+ if(url.pathname==='/travels')return publicRedirect(url,'https://travels.nirilihotels.com','/');
+ if(url.pathname.startsWith('/api/'))return new NextResponse('Not Found',{status:404});
+ return publicRedirect(url,'https://travels.nirilihotels.com','/');
 }
 
 function transfersSiteResponse(url:URL){
@@ -162,6 +170,7 @@ function routeRequest(request:NextRequest){
  if(host===stayHost)return staySiteResponse(url);
  if(host===excursionsHost)return excursionsSiteResponse(url,request.method);
  if(host===restaurantHost)return restaurantSiteResponse(url,request.method);
+ if(host===travelsHost)return travelsSiteResponse(url);
  if(host===transfersHost)return transfersSiteResponse(url);
  if(host===guestPortalHost)return guestPortalResponse(url,request.method);
  if(host===legacyBookingHost)return legacyBookingResponse(url);
