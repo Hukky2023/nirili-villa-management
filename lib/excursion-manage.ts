@@ -1,4 +1,4 @@
-export const excursionManageHost='https://booking.nirilihotels.com';
+export const excursionManageHost='https://excursions.nirilihotels.com';
 
 export function createExcursionManageToken(){
  const bytes=crypto.getRandomValues(new Uint8Array(24));
@@ -10,7 +10,7 @@ export function validExcursionManageToken(value:unknown):value is string{
 }
 
 export function excursionManageUrl(token:string){
- return excursionManageHost+'/book/excursions/manage#'+encodeURIComponent(token);
+ return excursionManageHost+'/manage#'+encodeURIComponent(token);
 }
 
 export function ensureExcursionManageState(state:any){

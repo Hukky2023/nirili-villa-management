@@ -10,6 +10,8 @@ type Excursion={
 type Guest={name:string;ageCategory:'adult'|'child'|'infant';footSize:string};
 type PublicData={today?:string;items?:Excursion[];childPolicy?:string;privateBoatSurchargeCents?:number;error?:string};
 
+const STAY='https://stay.nirilihotels.com/';
+const MAIN='https://www.nirilihotels.com';
 const money=(cents:number)=>'$'+(Math.max(0,Number(cents)||0)/100).toFixed(2);
 const newGuest=():Guest=>({name:'',ageCategory:'adult',footSize:''});
 
@@ -97,18 +99,18 @@ export default function ExternalExcursionBooking(){
    <div className="external-success-actions">
     {success.manageUrl&&<a className="primary" href={success.manageUrl}>View / Manage Excursion <ArrowRight/></a>}
     <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();}}>Book another excursion <ArrowRight/></button>
-    <a href="/book"><ArrowLeft/> Back to Nirili Villa</a>
+    <a href={STAY}><ArrowLeft/> Back to Nirili Stay</a>
    </div>
   </section>
  </main>;
 
  return <main className="guest-booking-site external-excursion-site">
   <header className="guest-nav">
-   <a className="guest-brand" href="/book" aria-label="Nirili Villa booking home">
+   <a className="guest-brand" href="/" aria-label="Nirili Excursions home">
     <span className="brand-sun">☀</span>
     <div><strong>Nirili Excursions</strong><small>NIRILI TOURS · DHIFFUSHI</small></div>
    </a>
-   <nav><a href="/book">Stay</a><a href="#excursions">Excursions</a><a href="#external-excursion-form">Book now</a></nav>
+   <nav><a href={STAY}>Stay</a><a href="#excursions">Excursions</a><a href="#external-excursion-form">Book now</a></nav>
    <a className="nav-book" href="#external-excursion-form"><span>Book excursion</span><ArrowRight/></a>
   </header>
 
@@ -117,7 +119,7 @@ export default function ExternalExcursionBooking(){
     <span className="eyebrow"><MapPin/> DHIFFUSHI ISLAND · MALDIVES</span>
     <h1>Not staying with us?<br/><em>You can still explore with us.</em></h1>
     <p>Guests from any hotel or guesthouse can book Nirili Tours excursions directly. Choose your experience, travel date and passenger details — no Nirili Villa login required.</p>
-    <div className="hero-actions"><a className="primary" href="#excursions">Explore excursions <ArrowRight/></a><a href="/book"><ArrowLeft/> Book a Nirili Villa stay</a></div>
+    <div className="hero-actions"><a className="primary" href="#excursions">Explore excursions <ArrowRight/></a><a href={STAY}><ArrowLeft/> Book a Nirili Stay</a></div>
     <div className="trust-row"><span><ShieldCheck/> No guest login required</span><span><ShipWheel/> Same Nirili Tours operations team</span><span><CheckCircle2/> Reserve now, pay later</span></div>
    </div>
    <aside className="external-hero-card">
@@ -146,7 +148,7 @@ export default function ExternalExcursionBooking(){
       {item.cents>0&&<span>{item.pricingUnit==='couple'?'/ couple':'/ adult'}</span>}
      </div>
      <div className="external-card-actions">
-      <a className="external-view-details" href={'/book/excursions/details/'+encodeURIComponent(item.id)}>View details</a>
+      <a className="external-view-details" href={MAIN+'/hotel/excursions/'+encodeURIComponent(item.id)}>View details</a>
       <button type="button" onClick={()=>choose(item)}>{selected?.id===item.id?'Selected':'Book this excursion'} <ArrowRight/></button>
      </div>
     </article>)}
@@ -228,7 +230,7 @@ export default function ExternalExcursionBooking(){
   <footer className="guest-footer">
    <div className="guest-brand"><span className="brand-sun">☀</span><div><strong>Nirili Excursions</strong><small>NIRILI TOURS · DHIFFUSHI</small></div></div>
    <p>Arrive as a Guest, Leave as a Friend.</p>
-   <a href="/book"><ArrowLeft/> Nirili Villa stays</a>
+   <a href={STAY}><ArrowLeft/> Nirili Stay</a>
   </footer>
  </main>;
 }

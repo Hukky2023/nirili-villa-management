@@ -68,11 +68,11 @@ export default function ManageBookingSite(){
  }
 
  if(!ready)return <main className="manage-booking"><section className="manage-card"><p>Loading your booking…</p></section></main>;
- if(error&&!booking)return <main className="manage-booking"><section className="manage-card error-card"><XCircle/><h1>We couldn’t open this booking.</h1><p>{error}</p><a href="/book"><ArrowLeft/> Back to booking</a></section></main>;
+ if(error&&!booking)return <main className="manage-booking"><section className="manage-card error-card"><XCircle/><h1>We couldn’t open this booking.</h1><p>{error}</p><a href="/"><ArrowLeft/> Back to booking</a></section></main>;
 
  const pending=booking?.pendingAction;
  return <main className="manage-booking">
-  <header className="manage-nav"><a href="/book"><ArrowLeft/> Nirili Stay</a><span>NIRILI VILLA · DHIFFUSHI</span></header>
+  <header className="manage-nav"><a href="/"><ArrowLeft/> Nirili Stay</a><span>NIRILI VILLA · DHIFFUSHI</span></header>
   <section className="manage-hero">
    <div><span className="eyebrow">MANAGE BOOKING</span><h1>{booking.guest}</h1><p>View your stay, request changes or manage cancellation without creating an account.</p></div>
    <div className="reference"><small>BOOKING REFERENCE</small><strong>{booking.reference}</strong><span className={'status '+String(booking.status).toLowerCase().replace(/\s+/g,'-')}>{booking.status}</span></div>

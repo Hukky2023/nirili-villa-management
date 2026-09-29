@@ -4,9 +4,9 @@ import {loadExcursionMenu,baseExcursionMenu} from '../../lib/excursion-menu';
 import {ArrowRight,ArrowUpRight,BedDouble,Bike,Coffee,Compass,MapPin,Menu,MessageCircle,Plane,Sailboat,Sun,UtensilsCrossed,Waves,X} from 'lucide-react';
 
 const STAY='https://stay.nirilihotels.com/';
-const EXCURSIONS='https://booking.nirilihotels.com/book/excursions';
-const RESTAURANT='https://booking.nirilihotels.com/book/restaurant';
-const TRANSFERS='https://booking.nirilihotels.com/book/transfers';
+const EXCURSIONS='https://excursions.nirilihotels.com/';
+const RESTAURANT='https://restaurant.nirilihotels.com/';
+const TRANSFERS='https://transfers.nirilihotels.com/';
 const RIDE='https://ride.nirilihotels.com';
 const WHATSAPP='https://wa.me/9609413977?text=Hello%20Nirili%2C%20I%27d%20like%20help%20planning%20my%20trip%20to%20Dhiffushi.';
 
@@ -230,7 +230,7 @@ export default async function HotelHome(){
    <div className="nh-footer-col">
     <h3>Contact</h3>
     <a href={WHATSAPP} target="_blank" rel="noopener noreferrer">WhatsApp +960 941 3977</a>
-    <a href={STAY+'book/manage'}>Manage a booking</a>
+    <a href={STAY+'manage'}>Manage a booking</a>
    </div>
    <p className="nh-footer-base">© {new Date().getFullYear()} Nirili Hotel · Dhiffushi, Maldives</p>
   </footer>
