@@ -17,7 +17,7 @@ export const metadata:Metadata={
 export default function TransferBookingPage(){
  return <main className="nh nh-sub-page nh-transfers">
   <Fonts/>
-  <SiteHeader/>
+  <SiteHeader action={{label:'Book a transfer',href:'#book'}}/>
   <section className="nh-page-hero" style={{backgroundImage:`url("${img('1530809355496-bac53698afe3',2200)}")`}}>
    <div className="nh-page-hero-inner">
     <p className="nh-kicker nh-kicker-light">Nirili Transfers · Velana Airport ↔ Dhiffushi</p>

@@ -18,7 +18,7 @@ export const metadata:Metadata={
 export default function WaterSportsPage(){
  return <main className="nh nh-sub-page nh-water">
   <Fonts/>
-  <SiteHeader/>
+  <SiteHeader action={{label:'Book water sports',href:'#book'}}/>
   <section className="nh-page-hero" style={{backgroundImage:`url("${img('1617059063772-34532796cdb5',2200)}")`}}>
    <div className="nh-page-hero-inner">
     <p className="nh-kicker nh-kicker-light">Nirili Water Sports · Dhiffushi</p>

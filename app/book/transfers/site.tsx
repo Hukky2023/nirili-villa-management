@@ -45,7 +45,7 @@ export default function TransferBookingSite(){
   <strong>{success.id}</strong>
   <a className="nh-btn nh-btn-primary" href={SITES.main+'/'}>Back to Nirili <ArrowRight/></a>
  </section>;
- return <section className="nh-transfer">
+ return <section className="nh-transfer" id="book">
   <form onSubmit={submit} className="nh-transfer-form">
    <fieldset className="nh-trip">
     <legend>Your route</legend>

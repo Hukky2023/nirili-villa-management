@@ -81,18 +81,20 @@ export function Brand(){
 }
 
 // Sits over a dark hero image; pages without a hero pass `solid` for a dark bar instead.
-export function SiteHeader({solid=false}:{solid?:boolean}){
+// The header button is the page's own main action; it defaults to booking a stay.
+type HeaderAction={label:string;href:string};
+export function SiteHeader({solid=false,action={label:'Book your stay',href:STAY}}:{solid?:boolean;action?:HeaderAction}){
  const header=<header className="nh-header">
   <Brand/>
   <nav className="nh-nav" aria-label="Main">
    {NAV.map(n=><a key={n.label} href={n.href}>{n.label}</a>)}
   </nav>
-  <a className="nh-btn nh-btn-light nh-header-cta" href={STAY}>Book your stay</a>
+  <a className="nh-btn nh-btn-light nh-header-cta" href={action.href}>{action.label}</a>
   <details className="nh-mobile-menu">
    <summary aria-label="Open menu"><Menu className="i-open"/><X className="i-close"/></summary>
    <div className="nh-mobile-panel">
     {NAV.map(n=><a key={n.label} href={n.href}>{n.label}<ArrowRight/></a>)}
-    <a className="nh-btn nh-btn-primary" href={STAY}>Book your stay</a>
+    <a className="nh-btn nh-btn-primary" href={action.href}>{action.label}</a>
    </div>
   </details>
  </header>;

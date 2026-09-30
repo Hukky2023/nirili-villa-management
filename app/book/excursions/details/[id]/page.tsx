@@ -29,7 +29,7 @@ export default async function HotelExcursionPage({params}:{params:Promise<{id:st
  for(const x of siblings)if(more.length<3&&!more.includes(x))more.push(x);
  return <main className="nh nh-sub-page">
   <Fonts/>
-  <SiteHeader/>
+  <SiteHeader action={{label:'Book this excursion',href:booking}}/>
   <section className="nh-page-hero nh-detail-hero" style={{backgroundImage:`url("${cover}")`}}>
    <div className="nh-page-hero-inner">
     <Link className="nh-back" href="/"><ArrowLeft/> All excursions</Link>

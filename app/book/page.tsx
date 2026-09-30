@@ -9,7 +9,7 @@ export const dynamic='force-dynamic';
 export default function GuestBookingPage(){
  return <main className="nh nh-sub-page nh-book">
   <Fonts/>
-  <SiteHeader/>
+  <SiteHeader action={{label:'Book your stay',href:'#book'}}/>
   <GuestBookingSite/>
   <SiteFooter/>
  </main>;

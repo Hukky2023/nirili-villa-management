@@ -19,7 +19,7 @@ export const metadata:Metadata={
 export default function ExternalExcursionsPage(){
  return <main className="nh nh-sub-page nh-book">
   <Fonts/>
-  <SiteHeader/>
+  <SiteHeader action={{label:'Book an excursion',href:'#external-excursion-form'}}/>
   <ExternalExcursionBooking/>
   <SiteFooter/>
  </main>;

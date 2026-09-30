@@ -24,7 +24,7 @@ const HOURS=[
 export default function PublicRestaurantPage(){
  return <main className="nh nh-sub-page nh-dine">
   <Fonts/>
-  <SiteHeader/>
+  <SiteHeader action={{label:'Order now',href:'#menu'}}/>
   <section className="nh-page-hero" style={{backgroundImage:`url("${img('1768322264423-4b0adf0cf31b',2200)}")`}}>
    <div className="nh-page-hero-inner">
     <p className="nh-kicker nh-kicker-light">Nirili Restaurant · Dhiffushi</p>
