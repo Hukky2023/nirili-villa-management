@@ -2,10 +2,10 @@ import {authDb,hashPassword,issueGuestSession,limit,roomLoginActive,sameOrigin,v
 import {readCredential} from '../../../../lib/credential-store';
 import {primaryGuestAccount,supabaseBridgeConfigured,deleteLegacySessionsForAccount,deleteOperationalRecordPrimary,mirrorLegacyAccount} from '../../../../lib/supabase-bridge';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
+import {guestPortalHost} from '../../../../lib/public-sites';
 
 function guestHostAllowed(r:Request){
- const host=(r.headers.get('host')||new URL(r.url).host).split(':')[0].toLowerCase();
- return host==='booking.nirilihotels.com'||host==='localhost'||host==='127.0.0.1';
+ return guestPortalHost(r.headers.get('host')||new URL(r.url).host);
 }
 
 export async function POST(r:Request){

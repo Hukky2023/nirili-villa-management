@@ -110,7 +110,7 @@ test('main website renders the saved video and description without prices or man
  }).default;
  const {renderToStaticMarkup}=require('react-dom/server');
  const html=renderToStaticMarkup(await page({params:Promise.resolve({id:'turtle'})}));
- assert.match(html,/youtube-nocookie.com\/embed\/dQw4w9WgXcQ/);assert.match(html,/Saved description/);assert.match(html,/booking.nirilihotels.com/);
+ assert.match(html,/youtube-nocookie.com\/embed\/dQw4w9WgXcQ/);assert.match(html,/Saved description/);assert.match(html,/tours.nirilihotels.com\/\?excursion=turtle/);
  assert.doesNotMatch(html,/\$45|management system|detail-price/);
  assert.ok(html.indexOf('<iframe')<html.indexOf('Saved description'));
  await assert.rejects(()=>page({params:Promise.resolve({id:'removed'})}),/404/);

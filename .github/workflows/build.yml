@@ -67,6 +67,8 @@ jobs:
         run: node --test tests/booking-closures.test.mjs
       - name: Admin catalog and public excursion website regression tests
         run: node --test tests/property-catalog.test.mjs
+      - name: Public subdomain navigation regression tests
+        run: node --test tests/public-navigation.test.mjs
       - name: Build production worker
         run: pnpm run build && node self-host-config.mjs dc69f294-de1e-4cd4-8322-93da8739eb73
       - name: Excursion timetable and guest-list consistency regression tests

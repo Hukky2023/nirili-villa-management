@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {useEffect,useRef,useState} from 'react';
 import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
 import TimeField24 from '../time-field-24';
@@ -78,11 +79,11 @@ export default function GuestBookingSite(){
 
  return <main className="guest-booking-site">
   <header className="guest-nav">
-   <a className="guest-brand" href="/book" aria-label="Nirili Stay booking home">
+   <Link className="guest-brand" href="/" aria-label="Nirili Stay booking home">
     <span className="brand-sun">☀</span>
     <div><strong>Nirili Stay</strong><small>NIRILI VILLA · DHIFFUSHI</small></div>
-   </a>
-   <nav><a href="#stay">Stay</a><a href="#packages">Packages</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
+   </Link>
+   <nav><a href="https://nirilihotels.com">Nirili home</a><a href="#packages">Packages</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
    <a className="nav-book" href="#book"><span>Book Now</span><ArrowRight/></a>
   </header>
 

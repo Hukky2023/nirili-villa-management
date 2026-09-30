@@ -4,7 +4,7 @@ import {ArrowLeft,ArrowRight,CalendarCheck,MapPin,Sailboat} from 'lucide-react';
 import {baseExcursionMenu,loadExcursionMenu} from '../../../../lib/excursion-menu';
 import {youtubeEmbed} from '../../../../lib/youtube';
 import WebsiteChat from '../../../website-chat';
-import {Fonts,SiteFooter,SiteHeader,WHATSAPP,excursionPhoto,excursionTag,img} from '../../chrome';
+import {EXCURSIONS,Fonts,SiteFooter,SiteHeader,WHATSAPP,excursionPhoto,excursionTag,img} from '../../chrome';
 import '../../home.css';
 import '../style.css';
 
@@ -19,7 +19,7 @@ export default async function HotelExcursionPage({params}:{params:Promise<{id:st
  const item=items.find(entry=>entry.id===id);
  if(!item)notFound();
  const video=youtubeEmbed(item.youtubeUrl||'');
- const booking='https://booking.nirilihotels.com/book/excursions?excursion='+encodeURIComponent(item.id)+'#external-excursion-form';
+ const booking=EXCURSIONS+'?excursion='+encodeURIComponent(item.id)+'#external-excursion-form';
  const cover=excursionPhoto(item)||img('1507525428034-b723cf961d3e',2200);
  const gallery=item.galleryUrls||[];
  const paragraphs=(item.longDetail||item.detail||'Message us on WhatsApp for the full details of this excursion.').split(/\n+/).filter(Boolean);

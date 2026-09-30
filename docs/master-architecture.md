@@ -77,11 +77,24 @@ For in-house guests, eligible restaurant, excursion, transfer and ride charges f
 
 ## Public domain separation
 
-- `nirilihotels.com` / `www.nirilihotels.com` → main Nirili public website.
-- `stay.nirilihotels.com` → Nirili Stay only.
-- `booking.nirilihotels.com/book/excursions` → Nirili Excursions.
-- `booking.nirilihotels.com/book/restaurant` → Nirili Restaurant ordering.
-- `booking.nirilihotels.com/book/transfers` → Nirili Transfers booking.
-- `ride.nirilihotels.com` → Nirili Ride.
+Every public service has its own subdomain. The addresses live in `lib/public-sites.ts` and the host routing in `proxy.ts`; change them there, not in individual pages.
 
-The old room-booking root at `booking.nirilihotels.com` redirects to the dedicated Nirili Stay subdomain.
+| Address | Serves |
+| --- | --- |
+| `nirilihotels.com` | Main public website (`www.` redirects here) |
+| `stay.nirilihotels.com` | Nirili Stay: rooms, packages, meal plans, manage a booking |
+| `tours.nirilihotels.com` | Nirili Excursions booking and self-service manage links |
+| `dine.nirilihotels.com` | Nirili Restaurant menu, dine-in and delivery ordering |
+| `transfers.nirilihotels.com` | Nirili Transfers: speedboat and airport transfers |
+| `ride.nirilihotels.com` | Nirili Ride: opens the buggy tab of the guest portal |
+| `my.nirilihotels.com` | Private in-house Guest Portal |
+
+Each service subdomain serves its page at `/` and redirects paths that belong to another service to that service's subdomain.
+
+`booking.nirilihotels.com` is retired. Its pages redirect permanently to the matching subdomain, so old emails, bookmarks and printed QR codes keep working. `booking.nirilihotels.com/stay` is still served so guests already signed in there (and their push notifications) keep working.
+
+`excursions.nirilihotels.com` and `restaurant.nirilihotels.com` forward to `tours.` and `dine.`, and `travels.nirilihotels.com` forwards to the travel section of the main site. Any other `nirilihotels.com` hostname attached to the Worker without routing in `proxy.ts` falls through to the staff management app, so give every new public hostname an entry in `lib/public-sites.ts`.
+
+The main domain also offers short links for print and chat: `/stay`, `/rooms`, `/book`, `/tours`, `/dine`, `/menu`, `/restaurant`, `/transfers`, `/speedboat`, `/ride`, `/buggy`, `/my`, `/guest`.
+
+Each subdomain must be added as a Custom Domain on the `nirili-villa` Worker in Cloudflare (Workers & Pages → nirili-villa → Settings → Domains & Routes).

@@ -1,10 +1,24 @@
+import type {Metadata} from 'next';
+import {ArrowLeft} from 'lucide-react';
 import DiningMenu from '../../restaurant/guest/menu';
+import {SITES} from '../../../lib/public-sites';
 import './style.css';
 
 export const dynamic='force-dynamic';
 
+export const metadata:Metadata={
+ title:'Nirili Restaurant | Menu, Dine-in & Delivery · Dhiffushi',
+ description:'See the live Nirili Restaurant menu and order for dine-in or delivery in Dhiffushi, Maldives.',
+ alternates:{canonical:SITES.dine+'/'},
+};
+
 export default function PublicRestaurantPage(){
  return <main className="nirili-public-restaurant">
+  <header className="restaurant-nav">
+   <a href={SITES.main}><ArrowLeft/> Nirili</a>
+   <b>Nirili Restaurant</b>
+   <nav><a href={SITES.stay}>Stay</a><a href={SITES.tours}>Excursions</a></nav>
+  </header>
   <section className="restaurant-intro">
    <div>
     <span>NIRILI RESTAURANT · DHIFFUSHI</span>

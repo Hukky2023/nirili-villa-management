@@ -2,6 +2,7 @@
 
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowLeft,ArrowRight,CalendarDays,CheckCircle2,MapPin,Plus,ShieldCheck,ShipWheel,Sparkles,Trash2,Users} from 'lucide-react';
+import {SITES} from '../../../lib/public-sites';
 
 type Excursion={
  id:string;name:string;detail:string;longDetail?:string;youtubeUrl?:string;galleryUrls?:string[];cents:number;pricingUnit:'guest'|'couple';
@@ -97,18 +98,18 @@ export default function ExternalExcursionBooking(){
    <div className="external-success-actions">
     {success.manageUrl&&<a className="primary" href={success.manageUrl}>View / Manage Excursion <ArrowRight/></a>}
     <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();}}>Book another excursion <ArrowRight/></button>
-    <a href="/book"><ArrowLeft/> Back to Nirili Villa</a>
+    <a href={SITES.main}><ArrowLeft/> Back to Nirili</a>
    </div>
   </section>
  </main>;
 
  return <main className="guest-booking-site external-excursion-site">
   <header className="guest-nav">
-   <a className="guest-brand" href="/book" aria-label="Nirili Villa booking home">
+   <a className="guest-brand" href={SITES.main} aria-label="Nirili home">
     <span className="brand-sun">☀</span>
     <div><strong>Nirili Excursions</strong><small>NIRILI TOURS · DHIFFUSHI</small></div>
    </a>
-   <nav><a href="/book">Stay</a><a href="#excursions">Excursions</a><a href="#external-excursion-form">Book now</a></nav>
+   <nav><a href={SITES.main}>Home</a><a href="#excursions">Excursions</a><a href={SITES.stay}>Stay</a><a href={SITES.transfers}>Transfers</a></nav>
    <a className="nav-book" href="#external-excursion-form"><span>Book excursion</span><ArrowRight/></a>
   </header>
 
@@ -117,7 +118,7 @@ export default function ExternalExcursionBooking(){
     <span className="eyebrow"><MapPin/> DHIFFUSHI ISLAND · MALDIVES</span>
     <h1>Not staying with us?<br/><em>You can still explore with us.</em></h1>
     <p>Guests from any hotel or guesthouse can book Nirili Tours excursions directly. Choose your experience, travel date and passenger details — no Nirili Villa login required.</p>
-    <div className="hero-actions"><a className="primary" href="#excursions">Explore excursions <ArrowRight/></a><a href="/book"><ArrowLeft/> Book a Nirili Villa stay</a></div>
+    <div className="hero-actions"><a className="primary" href="#excursions">Explore excursions <ArrowRight/></a><a href={SITES.stay}><ArrowLeft/> Book a Nirili Villa stay</a></div>
     <div className="trust-row"><span><ShieldCheck/> No guest login required</span><span><ShipWheel/> Same Nirili Tours operations team</span><span><CheckCircle2/> Reserve now, pay later</span></div>
    </div>
    <aside className="external-hero-card">
@@ -228,7 +229,7 @@ export default function ExternalExcursionBooking(){
   <footer className="guest-footer">
    <div className="guest-brand"><span className="brand-sun">☀</span><div><strong>Nirili Excursions</strong><small>NIRILI TOURS · DHIFFUSHI</small></div></div>
    <p>Arrive as a Guest, Leave as a Friend.</p>
-   <a href="/book"><ArrowLeft/> Nirili Villa stays</a>
+   <a href={SITES.main}><ArrowLeft/> All Nirili services</a>
   </footer>
  </main>;
 }

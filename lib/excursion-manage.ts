@@ -1,4 +1,4 @@
-export const excursionManageHost='https://booking.nirilihotels.com';
+export const excursionManageHost='https://tours.nirilihotels.com';
 
 export function createExcursionManageToken(){
  const bytes=crypto.getRandomValues(new Uint8Array(24));
