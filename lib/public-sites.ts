@@ -8,6 +8,7 @@ export const HOSTS={
  dine:'dine.nirilihotels.com',
  transfers:'transfers.nirilihotels.com',
  ride:'ride.nirilihotels.com',
+ watersports:'watersports.nirilihotels.com',
  my:'my.nirilihotels.com',
  // Retired public address. Old links, emails and printed QR codes are forwarded from here.
  booking:'booking.nirilihotels.com',
@@ -29,6 +30,7 @@ export const SITES={
  dine:origin(HOSTS.dine),
  transfers:origin(HOSTS.transfers),
  ride:origin(HOSTS.ride),
+ watersports:origin(HOSTS.watersports),
  my:origin(HOSTS.my),
 } as const;
 

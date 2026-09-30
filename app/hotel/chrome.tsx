@@ -7,6 +7,7 @@ export const EXCURSIONS=SITES.tours+'/';
 export const RESTAURANT=SITES.dine+'/';
 export const TRANSFERS=SITES.transfers+'/';
 export const RIDE=SITES.ride+'/';
+export const WATER_SPORTS=SITES.watersports+'/';
 export const GUEST_PORTAL=SITES.my+'/';
 // Excursions have one home: the tours site lists, shows details and books them.
 export const EXCURSION_GUIDE=SITES.tours+'/';
@@ -59,6 +60,7 @@ const NAV=[
  {label:'Stay',href:STAY},
  {label:'Excursions',href:EXCURSION_GUIDE},
  {label:'Dining',href:RESTAURANT},
+ {label:'Water sports',href:WATER_SPORTS},
  {label:'Transfers',href:TRANSFERS},
  {label:'Ride',href:RIDE},
 ];
@@ -108,6 +110,7 @@ export function SiteFooter(){
    <a href={STAY}>Rooms &amp; packages</a>
    <a href={EXCURSION_GUIDE}>Excursions</a>
    <a href={RESTAURANT}>Restaurant</a>
+   <a href={WATER_SPORTS}>Water sports</a>
   </div>
   <div className="nh-footer-col">
    <h3>Travel</h3>

@@ -11,12 +11,13 @@ function cache(response:NextResponse,value:string){
 }
 
 // Each public service has its own subdomain, which serves the service's page at "/".
-type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'my';
+type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'watersports'|'my';
 const SERVICE_HOME:Record<Exclude<Service,'stay'>,string>={
  tours:'/book/excursions',
  dine:'/book/restaurant',
  transfers:'/book/transfers',
  ride:'/book/ride',
+ watersports:'/book/water-sports',
  my:'/stay',
 };
 const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
@@ -24,6 +25,7 @@ const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
  [HOSTS.dine]:'dine',
  [HOSTS.transfers]:'transfers',
  [HOSTS.ride]:'ride',
+ [HOSTS.watersports]:'watersports',
  [HOSTS.my]:'my',
 };
 
@@ -47,7 +49,7 @@ function serviceRedirect(url:URL,target:{service:Service;path:string}){
 }
 
 // Browser APIs used by the public booking pages and the guest portal.
-const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules','/api/public-ride']);
+const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules','/api/public-ride','/api/public-water-sports']);
 
 function guestApiResponse(url:URL){
  // Uploaded menu photos are public; the upload endpoint remains blocked.
@@ -127,6 +129,7 @@ const SHORTCUTS:Record<string,string>={
  '/dine':SITES.dine,'/restaurant':SITES.dine,'/menu':SITES.dine,
  '/transfers':SITES.transfers,'/speedboat':SITES.transfers,
  '/ride':SITES.ride,'/buggy':SITES.ride,
+ '/watersports':SITES.watersports,'/water-sports':SITES.watersports,
  '/my':SITES.my,'/guest':SITES.my,
 };
 

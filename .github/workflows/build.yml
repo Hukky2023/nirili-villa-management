@@ -75,6 +75,8 @@ jobs:
         run: node --test tests/public-navigation.test.mjs
       - name: Public Nirili Ride regression tests
         run: node --test tests/public-ride.test.mjs
+      - name: Nirili Water Sports regression tests
+        run: node --test tests/water-sports.test.mjs
       - name: Build production worker
         run: pnpm run build && node self-host-config.mjs dc69f294-de1e-4cd4-8322-93da8739eb73
       - name: Excursion timetable and guest-list consistency regression tests
