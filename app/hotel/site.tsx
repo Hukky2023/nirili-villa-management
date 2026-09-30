@@ -51,6 +51,7 @@ export default async function HotelHome(){
     <a href={EXCURSIONS}><Sailboat/><span><small>Explore</small>Excursions</span><ArrowUpRight/></a>
     <a href={RESTAURANT}><UtensilsCrossed/><span><small>Dine</small>Menu &amp; ordering</span><ArrowUpRight/></a>
     <a href={TRANSFERS}><Plane/><span><small>Arrive</small>Airport transfers</span><ArrowUpRight/></a>
+    <a href={RIDE}><Bike/><span><small>Get around</small>Buggy rides</span><ArrowUpRight/></a>
    </nav>
   </section>
 
@@ -144,7 +145,7 @@ export default async function HotelHome(){
       <span className="nh-icon"><Bike/></span>
       <small>Nirili Ride</small>
       <strong>Buggy rides on the island</strong>
-      <span>Staying with us? Luggage, beach trips or a lift home after dinner: request a buggy from your guest portal and follow the ride.</span>
+      <span>Luggage from the harbour, a beach trip or a lift home after dinner. Request a buggy online from anywhere on Dhiffushi and follow your driver live.</span>
       <b>Request a ride <ArrowRight/></b>
      </span>
     </a>

@@ -86,10 +86,12 @@ Every public service has its own subdomain. The addresses live in `lib/public-si
 | `tours.nirilihotels.com` | Nirili Excursions booking and self-service manage links |
 | `dine.nirilihotels.com` | Nirili Restaurant menu, dine-in and delivery ordering |
 | `transfers.nirilihotels.com` | Nirili Transfers: speedboat and airport transfers |
-| `ride.nirilihotels.com` | Nirili Ride: opens the buggy tab of the guest portal |
+| `ride.nirilihotels.com` | Nirili Ride: anyone can request a buggy and follow it live; in-house guests can still use the portal's buggy tab to charge the room |
 | `my.nirilihotels.com` | Private in-house Guest Portal |
 
 Each service subdomain serves its page at `/` and redirects paths that belong to another service to that service's subdomain.
+
+Nirili Ride requests from `ride.nirilihotels.com` are stored as `public-ride` buggy bookings next to in-house `guest-ride` bookings and go through the same auto-dispatch, dispatch board and driver status flow (`lib/buggy-rides.ts`). They have no room bill: the fare shown is the configured guest ride fare, paid to the driver. Riders follow their ride with a private key kept in their browser.
 
 `booking.nirilihotels.com` is retired. Its pages redirect permanently to the matching subdomain, so old emails, bookmarks and printed QR codes keep working. `booking.nirilihotels.com/stay` is still served so guests already signed in there (and their push notifications) keep working.
 

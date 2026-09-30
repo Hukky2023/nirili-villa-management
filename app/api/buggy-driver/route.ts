@@ -2,6 +2,7 @@ import {currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {islandToday,validDate} from '../../../lib/guest-catalog';
 import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
+import {activeOnDemandRide,isOnDemandRide,isPublicRide} from '../../../lib/buggy-rides';
 import {isRomanticBeachDinner} from '../../../lib/excursion-services';
 import {sendGuestPushForRide} from '../../../lib/web-push';
 
@@ -20,10 +21,10 @@ function confirmed(order:any){
   &&(!!(order.time||order.schedule?.time)||isRomanticBeachDinner(order));
 }
 function manualPickupFor(item:any,state:any){
- const guestRide=item.bookingType==='guest-ride',transportRide=item.bookingType==='stay-transfer',buggy=(state.buggyFleet||[]).find((x:any)=>x.id===item.buggyId);
- return {...item,manual:true,guestRide,transportRide,excursion:guestRide?'Guest buggy ride':transportRide?(item.excursion||'Guest transport buggy'):item.excursion||'Manual buggy booking',excursionTime:item.pickupTime||'',pickupTimingNote:guestRide?'Requested now':transportRide?'Linked guest transport':'Manual booking',inHouse:guestRide||transportRide||!!item.stayId,hotel:guestRide||transportRide?'Nirili Villa':'',room:item.room||'',buggyRequested:true,roundTrip:false,romanticDinner:false,status:item.cancelled?'Cancelled':guestRide||transportRide?(item.buggyStatus||'Scheduled'):(item.buggyBoardedAt?'Boarded':item.buggyArrivedAt?'Arrived':'Pending pickup'),buggyName:buggy?.name||'',driver:item.buggyDriver||buggy?.driver||'',fareCents:Math.max(0,Number(item.fareCents)||0),chargeToRoom:item.chargeToRoom===true,arrivedAt:item.buggyArrivedAt||'',arrivedBy:item.buggyArrivedBy||'',boardedAt:item.buggyBoardedAt||'',boardedBy:item.buggyBoardedBy||''};
+ const guestRide=isOnDemandRide(item),publicRide=isPublicRide(item),transportRide=item.bookingType==='stay-transfer',buggy=(state.buggyFleet||[]).find((x:any)=>x.id===item.buggyId);
+ return {...item,manual:true,guestRide,transportRide,excursion:publicRide?'Nirili Ride request':guestRide?'Guest buggy ride':transportRide?(item.excursion||'Guest transport buggy'):item.excursion||'Manual buggy booking',excursionTime:item.pickupTime||'',pickupTimingNote:guestRide?'Requested now':transportRide?'Linked guest transport':'Manual booking',inHouse:(guestRide&&!publicRide)||transportRide||!!item.stayId,hotel:(guestRide&&!publicRide)||transportRide?'Nirili Villa':'',room:item.room||'',buggyRequested:true,roundTrip:false,romanticDinner:false,status:item.cancelled?'Cancelled':guestRide||transportRide?(item.buggyStatus||'Scheduled'):(item.buggyBoardedAt?'Boarded':item.buggyArrivedAt?'Arrived':'Pending pickup'),buggyName:buggy?.name||'',driver:item.buggyDriver||buggy?.driver||'',fareCents:Math.max(0,Number(item.fareCents)||0),chargeToRoom:item.chargeToRoom===true,arrivedAt:item.buggyArrivedAt||'',arrivedBy:item.buggyArrivedBy||'',boardedAt:item.buggyBoardedAt||'',boardedBy:item.buggyBoardedBy||''};
 }
-function activeGuestRide(item:any){return item?.bookingType==='guest-ride'&&item.cancelled!==true&&!['Completed','Cancelled'].includes(String(item.buggyStatus||''));}
+function activeGuestRide(item:any){return activeOnDemandRide(item);}
 function releaseBuggy(state:any,item:any){
  if(!item?.buggyId)return;
  const busy=(state.buggyBookings||[]).some((x:any)=>x.id!==item.id&&x.buggyId===item.buggyId&&activeGuestRide(x));
@@ -36,7 +37,7 @@ function removeGuestRideBill(state:any,item:any){
  stay.posBills=stay.posBills.filter((bill:any)=>!(bill?.department==='Buggy'&&String(bill?.id||'')===String(item.id)));
 }
 function recordGuestRideEvent(state:any,item:any,type:string,at:string,by:string){
- if(item?.bookingType!=='guest-ride')return;
+ if(!isOnDemandRide(item))return;
  state.buggyTripHistory??=[];
  const buggy=(state.buggyFleet||[]).find((x:any)=>x.id===item.buggyId);
  state.buggyTripHistory.push({id:'buggy-history-'+crypto.randomUUID(),at,type,buggyId:item.buggyId||'',buggyName:buggy?.name||'',bookingId:item.id,guest:item.guest||'',driver:item.buggyDriver||buggy?.driver||'',by});
@@ -130,7 +131,7 @@ export async function PATCH(r:Request){
   const order=manual||(state.orders||[]).find((o:any)=>o.id===id&&confirmed(o)&&(!!o.stayId||o.buggyRequested===true));
   if(!order)throw Error('Pickup booking not found or no longer active.');
   const now=new Date().toISOString();
-  const roundTrip=!manual&&isRomanticBeachDinner(order)&&!!order.buggyRoundTrip,guestRide=!!manual&&order.bookingType==='guest-ride',transportRide=!!manual&&order.bookingType==='stay-transfer',liveRide=guestRide||transportRide;
+  const roundTrip=!manual&&isRomanticBeachDinner(order)&&!!order.buggyRoundTrip,guestRide=!!manual&&isOnDemandRide(order),transportRide=!!manual&&order.bookingType==='stay-transfer',liveRide=guestRide||transportRide;
   if(action==='cancel'){
    if(!manual)throw Error('Only manual buggy bookings can be cancelled from the Buggy Driver screen.');
    order.cancelled=true;order.cancelledAt=now;order.cancelledBy=user?.username||user?.displayName||'buggy-driver';order.buggyStatus='Cancelled';if(guestRide){removeGuestRideBill(state,order);releaseBuggy(state,order);recordGuestRideEvent(state,order,'Cancelled',now,user?.username||user?.displayName||'buggy-driver');}

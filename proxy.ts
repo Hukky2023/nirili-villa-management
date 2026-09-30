@@ -11,17 +11,19 @@ function cache(response:NextResponse,value:string){
 }
 
 // Each public service has its own subdomain, which serves the service's page at "/".
-type Service='stay'|'tours'|'dine'|'transfers'|'my';
+type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'my';
 const SERVICE_HOME:Record<Exclude<Service,'stay'>,string>={
  tours:'/book/excursions',
  dine:'/book/restaurant',
  transfers:'/book/transfers',
+ ride:'/book/ride',
  my:'/stay',
 };
 const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
  [HOSTS.tours]:'tours',
  [HOSTS.dine]:'dine',
  [HOSTS.transfers]:'transfers',
+ [HOSTS.ride]:'ride',
  [HOSTS.my]:'my',
 };
 
@@ -45,7 +47,7 @@ function serviceRedirect(url:URL,target:{service:Service;path:string}){
 }
 
 // Browser APIs used by the public booking pages and the guest portal.
-const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules']);
+const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules','/api/public-ride']);
 
 function guestApiResponse(url:URL){
  // Uploaded menu photos are public; the upload endpoint remains blocked.
@@ -91,11 +93,6 @@ function serviceSiteResponse(url:URL,service:Exclude<Service,'stay'>){
  url.pathname='/';
  url.search='';
  return NextResponse.redirect(url);
-}
-
-// Nirili Ride is the buggy tab of the in-house guest portal.
-function rideSiteResponse(){
- return NextResponse.redirect(SITES.my+'/?service=buggy',302);
 }
 
 // excursions., restaurant. and travels. forward to the service's real address. Keeps the
@@ -183,7 +180,6 @@ function routeRequest(request:NextRequest){
  // Dedicated public websites stay isolated from the management application.
  if(host===HOSTS.main)return hotelSiteResponse(url,request.method);
  if(host===HOSTS.stay)return staySiteResponse(url);
- if(host===HOSTS.ride)return rideSiteResponse();
  if(SERVICE_BY_HOST[host])return serviceSiteResponse(url,SERVICE_BY_HOST[host]);
  if(host===HOSTS.booking)return bookingSiteResponse(url);
  if(ALIAS_HOSTS[host])return aliasSiteResponse(url,ALIAS_HOSTS[host]);

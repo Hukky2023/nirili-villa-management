@@ -1,0 +1,40 @@
+/* ride.nirilihotels.com. Reuses the transfers layout (form + side panel) from ../transfers/style.css. */
+
+.nh-ride .nh-transfer-submit svg{width:19px;height:19px}
+.nh-ride .nh-fare dl div{justify-content:flex-start;gap:14px}
+.nh-ride .nh-fare dt{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.14);color:#fbe4cc;font-weight:700;font-size:13px}
+.nh-ride .nh-fare dd{text-align:left;font-weight:500}
+.nh-ride-portal{display:flex;gap:10px;align-items:flex-start;margin-top:4px;padding:14px;border-radius:14px;background:rgba(255,255,255,.1);font-size:14px;line-height:1.45;color:#fff}
+.nh-ride-portal svg{width:18px;height:18px;flex-shrink:0;margin-top:1px;color:#fbe4cc}
+.nh-ride-portal:hover{background:rgba(255,255,255,.16)}
+
+/* Live ride tracker */
+.nh-ride-track{display:grid;gap:18px;padding:36px;border-radius:var(--radius);background:var(--paper);border:1px solid var(--line)}
+.nh-ride-track h2{font-size:clamp(32px,4.4vw,48px);line-height:1.05}
+.nh-ride-track h2 em{color:var(--lagoon)}
+.nh-ride-route{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:17px;font-weight:600}
+.nh-ride-route svg{width:18px;height:18px;color:var(--sun)}
+.nh-ride-steps{list-style:none;margin:6px 0;padding:0;display:grid;gap:0}
+.nh-ride-steps li{position:relative;display:flex;align-items:center;gap:14px;padding:10px 0;color:var(--muted);font-weight:500}
+.nh-ride-steps li span{position:relative;z-index:1;width:16px;height:16px;border-radius:50%;border:2px solid var(--line);background:var(--paper);flex-shrink:0}
+.nh-ride-steps li:not(:last-child)::after{content:"";position:absolute;left:7px;top:28px;bottom:-8px;width:2px;background:var(--line)}
+.nh-ride-steps li.done{color:var(--ink-soft)}
+.nh-ride-steps li.done span{background:var(--lagoon);border-color:var(--lagoon)}
+.nh-ride-steps li.done::after{background:var(--lagoon)!important}
+.nh-ride-steps li.current{color:var(--ink);font-weight:700}
+.nh-ride-steps li.current span{border-color:var(--sun);background:var(--sun);box-shadow:0 0 0 5px rgba(227,154,91,.22);animation:nh-ride-pulse 1.6s ease-in-out infinite}
+@keyframes nh-ride-pulse{50%{box-shadow:0 0 0 9px rgba(227,154,91,.08)}}
+.nh-ride-facts{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:1px;border-radius:14px;overflow:hidden;background:var(--line)}
+.nh-ride-facts div{display:grid;gap:2px;padding:14px 16px;background:#fff}
+.nh-ride-facts dt{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.nh-ride-facts dd{margin:0;font-weight:600}
+.nh-ride-actions{display:flex;flex-wrap:wrap;gap:10px}
+.nh-ride-actions .nh-btn{font:inherit;font-weight:600;cursor:pointer}
+.nh-ride-actions .nh-btn:disabled{opacity:.5;cursor:default}
+.nh-ride-track>small{color:var(--muted);font-size:13px}
+
+@media(prefers-reduced-motion:reduce){.nh-ride-steps li.current span{animation:none}}
+@media(max-width:640px){
+ .nh-ride-track{padding:24px 18px}
+ .nh-ride-facts{grid-template-columns:1fr}
+}
