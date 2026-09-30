@@ -1,0 +1,108 @@
+/* Private guest portal (my.nirilihotels.com), brought into the Nirili design.
+   Layered on top of guest-login.css and guest-services.css, and scoped to .nh-portal, so the
+   portal's behaviour, translations and embedded components keep working unchanged. */
+
+body:has(.nh-portal){background:var(--sand,#f7f2ea)}
+.nh-portal{padding-bottom:40px}
+.nh-portal :is(h1,h2,h3){font-family:var(--serif);font-weight:400;letter-spacing:-.01em}
+.nh-portal :is(input,select,textarea){font-family:var(--sans)}
+
+/* ---------- Sign-in / sign-up ---------- */
+.nh-portal .nv-guest-entry{--nge-ink:var(--ink);--nge-muted:var(--ink-soft);--nge-line:var(--line);background:transparent;font-family:var(--sans)}
+.nh-portal .nge-brand{color:var(--ink);font-family:var(--serif);font-style:normal;font-weight:500}
+.nh-portal .nge-brand small{font-family:var(--sans);color:var(--muted)}
+.nh-portal .nge-mark{color:var(--lagoon)}
+.nh-portal .nge-layout{border-color:var(--line);border-radius:28px;background:var(--paper);box-shadow:0 30px 70px rgba(15,42,46,.12)}
+.nh-portal .nge-welcome{background:linear-gradient(180deg,rgba(6,24,28,.35),rgba(6,24,28,.85)),url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80") center/cover;color:#fff}
+.nh-portal .nge-welcome>.nge-overline{color:#f3dcc4}
+.nh-portal .nge-welcome h1{font-family:var(--serif);font-weight:400}
+.nh-portal .nge-welcome h1 em{color:#fbe4cc;font-style:italic;font-weight:300}
+.nh-portal .nge-welcome>p{color:rgba(255,255,255,.88)}
+.nh-portal .nge-services li{color:#fff}
+.nh-portal .nge-services svg{color:#fbe4cc}
+.nh-portal .nge-welcome footer{border-color:rgba(255,255,255,.2)}
+.nh-portal .nge-welcome footer p{font-family:var(--serif)}
+.nh-portal .nge-welcome footer span{color:rgba(255,255,255,.8)}
+.nh-portal .nge-mode{background:var(--sand);border-color:var(--line);border-radius:999px}
+.nh-portal .nge-mode button{border-radius:999px;color:var(--ink-soft)}
+.nh-portal .nge-mode button.selected{background:var(--ink);color:#fff;box-shadow:none}
+.nh-portal .nge-heading>.nge-overline{color:var(--lagoon)}
+.nh-portal .nge-heading h2{font-family:var(--serif);font-weight:400;font-size:34px;letter-spacing:-.01em}
+.nh-portal .nge-form input{border-color:rgba(15,42,46,.18);border-radius:12px;color:var(--ink)}
+.nh-portal .nge-form input:focus{border-color:transparent;box-shadow:none;outline:2px solid var(--lagoon);outline-offset:1px}
+.nh-portal .nge-submit{border-radius:999px;background:var(--ink);font-weight:600}
+.nh-portal .nge-submit:not(:disabled):hover{background:var(--lagoon-deep)}
+.nh-portal .nge-switch button,.nh-portal .nge-help summary{color:var(--lagoon)}
+
+/* ---------- Signed-in portal ---------- */
+.nh-portal .guest-services{max-width:1180px;padding:28px 20px 40px;color:var(--ink)}
+
+/* Welcome header as a photo banner */
+.nh-portal .guest-services>header{padding:92px 32px 34px;border-radius:28px;color:#fff;background:linear-gradient(180deg,rgba(6,24,28,.25),rgba(6,24,28,.8)),url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=80") center 60%/cover}
+.nh-portal .guest-services>header h1{font-size:clamp(36px,5vw,56px);line-height:1.05;margin:10px 0 6px;color:#fff}
+.nh-portal .guest-services>header p{color:rgba(255,255,255,.88);font-size:17px}
+.nh-portal .guest-services>header .brand-home small{color:#f3dcc4;letter-spacing:.16em;font-size:12px}
+.nh-portal .guest-header-actions{top:20px;right:20px}
+.nh-portal .guest-header-actions :is(.nv-language label,.nv-session-button){border-radius:999px;border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(8px)}
+
+/* Section tabs as a pill bar */
+.nh-portal .guest-services>nav{gap:6px;margin:-26px 16px 28px;padding:6px;position:relative;border-radius:999px;background:var(--paper);border:1px solid var(--line);box-shadow:0 18px 40px rgba(15,42,46,.1)}
+.nh-portal .guest-services>nav button{border:0;border-radius:999px;background:transparent;color:var(--ink-soft);font-family:var(--sans);font-weight:600;font-size:15px;min-height:46px}
+.nh-portal .guest-services>nav button:hover{background:var(--sand)}
+.nh-portal .guest-services>nav button.active{background:var(--ink);color:#fff}
+
+/* Shared surfaces */
+.nh-portal .guest-message{background:var(--sand-deep);color:var(--ink);border-radius:14px}
+.nh-portal :is(.guest-catalog article,.guest-booking-list article,.booking-review,.walkin-bill,.guest-buggy-request,.guest-buggy-active,.guest-buggy-history){background:var(--paper);border:1px solid var(--line);border-radius:var(--radius)}
+.nh-portal .guest-booking-list h2,.nh-portal .guest-services h2{color:var(--ink)}
+.nh-portal .guest-catalog article>svg{color:var(--sun)}
+.nh-portal .guest-services :is(input,select,textarea){border:1px solid rgba(15,42,46,.18);border-radius:12px;background:#fff;color:var(--ink)}
+.nh-portal .guest-services :is(input,select,textarea):focus{outline:2px solid var(--lagoon);outline-offset:1px;border-color:transparent}
+.nh-portal .guest-services button.primary,.nh-portal .stay-action-dialog button.primary{border:0;border-radius:999px;background:var(--ink);color:#fff;font-weight:600;min-height:48px;padding:0 22px}
+.nh-portal .guest-services button.primary:not(:disabled):hover{background:var(--lagoon-deep)}
+.nh-portal .guest-services button.primary:disabled{background:var(--sand-deep);color:var(--muted)}
+
+/* My bill */
+.nh-portal .guest-stay-status{background:#e3f1ec;color:#0f5d4e}
+.nh-portal .guest-bill-summary b,.nh-portal .walkin-bill-head>strong{font-family:var(--serif);font-weight:400;color:var(--ink)}
+.nh-portal .guest-bill-category{border-color:var(--line);border-radius:14px}
+.nh-portal .guest-bill-category summary{background:var(--sand)}
+.nh-portal .guest-bill-category summary span:before{color:var(--lagoon)}
+.nh-portal .guest-bill,.nh-portal .guest-bill li,.nh-portal .guest-folio-totals p:last-child,.nh-portal .guest-stay-services,.nh-portal .guest-stay-services>div{border-color:var(--line)}
+.nh-portal .guest-bill li small,.nh-portal .guest-bill-summary span,.nh-portal .guest-stay-services small{color:var(--ink-soft)}
+.nh-portal .walkin-bill-head small{color:var(--lagoon)}
+
+/* Buggy */
+.nh-portal .guest-buggy-hero{border-radius:var(--radius);background:var(--lagoon-deep);color:#fff}
+.nh-portal .guest-buggy-hero small{color:#f3dcc4}
+.nh-portal .guest-buggy-hero h2{color:#fff}
+.nh-portal .guest-buggy-hero p{color:rgba(255,255,255,.85)}
+.nh-portal .guest-buggy-fare{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff}
+.nh-portal .guest-buggy-fare :is(span,small){color:rgba(255,255,255,.75)}
+.nh-portal .guest-buggy-fare strong{font-family:var(--serif);font-weight:400;color:#fff}
+.nh-portal .guest-buggy-fields svg,.nh-portal .guest-buggy-progress svg{color:var(--sun)}
+.nh-portal :is(.guest-buggy-request,.guest-buggy-active,.guest-buggy-history){padding:24px}
+.nh-portal .guest-buggy-charge{background:var(--sand);border-radius:14px;color:var(--ink)}
+
+/* Excursions tab: weather panel and excursion catalogue */
+.nh-portal .excursion-weather-card{background:var(--paper);border-color:var(--line);border-radius:var(--radius);box-shadow:none}
+.nh-portal :is(.excursion-weather-now,.excursion-weather-days article){border-color:var(--line)}
+.nh-portal .excursion-weather-now dl div{background:var(--sand)}
+.nh-portal :is(.excursion-weather-heading button,.excursion-weather-day-buttons button,.guest-excursion-datebar button,.guest-excursion-category-tabs button){border-radius:999px;border-color:var(--line);background:#fff;color:var(--ink);font-family:var(--sans);font-weight:600}
+.nh-portal :is(.excursion-weather-day-buttons button.active,.guest-excursion-category-tabs button.active,.guest-excursion-category-tabs button[aria-pressed=true]){background:var(--ink);border-color:var(--ink);color:#fff}
+.nh-portal .guest-excursion-category-tabs button:not(.active):hover{background:var(--sand)}
+.nh-portal :is(.guest-excursion-message,.guest-excursion-note){background:var(--sand);color:var(--ink);border-radius:14px}
+.nh-portal .guest-excursion-list>article{border-color:var(--line);border-radius:var(--radius);background:var(--paper)}
+.nh-portal .guest-excursion-list>article.is-full{border-color:#e7c79a;background:#fdf6ec}
+
+/* Popup forms */
+.nh-portal .stay-action-dialog{border-radius:var(--radius);background:var(--paper);color:var(--ink)}
+
+@media(max-width:640px){
+ .nh-portal .guest-services{padding:14px 12px 30px}
+ .nh-portal .guest-services>header{padding:80px 20px 28px;border-radius:22px}
+ .nh-portal .guest-header-actions{top:14px;right:14px}
+ .nh-portal .guest-services>nav{margin:-22px 8px 22px;border-radius:22px}
+ .nh-portal .guest-services>nav button{border-radius:16px;font-size:14px}
+ .nh-portal .guest-services>nav button:last-child:nth-child(odd){grid-column:1/-1}
+}

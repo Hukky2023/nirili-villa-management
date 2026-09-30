@@ -87,6 +87,10 @@ body:has(main.nh) .nv-session-floating{display:none}
 .nh-mobile-panel .nh-sub{font-weight:500;color:var(--ink-soft);padding-left:26px!important}
 .nh-mobile-panel .nh-btn{margin-top:8px}
 
+/* Solid header for pages without a photo hero */
+.nh-header-bar{background:var(--lagoon-deep)}
+.nh-header-bar .nh-header{position:relative}
+
 /* Hero */
 .nh-hero{position:relative;min-height:max(680px,100svh);display:flex;flex-direction:column;justify-content:flex-end;background-size:cover;background-position:center 60%;color:#fff;isolation:isolate}
 .nh-hero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(6,24,28,.4) 0%,rgba(6,24,28,0) 65%),linear-gradient(180deg,rgba(6,24,28,.55) 0%,rgba(6,24,28,.08) 32%,rgba(6,24,28,.12) 55%,rgba(6,24,28,.72) 100%)}

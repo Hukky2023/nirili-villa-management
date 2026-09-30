@@ -1,9 +1,110 @@
-*{box-sizing:border-box}.manage-booking{min-height:100vh;background:#f3f8f8;color:#153645;font-family:Arial,sans-serif;padding-bottom:70px}.manage-nav{height:72px;padding:0 max(24px,5vw);display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #dce8e9}.manage-nav a{display:flex;align-items:center;gap:8px;text-decoration:none;color:#0b536c;font-weight:700}.manage-nav span{font-size:11px;letter-spacing:1.8px;color:#71858e}.manage-hero{max-width:1180px;margin:0 auto;padding:54px 24px 28px;display:flex;justify-content:space-between;gap:30px;align-items:end}.eyebrow{font-size:11px;letter-spacing:2px;color:#3b7b88;font-weight:800}.manage-hero h1{font-size:46px;line-height:1;margin:10px 0 12px}.manage-hero p{margin:0;color:#5d737b;max-width:620px}.reference{background:#0b536c;color:#fff;padding:20px 22px;border-radius:16px;min-width:250px;display:grid;gap:6px}.reference small{font-size:10px;letter-spacing:1.7px;opacity:.75}.reference strong{font-size:24px}.status{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px}.booking-summary{max-width:1180px;margin:0 auto 22px;padding:0 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.booking-summary>div{background:#fff;border:1px solid #dce8e9;border-radius:14px;padding:16px;display:flex;gap:12px;align-items:center}.booking-summary svg{width:20px;color:#0b7180}.booking-summary span{display:grid;gap:3px}.booking-summary small,.side-card small{font-size:9px;letter-spacing:1.5px;color:#789099}.booking-summary strong{font-size:14px}.manage-grid{max-width:1180px;margin:auto;padding:0 24px;display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:18px}.edit-card,.side-card,.cancelled-card,.pending-banner,.manage-card{background:#fff;border:1px solid #dce8e9;border-radius:18px;padding:26px}.section-head h2{margin:7px 0;font-size:27px}.section-head p{margin:0 0 20px;color:#62777f}.edit-card label{display:grid;gap:7px;margin:0 0 14px;font-size:12px;font-weight:700}.edit-card input,.edit-card select,.edit-card textarea{width:100%;border:1px solid #cbdcdf;border-radius:10px;background:#fff;padding:12px 13px;font:inherit;color:#163744}.edit-card input:disabled,.edit-card select:disabled,.edit-card textarea:disabled{background:#f4f7f7;color:#6d7c82}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.primary,.danger{border:0;border-radius:11px;padding:13px 18px;font-weight:800;cursor:pointer}.primary{background:#0b536c;color:#fff}.danger{background:#fff0ef;color:#a73830;border:1px solid #efc7c3}.primary:disabled,.danger:disabled{opacity:.45;cursor:not-allowed}.side-card{height:max-content;display:grid;gap:24px}.side-card>div:first-child{display:grid;gap:6px}.side-card>div:first-child strong{font-size:31px}.side-card>div:first-child span{font-size:12px;color:#72878e}.cancel-zone{border-top:1px solid #e2ebec;padding-top:20px}.cancel-zone h3{margin:0 0 8px}.cancel-zone p,.security{font-size:13px;line-height:1.55;color:#687d84}.security{display:flex;gap:8px;margin:0}.security svg{width:18px;flex:0 0 auto}.pending-banner,.cancelled-card{max-width:1132px;margin:0 auto 18px;display:flex;gap:14px;align-items:flex-start}.pending-banner{background:#fff9e8;border-color:#f0dfad}.pending-banner svg{color:#b68313}.pending-banner p,.cancelled-card p{margin:5px 0;color:#667a81;line-height:1.5}.pending-banner small{color:#8a7b59}.cancelled-card svg{color:#b9453c}.manage-message{max-width:1132px;margin:0 auto 18px;padding:13px 16px;border-radius:11px}.manage-message.success{background:#e9f8f0;color:#246044}.manage-message.error{background:#fff0ef;color:#9a3932}.manage-card{max-width:640px;margin:80px auto}.error-card{text-align:center}.error-card svg{width:46px;height:46px;color:#b9453c}.error-card a{display:inline-flex;align-items:center;gap:7px;margin-top:10px;color:#0b536c;font-weight:700;text-decoration:none}@media(max-width:760px){.manage-nav{padding:0 18px}.manage-nav span{display:none}.manage-hero{padding:34px 18px 20px;display:grid}.manage-hero h1{font-size:36px}.reference{min-width:0}.booking-summary{padding:0 18px;grid-template-columns:1fr 1fr}.manage-grid{padding:0 18px;grid-template-columns:1fr}.two{grid-template-columns:1fr}.pending-banner,.cancelled-card,.manage-message{margin-left:18px;margin-right:18px}.edit-card,.side-card{padding:20px}}@media(max-width:460px){.booking-summary{grid-template-columns:1fr}.manage-hero h1{font-size:31px}}
-.manage-transport{display:grid;gap:12px;margin:8px 0 18px}
-.manage-transport-heading{padding-top:8px;border-top:1px solid #e3ecef}
-.manage-transport-heading small{font-weight:800;letter-spacing:.09em;color:#52717e}
-.manage-transport-heading h3{margin:4px 0}
-.manage-transport-heading p{margin:0;color:#667b84}
-.manage-transport>section{display:grid;gap:12px;padding:16px;border:1px solid #dce8ec;border-radius:15px;background:#f8fbfc}
-.manage-transport>section>strong{color:#173f4d}
-.transport-confirmed{margin:0;padding:10px 12px;border-radius:10px;background:#eaf7f2;color:#245b48;font-size:13px}
+/* Private manage-booking pages: stay.nirilihotels.com/book/manage and
+   tours.nirilihotels.com/book/excursions/manage. Builds on hotel/home.css. */
+
+.nh-manage{--wrap:min(1120px,calc(100% - 40px))}
+.nh-manage .manage-booking,.nh-manage .manage-excursion{width:var(--wrap);margin:0 auto;padding:56px 0 110px;color:var(--ink)}
+.nh-manage .eyebrow{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--lagoon)}
+.nh-manage button{font:inherit;cursor:pointer}
+.nh-manage button:disabled{opacity:.5;cursor:not-allowed}
+
+/* Guest name and booking reference */
+.nh-manage .manage-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;padding-bottom:32px;margin-bottom:28px;border-bottom:1px solid var(--line)}
+.nh-manage .manage-hero h1{font-size:clamp(36px,5vw,58px);line-height:1.02;margin:12px 0}
+.nh-manage .manage-hero p{color:var(--ink-soft);max-width:560px}
+.nh-manage .reference{min-width:260px;display:grid;gap:6px;padding:22px 24px;border-radius:var(--radius);background:var(--lagoon-deep);color:#fff}
+.nh-manage .reference small{font-size:11px;font-weight:700;letter-spacing:.16em;color:#f3dcc4}
+.nh-manage .reference strong{font-family:var(--serif);font-weight:400;font-size:30px;line-height:1.1}
+.nh-manage .reference>span{justify-self:start;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.16)!important;color:#fff!important;font-size:13px;font-weight:600;letter-spacing:.02em;text-transform:none}
+
+/* Notices */
+.nh-manage .manage-message{padding:14px 18px;border-radius:14px;margin:0 0 20px}
+.nh-manage .manage-message.success{background:#e3f1ec;color:#0f5d4e}
+.nh-manage .manage-message.error{background:#fdecec;color:#9b3140}
+.nh-manage .pending-banner,.nh-manage .cancelled-card{display:flex;gap:14px;align-items:flex-start;padding:20px 22px;border-radius:var(--radius);margin-bottom:24px}
+.nh-manage .pending-banner{background:#fbefe0;color:#6b4a1d}
+.nh-manage .pending-banner svg{color:var(--sun);flex-shrink:0}
+.nh-manage .pending-banner p,.nh-manage .cancelled-card p{margin:6px 0;color:inherit;opacity:.85}
+.nh-manage .pending-banner small{opacity:.75}
+.nh-manage .cancelled-card{background:#fdecec;color:#6d2630}
+.nh-manage .cancelled-card svg{color:#9b3140;flex-shrink:0;width:28px;height:28px}
+.nh-manage .cancelled-card h2{font-size:26px}
+
+/* At-a-glance facts */
+.nh-manage .booking-summary,.nh-manage .status-grid{display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:32px;border-radius:var(--radius);border:1px solid var(--line);background:var(--paper);overflow:hidden}
+.nh-manage .booking-summary>div,.nh-manage .status-grid article{display:flex;gap:14px;align-items:flex-start;padding:20px 22px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.nh-manage .booking-summary>div:nth-child(3n),.nh-manage .status-grid article:nth-child(3n){border-right:0}
+.nh-manage .booking-summary svg,.nh-manage .status-grid svg{width:22px;height:22px;color:var(--sun);flex-shrink:0;margin-top:2px}
+.nh-manage .booking-summary span,.nh-manage .status-grid article>div{display:grid;gap:3px;min-width:0}
+.nh-manage .booking-summary small,.nh-manage .status-grid small{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--muted)}
+.nh-manage .booking-summary strong,.nh-manage .status-grid strong{font-family:var(--serif);font-weight:400;font-size:20px;line-height:1.25;overflow-wrap:anywhere}
+.nh-manage .status-grid article>div>span{font-size:13px;color:var(--ink-soft)}
+/* Long values such as email addresses get a smaller face instead of breaking mid-word. */
+.nh-manage .booking-summary>div:has(.lucide-mail) strong{font-family:var(--sans);font-size:15px;font-weight:600;overflow-wrap:anywhere}
+
+/* Form and side panel */
+.nh-manage .manage-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;align-items:start}
+.nh-manage .edit-card{display:grid;gap:16px;padding:32px;border-radius:var(--radius);background:var(--paper);border:1px solid var(--line)}
+.nh-manage .edit-card h2,.nh-manage .section-head h2{font-size:30px;line-height:1.1;margin:8px 0 6px}
+.nh-manage .edit-card>p,.nh-manage .section-head p{color:var(--ink-soft);margin-bottom:8px}
+.nh-manage .edit-card label{display:grid;gap:8px;font-size:14px;font-weight:600}
+.nh-manage .edit-card input:not([type=checkbox]),.nh-manage .edit-card select,.nh-manage .edit-card textarea{width:100%;min-height:50px;padding:12px 14px;border:1px solid rgba(15,42,46,.18);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-size:16px;font-weight:400}
+.nh-manage .edit-card textarea{resize:vertical}
+.nh-manage .edit-card input:focus,.nh-manage .edit-card select:focus,.nh-manage .edit-card textarea:focus{outline:2px solid var(--lagoon);outline-offset:1px;border-color:transparent}
+.nh-manage .edit-card input:disabled,.nh-manage .edit-card select:disabled,.nh-manage .edit-card textarea:disabled{background:var(--sand);color:var(--ink-soft)}
+.nh-manage .edit-card input[type=checkbox]{width:18px;height:18px;accent-color:var(--lagoon)}
+.nh-manage .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.nh-manage .primary,.nh-manage .danger{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:999px;font-weight:600}
+.nh-manage .primary{border:0;background:var(--ink);color:#fff}
+.nh-manage .primary:not(:disabled):hover{background:var(--lagoon-deep)}
+.nh-manage .danger{width:100%;border:1px solid #e7b9bf;background:#fff;color:#9b3140}
+.nh-manage .danger:not(:disabled):hover{background:#fdecec}
+
+.nh-manage .side-card{position:sticky;top:24px;display:grid;gap:22px;padding:28px;border-radius:var(--radius);background:var(--paper);border:1px solid var(--line)}
+.nh-manage .side-card>div:first-child{display:grid;gap:4px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.nh-manage .side-card small{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--muted)}
+.nh-manage .side-card>div:first-child strong{font-family:var(--serif);font-weight:400;font-size:40px;line-height:1.05}
+.nh-manage .side-card>div:first-child span{font-size:14px;color:var(--ink-soft)}
+.nh-manage .side-card h3{font-family:var(--serif);font-weight:500;font-size:20px;margin:0 0 6px}
+.nh-manage .side-card p{font-size:14px;color:var(--ink-soft)}
+.nh-manage .cancel-zone{display:grid;gap:12px}
+.nh-manage .security{display:flex;gap:10px;font-size:13px!important;color:var(--muted)!important}
+.nh-manage .security svg{width:18px;height:18px;flex-shrink:0;margin-top:1px}
+
+/* Loading and error states */
+.nh-manage .manage-card{max-width:600px;margin:40px auto;padding:44px 36px;border-radius:var(--radius);background:var(--paper);border:1px solid var(--line);text-align:center;color:var(--ink-soft)}
+.nh-manage .error-card{display:grid;justify-items:center;gap:12px;color:var(--ink)}
+.nh-manage .error-card svg{width:48px;height:48px;color:#9b3140}
+.nh-manage .error-card h1{font-size:32px}
+.nh-manage .error-card p{color:var(--ink-soft)}
+.nh-manage .error-card a{display:inline-flex;align-items:center;gap:8px;margin-top:8px;font-weight:600}
+.nh-manage .error-card a svg{width:17px;height:17px;color:inherit}
+
+/* Stay: arrival and departure plan */
+.nh-manage .manage-transport{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+.nh-manage .manage-transport-heading{grid-column:1/-1}
+.nh-manage .manage-transport-heading small{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--lagoon)}
+.nh-manage .manage-transport-heading h3{font-family:var(--serif);font-weight:400;font-size:24px;margin:6px 0 4px}
+.nh-manage .manage-transport-heading p{color:var(--ink-soft);font-size:15px}
+.nh-manage .manage-transport>section{display:grid;gap:14px;align-content:start;padding:20px;border-radius:16px;border:1px solid var(--line);background:#fff}
+.nh-manage .manage-transport>section>strong{font-family:var(--serif);font-weight:500;font-size:19px}
+.nh-manage .manage-transport .two{grid-template-columns:1fr}
+.nh-manage .transport-confirmed{font-size:14px;padding:10px 14px;border-radius:10px;background:#e3f1ec;color:#0f5d4e}
+
+@media(max-width:900px){
+ .nh-manage .manage-grid{grid-template-columns:1fr}
+ .nh-manage .side-card{position:static}
+}
+@media(max-width:640px){
+ .nh-manage{--wrap:calc(100% - 32px)}
+ .nh-manage .manage-booking,.nh-manage .manage-excursion{padding-top:36px}
+ .nh-manage .manage-hero{flex-direction:column;align-items:stretch;gap:20px}
+ .nh-manage .reference{min-width:0}
+ .nh-manage .booking-summary,.nh-manage .status-grid{grid-template-columns:1fr 1fr}
+ .nh-manage .booking-summary>div,.nh-manage .status-grid article{padding:16px;border-right:1px solid var(--line)!important}
+ .nh-manage .booking-summary>div:nth-child(2n),.nh-manage .status-grid article:nth-child(2n){border-right:0!important}
+ .nh-manage .booking-summary svg,.nh-manage .status-grid svg{display:none}
+ .nh-manage .booking-summary strong,.nh-manage .status-grid strong{font-size:17px}
+ .nh-manage .edit-card{padding:22px 18px}
+ .nh-manage .two,.nh-manage .manage-transport{grid-template-columns:1fr}
+ .nh-manage .side-card{padding:22px}
+}
