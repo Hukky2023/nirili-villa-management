@@ -12,6 +12,7 @@ export type BookingMail={
  meal:string;
  pax:number;
  totalCents:number;
+ packageId?:string;packageName?:string;packageIncludeTransfer?:boolean;packageTransferLabel?:string;packageExcursions?:{id:string;name:string}[];
  manageToken?:string;
  eventId?:string;
  statusLabel?:string;
@@ -74,6 +75,7 @@ function shell(title:string,body:string){
 }
 
 function bookingTable(booking:BookingMail,label='Accommodation total'){
+ if(booking.packageId)label='Total package price';
  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:24px 0;background:#eef9f7;border-radius:14px;padding:18px">
   <tr><td style="padding:6px 0;color:#6a7f88">Booking number</td><td align="right" style="font-weight:700">${escapeHtml(booking.reference)}</td></tr>
   ${booking.room?`<tr><td style="padding:6px 0;color:#6a7f88">Room</td><td align="right" style="font-weight:700">${escapeHtml(booking.room)}</td></tr>`:''}
@@ -81,7 +83,7 @@ function bookingTable(booking:BookingMail,label='Accommodation total'){
   <tr><td style="padding:6px 0;color:#6a7f88">Check-out</td><td align="right">${escapeHtml(booking.checkOut)}</td></tr>
   <tr><td style="padding:6px 0;color:#6a7f88">Guests</td><td align="right">${booking.pax}</td></tr>
   <tr><td style="padding:6px 0;color:#6a7f88">Meal plan</td><td align="right">${escapeHtml(booking.meal)}</td></tr>
-  <tr><td style="padding:6px 0;color:#6a7f88">${escapeHtml(label)}</td><td align="right" style="font-weight:700">${money(booking.totalCents)}</td></tr>
+  <tr><td style="padding:6px 0;color:#6a7f88">${escapeHtml(label)}${booking.packageId?`<br>${escapeHtml(booking.packageName||'Package')}<br>${booking.packageIncludeTransfer?escapeHtml(booking.packageTransferLabel||'Return airport transfer')+'<br>':''}${(booking.packageExcursions||[]).map(x=>escapeHtml(x.name)).join('<br>')}<br>Excursions arranged after check-in`:""}</td><td align="right" style="font-weight:700">${money(booking.totalCents)}</td></tr>
  </table>`;
 }
 
@@ -101,7 +103,7 @@ export async function sendBookingReceivedEmail(booking:BookingMail):Promise<Mail
   <p style="font-size:14px;line-height:1.7">Your booking is currently <strong>confirmation pending</strong>. You will receive another email with your Nirili Villa booking number and assigned room after approval.</p>
   ${manageButton(booking.manageToken)}
  `);
- const plain=`Nirili Villa - booking received\n\nDear ${booking.guest},\nWe received your booking.\nReference: ${booking.reference}\nStay: ${booking.checkIn} to ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\nEstimated accommodation: ${money(booking.totalCents)}\n\nStatus: confirmation pending. You will receive another email after the room is approved.\n${managePlain(booking.manageToken)}`;
+ const plain=`Nirili Villa - booking received\n\nDear ${booking.guest},\nWe received your booking.\nReference: ${booking.reference}\nStay: ${booking.checkIn} to ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\n${booking.packageId?'Total package price':'Estimated accommodation'}: ${money(booking.totalCents)}\n\nStatus: confirmation pending. You will receive another email after the room is approved.\n${managePlain(booking.manageToken)}`;
  return sendEmail({to:booking.email,subject:'Nirili Villa booking received · '+booking.reference,html,text:plain,idempotencyKey:'room-booking-received/'+booking.reference});
 }
 
@@ -113,7 +115,7 @@ export async function sendBookingConfirmationEmail(booking:BookingMail):Promise<
   <p style="font-size:14px;line-height:1.7">Please keep your booking number for check-in and future communication with reception.</p>
   ${manageButton(booking.manageToken)}
  `);
- const plain=`Nirili Villa - booking confirmed\n\nDear ${booking.guest},\nYour booking is confirmed.\nBooking number: ${booking.reference}\nRoom: ${booking.room||'Assigned'}\nCheck-in: ${booking.checkIn}\nCheck-out: ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\nAccommodation total: ${money(booking.totalCents)}\n\nPlease keep your booking number for check-in.\n${managePlain(booking.manageToken)}`;
+ const plain=`Nirili Villa - booking confirmed\n\nDear ${booking.guest},\nYour booking is confirmed.\nBooking number: ${booking.reference}\nRoom: ${booking.room||'Assigned'}\nCheck-in: ${booking.checkIn}\nCheck-out: ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\n${booking.packageId?'Total package price':'Accommodation total'}: ${money(booking.totalCents)}\n\nPlease keep your booking number for check-in.\n${managePlain(booking.manageToken)}`;
  return sendEmail({to:booking.email,subject:'Booking confirmed · '+booking.reference+' · Nirili Villa',html,text:plain,idempotencyKey:'room-booking-confirmed/'+booking.reference});
 }
 
@@ -218,3 +220,4 @@ export async function sendTransportScheduleEmail(input:TransportScheduleMail):Pr
   idempotencyKey:'room-transport/'+input.reference+'/'+input.leg+'/'+input.date+'/'+input.depart+'/'+encodeURIComponent(input.boat).slice(0,80)
  });
 }
+

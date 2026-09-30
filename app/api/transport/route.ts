@@ -1,3 +1,4 @@
+import {recoverStayPackages} from '../../../lib/stay-package';
 import {toggleTransferPayment} from '../../../lib/transport-payment';
 import {loadStays,stayKey} from '../../../lib/stays';
 import {canTransport,isTransportAgent,transportRole} from '../../../lib/transport-access';
@@ -22,7 +23,7 @@ async function loadHotelPrimary(){
  try{
   const row=await readOperationalRecordPrimary(stayKey);
   if(row?.payload){
-   const state=row.payload;state.stays??=[];state.orders??=[];state.rooms??=[];
+   const state=recoverStayPackages(row.payload);state.stays??=[];state.orders??=[];state.rooms??=[];
    return {state,revision:Number(row.revision)||0};
   }
  }catch{}
