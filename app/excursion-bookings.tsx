@@ -7,7 +7,7 @@ import DateFieldDMY from './date-field-dmy';
 import ExcursionBillingActions from './excursion-billing-actions';
 import type {ExcursionPricing} from '../lib/excursion-billing';
 import {walkInExcursionWhatsAppUrl} from '../lib/walkin-excursion-whatsapp';
-type BillingBooking = ConfirmedExcursionBooking & {pricing?: ExcursionPricing; billingHistory?: any[]};
+type BillingBooking = ConfirmedExcursionBooking & {pricing?: ExcursionPricing; billingHistory?: any[]; canMove?: boolean};
 
 const pageSize = 25;
 const money = (cents: number) => '$' + (cents / 100).toFixed(2);
@@ -87,7 +87,7 @@ export default function ExcursionBookings() {
   const hasFilters = !!(query || date || payment);
   function clearFilters() {setQuery(''); setDate(''); setPayment(''); setPage(1);}
   function bookingCanMove(b:BillingBooking){
-    return canReassign&&b.serviceType!=='romantic-beach-dinner'&&!b.privateBoatRequested&&!b.separateVessel&&!/(Departed|Completed|Arrived)/i.test(String(b.tripStatus||''));
+    return canReassign&&b.serviceType!=='romantic-beach-dinner'&&!b.privateBoatRequested&&!b.separateVessel&&b.canMove===true;
   }
   async function loadMoveOptions(booking:BillingBooking,targetDate:string){
     setMoveLoading(true);setMoveError('');setMoveScheduleId('');

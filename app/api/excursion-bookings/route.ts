@@ -10,7 +10,7 @@ import {sendExternalExcursionCancelledEmail,sendExternalExcursionRejectedEmail,s
 import {autoAssignExcursionOrder} from '../../../lib/excursion-auto-assignment';
 import {excursionDeparturePassed,islandToday,validDate} from '../../../lib/guest-catalog';
 import {excursionScheduleLoadForOrder,scheduleCanServeRequest} from '../../../lib/excursion-operations';
-import {applyExcursionReassignment} from '../../../lib/excursion-reassignment';
+import {applyExcursionReassignment,excursionReassignmentError} from '../../../lib/excursion-reassignment';
 import {sendGuestPushForExcursionTimeChange} from '../../../lib/web-push';
 import {addGuestNotification} from '../../../lib/guest-notifications';
 import {markWalkInExcursionNotified} from '../../../lib/walkin-excursion-notification';
@@ -50,7 +50,8 @@ export async function GET(request?: Request) {
       const order=(state.orders||[]).find((item:any)=>item.id===bookingId&&item.kind==='excursion');
       if(!order)return Response.json({error:'Excursion booking not found.'},{status:404,headers});
       if(!isConfirmedExcursion(order))return Response.json({error:'Only confirmed excursion bookings can be reassigned.'},{status:409,headers});
-      if(['Departed','Completed','Cancelled'].includes(String(order.status||'')))return Response.json({error:'Departed, completed or cancelled excursions cannot be reassigned.'},{status:409,headers});
+      const moveError=excursionReassignmentError(order);
+      if(moveError)return Response.json({error:moveError},{status:409,headers});
       if(order.serviceType==='romantic-beach-dinner')return Response.json({error:'Romantic Beach Dinner does not use excursion trip assignment.'},{status:409,headers});
       if(order.privateBoatRequested===true||order.separateVessel===true)return Response.json({error:'Private or separate-vessel bookings must be managed from the schedule/vessel assignment screen.'},{status:409,headers});
       const schedules=(await schedulesForDate(scheduleDate)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
@@ -101,6 +102,7 @@ export async function GET(request?: Request) {
         schedule = matches.length === 1 ? matches[0] : matches.find(s => !!s.vesselId && s.vesselId === order.schedule?.vesselId);
       }
       return {...toConfirmedExcursionBooking(order, stays.get(order.stayId), schedule, resources, excursionPaid(order, state)),
+        canMove: !excursionReassignmentError(order),
         pricing: excursionPricing(order),
         bill: user!.role === 'admin' ? excursionFolioBill(order) : undefined,
         billingHistory: user!.role === 'admin' ? (order.billingHistory || []) : undefined};
@@ -168,8 +170,8 @@ export async function PATCH(request: Request) {
       const order=(state.orders||[]).find((item:any)=>item.id===bookingId&&item.kind==='excursion');
       if(!order)return Response.json({error:'Excursion booking not found.'},{status:404,headers});
       if(!isConfirmedExcursion(order))return Response.json({error:'Only confirmed excursion bookings can be reassigned.'},{status:409,headers});
-      if(['Departed','Completed','Cancelled'].includes(String(order.status||'')))return Response.json({error:'Departed, completed or cancelled excursions cannot be reassigned.'},{status:409,headers});
-      if(order.date&&order.time&&excursionDeparturePassed(order.date,order.time))return Response.json({error:'This booking departure time has already passed and cannot be reassigned here.'},{status:409,headers});
+      const moveError=excursionReassignmentError(order);
+      if(moveError)return Response.json({error:moveError},{status:409,headers});
       if(order.serviceType==='romantic-beach-dinner')return Response.json({error:'Romantic Beach Dinner does not use excursion trip assignment.'},{status:409,headers});
       if(order.privateBoatRequested===true||order.separateVessel===true)return Response.json({error:'Private or separate-vessel bookings must be managed from the schedule/vessel assignment screen.'},{status:409,headers});
       const schedules=(await schedulesForDate(scheduleDate)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));

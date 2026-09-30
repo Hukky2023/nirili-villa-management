@@ -47,3 +47,55 @@ test('capacity calculation excludes the booking being moved but counts other con
  const load=excursionScheduleLoadForOrder(schedules[0],schedules,[moving,other],moving.id);
  assert.equal(load.capacity,8);assert.equal(load.confirmedPax,5);assert.equal(load.remaining,3);
 });
+
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {stripTypeScriptTypes} from 'node:module';
+import {excursionReassignmentError} from '../lib/excursion-reassignment.ts';
+
+const routeSource=fs.readFileSync(new URL('../app/api/excursion-bookings/route.ts',import.meta.url),'utf8');
+const routeCode=stripTypeScriptTypes(routeSource.replace(/^import .*;\n/gm,'').replace(/^export /gm,''));
+function moveHarness(overrides={},options={}){
+ const order={id:'MISSED',kind:'excursion',status:'Scheduled',approvalStatus:'Approved',date:'2026-09-30',time:'11:00',scheduleId:'old',name:'Shark Snorkeling',quantity:2,cents:10000,excursionPayments:[{cents:5000}],excursionGuestRoster:[{id:'MISSED:1',slot:1,name:'Guest A',boarded:false},{id:'MISSED:2',slot:2,name:'Guest B',boarded:false}],attendanceReviewedAt:'2026-09-30T06:00:00Z',attendanceReviewedBy:'admin',...overrides};
+ const target={id:'next',date:'2026-10-01',time:'11:00',name:'Shark Snorkeling',status:'Open',capacity:6};
+ const state={orders:[order],stays:[]};
+ let saved=0;
+ const context=vm.createContext({Response,Request,URL,Date,Map,Set,JSON,Number,String,Array,Error,
+  currentUser:async()=>({role:options.denied?'staff':'admin',username:'admin',userId:'admin'}),
+  hasPermission:()=>!options.denied,sameOrigin:()=>true,loadStays:async()=>({state,revision:7}),
+  isConfirmedExcursion:()=>true,validDate:d=>/^\d{4}-\d{2}-\d{2}$/.test(d),islandToday:()=> '2026-09-30',
+  excursionDeparturePassed:(d,t)=>d<'2026-09-30'||d==='2026-09-30'&&t<='13:05',
+  readExcursionSchedulesPrimary:async()=>[options.pastTarget?{...target,date:'2026-09-30',time:'12:00'}:target],
+  excursionResources:()=>({vessels:[],crew:[]}),
+  excursionScheduleLoadForOrder:()=>({capacity:6,confirmedPax:options.full?5:0,remaining:options.full?1:6}),
+  scheduleCanServeRequest:()=>true,applyExcursionReassignment,excursionReassignmentError,
+  saveStayAccess:async()=>{saved++;return true;},
+ });
+ vm.runInContext(routeCode,context);
+ const body={action:'reassign-booking',id:'MISSED',scheduleId:'next',scheduleDate:options.pastTarget?'2026-09-30':'2026-10-01',revision:options.stale?6:7,note:'Guest did not board'};
+ return {order,get saved(){return saved;},get:()=>context.GET(new Request('https://example.test/api/excursion-bookings?bookingId=MISSED&scheduleDate=2026-10-01')),patch:()=>context.PATCH(new Request('https://example.test/api/excursion-bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}))};
+}
+test('admin moves unboarded guests after original departure to tomorrow without changing their bill',async()=>{
+ const h=moveHarness(),before=structuredClone(h.order);
+ assert.equal((await h.get()).status,200);
+ const response=await h.patch();assert.equal(response.status,200,JSON.stringify(await response.json()));
+ assert.equal(h.saved,1);assert.equal(h.order.date,'2026-10-01');assert.equal(h.order.scheduleId,'next');
+ assert.equal(h.order.cents,before.cents);assert.deepEqual(h.order.excursionPayments,before.excursionPayments);
+ assert.deepEqual(h.order.excursionGuestRoster,before.excursionGuestRoster);
+ assert.equal(h.order.attendanceReviewedAt,undefined);
+ assert.equal(h.order.assignmentHistory[0].attendanceReviewedAt,before.attendanceReviewedAt);
+});
+test('partly boarded bookings are rejected by both options and save, even before status updates',async()=>{
+ const h=moveHarness({excursionGuestRoster:[{boarded:false},{boarded:true}]});
+ assert.equal((await h.get()).status,409);assert.equal((await h.patch()).status,409);assert.equal(h.saved,0);
+});
+test('a fully boarded booking cannot move',async()=>{
+ const h=moveHarness({excursionGuestRoster:[{boarded:true},{boarded:true}]});
+ assert.equal((await h.patch()).status,409);assert.equal(h.saved,0);
+});
+for(const status of ['Departed','Completed','Cancelled'])test(status+' bookings cannot move',async()=>{
+ const h=moveHarness({status});assert.equal((await h.patch()).status,409);assert.equal(h.saved,0);
+});
+for(const [name,options,expected] of [['insufficient seats',{full:true},409],['stale revision',{stale:true},409],['unauthorized user',{denied:true},403],['past target departure',{pastTarget:true},409]])test(name+' still blocks reassignment',async()=>{
+ const h=moveHarness({},options);assert.equal((await h.patch()).status,expected);assert.equal(h.saved,0);
+});
