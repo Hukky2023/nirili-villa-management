@@ -98,6 +98,8 @@ test('the main domain offers short links to every service',()=>{
  short('/ride','https://ride.nirilihotels.com/');
  short('/my','https://my.nirilihotels.com/');
  assert.equal(rewrite(visit('nirilihotels.com','/')),'/hotel');
- assert.ok(passes(visit('nirilihotels.com','/hotel/excursions')));
+ assert.equal(location(visit('nirilihotels.com','/hotel/excursions')),'https://tours.nirilihotels.com/');
+ assert.equal(location(visit('nirilihotels.com','/hotel/excursions/turtle')),'https://tours.nirilihotels.com/book/excursions/details/turtle');
+ assert.ok(passes(visit('tours.nirilihotels.com','/book/excursions/details/turtle')));
  assert.equal(visit('nirilihotels.com','/api/dashboard').status,404);
 });

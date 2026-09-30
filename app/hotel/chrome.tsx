@@ -8,8 +8,9 @@ export const RESTAURANT=SITES.dine+'/';
 export const TRANSFERS=SITES.transfers+'/';
 export const RIDE=SITES.ride+'/';
 export const GUEST_PORTAL=SITES.my+'/';
-// Absolute so the shared header and footer also work on the service subdomains.
-export const EXCURSION_GUIDE=SITES.main+'/hotel/excursions';
+// Excursions have one home: the tours site lists, shows details and books them.
+export const EXCURSION_GUIDE=SITES.tours+'/';
+export const excursionDetailUrl=(id:string)=>SITES.tours+'/book/excursions/details/'+encodeURIComponent(id);
 export const WHATSAPP='https://wa.me/9609413977?text=Hello%20Nirili%2C%20I%27d%20like%20help%20planning%20my%20trip%20to%20Dhiffushi.';
 
 export const img=(id:string,w=1400)=>`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=82`;

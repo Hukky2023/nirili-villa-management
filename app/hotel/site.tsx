@@ -1,7 +1,6 @@
-import Link from 'next/link';
 import WebsiteChat from '../website-chat';
 import {loadExcursionMenu,baseExcursionMenu} from '../../lib/excursion-menu';
-import {EXCURSIONS,Fonts,excursionTag,RESTAURANT,RIDE,STAY,SiteFooter,SiteHeader,TRANSFERS,WHATSAPP,excursionPhoto,img} from './chrome';
+import {EXCURSIONS,Fonts,excursionDetailUrl,excursionTag,RESTAURANT,RIDE,STAY,SiteFooter,SiteHeader,TRANSFERS,WHATSAPP,excursionPhoto,img} from './chrome';
 import {ArrowRight,ArrowUpRight,BedDouble,Bike,Coffee,Compass,MapPin,MessageCircle,Plane,Sailboat,Sun,UtensilsCrossed,Waves} from 'lucide-react';
 
 const IMAGES={
@@ -94,18 +93,17 @@ export default async function HotelHome(){
     <p>Turtles, nurse sharks, manta rays and sandbanks all in the waters around Dhiffushi. Our crew knows the best spots and the best time to go.</p>
    </div>
    <div className="nh-exp-grid">
-    {excursions.map((x,i)=><Link className={'nh-exp'+(i===0?' is-wide':i===excursions.length-1&&excursions.length%3===1?' is-wide is-last':'')} key={x.id} href={'/hotel/excursions/'+encodeURIComponent(x.id)}>
+    {excursions.map((x,i)=><a className={'nh-exp'+(i===0?' is-wide':i===excursions.length-1&&excursions.length%3===1?' is-wide is-last':'')} key={x.id} href={excursionDetailUrl(x.id)}>
      {x.photo?<img src={x.photo} alt={x.name} loading="lazy"/>:<span className="nh-exp-empty"><Waves/></span>}
      <span className="nh-exp-body">
       <small>{x.tag}</small>
       <strong>{x.name}</strong>
       <span>{x.detail}</span>
      </span>
-    </Link>)}
+    </a>)}
    </div>
    <div className="nh-center">
-    <Link className="nh-btn nh-btn-outline" href="/hotel/excursions">See all excursions <ArrowRight/></Link>
-    <a className="nh-btn nh-btn-primary" href={EXCURSIONS}>Book an excursion <ArrowRight/></a>
+    <a className="nh-btn nh-btn-primary" href={EXCURSIONS}>See all excursions &amp; book <ArrowRight/></a>
    </div>
   </section>
 

@@ -2,8 +2,9 @@
 
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowLeft,ArrowRight,CalendarDays,CheckCircle2,MapPin,Plus,ShieldCheck,ShipWheel,Sparkles,Trash2,Users} from 'lucide-react';
+import Link from 'next/link';
 import {SITES} from '../../../lib/public-sites';
-import {EXCURSION_GUIDE,excursionPhoto,img} from '../../hotel/chrome';
+import {excursionPhoto,img} from '../../hotel/chrome';
 
 type Excursion={
  id:string;name:string;detail:string;longDetail?:string;youtubeUrl?:string;galleryUrls?:string[];cents:number;pricingUnit:'guest'|'couple';
@@ -138,7 +139,7 @@ export default function ExternalExcursionBooking(){
       {item.cents>0&&<span>{item.pricingUnit==='couple'?'/ couple':'/ adult'}</span>}
      </div>
      <div className="external-card-actions">
-      <a className="external-view-details" href={EXCURSION_GUIDE+'/'+encodeURIComponent(item.id)}>View details</a>
+      <Link className="external-view-details" href={'/book/excursions/details/'+encodeURIComponent(item.id)}>View details</Link>
       <button type="button" onClick={()=>choose(item)}>{selected?.id===item.id?'Selected':'Book this excursion'} <ArrowRight/></button>
      </div>
     </article>)}

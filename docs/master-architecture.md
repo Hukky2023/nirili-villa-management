@@ -83,7 +83,7 @@ Every public service has its own subdomain. The addresses live in `lib/public-si
 | --- | --- |
 | `nirilihotels.com` | Main public website (`www.` redirects here) |
 | `stay.nirilihotels.com` | Nirili Stay: rooms, packages, meal plans, manage a booking |
-| `tours.nirilihotels.com` | Nirili Excursions booking and self-service manage links |
+| `tours.nirilihotels.com` | Nirili Excursions: the one excursions site — list with prices, detail pages (video, photos, description; no prices) at `/book/excursions/details/<id>`, booking and self-service manage links. `nirilihotels.com/hotel/excursions` and its detail pages redirect here. |
 | `dine.nirilihotels.com` | Nirili Restaurant menu, dine-in and delivery ordering |
 | `transfers.nirilihotels.com` | Nirili Transfers: speedboat and airport transfers |
 | `ride.nirilihotels.com` | Nirili Ride: anyone can request a buggy and follow it live; in-house guests can still use the portal's buggy tab to charge the room |

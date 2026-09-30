@@ -103,9 +103,8 @@ test('admin saves are persistent and stale revisions never overwrite another cha
 });
 
 test('main website renders the saved video and description without prices or management instructions',async()=>{
- const page=load('app/hotel/excursions/[id]/page.tsx',{
-  '../../../../lib/excursion-menu':{loadExcursionMenu:async()=>[{id:'turtle',name:'Turtle Encounter',group:'Single Excursions',detail:'Short text',longDetail:'Saved description',youtubeUrl:'https://youtu.be/dQw4w9WgXcQ',cents:4500,galleryUrls:[]}]},
-  '../../../website-chat':{default:()=>null,__esModule:true},
+ const page=load('app/book/excursions/details/[id]/page.tsx',{
+  '../../../../../lib/excursion-menu':{loadExcursionMenu:async()=>[{id:'turtle',name:'Turtle Encounter',group:'Single Excursions',detail:'Short text',longDetail:'Saved description',youtubeUrl:'https://youtu.be/dQw4w9WgXcQ',cents:4500,galleryUrls:[]}]},
   'next/navigation':{notFound:()=>{throw Error('404')}}
  }).default;
  const {renderToStaticMarkup}=require('react-dom/server');
@@ -145,7 +144,7 @@ test('excursion edits persist custom names, details, prices and video; removal s
 test('hotel domain serves public pages and photo reads while blocking catalog edits and photo uploads',()=>{
  const {proxy}=load('proxy.ts');
  function visit(path,method='GET'){return proxy(new Request('https://nirilihotels.com'+path,{method,headers:{host:'nirilihotels.com'}}));}
- assert.equal(visit('/hotel/excursions/turtle').headers.get('x-middleware-next'),'1');
+ assert.equal(visit('/hotel/excursions/turtle').headers.get('location'),'https://tours.nirilihotels.com/book/excursions/details/turtle');
  assert.equal(visit('/api/menu-images/12345678-1234-1234-1234-123456789012').headers.get('x-middleware-next'),'1');
  assert.equal(visit('/api/menu-images/12345678-1234-1234-1234-123456789012','POST').status,404);
  assert.equal(visit('/api/menu-images','POST').status,404);
