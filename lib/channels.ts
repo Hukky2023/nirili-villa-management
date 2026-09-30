@@ -847,7 +847,40 @@ async function recordEvent(eventKey:string,direction:'inbound'|'outbound',eventT
   return rows[0]||null;
 }
 
-export async function pushBookingComAvailability(days=30,startDate=maldivesToday()){
+// Channex accepts at most 10 availability requests per minute per property and
+// requires change-only updates, so automatic pushes send only the dates whose
+// availability differs from what Channex last received.
+const availabilityRequestsPerMinute=10;
+
+type AriState={mappingKey:string;values:Record<string,number>;requests:string[]};
+
+function ariStateKey(connection:ChannelConnection){
+  return 'booking-com-ari:'+connection.mode+':'+connection.property_id;
+}
+
+async function loadAriState(connection:ChannelConnection):Promise<AriState>{
+  const rows=await select('integration_state','key=eq.'+encodeURIComponent(ariStateKey(connection))+'&select=payload&limit=1');
+  const payload=rows[0]?.payload||{};
+  return {
+    mappingKey:String(payload.mappingKey||''),
+    values:payload.values&&typeof payload.values==='object'?payload.values:{},
+    requests:Array.isArray(payload.requests)?payload.requests.map(String):[]
+  };
+}
+
+async function saveAriState(connection:ChannelConnection,state:AriState){
+  await upsert('integration_state',[{key:ariStateKey(connection),payload:state,updated_at:isoNow()}],'key');
+}
+
+export function changedAvailability(values:{date:string;availability:number}[],sent:Record<string,number>){
+  return values.filter(item=>sent[item.date]!==item.availability);
+}
+
+export function recentAvailabilityRequests(requests:string[],now=Date.now()){
+  return requests.filter(at=>now-Date.parse(at)<60000);
+}
+
+export async function pushBookingComAvailability(days=30,startDate=maldivesToday(),options:{changesOnly?:boolean}={}){
   const connection=await getConnection();
   if(!connection.enabled)throw Error('Enable the Booking.com channel before sending inventory.');
   const preview=await previewBookingComAvailability(days,startDate);
@@ -858,26 +891,48 @@ export async function pushBookingComAvailability(days=30,startDate=maldivesToday
   const productionMappings=mappings.filter((mapping:any)=>mapping?.settings?.stagingOnly!==true);
   const selectedMappings=connection.mode==='staging'?mappings:productionMappings.slice(0,1);
   if(!selectedMappings.length)throw Error(connection.mode==='production'?'No production room mapping is configured.':'No staging room mapping is configured.');
-  const ranges=collapseAvailability(preview.values);
+
+  const ari=await loadAriState(connection);
+  const mappingKey=selectedMappings.map((mapping:any)=>String(mapping.channel_room_id)).sort().join(',');
+  const sent=ari.mappingKey===mappingKey?ari.values:{};
+  const changed=options.changesOnly?changedAvailability(preview.values,sent):preview.values;
+  if(!changed.length)return {ok:true,dryRun:false,skipped:true,reason:'no_changes',sentRanges:0,preview};
+
+  const recent=recentAvailabilityRequests(ari.requests);
+  if(recent.length>=availabilityRequestsPerMinute){
+    // Unsent dates stay different from the stored snapshot, so the next push
+    // (or the recovery poll) sends them once the minute has passed.
+    if(options.changesOnly)return {ok:true,dryRun:false,deferred:true,reason:'rate_limited',sentRanges:0,preview};
+    throw Error('Channex allows '+availabilityRequestsPerMinute+' availability updates per minute. Wait a minute and try again.');
+  }
+
+  const ranges=collapseAvailability(changed);
   const values=selectedMappings.flatMap((mapping:any)=>ranges.map(range=>({
     property_id:connection.property_id,
     room_type_id:mapping.channel_room_id,
     ...range
   })));
-  const result=await channex(connection,'/availability',{method:'POST',body:JSON.stringify({values})});
   const now=isoNow();
+  // Count the request before sending so parallel pushes still respect the limit.
+  await saveAriState(connection,{mappingKey:ari.mappingKey,values:ari.values,requests:[...recent,now]});
+  const result=await channex(connection,'/availability',{method:'POST',body:JSON.stringify({values})});
+  const today=maldivesToday();
+  const nextValues:Record<string,number>={};
+  for(const [date,availability] of Object.entries(sent))if(date>=today)nextValues[date]=Number(availability);
+  for(const item of changed)nextValues[item.date]=item.availability;
   await Promise.all([
-    recordEvent('availability:'+preview.startDate+':'+now,'outbound','availability','processed',{values,response:result}),
+    saveAriState(connection,{mappingKey,values:nextValues,requests:[...recent,now]}),
+    recordEvent('availability:'+preview.startDate+':'+now,'outbound',options.changesOnly?'availability_changes':'availability_full_sync','processed',{values,response:result}),
     patch('channel_connections','id=eq.'+connectionId,{last_outbound_at:now,last_error:null,updated_at:now})
   ]);
-  return {ok:true,dryRun:false,sentRanges:values.length,preview,response:result};
+  return {ok:true,dryRun:false,sentRanges:values.length,changedDates:changed.length,preview,response:result};
 }
 
 export async function autoPushBookingComAvailability(days=365){
   try{
     const connection=await getConnection();
     if(!connection.enabled||connection.settings?.dryRun!==false||connection.settings?.autoPushAvailability!==true)return {ok:true,skipped:true};
-    return await pushBookingComAvailability(days,maldivesToday());
+    return await pushBookingComAvailability(days,maldivesToday(),{changesOnly:true});
   }catch(error){
     const message=error instanceof Error?error.message:'Automatic Booking.com availability sync failed.';
     try{await patch('channel_connections','id=eq.'+connectionId,{last_error:message,updated_at:isoNow()});}catch{}
@@ -1625,6 +1680,8 @@ export async function handleBookingComCron(request:Request){
   const started=isoNow();
   try{
     const result=await pullBookingComFeed();
+    // Sends availability changes that were deferred by the rate limit; a no-op otherwise.
+    await autoPushBookingComAvailability(365);
     await recordEvent('cron-poll:'+started,'inbound','booking_feed_poll','processed',{
       mode:connection.mode,received:result.received,processed:result.processed?.length||0
     });

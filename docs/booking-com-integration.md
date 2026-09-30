@@ -16,10 +16,15 @@ Admin → Channels). This guide lists what must be done to switch it on.
    stay (room assigned automatically, meal plan from the rate mapping, source
    `Booking.com`), acknowledges the revision to Channex and notifies admins.
 5. The PMS pushes updated availability back to Channex so Booking.com does not
-   oversell rooms booked on the website or at reception.
+   oversell rooms booked on the website or at reception. Only dates whose
+   availability changed since the last push are sent, and at most 10
+   availability requests per minute (Channex's limit); anything held back by
+   the limit is sent by the next push. The manual "Push to Channex" button is a
+   full sync for recovery only.
 6. Every 15 minutes the GitHub Actions workflow `booking-com-poll.yml` calls
    `POST /api/channels/booking-com/cron`. It imports any revision that Channex
-   has not seen acknowledged, which covers missed webhook deliveries.
+   has not seen acknowledged, which covers missed webhook deliveries, and sends
+   any availability changes that were held back by the rate limit.
 
 If a booking cannot be imported (for example an unmapped rate plan or no free
 room), admins receive a "Booking.com reservation needs attention" notification
