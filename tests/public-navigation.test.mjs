@@ -56,10 +56,12 @@ test('a service home and other services’ paths redirect to their canonical add
  assert.equal(location(visit('dine.nirilihotels.com','/book')),'https://stay.nirilihotels.com/');
 });
 
-test('ride opens the buggy tab of the guest portal',()=>{
- const r=visit('ride.nirilihotels.com','/anything');
- assert.equal(r.status,302);
- assert.equal(location(r),'https://my.nirilihotels.com/?service=buggy');
+test('ride serves the public Nirili Ride page and its API',()=>{
+ assert.equal(rewrite(visit('ride.nirilihotels.com','/')),'/book/ride');
+ assert.ok(passes(visit('ride.nirilihotels.com','/api/public-ride','POST')));
+ assert.equal(location(visit('ride.nirilihotels.com','/book/ride')),'https://ride.nirilihotels.com/');
+ assert.equal(location(visit('ride.nirilihotels.com','/stay')),'https://my.nirilihotels.com/');
+ assert.equal(visit('ride.nirilihotels.com','/api/buggy-management').status,404);
 });
 
 test('old booking.nirilihotels.com links are forwarded to the new subdomains',()=>{

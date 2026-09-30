@@ -13,6 +13,7 @@ import {authDb,currentUser,currentGuestUser,hasPermission,sameOrigin,hashPasswor
 import {credentialStatement,mirrorCredentialRecord} from '../../../lib/credential-store';
 import {appendAccountHistory} from '../../../lib/account-history';
 import {loadStays,stayKey,folioFor} from '../../../lib/stays';
+import {activeOnDemandRide} from '../../../lib/buggy-rides';
 import {catalog,plans,nightly,islandToday,validDate,excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
@@ -74,7 +75,7 @@ function syncBuggyRideBill(stay:any,ride:any){
  const fare=Math.max(0,Number(ride.fareCents)||0);
  stay.posBills.push({department:'Buggy',id:ride.id,items:[[String(ride.location||'Pickup')+' → '+String(ride.destination||'Drop-off'),1,fare/100,0]],status:'Posted',totalCents:fare});
 }
-function activeBuggyRide(ride:any){return ride?.bookingType==='guest-ride'&&ride.cancelled!==true&&!['Completed','Cancelled'].includes(String(ride.buggyStatus||''));}
+function activeBuggyRide(ride:any){return activeOnDemandRide(ride);}
 function releaseBuggyIfIdle(state:any,ride:any){
  if(!ride?.buggyId)return;
  const busy=(state.buggyBookings||[]).some((x:any)=>x.id!==ride.id&&x.buggyId===ride.buggyId&&activeBuggyRide(x));

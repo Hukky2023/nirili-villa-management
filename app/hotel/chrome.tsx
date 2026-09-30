@@ -58,7 +58,8 @@ const NAV=[
  {label:'Stay',href:STAY},
  {label:'Excursions',href:EXCURSION_GUIDE},
  {label:'Dining',href:RESTAURANT},
- {label:'Travel',href:SITES.main+'/#travel'},
+ {label:'Transfers',href:TRANSFERS},
+ {label:'Ride',href:RIDE},
 ];
 
 export function Fonts(){
@@ -88,8 +89,6 @@ export function SiteHeader({solid=false}:{solid?:boolean}){
    <summary aria-label="Open menu"><Menu className="i-open"/><X className="i-close"/></summary>
    <div className="nh-mobile-panel">
     {NAV.map(n=><a key={n.label} href={n.href}>{n.label}<ArrowRight/></a>)}
-    <a className="nh-sub" href={RIDE}>Island rides<ArrowRight/></a>
-    <a className="nh-sub" href={TRANSFERS}>Airport transfers<ArrowRight/></a>
     <a className="nh-btn nh-btn-primary" href={STAY}>Book your stay</a>
    </div>
   </details>

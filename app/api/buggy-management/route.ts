@@ -2,6 +2,7 @@ import {currentUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {islandToday,validDate} from '../../../lib/guest-catalog';
 import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
+import {isOnDemandRide,isPublicRide} from '../../../lib/buggy-rides';
 import {isRomanticBeachDinner} from '../../../lib/excursion-services';
 import {sendGuestPushForRide} from '../../../lib/web-push';
 
@@ -16,8 +17,8 @@ function dispatchFor(order:any,state:any){
  return {id:order.id,source:'excursion',guest:order.guest||stay?.guest||'Guest',phone:order.phone||stay?.whatsapp||'',room:inHouse?String(stay?.room||order.room||''):String(order.externalRoom||order.room||''),date:order.date||order.schedule?.date||'',pickupTime:minusMinutes(time,15),location:inHouse?'Nirili Villa':clean(order.hotel)||'Guest meeting location',destination:romanticDinner?'Romantic Beach Dinner location':'Excursion meeting point',quantity:Math.max(1,Number(order.quantity)||1),service:order.name||'Excursion',status:order.buggyStatus||(!order.buggyArrivedAt?'Pending pickup':!order.buggyBoardedAt?'Arrived':roundTrip&&!order.buggyReturnCompleteAt?'In progress':'Completed'),buggyId:order.buggyId||'',driver:order.buggyDriver||'',roundTrip,createdAt:order.createdAt||''};
 }
 function manualDispatch(item:any){
- const guestRide=item.bookingType==='guest-ride',transportRide=item.bookingType==='stay-transfer';
- return {id:item.id,source:transportRide?'transport':guestRide?'guest':'manual',guest:item.guest||'Guest',phone:item.phone||'',room:item.room||'',date:item.date||'',pickupTime:item.pickupTime||'',location:item.location||'',destination:item.destination||'',quantity:Math.max(1,Number(item.quantity)||1),service:guestRide?'Guest buggy ride':transportRide?(item.excursion||'Guest transport buggy'):item.excursion||'Buggy booking',status:item.buggyStatus||(guestRide?'Requested':!item.buggyArrivedAt?'Pending pickup':!item.buggyBoardedAt?'Arrived':'Completed'),buggyId:item.buggyId||'',driver:item.buggyDriver||'',roundTrip:false,guestRide,transportRide,fareCents:Math.max(0,Number(item.fareCents)||0),chargeToRoom:item.chargeToRoom===true,createdAt:item.createdAt||''};
+ const guestRide=isOnDemandRide(item),publicRide=isPublicRide(item),transportRide=item.bookingType==='stay-transfer';
+ return {id:item.id,source:transportRide?'transport':publicRide?'public':guestRide?'guest':'manual',guest:item.guest||'Guest',phone:item.phone||'',room:item.room||'',date:item.date||'',pickupTime:item.pickupTime||'',location:item.location||'',destination:item.destination||'',quantity:Math.max(1,Number(item.quantity)||1),service:publicRide?'Nirili Ride request':guestRide?'Guest buggy ride':transportRide?(item.excursion||'Guest transport buggy'):item.excursion||'Buggy booking',status:item.buggyStatus||(guestRide?'Requested':!item.buggyArrivedAt?'Pending pickup':!item.buggyBoardedAt?'Arrived':'Completed'),buggyId:item.buggyId||'',driver:item.buggyDriver||'',roundTrip:false,guestRide,transportRide,fareCents:Math.max(0,Number(item.fareCents)||0),chargeToRoom:item.chargeToRoom===true,createdAt:item.createdAt||''};
 }
 function timeMinutes(value:string){if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))return null;const [h,m]=value.split(':').map(Number);return h*60+m;}
 function activeStatus(status:string){return !['Completed','Round trip complete','Cancelled'].includes(status);}
@@ -80,10 +81,10 @@ export async function POST(r:Request){
    const conflict=assignmentConflict(state,id,buggyId,String(row?.date||item.date||item.schedule?.date||''),String(row?.pickupTime||item.pickupTime||''));
    if(conflict)throw Error(buggy.name+' is already assigned near this pickup time. Choose another buggy.');
    item.buggyId=buggyId;item.buggyDriver=driver||buggy.driver||'';item.buggyAssignedAt=now;item.buggyAssignedBy=actor;
-   if(['guest-ride','stay-transfer'].includes(String(item.bookingType||''))&&!['Driver on the way','Arrived','On trip','Completed','Cancelled'].includes(String(item.buggyStatus||'')))item.buggyStatus='Assigned';
+   if((isOnDemandRide(item)||item.bookingType==='stay-transfer')&&!['Driver on the way','Arrived','On trip','Completed','Cancelled'].includes(String(item.buggyStatus||'')))item.buggyStatus='Assigned';
    buggy.status='Assigned';if(driver)buggy.driver=driver;buggy.updatedAt=now;buggy.updatedBy=actor;
    state.buggyTripHistory.push({id:'buggy-history-'+crypto.randomUUID(),at:now,type:'Assigned',buggyId,buggyName:buggy.name,bookingId:id,guest:item.guest||'',driver:item.buggyDriver||'',by:actor});
-   if(item.bookingType==='guest-ride')pushRide={...item,buggyName:buggy.name,driver:item.buggyDriver||''};
+   if(isOnDemandRide(item))pushRide={...item,buggyName:buggy.name,driver:item.buggyDriver||''};
   }else if(action==='set-status'){
    const id=clean(body.id,100),status=clean(body.status,30) as any,buggy=state.buggyFleet.find((x:any)=>x.id===id);
    if(!buggy||!fleetStatuses.includes(status))throw Error('Choose a valid buggy and status.');buggy.status=status;buggy.updatedAt=now;buggy.updatedBy=actor;
