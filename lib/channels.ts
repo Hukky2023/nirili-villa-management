@@ -52,6 +52,7 @@ function runtime(){
     channexStagingKey:clean(read('CHANNEX_STAGING_API_KEY','CHANNEX_API_KEY')),
     channexProductionKey:clean(read('CHANNEX_PRODUCTION_API_KEY')),
     channexWebhookToken:clean(read('CHANNEX_WEBHOOK_TOKEN')),
+    channexCronToken:clean(read('CHANNEX_CRON_TOKEN')),
     channexBaseOverride:read('CHANNEX_API_BASE_URL').replace(/\/$/,'')
   };
 }
@@ -180,6 +181,7 @@ export async function getBookingComChannelState(){
       stagingApiKeyConfigured:!!cfg.channexStagingKey,
       productionApiKeyConfigured:!!cfg.channexProductionKey,
       webhookTokenConfigured:!!cfg.channexWebhookToken||!!connection.settings?.webhookTokenHash,
+      cronTokenConfigured:!!cfg.channexCronToken||!!connection.settings?.cronTokenHash,
       supabaseConfigured:!!cfg.supabaseSecret
     },
     webhookPath:'/api/channels/booking-com/webhook'
@@ -603,7 +605,7 @@ export async function ensureBookingComStagingRoomTypes(){
 export async function ensureBookingComWebhook(callbackUrl:string){
   const connection=await getConnection();
   const cfg=runtime();
-  if(!cfg.channexKey)throw Error('CHANNEX_API_KEY is not configured on Cloudflare.');
+  if(!channexKey(connection))throw Error(connection.mode==='production'?'CHANNEX_PRODUCTION_API_KEY is not configured on Cloudflare.':'CHANNEX_STAGING_API_KEY is not configured on Cloudflare.');
   if(!connection.property_id)throw Error('Enter and save the Channex property ID first.');
   if(!/^https:\/\//i.test(callbackUrl))throw Error('Webhook callback URL must use HTTPS.');
 
@@ -1150,6 +1152,7 @@ export async function processBookingComRevision(revision:any,eventKey?:string){
   }catch(error){
     const message=error instanceof Error?error.message:'Booking.com revision processing failed.';
     const status=/not mapped|meal plan|room type/i.test(message)?'mapping_required':'error';
+    await notifyImportFailure(connection,parsed,message);
     await Promise.all([
       updateChannelReservation(parsed,status,[],message),
       recordEvent(key,'inbound','booking_revision','error',parsed.safePayload,message),
@@ -1157,6 +1160,24 @@ export async function processBookingComRevision(revision:any,eventKey?:string){
     ]);
     throw error;
   }
+}
+
+// A failed revision is retried by Channex and by the recovery poll, so only the
+// first failure of each revision alerts staff; the booking still needs a person.
+async function notifyImportFailure(connection:ChannelConnection,parsed:any,message:string){
+  if(connection.mode!=='production')return;
+  try{
+    const external=parsed.externalReservationId||('revision:'+parsed.revisionId);
+    const rows=await select('channel_reservations','connection_id=eq.'+connectionId+'&external_reservation_id=eq.'+encodeURIComponent(external)+'&select=status,external_revision_id&limit=1');
+    if(rows[0]&&rows[0].external_revision_id===parsed.revisionId&&['error','mapping_required'].includes(rows[0].status))return;
+    await emitAdminNotification({
+      id:'booking-com-error:'+(parsed.revisionId||external),
+      type:'hotel',
+      title:'Booking.com reservation needs attention',
+      detail:parsed.guestName+' · '+parsed.arrivalDate+' → '+parsed.departureDate+' · '+parsed.otaReservationCode+' · '+message,
+      at:isoNow(),read:false,ref:parsed.otaReservationCode,url:'/home'
+    });
+  }catch{}
 }
 
 async function pullRevision(connection:ChannelConnection,revisionId:string){
@@ -1588,9 +1609,14 @@ function webhookRevisionId(payload:any){
 
 export async function handleBookingComCron(request:Request){
   const connection=await getConnection();
+  const cfg=runtime();
   const supplied=request.headers.get('x-nirili-channel-cron')||'';
   const expected=String(connection.settings?.cronTokenHash||'');
-  if(!supplied||!expected||!equalSecret(await hashText(supplied),expected)){
+  const valid=!!supplied&&(
+    cfg.channexCronToken?equalSecret(supplied,cfg.channexCronToken):
+    !!expected&&equalSecret(await hashText(supplied),expected)
+  );
+  if(!valid){
     throw Object.assign(Error('Invalid booking-feed poll token.'),{status:401});
   }
   if(!connection.enabled){
