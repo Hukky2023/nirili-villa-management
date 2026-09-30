@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import {startLiveRefresh,REFRESH_INTERVALS} from '../../../../lib/live-refresh';
 import {useEffect,useState} from 'react';
 import {ArrowLeft,CalendarDays,CheckCircle2,Clock3,MapPin,Plus,ShieldCheck,ShipWheel,Trash2,Users,XCircle} from 'lucide-react';
@@ -37,11 +38,10 @@ export default function ManageExcursionSite(){
  },[token,ready,busy]);
  async function save(e:React.FormEvent){e.preventDefault();if(busy)return;setBusy(true);setError('');setMessage('');try{const payload={...form,guest:guests[0]?.name||'',guestNames:guests.map(g=>g.name),guestCategories:guests.map(g=>g.ageCategory),footSizes:needsFeet?guests.map(g=>Number(g.footSize)):[],privateBoatRequested:form.privateBoatRequested&&guests.length>=4};const d=await call('update',payload);setBooking(d.booking);setItems(d.items||items);sync(d.booking);setMessage(d.applied?'Your excursion booking was updated.':'Your change request was sent to the Nirili Tours team. Your current confirmed trip stays active until it is approved.');}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  async function cancel(){if(busy||!booking?.canCancel)return;if(!window.confirm(booking.status==='Pending'?'Cancel this pending excursion booking?':'Request cancellation of this excursion? Your confirmed trip remains active until our team approves it.'))return;setBusy(true);setError('');setMessage('');try{const d=await call('cancel');setBooking(d.booking);sync(d.booking);setMessage(d.cancelled?'Your excursion booking has been cancelled.':'Your cancellation request was sent to Nirili Tours. Your current booking remains active until it is approved.');}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
- if(!ready)return <main className="manage-excursion"><section className="manage-card">Loading your excursion…</section></main>;
- if(error&&!booking)return <main className="manage-excursion"><section className="manage-card error-card"><XCircle/><h1>We couldn’t open this excursion.</h1><p>{error}</p><a href="/book/excursions"><ArrowLeft/> Back to excursions</a></section></main>;
+ if(!ready)return <div className="manage-excursion"><section className="manage-card">Loading your excursion…</section></div>;
+ if(error&&!booking)return <div className="manage-excursion"><section className="manage-card error-card"><XCircle/><h1>We couldn’t open this excursion.</h1><p>{error}</p><Link href="/"><ArrowLeft/> Back to excursions</Link></section></div>;
  const pending=booking.pendingAction,isPackage=Array.isArray(booking.packageSegments)&&booking.packageSegments.length>1;
- return <main className="manage-excursion">
-  <header className="manage-nav"><a href="/book/excursions"><ArrowLeft/> Nirili Tours</a><span>DHIFFUSHI · MALDIVES</span></header>
+ return <div className="manage-excursion">
   <section className="manage-hero"><div><span className="eyebrow">MY EXCURSION</span><h1>{booking.excursion}</h1><p>Live booking status, departure details, payment and passenger information.</p></div><div className="reference"><small>BOOKING REFERENCE</small><strong>{booking.reference}</strong><span>{booking.status}</span></div></section>
   {(message||error)&&<p className={'manage-message '+(error?'error':'success')}>{error||message}</p>}
   {pending&&<section className="pending-banner"><CheckCircle2/><div><strong>{pending.type==='cancel'?'Cancellation requested':'Change requested'}</strong><p>Your current confirmed excursion remains active while our team reviews this request.</p><small>{pending.id} · {new Date(pending.requestedAt).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</small></div></section>}
@@ -63,5 +63,5 @@ export default function ManageExcursionSite(){
    <button className="primary" disabled={!booking.canEdit||busy}>{busy?'Saving…':booking.status==='Pending'?'Update Excursion':'Request Changes'}</button>
   </form>
   <aside className="side-card"><div><small>BOOKING VALUE</small><strong>{money(booking.quotedCents)}</strong><span>{booking.paymentStatus}</span></div>{booking.time&&<div><h3>Trip details</h3><p>Departure {booking.time}{booking.endTime?' · expected end '+booking.endTime:''}{booking.returnTime?' · return pickup '+booking.returnTime:''}. Maldives time.</p></div>}<div className="cancel-zone"><h3>Need to cancel?</h3><p>{isPackage?'Cancellation applies to the entire Special Package and all linked departures. Our team reviews it before releasing the package seats.':booking.status==='Pending'?'An unpaid unscheduled request can be cancelled immediately.':'A confirmed or paid excursion cancellation is reviewed by the Nirili Tours team.'}</p><button className="danger" type="button" disabled={!booking.canCancel||busy} onClick={cancel}>{isPackage?'Request Package Cancellation':booking.status==='Pending'?'Cancel Excursion':'Request Cancellation'}</button></div><p className="security"><ShieldCheck/> This private link controls your excursion. Do not forward it.</p></aside></section>}
- </main>;
+ </div>;
 }

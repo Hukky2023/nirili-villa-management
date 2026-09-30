@@ -76,9 +76,9 @@ export function Brand(){
  </a>;
 }
 
-// Sits over a dark hero image on every page.
-export function SiteHeader(){
- return <header className="nh-header">
+// Sits over a dark hero image; pages without a hero pass `solid` for a dark bar instead.
+export function SiteHeader({solid=false}:{solid?:boolean}){
+ const header=<header className="nh-header">
   <Brand/>
   <nav className="nh-nav" aria-label="Main">
    {NAV.map(n=><a key={n.label} href={n.href}>{n.label}</a>)}
@@ -94,6 +94,7 @@ export function SiteHeader(){
    </div>
   </details>
  </header>;
+ return solid?<div className="nh-header-bar">{header}</div>:header;
 }
 
 export function SiteFooter(){

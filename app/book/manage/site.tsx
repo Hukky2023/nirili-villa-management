@@ -68,12 +68,11 @@ export default function ManageBookingSite(){
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
 
- if(!ready)return <main className="manage-booking"><section className="manage-card"><p>Loading your booking…</p></section></main>;
- if(error&&!booking)return <main className="manage-booking"><section className="manage-card error-card"><XCircle/><h1>We couldn’t open this booking.</h1><p>{error}</p><Link href="/"><ArrowLeft/> Back to booking</Link></section></main>;
+ if(!ready)return <div className="manage-booking"><section className="manage-card"><p>Loading your booking…</p></section></div>;
+ if(error&&!booking)return <div className="manage-booking"><section className="manage-card error-card"><XCircle/><h1>We couldn’t open this booking.</h1><p>{error}</p><Link href="/"><ArrowLeft/> Back to booking</Link></section></div>;
 
  const pending=booking?.pendingAction;
- return <main className="manage-booking">
-  <header className="manage-nav"><Link href="/"><ArrowLeft/> Nirili Stay</Link><span>NIRILI VILLA · DHIFFUSHI</span></header>
+ return <div className="manage-booking">
   <section className="manage-hero">
    <div><span className="eyebrow">MANAGE BOOKING</span><h1>{booking.guest}</h1><p>View your stay, request changes or manage cancellation without creating an account.</p></div>
    <div className="reference"><small>BOOKING REFERENCE</small><strong>{booking.reference}</strong><span className={'status '+String(booking.status).toLowerCase().replace(/\s+/g,'-')}>{booking.status}</span></div>
@@ -130,5 +129,5 @@ export default function ManageBookingSite(){
     <p className="security"><ShieldCheck/> This secure link was created for this booking. Do not forward it to anyone you do not want to manage your reservation.</p>
    </aside>
   </section>}
- </main>;
+ </div>;
 }
