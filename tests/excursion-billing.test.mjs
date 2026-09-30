@@ -42,6 +42,8 @@ function routeHarness(options = {}) {
     isConfirmedExcursion: order => order.approvalStatus === 'Approved' && order.status !== 'Cancelled',
     toConfirmedExcursionBooking: order => ({id: order.id, date: '', time: '', totalCents: order.cents}),
     applyExcursionBillEdit: editBill, applyExcursionBillingAdjustment: adjust, excursionFolioBill, excursionPricing,
+    // The route reports whether each booking can still be moved (added in a015b05).
+    excursionReassignmentError: () => '',
   };
   const routes = new Function(...Object.keys(dependencies), js(source('../app/api/excursion-bookings/route.ts')) + ';return {GET, PATCH};')(...Object.values(dependencies));
   return {...routes, get state() {return persisted;}, get writes() {return writes;}, get loads() {return loads;}};
