@@ -1,0 +1,32 @@
+name: Booking.com booking poll
+
+# Recovery poll for Booking.com reservations arriving through Channex.
+# The Channex webhook imports bookings within seconds; this job picks up any
+# revision whose webhook delivery was missed. It does nothing until the
+# repository secrets NIRILI_SITE_URL and CHANNEX_CRON_TOKEN are set, and the
+# token must match the CHANNEX_CRON_TOKEN secret on the Cloudflare Worker.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  poll:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Pull unacknowledged Booking.com revisions
+        env:
+          SITE_URL: ${{ secrets.NIRILI_SITE_URL }}
+          CRON_TOKEN: ${{ secrets.CHANNEX_CRON_TOKEN }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_TOKEN" ]; then
+            echo "NIRILI_SITE_URL or CHANNEX_CRON_TOKEN is not set; skipping."
+            exit 0
+          fi
+          curl -sS --fail-with-body --max-time 120 -X POST \
+            -H "x-nirili-channel-cron: $CRON_TOKEN" \
+            "${SITE_URL%/}/api/channels/booking-com/cron"

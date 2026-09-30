@@ -87,6 +87,7 @@ export default function ChannelManager(){
       <em className={credentials.stagingApiKeyConfigured?'ok':''}><ShieldCheck/>Staging API key</em>
       <em className={credentials.productionApiKeyConfigured?'ok':''}><ShieldCheck/>Production API key</em>
       <em className={credentials.webhookTokenConfigured?'ok':''}><ShieldCheck/>Webhook protection</em>
+      <em className={credentials.cronTokenConfigured?'ok':''}><RotateCw/>Recovery poll</em>
       <em className={mapped?'ok':''}><Link2/>Mappings</em>
     </div>
 
@@ -114,7 +115,7 @@ export default function ChannelManager(){
       <header><Database/><div><h2>Booking webhook & recovery feed</h2><p>Webhook imports quickly; feed polling recovers missed delivery.</p></div></header>
       <code className="channel-code">{webhook}</code>
       <p className="channel-hint">The PMS automatically generates a private webhook credential and configures Channex to send it in the <code>X-Nirili-Channel-Secret</code> header. Only its verification hash is stored by the PMS; the secret is never displayed in the browser or placed in the callback URL.</p><div className="channel-actions"><button disabled={!!busy||!draft.propertyId||!selectedApiKeyReady} onClick={()=>post('webhook')}><ShieldCheck/>Create / repair webhook</button></div><div className="channel-links">{draft.mode==='staging'?<><a href="https://staging.channex.io/" target="_blank" rel="noreferrer">Open Channex staging</a><a href="https://staging.channex.io/user_profile" target="_blank" rel="noreferrer">Staging API keys</a></>:<><a href="https://app.channex.io/" target="_blank" rel="noreferrer">Open Channex production</a><a href="https://app.channex.io/user_profile" target="_blank" rel="noreferrer">Production API keys</a></>}</div>
-      <div className="channel-actions"><button disabled={!!busy||!draft.enabled||!credentials.apiKeyConfigured} onClick={()=>post('pull')}><RotateCw/>Check booking feed now</button></div>
+      <p className="channel-hint">Recovery poll: a scheduled job calls <code>/api/channels/booking-com/cron</code> every 15 minutes with the <code>CHANNEX_CRON_TOKEN</code> secret, so bookings still arrive if a webhook delivery is missed.{credentials.cronTokenConfigured?'':' The token is not configured yet.'}</p><div className="channel-actions"><button disabled={!!busy||!draft.enabled||!credentials.apiKeyConfigured} onClick={()=>post('pull')}><RotateCw/>Check booking feed now</button></div>
     </article>
 
     <article className="channel-card">
