@@ -1,6 +1,6 @@
 import WebsiteChat from '../website-chat';
 import {loadExcursionMenu,baseExcursionMenu} from '../../lib/excursion-menu';
-import {EXCURSIONS,Fonts,excursionDetailUrl,excursionTag,RESTAURANT,RIDE,STAY,SiteFooter,SiteHeader,TRANSFERS,WHATSAPP,excursionPhoto,img} from './chrome';
+import {EXCURSIONS,Fonts,excursionDetailUrl,excursionTag,RESTAURANT,RIDE,STAY,WATER_SPORTS,SiteFooter,SiteHeader,TRANSFERS,WHATSAPP,excursionPhoto,img} from './chrome';
 import {ArrowRight,ArrowUpRight,BedDouble,Bike,Coffee,Compass,MapPin,MessageCircle,Plane,Sailboat,Sun,UtensilsCrossed,Waves} from 'lucide-react';
 
 const IMAGES={
@@ -49,6 +49,7 @@ export default async function HotelHome(){
     <a href={STAY}><BedDouble/><span><small>Stay</small>Rooms &amp; packages</span><ArrowUpRight/></a>
     <a href={EXCURSIONS}><Sailboat/><span><small>Explore</small>Excursions</span><ArrowUpRight/></a>
     <a href={RESTAURANT}><UtensilsCrossed/><span><small>Dine</small>Menu &amp; ordering</span><ArrowUpRight/></a>
+    <a href={WATER_SPORTS}><Waves/><span><small>Play</small>Water sports</span><ArrowUpRight/></a>
     <a href={TRANSFERS}><Plane/><span><small>Arrive</small>Airport transfers</span><ArrowUpRight/></a>
     <a href={RIDE}><Bike/><span><small>Get around</small>Buggy rides</span><ArrowUpRight/></a>
    </nav>
@@ -105,6 +106,17 @@ export default async function HotelHome(){
    <div className="nh-center">
     <a className="nh-btn nh-btn-primary" href={EXCURSIONS}>See all excursions &amp; book <ArrowRight/></a>
    </div>
+  </section>
+
+  <section className="nh-dining nh-dining-flip" id="water-sports">
+   <div className="nh-dining-copy">
+    <p className="nh-kicker nh-kicker-light">Nirili Water Sports</p>
+    <h2>More fun on the water, <em>right off the beach.</em></h2>
+    <p>Jet skis, parasailing, banana boats, kayaks and paddleboards in the lagoon around Dhiffushi. Pick an activity and a day, and we&rsquo;ll arrange your session with our local water sports partner.</p>
+    <div className="nh-dining-tags"><span>Jet ski</span><span>Parasailing</span><span>Kayak &amp; SUP</span></div>
+    <a className="nh-btn nh-btn-light" href={WATER_SPORTS}>Book water sports <ArrowRight/></a>
+   </div>
+   <div className="nh-dining-media"><img src={img('1505738313577-5357ff512f16',1400)} alt="Parasail above a turquoise lagoon" loading="lazy"/></div>
   </section>
 
   <section className="nh-dining" id="dining">

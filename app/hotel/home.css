@@ -69,7 +69,7 @@ body:has(main.nh) .nv-session-floating{display:none}
 
 /* Header sits over the hero */
 .nh-header{position:absolute;inset:0 0 auto 0;z-index:30;width:var(--wrap);margin:0 auto;padding:26px 0;display:flex;align-items:center;gap:32px;color:#fff}
-.nh-nav{display:flex;gap:28px;margin-left:auto;font-size:15px;font-weight:500}
+.nh-nav{display:flex;gap:24px;margin-left:auto;font-size:15px;font-weight:500}
 .nh-nav a{position:relative;padding:6px 0;opacity:.92}
 .nh-nav a::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .25s ease}
 .nh-nav a:hover{opacity:1}
@@ -100,7 +100,7 @@ body:has(main.nh) .nv-session-floating{display:none}
 .nh-hero-lede{margin-top:24px;max-width:540px;font-size:18px;line-height:1.65;color:rgba(255,255,255,.92)}
 .nh-hero .nh-kicker{margin-bottom:22px;color:#fff;text-shadow:0 1px 12px rgba(0,0,0,.35)}
 .nh-hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
-.nh-quick{width:var(--wrap);margin:0 auto 40px;display:grid;grid-template-columns:repeat(5,1fr);border-radius:var(--radius);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow:hidden}
+.nh-quick{width:var(--wrap);margin:0 auto 40px;display:grid;grid-template-columns:repeat(6,1fr);border-radius:var(--radius);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow:hidden}
 .nh-quick a{display:flex;align-items:center;gap:14px;padding:20px 22px;transition:background-color .2s ease}
 .nh-quick a+a{border-left:1px solid rgba(255,255,255,.2)}
 .nh-quick a:hover{background:rgba(255,255,255,.14)}
@@ -154,6 +154,9 @@ body:has(main.nh) .nv-session-floating{display:none}
 .nh-dining-tags{display:flex;gap:8px;flex-wrap:wrap;margin:26px 0 34px}
 .nh-dining-tags span{padding:7px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.28);font-size:13px;font-weight:500}
 .nh-dining-media img{width:100%;height:100%;object-fit:cover}
+/* Water sports: same band, photo on the left and a lagoon-blue panel */
+.nh-dining-flip{background:#0d5a73;margin-bottom:-60px}
+.nh-dining-flip .nh-dining-media{order:-1}
 
 /* Travel */
 .nh-travel{padding:20px 0 130px}

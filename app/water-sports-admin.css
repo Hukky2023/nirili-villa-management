@@ -1,0 +1,60 @@
+.ws-admin{display:grid;gap:18px}
+.ws-title{display:flex;align-items:center;gap:14px}
+.ws-title>div{flex:1}
+.ws-title h1{margin:0}
+.ws-title p{margin:4px 0 0;color:var(--muted,#667085);max-width:760px}
+.ws-title>button{width:42px;height:42px;display:grid;place-items:center;border-radius:12px}
+.ws-title>button svg{width:18px}
+.ws-title-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#e8f4fb;color:#0b6e99}
+.ws-title-icon svg{width:25px;height:25px}
+.ws-warning{margin:0;padding:12px 14px;border-radius:12px;background:#fff7e6;color:#7a4b00;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.ws-warning button{padding:6px 12px;border-radius:9px}
+.ws-message{margin:0;padding:10px 12px;border-radius:10px;background:#f5f7fa}
+.ws-tabs,.ws-filters{display:flex;gap:8px;overflow:auto;padding-bottom:4px}
+.ws-tabs{border-bottom:1px solid #e8eaed;padding-bottom:8px}
+.ws-tabs button,.ws-filters button{border:0;background:transparent;padding:9px 14px;border-radius:10px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.ws-tabs button.active,.ws-filters button.active{background:#111;color:#fff}
+.ws-tabs b{min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#d92d20;color:#fff;font-size:12px;display:grid;place-items:center}
+.ws-filters button{border:1px solid #e3e6ea;font-weight:600;padding:7px 12px}
+.ws-filters small{opacity:.7}
+.ws-empty{color:#667085}
+.ws-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.ws-booking{display:grid;gap:12px;padding:18px;border-radius:16px;background:#fff;border:1px solid #e3e6ea;border-left:5px solid #98a2b3}
+.ws-booking.is-new{border-left-color:#d92d20}
+.ws-booking.is-forwarded{border-left-color:#f79009}
+.ws-booking.is-confirmed{border-left-color:#0b6e99}
+.ws-booking.is-completed{border-left-color:#12b76a;opacity:.85}
+.ws-booking.is-cancelled{opacity:.6}
+.ws-booking>header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ws-booking>header small{color:#667085;font-weight:600}
+.ws-booking h3{margin:2px 0 0;font-size:19px}
+.ws-status{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#f2f4f7;white-space:nowrap}
+.ws-status.is-new{background:#fee4e2;color:#b42318}
+.ws-status.is-forwarded{background:#fef0c7;color:#93370d}
+.ws-status.is-confirmed{background:#e0f2fe;color:#075985}
+.ws-status.is-completed{background:#dcfae6;color:#067647}
+.ws-booking dl{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+.ws-booking dt{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#667085}
+.ws-booking dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
+.ws-notes{margin:0;padding:10px 12px;border-radius:10px;background:#f9fafb;font-size:14px}
+.ws-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ws-actions button,.ws-settings>section>button{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;font-weight:600}
+.ws-actions svg,.ws-settings svg{width:16px;height:16px}
+.ws-danger{color:#b42318!important}
+.ws-history summary{cursor:pointer;font-size:13px;color:#667085;font-weight:600}
+.ws-history ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px;font-size:13px}
+.ws-history small{display:block;color:#667085}
+.ws-form,.ws-settings{display:grid;gap:14px;max-width:900px}
+.ws-form label,.ws-settings label{display:grid;gap:6px;font-size:13px;font-weight:700}
+.ws-form input,.ws-form select,.ws-form textarea,.ws-settings input,.ws-settings select,.ws-settings textarea{width:100%;padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;font:inherit;font-weight:400}
+.ws-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.ws-form>button,.ws-settings>button{justify-self:start;display:inline-flex;align-items:center;gap:6px}
+.ws-settings>section{display:grid;gap:12px;padding:18px;border-radius:16px;background:#fff;border:1px solid #e3e6ea}
+.ws-settings h2{margin:0;font-size:18px}
+.ws-settings>section>p{margin:0;color:#667085}
+.ws-activities{display:grid;gap:12px}
+.ws-activities article{display:grid;gap:10px;padding:14px;border-radius:12px;background:#f9fafb;border:1px solid #eaecf0}
+.ws-activities article.is-off{opacity:.6}
+.ws-check{display:inline-flex!important;align-items:center;gap:8px;grid-auto-flow:column}
+.ws-check input{width:auto!important}
+@media(max-width:640px){.ws-list{grid-template-columns:1fr}.ws-booking dl{grid-template-columns:1fr}}

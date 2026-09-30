@@ -33,6 +33,7 @@ test('each service subdomain serves its own page at the root',()=>{
  assert.equal(rewrite(visit('dine.nirilihotels.com','/')),'/book/restaurant');
  assert.equal(rewrite(visit('transfers.nirilihotels.com','/')),'/book/transfers');
  assert.equal(rewrite(visit('my.nirilihotels.com','/')),'/stay');
+ assert.equal(rewrite(visit('watersports.nirilihotels.com','/')),'/book/water-sports');
 });
 
 test('service sub-pages and their APIs stay on the service host',()=>{
@@ -42,6 +43,8 @@ test('service sub-pages and their APIs stay on the service host',()=>{
  assert.ok(passes(visit('dine.nirilihotels.com','/api/restaurant-guest')));
  assert.ok(passes(visit('transfers.nirilihotels.com','/api/walkin-transfers','POST')));
  assert.ok(passes(visit('my.nirilihotels.com','/api/guest-auth/login','POST')));
+ assert.ok(passes(visit('watersports.nirilihotels.com','/api/public-water-sports','POST')));
+ assert.equal(visit('watersports.nirilihotels.com','/api/water-sports').status,404);
  assert.ok(passes(visit('stay.nirilihotels.com','/book/manage')));
  assert.equal(visit('tours.nirilihotels.com','/api/property-catalog').status,404);
  assert.equal(visit('my.nirilihotels.com','/api/dashboard').status,404);
@@ -97,6 +100,7 @@ test('the main domain offers short links to every service',()=>{
  short('/transfers','https://transfers.nirilihotels.com/');
  short('/ride','https://ride.nirilihotels.com/');
  short('/my','https://my.nirilihotels.com/');
+ short('/watersports','https://watersports.nirilihotels.com/');
  assert.equal(rewrite(visit('nirilihotels.com','/')),'/hotel');
  assert.equal(location(visit('nirilihotels.com','/hotel/excursions')),'https://tours.nirilihotels.com/');
  assert.equal(location(visit('nirilihotels.com','/hotel/excursions/turtle')),'https://tours.nirilihotels.com/book/excursions/details/turtle');

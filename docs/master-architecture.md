@@ -8,6 +8,7 @@ Updated: 2026-09-29
 www.nirilihotels.com
 ├── Nirili Stay
 ├── Nirili Excursions
+├── Nirili Water Sports
 ├── Nirili Restaurant
 └── Nirili Travels
     ├── Nirili Ride
@@ -86,10 +87,13 @@ Every public service has its own subdomain. The addresses live in `lib/public-si
 | `tours.nirilihotels.com` | Nirili Excursions: the one excursions site — list with prices, detail pages (video, photos, description; no prices) at `/book/excursions/details/<id>`, booking and self-service manage links. `nirilihotels.com/hotel/excursions` and its detail pages redirect here. |
 | `dine.nirilihotels.com` | Nirili Restaurant menu, dine-in and delivery ordering |
 | `transfers.nirilihotels.com` | Nirili Transfers: speedboat and airport transfers |
+| `watersports.nirilihotels.com` | Nirili Water Sports: guests book an activity, date and group size; staff manage bookings in Management → Nirili Water Sports |
 | `ride.nirilihotels.com` | Nirili Ride: anyone can request a buggy and follow it live; in-house guests can still use the portal's buggy tab to charge the room |
 | `my.nirilihotels.com` | Private in-house Guest Portal |
 
 Each service subdomain serves its page at `/` and redirects paths that belong to another service to that service's subdomain.
+
+Nirili Water Sports is not operated by Nirili yet. Bookings (`water-sports:booking:<id>` operation records, logic in `lib/water-sports.ts`) arrive as **New**; staff forward each one to the partner operator by WhatsApp (**Forwarded**), record the partner's confirmation and reference (**Confirmed**), then **Completed** or **Cancelled**. Admin sets the partner's contact details and the activity list and prices (`water-sports:settings`). When Nirili starts its own service, the same bookings flow can be used without forwarding.
 
 Nirili Ride requests from `ride.nirilihotels.com` are stored as `public-ride` buggy bookings next to in-house `guest-ride` bookings and go through the same auto-dispatch, dispatch board and driver status flow (`lib/buggy-rides.ts`). They have no room bill: the fare shown is the configured guest ride fare, paid to the driver. Riders follow their ride with a private key kept in their browser.
 

@@ -5,7 +5,7 @@ import {useEffect,useMemo,useRef,useState} from "react";
 import {UiText} from "./ui-language";
 
 type Notice={id:string;type:string;title:string;detail:string;at:string;read:boolean;ref?:string};
-type NoticeTarget="Bookings"|"Guests"|"Transfers"|"Excursions"|"Buggy"|"POS";
+type NoticeTarget="Bookings"|"Guests"|"Transfers"|"Excursions"|"WaterSports"|"Buggy"|"POS";
 type Snapshot={stays?:any;services?:any;transport?:any;excursions?:any;chat?:any};
 const SNAP_KEY="nirili-admin-notification-snapshot-v1";
 const NOTICE_KEY="nirili-admin-notifications-v1";
@@ -96,6 +96,7 @@ async function saveNativeToken(token:string){
 function noticeTarget(n:Notice):NoticeTarget|undefined{
  const value=(n.type+" "+n.title+" "+n.detail).toLowerCase();
  if(n.type==="message")return undefined;
+ if(n.type==="water-sports"||value.includes("water sports"))return "WaterSports";
  if(value.includes("buggy"))return "Buggy";
  if(value.includes("excursion"))return "Excursions";
  if(value.includes("transport")||value.includes("transfer"))return "Transfers";
