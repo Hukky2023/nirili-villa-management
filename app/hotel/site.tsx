@@ -144,7 +144,7 @@ export default async function HotelHome(){
       <span className="nh-icon"><Bike/></span>
       <small>Nirili Ride</small>
       <strong>Buggy rides on the island</strong>
-      <span>Luggage, beach trips or a lift home after dinner. Request a buggy and get updates on your ride.</span>
+      <span>Staying with us? Luggage, beach trips or a lift home after dinner: request a buggy from your guest portal and follow the ride.</span>
       <b>Request a ride <ArrowRight/></b>
      </span>
     </a>

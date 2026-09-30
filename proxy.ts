@@ -1,31 +1,91 @@
 import {NextResponse,NextRequest} from 'next/server';
+import {HOSTS,SITES} from './lib/public-sites';
 
-const publicBookingHost='booking.nirilihotels.com';
-const niriliStayHost='stay.nirilihotels.com';
-const publicHotelHost='nirilihotels.com';
-const publicHotelWwwHost='www.nirilihotels.com';
 const tabPattern=/^[a-f0-9]{32}$/;
+const PUBLIC='public, max-age=0, must-revalidate';
+const PRIVATE='private, no-store, max-age=0';
+
+function cache(response:NextResponse,value:string){
+ response.headers.set('Cache-Control',value);
+ return response;
+}
+
+// Each public service has its own subdomain, which serves the service's page at "/".
+type Service='stay'|'tours'|'dine'|'transfers'|'my';
+const SERVICE_HOME:Record<Exclude<Service,'stay'>,string>={
+ tours:'/book/excursions',
+ dine:'/book/restaurant',
+ transfers:'/book/transfers',
+ my:'/stay',
+};
+const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
+ [HOSTS.tours]:'tours',
+ [HOSTS.dine]:'dine',
+ [HOSTS.transfers]:'transfers',
+ [HOSTS.my]:'my',
+};
+
+const under=(path:string,prefix:string)=>path===prefix||path.startsWith(prefix+'/');
+
+// The service that owns an app path, and the path to use on that service's own host.
+function serviceFor(path:string):{service:Service;path:string}|null{
+ if(path==='/'||path==='/book')return {service:'stay',path:'/'};
+ if(path==='/book/manage')return {service:'stay',path};
+ for(const [service,home] of Object.entries(SERVICE_HOME)){
+  if(under(path,home))return {service:service as Service,path:path===home?'/':path};
+ }
+ return null;
+}
+
+function serviceRedirect(url:URL,target:{service:Service;path:string}){
+ const next=new URL(SITES[target.service]);
+ next.pathname=target.path;
+ next.search=url.search;
+ return NextResponse.redirect(next,308);
+}
+
+// Browser APIs used by the public booking pages and the guest portal.
+const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules']);
+
+function guestApiResponse(url:URL){
+ // Uploaded menu photos are public; the upload endpoint remains blocked.
+ if(/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url.pathname))return NextResponse.next();
+ if(guestApi.has(url.pathname))return cache(NextResponse.next(),url.pathname==='/api/public-excursions'?PUBLIC:PRIVATE);
+ return null;
+}
 
 function staySiteResponse(url:URL){
  const stayApi=new Set(['/api/public-booking','/api/public-booking/manage']);
- if(stayApi.has(url.pathname)){
-  const response=NextResponse.next();
-  response.headers.set('Cache-Control',url.pathname==='/api/public-booking'?'public, max-age=0, must-revalidate':'private, no-store, max-age=0');
-  return response;
- }
+ if(stayApi.has(url.pathname))return cache(NextResponse.next(),url.pathname==='/api/public-booking'?PUBLIC:PRIVATE);
 
  if(url.pathname==='/'){
   url.pathname='/book';
-  const response=NextResponse.rewrite(url);
-  response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
-  return response;
+  return cache(NextResponse.rewrite(url),PUBLIC);
+ }
+ if(url.pathname==='/book/manage')return cache(NextResponse.next(),PRIVATE);
+
+ const owner=serviceFor(url.pathname);
+ if(owner)return serviceRedirect(url,owner);
+ if(url.pathname.startsWith('/api/'))return new NextResponse('Not Found',{status:404});
+ url.pathname='/';
+ url.search='';
+ return NextResponse.redirect(url);
+}
+
+function serviceSiteResponse(url:URL,service:Exclude<Service,'stay'>){
+ const api=guestApiResponse(url);
+ if(api)return api;
+ const home=SERVICE_HOME[service],pageCache=service==='my'?PRIVATE:PUBLIC;
+
+ if(url.pathname==='/'){
+  url.pathname=home;
+  return cache(NextResponse.rewrite(url),pageCache);
  }
 
- if(url.pathname==='/book'||url.pathname==='/book/manage'){
-  const response=NextResponse.next();
-  response.headers.set('Cache-Control',url.pathname==='/book/manage'?'private, no-store, max-age=0':'public, max-age=0, must-revalidate');
-  return response;
- }
+ const owner=serviceFor(url.pathname);
+ // The service's own sub-pages (details, manage links) stay on this host; its home lives at "/".
+ if(owner?.service===service&&owner.path!=='/')return cache(NextResponse.next(),pageCache);
+ if(owner)return serviceRedirect(url,owner);
 
  if(url.pathname.startsWith('/api/'))return new NextResponse('Not Found',{status:404});
  url.pathname='/';
@@ -33,62 +93,47 @@ function staySiteResponse(url:URL){
  return NextResponse.redirect(url);
 }
 
+// Nirili Ride is the buggy tab of the in-house guest portal.
+function rideSiteResponse(){
+ return NextResponse.redirect(SITES.my+'/?service=buggy',302);
+}
+
+// booking.nirilihotels.com is retired: forward every page to the service's own subdomain.
 function bookingSiteResponse(url:URL){
- const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules']);
- // Uploaded menu photos are public; the upload endpoint remains blocked.
- if(/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url.pathname))return NextResponse.next();
- if(guestApi.has(url.pathname)){
-  const response=NextResponse.next();
-  response.headers.set('Cache-Control',url.pathname==='/api/public-excursions'?'public, max-age=0, must-revalidate':'private, no-store, max-age=0');
-  return response;
- }
+ const api=guestApiResponse(url);
+ if(api)return api;
 
- // Nirili Stay now lives on its dedicated production subdomain.
- if(url.pathname==='/'||url.pathname==='/book'||url.pathname==='/book/manage'){
-  const stayUrl=new URL('https://stay.nirilihotels.com');
-  if(url.pathname==='/book/manage')stayUrl.pathname='/book/manage';
-  stayUrl.search=url.search;
-  return NextResponse.redirect(stayUrl,308);
- }
+ // Guests already signed in to the portal here (with push notifications tied to this origin)
+ // keep working until they next open the portal from a new link.
+ if(under(url.pathname,'/stay'))return cache(NextResponse.next(),PRIVATE);
 
- if(
-  url.pathname==='/book/excursions'||url.pathname.startsWith('/book/excursions/')||
-  url.pathname==='/book/transfers'||url.pathname.startsWith('/book/transfers/')||
-  url.pathname==='/book/restaurant'||url.pathname.startsWith('/book/restaurant/')
- ){
-  const response=NextResponse.next();
-  response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
-  return response;
- }
-
- // The private in-house guest portal remains separate from all public business pages.
- if(url.pathname==='/stay'||url.pathname.startsWith('/stay/')){
-  const response=NextResponse.next();
-  response.headers.set('Cache-Control','private, no-store, max-age=0');
-  return response;
- }
-
+ const owner=serviceFor(url.pathname);
+ if(owner)return serviceRedirect(url,owner);
  if(url.pathname.startsWith('/api/'))return new NextResponse('Not Found',{status:404});
- url.pathname='/';
- url.search='';
- return NextResponse.redirect(url);
+ return NextResponse.redirect(SITES.main,308);
 }
+
+// Short, printable links on the main domain, e.g. nirilihotels.com/tours.
+const SHORTCUTS:Record<string,string>={
+ '/stay':SITES.stay,'/book':SITES.stay,'/rooms':SITES.stay,
+ '/tours':SITES.tours,
+ '/dine':SITES.dine,'/restaurant':SITES.dine,'/menu':SITES.dine,
+ '/transfers':SITES.transfers,'/speedboat':SITES.transfers,
+ '/ride':SITES.ride,'/buggy':SITES.ride,
+ '/my':SITES.my,'/guest':SITES.my,
+};
 
 function hotelSiteResponse(url:URL,method='GET'){
  // Public photo reads only; uploads and management APIs remain private.
  if(['GET','HEAD'].includes(method)&&/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url.pathname))return NextResponse.next();
  if(url.pathname==='/'){
   url.pathname='/hotel';
-  const response=NextResponse.rewrite(url);
-  response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
-  return response;
+  return cache(NextResponse.rewrite(url),PUBLIC);
  }
+ if(under(url.pathname,'/hotel'))return cache(NextResponse.next(),PUBLIC);
 
- if(url.pathname==='/hotel'||url.pathname.startsWith('/hotel/')){
-  const response=NextResponse.next();
-  response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
-  return response;
- }
+ const shortcut=SHORTCUTS[url.pathname.toLowerCase().replace(/\/+$/,'')];
+ if(shortcut)return NextResponse.redirect(shortcut+'/'+url.search,302);
 
  // Keep all management APIs and application pages inaccessible on the public hotel domain.
  if(url.pathname.startsWith('/api/'))return new NextResponse('Not Found',{status:404});
@@ -119,16 +164,18 @@ function routeRequest(request:NextRequest){
  const host=(request.headers.get('host')||'').split(':')[0].toLowerCase();
 
  // Canonicalize www to the main hotel domain.
- if(host===publicHotelWwwHost){
-  url.hostname=publicHotelHost;
+ if(host===HOSTS.www){
+  url.hostname=HOSTS.main;
   url.port='';
   return NextResponse.redirect(url,308);
  }
 
  // Dedicated public websites stay isolated from the management application.
- if(host===publicHotelHost)return hotelSiteResponse(url,request.method);
- if(host===niriliStayHost)return staySiteResponse(url);
- if(host===publicBookingHost)return bookingSiteResponse(url);
+ if(host===HOSTS.main)return hotelSiteResponse(url,request.method);
+ if(host===HOSTS.stay)return staySiteResponse(url);
+ if(host===HOSTS.ride)return rideSiteResponse();
+ if(SERVICE_BY_HOST[host])return serviceSiteResponse(url,SERVICE_BY_HOST[host]);
+ if(host===HOSTS.booking)return bookingSiteResponse(url);
 
  const id=requestTab(request,url),valid=tabPattern.test(id);
  if(!valid&&!url.pathname.startsWith('/api/')&&request.method==='GET'){

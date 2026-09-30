@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import {ArrowRight,Menu,Waves,X} from 'lucide-react';
+import {SITES} from '../../lib/public-sites';
 
 // Shared header, footer and imagery for the public nirilihotels.com pages.
-export const STAY='https://stay.nirilihotels.com/';
-export const EXCURSIONS='https://booking.nirilihotels.com/book/excursions';
-export const RESTAURANT='https://booking.nirilihotels.com/book/restaurant';
-export const TRANSFERS='https://booking.nirilihotels.com/book/transfers';
-export const RIDE='https://ride.nirilihotels.com';
+export const STAY=SITES.stay+'/';
+export const EXCURSIONS=SITES.tours+'/';
+export const RESTAURANT=SITES.dine+'/';
+export const TRANSFERS=SITES.transfers+'/';
+export const RIDE=SITES.ride+'/';
+export const GUEST_PORTAL=SITES.my+'/';
 export const WHATSAPP='https://wa.me/9609413977?text=Hello%20Nirili%2C%20I%27d%20like%20help%20planning%20my%20trip%20to%20Dhiffushi.';
 
 export const img=(id:string,w=1400)=>`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=82`;
@@ -114,6 +116,7 @@ export function SiteFooter(){
    <h3>Contact</h3>
    <a href={WHATSAPP} target="_blank" rel="noopener noreferrer">WhatsApp +960 941 3977</a>
    <a href={STAY+'book/manage'}>Manage a booking</a>
+   <a href={GUEST_PORTAL}>In-house guest login</a>
   </div>
   <p className="nh-footer-base">© {new Date().getFullYear()} Nirili Hotel · Dhiffushi, Maldives</p>
  </footer>;

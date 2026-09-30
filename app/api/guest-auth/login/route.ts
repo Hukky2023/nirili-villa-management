@@ -1,6 +1,7 @@
 import {supabaseBridgeConfigured,primaryGuestAccount} from '../../../../lib/supabase-bridge';
 import {authDb,issueGuestSession,limit,roomLoginActive,sameOrigin,verifyPassword} from '../../../../lib/auth';
-function guestHostAllowed(r:Request){const host=(r.headers.get('host')||new URL(r.url).host).split(':')[0].toLowerCase();return host==='booking.nirilihotels.com'||host==='localhost'||host==='127.0.0.1';}
+import {guestPortalHost} from '../../../../lib/public-sites';
+function guestHostAllowed(r:Request){return guestPortalHost(r.headers.get('host')||new URL(r.url).host);}
 export async function POST(r:Request){
  if(!guestHostAllowed(r)||!sameOrigin(r))return Response.json({error:'Guest sign-in is available only on the Nirili guest portal.'},{status:403});
  try{

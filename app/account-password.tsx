@@ -50,7 +50,7 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
  function text(){
   const rooms=(user.stays||[]).filter((s:any)=>s.status!=='Checked Out').map((s:any)=>'Room '+s.room+' · '+s.meal).join('\n');
   if(isGuest){
-   return 'Nirili Villa guest portal setup\nName: '+user.name+'\nRoom: '+user.username+'\nSetup code: '+password+'\n'+(rooms?rooms+'\n':'')+'Portal: https://booking.nirilihotels.com/stay?mode=setup\n\nOpen the portal, choose Create password, enter the room number and setup code, then create your own private password.';
+   return 'Nirili Villa guest portal setup\nName: '+user.name+'\nRoom: '+user.username+'\nSetup code: '+password+'\n'+(rooms?rooms+'\n':'')+'Portal: https://my.nirilihotels.com/?mode=setup\n\nOpen the portal, choose Create password, enter the room number and setup code, then create your own private password.';
   }
   const link=window.location.origin+'/login?portal=direct&username='+encodeURIComponent(user.username);
   return 'Nirili Villa login\nName: '+user.name+'\nUsername: '+user.username+'\nPassword: '+password+'\n'+(rooms?rooms+'\n':'')+'Login: '+link+'\n\nOpen the link and sign in. You will be taken directly to your assigned page.';
@@ -101,7 +101,7 @@ export default function AccountPassword({user,autoReveal=false}:{user:any;autoRe
    {user.stays?.filter((s:any)=>s.status!=='Checked Out').map((s:any)=><p key={s.id}><UiText>Room </UiText><UiText>{s.room}</UiText> · <UiText>{s.meal}</UiText></p>)}
    {password&&<><p><UiText>{isGuest?'Setup code: ':'Password: '}</UiText><b><UiText>{password}</UiText></b></p>
     {isGuest&&<p><UiText>WhatsApp recipient: </UiText><b>{guestPhone||'No WhatsApp number saved'}</b></p>}
-    {isGuest&&<p><UiText>Guest opens booking.nirilihotels.com/stay, chooses Create password, and uses this code once to create a private password.</UiText></p>}
+    {isGuest&&<p><UiText>Guest opens my.nirilihotels.com, chooses Create password, and uses this code once to create a private password.</UiText></p>}
     <div className="account-password-actions"><button className="primary" onClick={share}><UiText>{isGuest?'Open guest WhatsApp':'Share login details'}</UiText></button><button onClick={async()=>{try{await navigator.clipboard.writeText(text());setMessage(isGuest?'Setup details copied.':'Login details copied.')}catch{setMessage('Copy unavailable. Select the displayed details to copy.')}}}><UiText>Copy details</UiText></button></div>
    </>}
 

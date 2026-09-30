@@ -51,7 +51,7 @@ export default function GuestStayLogin(){
  const setup=mode==='setup';
  return <main className="nv-guest-entry">
   <header className="nge-header">
-   <a className="nge-brand" href="/hotel"><span className="nge-mark" aria-hidden="true"><Sun size={22}/><Waves size={30}/></span><span>Nirili Guest Portal<small><UiText>IN-HOUSE GUESTS · DHIFFUSHI</UiText></small></span></a>
+   <a className="nge-brand" href="https://nirilihotels.com"><span className="nge-mark" aria-hidden="true"><Sun size={22}/><Waves size={30}/></span><span>Nirili Guest Portal<small><UiText>IN-HOUSE GUESTS · DHIFFUSHI</UiText></small></span></a>
    <div className="nge-language"><span><UiText>Language</UiText></span><div className="nge-language-control"><Globe2 size={21} aria-hidden="true"/><LanguageSelector inline/></div></div>
   </header>
   <section className="nge-layout">
