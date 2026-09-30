@@ -8,6 +8,7 @@ import {emitAdminNotification} from '../../../lib/admin-notifications';
 import {bookingClosureForStay} from '../../../lib/booking-closures';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
 
+import {packageSnapshot} from '../../../lib/stay-package';
 const headers={'Cache-Control':'no-store'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -107,14 +108,14 @@ export async function POST(request:Request){
   const id='REQ-'+crypto.randomUUID().slice(0,8).toUpperCase(),manageToken=createBookingManageToken();
   const booking={
    id,token,manageToken,guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes,transportPlan,
-   ...(selectedPackage?{packageId:selectedPackage.id,packageName:selectedPackage.name,packageRatePerGuestCents:packageRatePerGuest,packageQuotedCents:packagePrice}:{}),
+   ...(selectedPackage?packageSnapshot(selectedPackage,packagePrice,packageRatePerGuest,await loadExcursionMenu()):{}),
    status:'Pending',source:'Guest booking website',createdAt:new Date().toISOString(),estimate
   };
   const result:any=await submitPublicBookingRequest(booking);
   const bookingRef=result?.id||id;
   let latest:any=null;try{latest=await readOperationalRecordPrimary('hotel-stays-v1')}catch{}
   const stored=latest?.payload?.requests?.find((request:any)=>request.id===bookingRef)||booking;
-  const emailResult=await sendBookingReceivedEmail({email:stored.email||email,guest:stored.guest||guest,reference:bookingRef,checkIn:stored.checkIn||checkIn,checkOut:stored.checkOut||checkOut,meal:stored.meal||meal,pax:stored.pax||pax,totalCents:stored.estimate||estimate,manageToken:stored.manageToken||manageToken});
+  const emailResult=await sendBookingReceivedEmail({...stored,email:stored.email||email,guest:stored.guest||guest,reference:bookingRef,checkIn:stored.checkIn||checkIn,checkOut:stored.checkOut||checkOut,meal:stored.meal||meal,pax:stored.pax||pax,totalCents:stored.estimate||estimate,manageToken:stored.manageToken||manageToken});
   // Keep Cloudflare D1 as the rollback mirror; failure here must not lose a successful Supabase request.
   try{
    if(latest?.payload)await authDb().prepare("INSERT INTO operation_records(key,payload,revision,updated_by) VALUES('hotel-stays-v1',?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by")
@@ -131,3 +132,4 @@ export async function POST(request:Request){
   return Response.json({error:message},{status:400,headers});
  }
 }
+

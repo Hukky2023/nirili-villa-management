@@ -1,3 +1,5 @@
+import {loadExcursionMenu} from '../../../lib/excursion-menu';
+import {recoverStayPackages} from '../../../lib/stay-package';
 import {staffData} from '../../../lib/staff-data';
 import {bookingGuests} from '../../../lib/booking-guests';
 import {editBooking,deleteBooking} from '../../../lib/booking-admin';
@@ -25,21 +27,21 @@ async function loadHotelPrimary(){
  try{
   const primary=await readOperationalRecordPrimary(stayKey);
   if(primary?.payload){
-   const state=primary.payload;state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.rooms??=[];state.bookingClosures??=[];updateRoomInventory(state);
+   const state=recoverStayPackages(primary.payload,await loadExcursionMenu());state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.rooms??=[];state.bookingClosures??=[];updateRoomInventory(state);
    return {state,revision:Number(primary.revision)||0};
   }
  }catch{}
  return loadStays();
 }
 async function projectStayState(state:any,revision:number){
- updateRoomInventory(state);state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.bookingClosures??=[];
+ recoverStayPackages(state);updateRoomInventory(state);state.requests??=[];state.orders??=[];state.posOrders??=[];state.stays??=[];state.bookingClosures??=[];
  return {...state,revision,stays:await Promise.all(state.stays.map(async(s:any)=>({...s,folio:await folioFor(s,state.orders)})))};
 }
 export async function GET(){const u=await currentUser();if(!canViewHotel(u)||restaurantOnly(u))return Response.json({error:'Hotel management access required'},{status:403});try{
  let primary:any=null;
  try{primary=await readOperationalRecordPrimary(stayKey);}catch{}
  if(primary?.payload){
-  const state=primary.payload;
+  const state=recoverStayPackages(primary.payload,await loadExcursionMenu());
   return Response.json(staffData(u!,await projectStayState(state,Number(primary.revision)||0)),{headers:{'Cache-Control':'no-store'}});
  }
  return Response.json(staffData(u!,await stayView()),{headers:{'Cache-Control':'no-store'}});
@@ -118,4 +120,5 @@ else if(b.action==='checkout'){
 else throw Error('Unknown action');
 s.history.unshift({date:new Date().toISOString(),detail,by:u.username});const saved=await saveStayAccess(state,revision,u.userId,loginPlan,revoke);if(!saved)return Response.json({error:'This stay changed elsewhere. Refresh before trying again.'},{status:409});if(['extend','roomstatus'].includes(b.action))await autoPushBookingComAvailability();if(b.action==='checkout'&&s.accountId)await appendAccountHistory(s.accountId,{at:s.checkedOutAt||new Date().toISOString(),action:'In-house login terminated at checkout',by:u.username,detail:'Room '+s.room+' · '+s.id});return Response.json(staffData(u,await projectStayState(state,revision+1)));
 }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not save. Please retry.'},{status:400})}}
+
 

@@ -26,10 +26,11 @@ function billingItemsUniformDiscount(items:any[]){
 }
 function defaultBillingItems(order:any){
   const pricing=excursionPricing(order);
-  return [[String(order.name||'Excursion'),Math.max(1,Number(order.quantity)||1),pricing.originalCents/100,pricing.discountPercent]];
+  return [[String(order.name||'Excursion')+(order.includedInStayPackage?' · Included in package':''),Math.max(1,Number(order.quantity)||1),pricing.originalCents/100,pricing.discountPercent]];
 }
 
 export function excursionPricing(order: any): ExcursionPricing {
+  if(order.includedInStayPackage)return {originalCents:0,totalCents:0,discountCents:0,discountPercent:0,complimentary:true,adjusted:false};
   const totalCents = Math.max(0, Math.round(Number(order.cents) || 0));
   if(validBillingItems(order.billingItems)&&billingItemsTotalCents(order.billingItems)===totalCents){
     const originalCents=billingItemsOriginalCents(order.billingItems);
@@ -87,6 +88,7 @@ export function applyExcursionBillEdit(state:any,input:any,actor:ExcursionBillin
   const items=input.items.map((item:any)=>[String(item[0]).trim(),Number(item[1]),Number(item[2]),Number(item[3])]);
   const totalCents=billingItemsTotalCents(items),originalCents=billingItemsOriginalCents(items);
   if(!Number.isSafeInteger(totalCents)||totalCents<0||totalCents>100000000)throw new Error('The excursion bill total is invalid.');
+  if(order.includedInStayPackage&&totalCents!==0)throw Error('This excursion is included in the stay package. Add optional extras as separate charges.');
   const previousCents=Math.max(0,Math.round(Number(order.cents)||0)),now=new Date().toISOString();
   const before={cents:previousCents,billingItems:order.billingItems||null,billingStatus:order.billingStatus||'',billingRevision:revision};
 
@@ -187,3 +189,4 @@ export function applyExcursionBillingAdjustment(state: any, input: any, actor: E
   }
   return {order, duplicate: false};
 }
+

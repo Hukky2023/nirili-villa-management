@@ -16,7 +16,7 @@ export function transportPlanChargeCents(baseCents:number,billing:any){
 export function syncTransportPlanBill(hotelState:any,stay:any,booking:any,sailing:any,leg:'arrival'|'departure',actor:string){
  hotelState.orders??=[];
  const plan=stay?.transportPlan?.[leg];if(!plan)throw Error('Guest transport plan not found.');
- const baseCents=transportPlanBaseCents(sailing,stay),cents=transportPlanChargeCents(baseCents,plan.billing);
+ const baseCents=transportPlanBaseCents(sailing,stay),cents=stay.packageIncludeTransfer===true?0:transportPlanChargeCents(baseCents,plan.billing);
  const journey=booking?.journeys?.[0];if(!journey)throw Error('Transport journey not found.');
  const now=new Date().toISOString();
  const name=(leg==='arrival'?'Arrival':'Departure')+' transfer · '+journey.from+' → '+journey.to+' · '+journey.date+' '+journey.depart+' · '+journey.boat;
@@ -27,7 +27,8 @@ export function syncTransportPlanBill(hotelState:any,stay:any,booking:any,sailin
   guest:stay.guest,
   room:stay.room,
   kind:'transfer',
-  name,
+  name:name+(stay.packageIncludeTransfer?' · Included in package':''),
+  includedInStayPackage:stay.packageIncludeTransfer===true,
   quantity:1,
   cents,
   baseCents,
@@ -47,7 +48,7 @@ export function syncTransportPlanBill(hotelState:any,stay:any,booking:any,sailin
  };
  const existing=hotelState.orders.find((item:any)=>item.id===booking.id&&item.kind==='transfer');
  if(existing)Object.assign(existing,next);else hotelState.orders.push(next);
- booking.roomCents=cents;
+ booking.roomCents=cents;if(stay.packageIncludeTransfer)booking.total=0;
  booking.roomBaseCents=baseCents;
  booking.roomDiscountPercent=next.discountPercent;
  booking.roomFree=next.free;
@@ -64,3 +65,4 @@ export function cancelTransportPlanBills(hotelState:any,ids:string[],actor:strin
  }
  return changed;
 }
+

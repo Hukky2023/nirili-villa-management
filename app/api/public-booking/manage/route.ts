@@ -12,6 +12,8 @@ import {cancelLinkedTransportBookings} from '../../../../lib/linked-transport-bo
 import {assertBookingDatesOpen} from '../../../../lib/booking-closures';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
 
+import {loadExcursionMenu} from '../../../../lib/excursion-menu';
+import {recoverStayPackages,validatePackageChange} from '../../../../lib/stay-package';
 const headers={'Cache-Control':'private, no-store, max-age=0'};
 const phonePattern=/^\+[1-9]\d{7,14}$/;
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,7 +23,7 @@ const cleanPhone=(value:any)=>String(value??'').replace(/[\s()-]/g,'');
 async function hotelState(){
  const row=await readOperationalRecordPrimary('hotel-stays-v1');
  if(!row?.payload)throw Error('Booking service is temporarily unavailable.');
- return {state:ensureBookingManageState(row.payload),revision:Number(row.revision)||0};
+ return {state:ensureBookingManageState(recoverStayPackages(row.payload,await loadExcursionMenu())),revision:Number(row.revision)||0};
 }
 
 function proposal(body:any,state:any){
@@ -69,7 +71,7 @@ export async function POST(request:Request){
   if(pending)return Response.json({error:'A change or cancellation is already waiting for reception approval.',booking:bookingManageSnapshot(state,target)},{status:409,headers});
 
   if(action==='update'){
-   const next=proposal(body,state);
+   const next=proposal(body,state);validatePackageChange(booking,next);if(booking.packageId)next.estimate=booking.packageQuotedCents;
    if(next.checkIn!==booking.checkIn||next.checkOut!==booking.checkOut)assertBookingDatesOpen(state,next.checkIn,next.checkOut);
    if(target.kind==='request'){
     if(booking.status!=='Pending')throw Error('This booking is no longer awaiting confirmation.');
@@ -142,3 +144,4 @@ export async function POST(request:Request){
   return Response.json({error:error instanceof Error?error.message:'Could not manage this booking.'},{status:400,headers});
  }
 }
+

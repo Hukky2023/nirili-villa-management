@@ -162,7 +162,7 @@ export default function GuestBookingSite(){
 
     <div className="quote-box">
      <div><small>{checking?'CHECKING…':quote.bookingClosed?'BOOKINGS CLOSED':quote.availableRooms!==undefined?'LIVE AVAILABILITY':'ESTIMATED STAY'}</small><strong>{quote.nights||Math.max(0,(Date.parse(checkOut)-Date.parse(checkIn))/86400000)||0} nights · {pax} {pax===1?'guest':'guests'}</strong></div>
-     <div><small>ESTIMATED ACCOMMODATION</small><strong>{selectedTotal?money(selectedTotal):selectedPlan?money(selectedPlan.nightlyCents)+' / night':'—'}</strong>{selectedPackage&&<small>{selectedPackage.name}</small>}</div>
+     <div><small>{selectedPackage?'TOTAL PACKAGE PRICE':'ESTIMATED ACCOMMODATION'}</small><strong>{selectedTotal?money(selectedTotal):selectedPlan?money(selectedPlan.nightlyCents)+' / night':'—'}</strong>{selectedPackage&&<small>{selectedPackage.name}</small>}</div>
     </div>
 
     {selectedPackage&&<section className="selected-package-details">
@@ -224,3 +224,4 @@ export default function GuestBookingSite(){
 
  </div>;
 }
+

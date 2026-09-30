@@ -125,10 +125,11 @@ export default function ManageBookingSite(){
    </form>
 
    <aside className="side-card">
-    <div><small>CURRENT ACCOMMODATION</small><strong>{money(booking.totalCents)}</strong>{booking.kind==='request'&&<span>Current estimate</span>}</div>
+    <div><small>{booking.packageId?'TOTAL PACKAGE PRICE':'CURRENT ACCOMMODATION'}</small><strong>{money(booking.totalCents)}</strong>{booking.packageId&&<><h3>{booking.packageName}</h3><p>Room with {booking.meal}</p>{booking.packageIncludeTransfer&&<p>{booking.packageTransferLabel||'Return airport transfer'} · Included</p>}<h4>Excursions included</h4><ul>{booking.packageExcursions.map((item:any)=><li key={item.id}>{item.name}</li>)}</ul><p>{booking.packageExcursionsRequestedAt?'Reception is arranging your included excursions.':'Excursions will be arranged after check-in.'}</p></>}{booking.kind==='request'&&<span>Current estimate</span>}</div>
     <div className="cancel-zone"><h3>Need to cancel?</h3><p>{booking.kind==='request'?'A booking that has not yet been confirmed can be cancelled immediately.':booking.cancelRequiresApproval?'The self-cancellation cutoff has passed. Your cancellation will be sent to reception for approval.':'Confirmed bookings can be cancelled immediately through the day before check-in. Any refund is handled separately according to your booking terms.'}</p><button type="button" className="danger" disabled={!booking.canCancel||busy} onClick={cancel}>{booking.kind==='request'||!booking.cancelRequiresApproval?'Cancel Booking':'Request Cancellation'}</button></div>
     <p className="security"><ShieldCheck/> This secure link was created for this booking. Do not forward it to anyone you do not want to manage your reservation.</p>
    </aside>
   </section>}
  </main>;
 }
+

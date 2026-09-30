@@ -1,3 +1,4 @@
+import {recoverStayPackages} from './stay-package';
 import {defaultTransportPlan} from './transport-plan';
 import {bookingClosureForStay} from './booking-closures';
 export const bookingManageHost='https://stay.nirilihotels.com';
@@ -22,6 +23,7 @@ export function bookingCancellationNeedsApproval(checkIn:string,today=new Intl.D
 }
 
 export function ensureBookingManageState(state:any){
+ recoverStayPackages(state);
  state.requests??=[];
  state.stays??=[];
  state.bookingChanges??=[];
@@ -91,6 +93,7 @@ export function bookingManageSnapshot(state:any,target:any){
   transportPlan:transportPlanForManage(state,booking),
   room:target.kind==='request'?'':String(booking.room||''),
   status:target.kind==='archived'?'Cancelled':String(booking.status||''),
+  packageId:booking.packageId||'',packageName:booking.packageName||'',packageExcursions:booking.packageExcursions||[],packageIncludeTransfer:booking.packageIncludeTransfer===true,packageTransferLabel:booking.packageTransferLabel||'',packageExcursionsRequestedAt:booking.packageExcursionsRequestedAt||'',
   totalCents:Number(booking.base??booking.estimate??0),
   nights,
   refundRequiredCents:Number(booking.refundRequiredCents||target.archive?.refundRequiredCents||0),
@@ -117,3 +120,4 @@ export function roomAvailability(state:any,checkIn:string,checkOut:string,pax:nu
   return !stays.some((stay:any)=>stay.id!==excludeStayId&&stay.room===room.number&&!['Checked Out','Cancelled'].includes(stay.status)&&stay.checkIn<checkOut&&stay.checkOut>checkIn);
  });
 }
+
