@@ -1,7 +1,10 @@
 import type {Metadata} from 'next';
-import {ArrowLeft} from 'lucide-react';
+import {ArrowUpRight,Clock,MapPin} from 'lucide-react';
 import DiningMenu from '../../restaurant/guest/menu';
 import {SITES} from '../../../lib/public-sites';
+import {Fonts,SiteFooter,SiteHeader,img} from '../../hotel/chrome';
+import '../../hotel/home.css';
+import '../../hotel/excursions/style.css';
 import './style.css';
 
 export const dynamic='force-dynamic';
@@ -12,30 +15,37 @@ export const metadata:Metadata={
  alternates:{canonical:SITES.dine+'/'},
 };
 
+const HOURS=[
+ {meal:'Breakfast',time:'07:00–09:00'},
+ {meal:'Lunch',time:'12:00–15:00',note:'Friday 13:30–15:00'},
+ {meal:'Dinner',time:'18:00–22:00'},
+];
+
 export default function PublicRestaurantPage(){
- return <main className="nirili-public-restaurant">
-  <header className="restaurant-nav">
-   <a href={SITES.main}><ArrowLeft/> Nirili</a>
-   <b>Nirili Restaurant</b>
-   <nav><a href={SITES.stay}>Stay</a><a href={SITES.tours}>Excursions</a></nav>
-  </header>
-  <section className="restaurant-intro">
-   <div>
-    <span>NIRILI RESTAURANT · DHIFFUSHI</span>
-    <h1>Island dining,<br/>connected to Nirili POS.</h1>
-    <p>View the live Nirili menu and choose dine-in or delivery. Dine-in guests can select a table, while delivery guests can enter their name, location and phone number before sending the order directly to the cashier and kitchen.</p>
-    <div className="restaurant-meta">
-     <article><b><a href="https://maps.app.goo.gl/NHLJpj1y72SZTDWU7?g_st=ac" target="_blank" rel="noopener noreferrer">Location</a></b><small>Nirili Villa, Dhiffushi, Kaafu Atoll, Maldives</small></article>
-     <article><b>Breakfast</b><small>07:00–09:00</small></article>
-     <article><b>Lunch</b><small>12:00–15:00<br/>Friday 13:30–15:00</small></article>
-     <article><b>Dinner</b><small>18:00–22:00</small></article>
-    </div>
+ return <main className="nh nh-sub-page nh-dine">
+  <Fonts/>
+  <SiteHeader/>
+  <section className="nh-page-hero" style={{backgroundImage:`url("${img('1768322264423-4b0adf0cf31b',2200)}")`}}>
+   <div className="nh-page-hero-inner">
+    <p className="nh-kicker nh-kicker-light">Nirili Restaurant · Dhiffushi</p>
+    <h1>Fresh from the kitchen, <em>close to the sea.</em></h1>
+    <p>Curries, kottu and fresh seafood from the grill, plus pizza, pasta, mojitos and milkshakes. Eat with us or have it delivered.</p>
+    <div className="nh-hero-actions"><a className="nh-btn nh-btn-light" href="#menu">See the menu</a></div>
    </div>
-   <div className="restaurant-mark">NIRILI<br/>RESTAURANT</div>
   </section>
-  <section className="restaurant-order">
-   <div className="restaurant-order-head"><span>LIVE MENU · DINE-IN & DELIVERY</span><h2>Choose dine-in or delivery and order.</h2><p>The menu and prices below come directly from the Nirili POS system.</p></div>
+
+  <section className="nh-dine-info" aria-label="Opening hours and location">
+   {HOURS.map(h=><div key={h.meal}><Clock/><span><small>{h.meal}</small><b>{h.time}</b>{h.note&&<em>{h.note}</em>}</span></div>)}
+   <a href="https://maps.app.goo.gl/NHLJpj1y72SZTDWU7?g_st=ac" target="_blank" rel="noopener noreferrer"><MapPin/><span><small>Find us</small><b>Nirili Villa, Dhiffushi</b><em>Open in Google Maps <ArrowUpRight/></em></span></a>
+  </section>
+
+  <section className="nh-dine-menu" id="menu">
+   <div className="nh-exc-head">
+    <h2>Order from our <em>live menu</em></h2>
+    <p>Choose dine in or delivery, add your dishes, and send the order straight to our kitchen. Online orders open for lunch and dinner.</p>
+   </div>
    <DiningMenu mode="walkin" embedded/>
   </section>
+  <SiteFooter/>
  </main>;
 }

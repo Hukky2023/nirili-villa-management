@@ -1,1 +1,69 @@
-.public-transfer,*{box-sizing:border-box}.public-transfer{min-height:100vh;background:#eef8fb;color:#12364a;font-family:Inter,system-ui,sans-serif;padding-bottom:60px}.public-transfer>header{height:76px;padding:0 5vw;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #dbeaf0}.public-transfer>header a{display:flex;align-items:center;gap:8px;color:#126d91;text-decoration:none;font-weight:800}.public-transfer>header svg{width:19px}.transfer-hero{max-width:1080px;margin:24px auto;padding:50px;border-radius:28px;background:linear-gradient(135deg,#046592,#05a0a6);color:#fff;display:flex;justify-content:space-between;align-items:center}.transfer-hero>div{max-width:720px}.transfer-hero span{font-size:11px;letter-spacing:.15em;font-weight:900}.transfer-hero h1{font-size:clamp(38px,7vw,74px);line-height:.92;margin:12px 0}.transfer-hero p{max-width:620px;line-height:1.6}.transfer-hero>svg{width:100px;height:100px;opacity:.3}.transfer-card{max-width:900px;margin:auto;background:#fff;border:1px solid #d7e6ec;border-radius:24px;padding:30px;display:grid;gap:20px;box-shadow:0 24px 60px #17475c12}.trip-choice{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.trip-choice button{border:1px solid #cfe0e7;background:#fff;color:#31566a;border-radius:12px;padding:14px;font-weight:800}.trip-choice button[aria-pressed=true]{background:#087c91;color:white;border-color:#087c91}.transfer-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}.transfer-card label{display:grid;gap:7px;font-weight:700}.transfer-card input,.transfer-card select,.transfer-card textarea{width:100%;padding:13px;border:1px solid #c9dce5;border-radius:10px;background:white;font:inherit;color:#173a4d}.passengers{display:grid;grid-template-columns:auto repeat(3,1fr);align-items:end;gap:12px;padding:18px;border-radius:16px;background:#f3fafc}.passengers>svg{width:28px;margin-bottom:12px}.fare-summary{padding:18px;border-radius:16px;background:#062f4b;color:white;display:grid;gap:4px}.fare-summary strong{font-size:30px}.fare-summary small{color:#cde7ef}.transfer-submit{min-height:54px;border:0;border-radius:14px;background:#0a8d93;color:white;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px}.transfer-error{padding:12px;background:#fff0f1;color:#9b3140;border-radius:10px}.transfer-success{max-width:680px;margin:12vh auto;background:white;border-radius:28px;padding:50px;text-align:center;box-shadow:0 24px 70px #17475c20}.transfer-success>svg{width:70px;height:70px;color:#0a9b72}.transfer-success h1{font-size:48px;margin:12px}.transfer-success strong{display:block;font-size:22px;margin:20px}.transfer-success a{display:inline-flex;gap:8px;color:#087c91;font-weight:900;text-decoration:none}@media(max-width:720px){.transfer-hero{margin:12px;padding:32px 22px;border-radius:22px}.transfer-hero>svg{display:none}.transfer-card{margin:12px;padding:20px}.trip-choice{grid-template-columns:1fr}.transfer-fields{grid-template-columns:1fr}.passengers{grid-template-columns:1fr 1fr}.passengers>svg{display:none}}
+/* transfers.nirilihotels.com. Builds on hotel/home.css and hotel/excursions/style.css. */
+.nh-transfer{width:var(--wrap);margin:0 auto;padding:80px 0 0;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:48px;align-items:start}
+.nh-transfer-form{display:grid;gap:34px;padding:36px;border-radius:var(--radius);background:var(--paper);border:1px solid var(--line)}
+
+/* Route picker */
+.nh-trip{border:0;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.nh-trip legend,.nh-step h3{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--lagoon);margin-bottom:14px;padding:0}
+.nh-trip button{display:flex;align-items:center;gap:12px;text-align:left;padding:16px;border-radius:16px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;cursor:pointer;transition:border-color .2s ease,background-color .2s ease}
+.nh-trip button:hover{border-color:var(--lagoon)}
+.nh-trip button svg{width:22px;height:22px;color:var(--sun)}
+.nh-trip button span{display:grid;line-height:1.3}
+.nh-trip button b{font-weight:600;font-size:15px}
+.nh-trip button small{font-size:13px;color:var(--muted)}
+.nh-trip button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.nh-trip button[aria-pressed=true] small{color:rgba(255,255,255,.7)}
+.nh-trip button[aria-pressed=true] svg{color:#fbe4cc}
+
+/* Form steps */
+.nh-step{display:grid;gap:14px}
+.nh-step h3{margin:0}
+.nh-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.nh-fields-3{grid-template-columns:repeat(3,1fr)}
+.nh-transfer-form label{display:grid;gap:8px}
+.nh-transfer-form label>span{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.nh-transfer-form label>span svg{width:16px;height:16px;color:var(--muted)}
+.nh-transfer-form input,.nh-transfer-form select,.nh-transfer-form textarea{width:100%;min-height:50px;padding:12px 14px;border:1px solid rgba(15,42,46,.18);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-size:16px}
+.nh-transfer-form textarea{min-height:0;resize:vertical}
+.nh-transfer-form input:focus,.nh-transfer-form select:focus,.nh-transfer-form textarea:focus{outline:2px solid var(--lagoon);outline-offset:1px;border-color:transparent}
+.nh-hint{font-size:14px;color:#8a5a1c;background:#fbefe0;padding:10px 14px;border-radius:10px}
+.nh-error{padding:12px 16px;border-radius:12px;background:#fdecec;color:#9b3140}
+.nh-transfer-submit{width:100%;min-height:56px;border:0;cursor:pointer;font:inherit;font-weight:600;font-size:16px}
+.nh-transfer-submit:disabled{opacity:.5;cursor:default}
+
+/* Live fare summary */
+.nh-fare{position:sticky;top:30px;padding:30px;border-radius:var(--radius);background:var(--lagoon-deep);color:#fff;display:grid;gap:18px}
+.nh-fare .nh-kicker{color:#f3dcc4}
+.nh-fare dl{margin:0;display:grid}
+.nh-fare dl div{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.14);font-size:14px}
+.nh-fare dt{color:rgba(255,255,255,.65)}
+.nh-fare dd{margin:0;text-align:right;font-weight:600}
+.nh-fare-total{display:grid;gap:4px}
+.nh-fare-total span{font-size:13px;color:rgba(255,255,255,.65)}
+.nh-fare-total strong{font-family:var(--serif);font-weight:400;font-size:40px;line-height:1}
+.nh-fare>small{font-size:13px;color:rgba(255,255,255,.7)}
+
+/* Total shown above the button on screens where the summary sits below the form. */
+.nh-fare-inline{display:none;justify-content:space-between;align-items:baseline;padding:16px 18px;border-radius:14px;background:var(--sand)}
+.nh-fare-inline span{font-weight:600}
+.nh-fare-inline strong{font-family:var(--serif);font-weight:400;font-size:26px}
+
+/* Confirmation */
+.nh-transfer-done{width:min(640px,calc(100% - 32px));margin:80px auto 0;padding:56px 40px;border-radius:var(--radius);background:var(--paper);border:1px solid var(--line);text-align:center;display:grid;justify-items:center;gap:14px}
+.nh-transfer-done>svg{width:56px;height:56px;color:var(--lagoon)}
+.nh-transfer-done h2{font-size:clamp(34px,5vw,48px);line-height:1.05}
+.nh-transfer-done>p:not(.nh-kicker){color:var(--ink-soft);max-width:440px}
+.nh-transfer-done strong{font-family:var(--serif);font-weight:400;font-size:28px;padding:10px 20px;border-radius:12px;background:var(--sand)}
+
+@media(max-width:1000px){
+ .nh-transfer{grid-template-columns:1fr;gap:28px}
+ .nh-fare{position:static}
+ .nh-fare-inline{display:flex}
+}
+@media(max-width:640px){
+ .nh-transfer{padding-top:48px}
+ .nh-transfer-form{padding:22px 18px;gap:28px}
+ .nh-trip,.nh-fields{grid-template-columns:1fr}
+ .nh-fields-3{grid-template-columns:repeat(3,1fr);gap:10px}
+ .nh-transfer-done{margin-top:48px;padding:40px 22px}
+}

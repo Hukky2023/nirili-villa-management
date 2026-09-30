@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import {ArrowRight,Menu,Waves,X} from 'lucide-react';
 import {SITES} from '../../lib/public-sites';
 
@@ -9,6 +8,8 @@ export const RESTAURANT=SITES.dine+'/';
 export const TRANSFERS=SITES.transfers+'/';
 export const RIDE=SITES.ride+'/';
 export const GUEST_PORTAL=SITES.my+'/';
+// Absolute so the shared header and footer also work on the service subdomains.
+export const EXCURSION_GUIDE=SITES.main+'/hotel/excursions';
 export const WHATSAPP='https://wa.me/9609413977?text=Hello%20Nirili%2C%20I%27d%20like%20help%20planning%20my%20trip%20to%20Dhiffushi.';
 
 export const img=(id:string,w=1400)=>`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=82`;
@@ -55,9 +56,9 @@ export function excursionTag(name:string,category?:string){
 
 const NAV=[
  {label:'Stay',href:STAY},
- {label:'Excursions',href:'/hotel/excursions'},
+ {label:'Excursions',href:EXCURSION_GUIDE},
  {label:'Dining',href:RESTAURANT},
- {label:'Travel',href:'/#travel'},
+ {label:'Travel',href:SITES.main+'/#travel'},
 ];
 
 export function Fonts(){
@@ -69,10 +70,10 @@ export function Fonts(){
 }
 
 export function Brand(){
- return <Link className="nh-brand is-light" href="/" aria-label="Nirili Hotel home">
+ return <a className="nh-brand is-light" href={SITES.main+'/'} aria-label="Nirili Hotel home">
   <span className="nh-brand-mark"><Waves/></span>
   <span className="nh-brand-text"><strong>Nirili</strong><small>Dhiffushi · Maldives</small></span>
- </Link>;
+ </a>;
 }
 
 // Sits over a dark hero image on every page.
@@ -104,7 +105,7 @@ export function SiteFooter(){
   <div className="nh-footer-col">
    <h3>Plan</h3>
    <a href={STAY}>Rooms &amp; packages</a>
-   <Link href="/hotel/excursions">Excursions</Link>
+   <a href={EXCURSION_GUIDE}>Excursions</a>
    <a href={RESTAURANT}>Restaurant</a>
   </div>
   <div className="nh-footer-col">
