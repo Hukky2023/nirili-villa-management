@@ -1,118 +1,63 @@
-.external-excursion-site{background:#fbfdfd}
-.external-excursion-hero{max-width:1220px;margin:22px auto 0;padding:72px 24px 78px;display:grid;grid-template-columns:1.25fr .75fr;gap:58px;align-items:center;border-radius:0;background:linear-gradient(135deg,#072f43 0%,#075f78 58%,#1ba0a4 100%);color:#fff}
-.external-excursion-hero .eyebrow{color:#83e7ef}
-.external-excursion-hero h1{font-size:clamp(48px,6vw,82px);letter-spacing:-.06em;line-height:.94;margin:18px 0 24px}
-.external-excursion-hero h1 em{font-family:Georgia,serif;font-weight:400;color:#c9f5ed}
-.external-excursion-hero>div>p{max-width:720px;color:#e4f5f7;font-size:17px;line-height:1.7}
-.external-excursion-hero .hero-actions>a:not(.primary),.external-excursion-hero .trust-row{color:#eefbfc}
-.external-hero-card{background:rgba(255,255,255,.96);color:#153645;border-radius:28px;padding:30px;box-shadow:0 24px 60px rgba(0,0,0,.16)}
-.external-hero-card small{font-size:10px;letter-spacing:.16em;color:#0d8196;font-weight:800}
-.external-hero-card strong{display:block;font-size:28px;letter-spacing:-.035em;margin:12px 0}
-.external-hero-card p{color:#647d87;line-height:1.7;margin:0}
-.external-excursion-list{padding:92px 24px;background:linear-gradient(180deg,#effafa,#fbfdfd)}
-.external-excursion-grid{max-width:1180px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.external-excursion-grid article{background:#fff;border:1px solid #dce9eb;border-radius:24px;padding:24px;display:flex;flex-direction:column;min-height:330px;transition:.2s ease}
-.external-excursion-grid article:hover,.external-excursion-grid article.selected{transform:translateY(-3px);border-color:#0e8ca6;box-shadow:0 16px 36px rgba(17,87,105,.1)}
-.external-card-icon{width:42px;height:42px;border-radius:14px;background:#e5f8f5;color:#07827d;display:grid;place-items:center;margin-bottom:17px}
-.external-card-icon svg{width:20px}
-.external-excursion-grid article>small{font-size:9px;letter-spacing:.13em;color:#78909a;font-weight:800;text-transform:uppercase}
-.external-excursion-grid h3{font-size:20px;line-height:1.25;margin:10px 0}
-.external-excursion-grid article>p{color:#657e88;font-size:13px;line-height:1.6;flex:1}
-.external-price{display:flex;align-items:end;gap:7px;margin:14px 0}
-.external-price strong{font-size:27px}
-.external-price span{font-size:10px;color:#70868f;margin-bottom:4px}
-.external-excursion-grid button{border:1px solid #cbdde1;border-radius:12px;background:#fff;padding:11px 13px;font-weight:750;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
-.external-excursion-grid article.selected button{background:#123044;color:#fff;border-color:#123044}
-.external-excursion-grid button svg{width:16px}
-.external-load-error{max-width:700px;margin:0 auto 30px}
-.external-booking-zone{max-width:1180px;margin:0 auto;padding:100px 24px 115px;display:grid;grid-template-columns:.8fr 1.2fr;gap:70px;align-items:start;scroll-margin-top:20px}
-.external-excursion-form{scroll-margin-top:20px}
-.external-check{border:1px solid #d4e2e5;border-radius:12px;padding:12px 13px;align-content:center}
-.external-check>span,.external-private-boat>span{display:flex;align-items:center;gap:9px!important;font-size:12px!important}
-.external-check input,.external-private-boat input{width:auto!important;margin:0}
-.external-roster-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
-.external-roster-head>div{display:grid;gap:3px}.external-roster-head small{font-size:10px;color:#7b9098}
-.external-roster-head button{border:1px solid #cbdde1;background:#fff;border-radius:11px;padding:9px 12px;font-weight:750;display:flex;align-items:center;gap:6px;cursor:pointer}
-.external-roster-head button svg{width:15px}
-.external-roster{display:grid;gap:10px;margin-bottom:20px}
-.external-guest-row{display:grid;grid-template-columns:34px 1.45fr 1fr 1fr 38px;gap:10px;align-items:start;border:1px solid #e0eaec;border-radius:16px;padding:12px;background:#fbfdfd}
-.external-guest-row label{margin:0}
-.external-guest-number{width:30px;height:30px;border-radius:10px;background:#e6f6f4;display:grid;place-items:center;font-weight:800;font-size:11px;color:#087a77;margin-top:23px}
-.external-remove{margin-top:23px;width:34px;height:34px;border:1px solid #e4d9d7;border-radius:10px;background:#fff;color:#9d5148;display:grid;place-items:center;cursor:pointer}
-.external-remove:disabled{opacity:.3;cursor:not-allowed}.external-remove svg{width:16px}
-.external-private-boat{background:#eef9f7;border:1px solid #cce9e4;border-radius:14px;padding:14px 15px;margin:4px 0 18px!important}
-.external-private-boat strong{margin-left:auto;color:#087b70}
-.external-quote{border-radius:16px;background:#edf9f8;padding:16px 18px;display:flex;justify-content:space-between;gap:20px;margin:10px 0}
-.external-quote>div{display:grid;gap:5px}.external-quote>div:last-child{text-align:right}
-.external-quote small{font-size:9px;letter-spacing:.12em;color:#729198}.external-quote strong{font-size:14px}
-.external-policy{font-size:10px;color:#728991;line-height:1.5;margin:0 0 12px}
-.external-success-actions{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap}
-.external-success-actions>a{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:750}
-.external-success-actions>a svg{width:16px}
-@media(max-width:980px){.external-excursion-grid{grid-template-columns:repeat(2,1fr)}.external-guest-row{grid-template-columns:34px 1fr 1fr 38px}.external-guest-row label:nth-of-type(3){grid-column:2/4}}
-@media(max-width:850px){.external-excursion-hero,.external-booking-zone{grid-template-columns:1fr}.external-excursion-hero{margin-top:0}.external-hero-card{max-width:620px}.external-booking-zone .booking-intro{position:static}}
-@media(max-width:620px){.external-excursion-hero{padding:50px 18px 56px}.external-excursion-hero h1{font-size:50px}.external-excursion-grid{grid-template-columns:1fr}.external-excursion-list{padding:65px 16px}.external-booking-zone{padding:70px 16px;gap:34px}.external-roster-head{align-items:flex-start;flex-direction:column}.external-guest-row{grid-template-columns:30px 1fr 36px}.external-guest-row label{grid-column:2/3}.external-guest-row label:nth-of-type(3){grid-column:2/3}.external-guest-number{grid-column:1;grid-row:1;margin-top:23px}.external-remove{grid-column:3;grid-row:1;margin-top:23px}.external-quote{flex-direction:column}.external-quote>div:last-child{text-align:left}}
+/* tours.nirilihotels.com: excursion cards, passenger roster and package itinerary.
+   Shared booking-page styles live in ../style.css. */
 
-.external-package-itinerary{width:min(760px,100%);margin:22px auto;text-align:left;background:#f5faf9;border:1px solid #d5e7e5;border-radius:16px;padding:18px}.external-package-itinerary>small{display:block;margin-bottom:10px;font-size:10px;letter-spacing:1.6px;color:#4b7b84;font-weight:800}.external-package-itinerary>div{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:11px 0;border-top:1px solid #dce9e7}.external-package-itinerary>div:first-of-type{border-top:0}.external-package-itinerary>div>b{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#0b536c;color:#fff;font-size:12px}.external-package-itinerary>div>span{display:grid;gap:2px}.external-package-itinerary>div>span strong{font-size:13px}.external-package-itinerary>div>span small{font-size:11px;color:#6b7e83}.external-package-itinerary>div>span em{font-size:10px;color:#70888f;font-style:normal}.external-package-itinerary>div>i{font-style:normal;font-size:10px;font-weight:800;color:#237452;background:#e7f6ee;padding:6px 8px;border-radius:999px}@media(max-width:560px){.external-package-itinerary>div{grid-template-columns:28px 1fr}.external-package-itinerary>div>i{grid-column:2;justify-self:start}}
+.nh-book .external-excursion-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.nh-book .external-excursion-grid article{overflow:hidden}
+.nh-book .external-card-cover{aspect-ratio:4/3;display:grid;place-items:center;background:linear-gradient(135deg,var(--lagoon),var(--lagoon-deep));color:rgba(255,255,255,.55);overflow:hidden}
+.nh-book .external-card-cover img{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.nh-book .external-excursion-grid article:hover .external-card-cover img{transform:scale(1.05)}
+.nh-book .external-card-cover svg{width:40px;height:40px}
+.nh-book .external-excursion-grid article>:not(.external-card-cover){margin-left:24px;margin-right:24px}
+.nh-book .external-excursion-grid article>small{margin-top:22px}
+.nh-book .external-excursion-grid article>p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.nh-book .external-price{display:flex;align-items:baseline;gap:6px;margin-top:auto;padding-top:18px}
+.nh-book .external-price strong{font-family:var(--serif);font-weight:400;font-size:30px}
+.nh-book .external-price span{font-size:14px;color:var(--muted)}
+.nh-book .external-card-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0 24px;margin-top:14px;border-top:1px solid var(--line)}
+.nh-book .external-view-details{font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.nh-book .external-card-actions button{min-height:44px;padding:0 18px}
+.nh-book .external-load-error{margin-bottom:20px}
 
+/* Pickup and private-boat options */
+.nh-book .external-check,.nh-book .external-private-boat{padding:14px 16px;border-radius:14px;background:var(--sand)}
+.nh-book .booking-form .external-check>span,.nh-book .booking-form .external-private-boat>span{display:flex;align-items:center;gap:10px;font-weight:600}
+.nh-book .external-private-boat strong{margin-left:auto}
 
-.external-card-actions{
- display:grid;
- grid-template-columns:1fr 1.25fr;
- gap:9px;
- margin-top:2px;
-}
-.external-card-actions .external-view-details,
-.external-card-actions button{
- min-height:44px;
- border-radius:12px;
- display:flex;
- align-items:center;
- justify-content:center;
- gap:7px;
- font-size:12px;
- font-weight:800;
-}
-.external-card-actions .external-view-details{
- border:1px solid #9ecbd2;
- background:#f5fbfc;
- color:#0c6f82;
-}
-.external-card-actions .external-view-details:hover{
- background:#eaf7f8;
- border-color:#72b7c2;
- transform:none;
-}
-.external-card-actions button{margin:0}
-.external-excursion-grid article.selected .external-card-actions button{
- background:#123044;
- color:#fff;
- border-color:#123044;
-}
-@media(max-width:430px){
- .external-card-actions{grid-template-columns:1fr}
-}
+/* Passenger roster */
+.nh-book .external-roster-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.nh-book .external-roster-head div{display:grid}
+.nh-book .external-roster-head small{color:var(--muted);font-size:13px}
+.nh-book .external-roster-head button{display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:0 16px;border-radius:999px;border:1px solid var(--ink);background:#fff;color:var(--ink);font-weight:600}
+.nh-book .external-roster-head button svg{width:16px;height:16px}
+.nh-book .external-roster{display:grid;gap:10px}
+.nh-book .external-guest-row{display:grid;grid-template-columns:32px minmax(0,1.4fr) minmax(0,1fr) auto;align-items:end;gap:12px;padding:14px;border-radius:14px;border:1px solid var(--line);background:#fff}
+.nh-book .external-guest-row:has(input[type=number]){grid-template-columns:32px minmax(0,1.4fr) minmax(0,1fr) minmax(0,.7fr) auto}
+.nh-book .external-guest-number{width:32px;height:32px;margin-bottom:9px;border-radius:50%;display:grid;place-items:center;background:var(--sand);font-weight:700;font-size:14px}
+.nh-book .external-remove{width:44px;height:50px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--muted);display:grid;place-items:center}
+.nh-book .external-remove:not(:disabled):hover{color:#9b3140;border-color:#e7b9bf}
+.nh-book .external-remove svg{width:18px;height:18px}
+.nh-book .external-policy{font-size:14px;color:var(--muted)}
 
+/* Package itinerary on the confirmation */
+.nh-book .external-package-itinerary{width:100%;display:grid;gap:8px;text-align:left}
+.nh-book .external-package-itinerary>small{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--muted)}
+.nh-book .external-package-itinerary>div{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:var(--sand)}
+.nh-book .external-package-itinerary b{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:#fff;font-size:13px}
+.nh-book .external-package-itinerary span{display:grid;flex:1}
+.nh-book .external-package-itinerary span small{color:var(--muted);font-size:13px}
+.nh-book .external-package-itinerary em{font-size:13px;color:var(--ink-soft)}
+.nh-book .external-package-itinerary i{font-style:normal;font-size:12px;font-weight:700;color:var(--lagoon)}
+.nh-book .external-success-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:6px}
 
-.external-card-gallery{
- display:flex;
- width:calc(100% + 48px);
- height:220px;
- margin:-24px -24px 20px;
- overflow-x:auto;
- scroll-snap-type:x mandatory;
- scrollbar-width:none;
- border-radius:23px 23px 0 0;
- background:#e8f4f6;
+@media(max-width:1000px){
+ .nh-book .external-excursion-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-.external-card-gallery::-webkit-scrollbar{display:none}
-.external-card-gallery img{
- flex:0 0 100%;
- width:100%;
- height:100%;
- object-fit:cover;
- scroll-snap-align:start;
-}
-@media(max-width:620px){
- .external-card-gallery{height:235px}
+@media(max-width:640px){
+ .nh-book .external-excursion-grid{grid-template-columns:1fr}
+ .nh-book .external-roster-head{align-items:flex-start}
+ .nh-book .external-roster-head button{flex-shrink:0;white-space:nowrap}
+ .nh-book .external-guest-row,.nh-book .external-guest-row:has(input[type=number]){grid-template-columns:32px minmax(0,1fr) auto;align-items:center}
+ .nh-book .external-guest-row label{grid-column:1/-1}
+ .nh-book .external-guest-number{margin:0;grid-row:1}
+ .nh-book .external-remove{grid-column:3;grid-row:1;justify-self:end;height:40px}
 }

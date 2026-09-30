@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import {useEffect,useRef,useState} from 'react';
-import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,Heart,MapPin,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
+import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,MapPin,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
 import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
@@ -60,7 +59,7 @@ export default function GuestBookingSite(){
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
 
- if(success)return <main className="guest-booking-site">
+ if(success)return <div className="guest-booking-site">
   <section className="booking-success">
    <div className="success-mark"><CheckCircle2/></div>
    <span className="eyebrow">NIRILI STAY · DHIFFUSHI</span>
@@ -75,40 +74,27 @@ export default function GuestBookingSite(){
    <p className="success-note">{success.email?.sent?'We sent a booking received email to '+email+'. Final confirmation will follow after room allocation.':'Your booking is saved, but the confirmation email could not be sent yet. Please keep this booking reference and contact reception if you do not receive an email.'}</p>
    <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();setGuest('');setPhone('');setEmail('');setNotes('');setTransportPlan({arrival:{needTransfer:'later',from:'Velana International Airport',flightNumber:'',flightTime:'',ownTransport:'',dhiffushiArrivalTime:'',buggyRequired:true},departure:{needTransfer:'later',destination:'Velana International Airport',flightNumber:'',flightTime:'',ownDepartureTime:'',buggyRequired:true}})}}>Make another booking <ArrowRight/></button>
   </section>
- </main>;
+ </div>;
 
- return <main className="guest-booking-site">
-  <header className="guest-nav">
-   <Link className="guest-brand" href="/" aria-label="Nirili Stay booking home">
-    <span className="brand-sun">☀</span>
-    <div><strong>Nirili Stay</strong><small>NIRILI VILLA · DHIFFUSHI</small></div>
-   </Link>
-   <nav><a href="https://nirilihotels.com">Nirili home</a><a href="#packages">Packages</a><a href="#rates">Rates</a><a href="#book">Book</a></nav>
-   <a className="nav-book" href="#book"><span>Book Now</span><ArrowRight/></a>
-  </header>
-
-  <section className="hero" id="stay">
-   <div className="hero-copy">
-    <span className="eyebrow"><MapPin/> DHIFFUSHI ISLAND · MALDIVES</span>
-    <h1>Island days.<br/><em>Easy stays.</em></h1>
-    <p>Stay close to the beach and arrange your room, meal plan, arrival details and departure details directly with the Nirili Stay team.</p>
-    <div className="hero-actions"><a className="primary" href="#book">Check your dates <ArrowRight/></a><a href="#rates">View room rates <ChevronDown/></a></div>
-    <div className="trust-row"><span><Heart/> Local Dhiffushi hospitality</span></div>
+ return <div className="guest-booking-site">
+  <section className="nh-page-hero nh-stay-hero" id="stay" style={{backgroundImage:'url("https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Dhiffushi-Maldives-Andres_Larin.jpg/1920px-Dhiffushi-Maldives-Andres_Larin.jpg")'}}>
+   <div className="nh-page-hero-inner">
+    <p className="nh-kicker nh-kicker-light"><MapPin/> Nirili Stay · Dhiffushi</p>
+    <h1>Island days. <em>Easy stays.</em></h1>
+    <p>A 14-room island guesthouse a short walk from the beach. Pick your dates, choose a meal plan or package, and tell us how you&rsquo;re arriving.</p>
+    <div className="nh-hero-actions"><a className="nh-btn nh-btn-light" href="#book">Check your dates <ArrowRight/></a><a className="nh-btn nh-btn-ghost" href="#rates">View room rates <ChevronDown/></a></div>
    </div>
-   <div className="hero-card">
-    <img className="hero-card-photo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Dhiffushi-Maldives-Andres_Larin.jpg/1280px-Dhiffushi-Maldives-Andres_Larin.jpg" alt="Aerial view of Dhiffushi island in Kaafu Atoll, Maldives" width={1280} height={959} fetchPriority="high"/>
-    <div className="hero-card-copy"><small>YOUR DHIFFUSHI BASE</small><strong>14-room island guesthouse</strong><span>Arrive as a Guest, Leave as a Friend.</span><p className="hero-photo-credit">Dhiffushi · Photo: <a href="https://commons.wikimedia.org/wiki/File:Dhiffushi-Maldives-Andres_Larin.jpg" target="_blank" rel="noopener noreferrer">Andres Larin / Saaremees</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p></div>
-   </div>
+   <p className="nh-photo-credit">Dhiffushi · Photo: <a href="https://commons.wikimedia.org/wiki/File:Dhiffushi-Maldives-Andres_Larin.jpg" target="_blank" rel="noopener noreferrer">Andres Larin / Saaremees</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p>
   </section>
 
   <section className="quick-strip">
    <article><ShipWheel/><div><strong>Arrival planning</strong><span>Share your speedboat and harbour pickup needs with your stay booking</span></div></article>
    <article><Sparkles/><div><strong>Room + meal plans</strong><span>Choose Bed & Breakfast, Half Board or Full Board for your stay</span></div></article>
-   <article><Globe2/><div><strong>Simple booking</strong><span>Book Nirili Stay direct — no guest-portal account required</span></div></article>
+   <article><Globe2/><div><strong>Simple booking</strong><span>Book direct with us. No account needed</span></div></article>
   </section>
 
   <section className="packages-section" id="packages">
-   <div className="section-head"><span className="eyebrow">NIRILI STAY PACKAGES</span><h2>Book more than a room.</h2><p>These packages are created and updated by Nirili Management. Select one, and the booking form will automatically use its duration and meal plan.</p></div>
+   <div className="section-head"><span className="eyebrow">NIRILI STAY PACKAGES</span><h2>Book more than a room.</h2><p>Stays with meals, transfers and excursions bundled together. Choose one and the booking form fills in the length of stay and meal plan for you.</p></div>
    <div className="package-public-grid">
     {(quote.packages||[]).map(pkg=>{const active=packageId===pkg.id;const promos=(quote.promotions||[]).filter(p=>p.packageIds.includes(pkg.id));return <article className={active?'selected':''} key={pkg.id}>
      <small>{pkg.nights} NIGHTS · {pkg.days} DAYS</small>
@@ -160,7 +146,7 @@ export default function GuestBookingSite(){
     <span className="eyebrow">BOOK DIRECT</span>
     <h2>Book your Nirili Stay.</h2>
     <p>Choose your dates and stay details. Your booking goes directly to reception for room allocation and confirmation.</p>
-    <div className="booking-points"><span><CheckCircle2/> No management-system account</span><span><CheckCircle2/> Live room availability check</span><span><CheckCircle2/> Reception confirms your booking</span></div>
+    <div className="booking-points"><span><CheckCircle2/> No account needed</span><span><CheckCircle2/> Live room availability check</span><span><CheckCircle2/> Reception confirms your booking</span></div>
    </div>
    <form className="booking-form" onSubmit={submit}>
     <div className="form-heading"><div><small>ROOM BOOKING</small><h3>Your trip details</h3></div>{quote.availableRooms!==undefined&&<span className={quote.availableRooms>0?'available':'unavailable'}>{quote.bookingClosed?'Bookings closed for selected dates':quote.availableRooms>0?quote.availableRooms+' rooms available':'No rooms available'}</span>}</div>
@@ -232,14 +218,9 @@ export default function GuestBookingSite(){
         <label><span>Special requests (optional)</span><textarea rows={4} maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Arrival details, dietary requests, transfer help, celebration, or anything else we should know."/></label>
     {error&&<p className="form-error" role="alert">{error}</p>}
     <button className="submit-booking" disabled={busy||checking||quote.availableRooms===0}>{busy?'Booking…':'Book Your Stay'} <ArrowRight/></button>
-    <p className="privacy-note"><ShieldCheck/> Your booking goes to Nirili Villa reception. A confirmation email is sent after the room is approved. This form does not create management-system access.</p>
+    <p className="privacy-note"><ShieldCheck/> Your booking goes to Nirili Villa reception. A confirmation email is sent once your room is allocated.</p>
    </form>
   </section>
 
-  <footer className="guest-footer">
-   <div className="guest-brand"><span className="brand-sun">☀</span><div><strong>Nirili Stay</strong><small>NIRILI VILLA · DHIFFUSHI</small></div></div>
-   <p>Arrive as a Guest, Leave as a Friend.</p>
-   <a href="#book">Book your stay <ArrowRight/></a>
-  </footer>
- </main>;
+ </div>;
 }
