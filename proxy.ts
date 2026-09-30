@@ -137,6 +137,11 @@ function hotelSiteResponse(url:URL,method='GET'){
   url.pathname='/hotel';
   return cache(NextResponse.rewrite(url),PUBLIC);
  }
+ // Excursions live on the tours site; keep old guide links working.
+ if(under(url.pathname,'/hotel/excursions')){
+  const id=url.pathname.slice('/hotel/excursions/'.length);
+  return NextResponse.redirect(SITES.tours+(id?'/book/excursions/details/'+id:'/'),308);
+ }
  if(under(url.pathname,'/hotel'))return cache(NextResponse.next(),PUBLIC);
 
  const shortcut=SHORTCUTS[url.pathname.toLowerCase().replace(/\/+$/,'')];
