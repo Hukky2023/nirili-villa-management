@@ -43,6 +43,8 @@ jobs:
         run: node --experimental-strip-types --test tests/transfer-billing.test.mjs
       - name: Restaurant bill-delete regression tests
         run: node --experimental-strip-types --test tests/pos-bill-delete.test.mjs
+      - name: Crew assigned-trip visibility regression tests
+        run: node --test tests/crew-trip-visibility.test.mjs
       - name: Excursion billing regression tests
         run: node --experimental-strip-types --test tests/excursion-billing.test.mjs
       - name: External excursion self-service regression tests

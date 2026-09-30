@@ -110,9 +110,10 @@ export async function GET(){
   const today=islandToday();
   const assigned=schedules.filter((schedule:any)=>{
    if(schedule.status==='Cancelled'||schedule.date<today||!Array.isArray(schedule.crewIds)||!schedule.crewIds.includes(crew.id))return false;
-   // Keep today's active trip visible after departure so crew can still see its live status.
+   // Departure time is not completion: admin may update the trip status late.
+   // Keep every assigned trip today visible until explicitly completed or cancelled.
    if(schedule.date===today&&combinedTripStatus(schedule.tripStatus)==='Arrived & Completed')return false;
-   return schedule.date>today||!excursionDeparturePassed(schedule.date,schedule.time)||combinedTripStatus(schedule.tripStatus)!=='Excursion scheduled';
+   return true;
   });
   const groups=new Map<string,any>();
   for(const schedule of assigned){
