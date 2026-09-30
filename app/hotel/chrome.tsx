@@ -104,12 +104,15 @@ export function SiteFooter(){
   </div>
   <div className="nh-footer-col">
    <h3>Plan</h3>
+   <Link href="/hotel/dhiffushi">Dhiffushi island guide</Link>
+   <Link href="/hotel/maldives-packages">Maldives holiday packages</Link>
    <a href={STAY}>Rooms &amp; packages</a>
    <a href={EXCURSION_GUIDE}>Excursions</a>
    <a href={RESTAURANT}>Restaurant</a>
   </div>
   <div className="nh-footer-col">
    <h3>Travel</h3>
+   <Link href="/hotel/dhiffushi-airport-transfer">Dhiffushi transfer guide</Link>
    <a href={TRANSFERS}>Airport transfers</a>
    <a href={RIDE}>Island rides</a>
   </div>

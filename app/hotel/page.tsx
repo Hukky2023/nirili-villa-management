@@ -1,14 +1,13 @@
-import type {Metadata} from 'next';
 import HotelHome from './site';
+import {hotelIdentity,hotelMetadata} from './seo';
 import './home.css';
 
 export const dynamic='force-dynamic';
-
-export const metadata:Metadata={
- title:'Nirili Hotel Dhiffushi | Stay, Dine & Explore the Maldives',
- description:'Discover Nirili Hotel in Dhiffushi, Maldives. Book your stay direct, arrange transfers, enjoy island dining and explore turtles, reefs, sandbanks, sharks, dolphins and more with Nirili Tours.',
-};
-
+export const metadata=hotelMetadata(
+ 'Nirili Villa Dhiffushi | Maldives Stays, Transfers & Tours',
+ 'Plan your Dhiffushi holiday with Nirili Villa and Nirili Tours. Explore room packages, airport speedboat transfers, snorkelling, sandbanks and fishing trips.',
+ '/'
+);
 export default function HotelHomePage(){
- return <HotelHome/>;
+ return <><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(hotelIdentity).replace(/</g,'\\u003c')}}/><HotelHome/></>;
 }
