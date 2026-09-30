@@ -79,6 +79,14 @@ test('old booking.nirilihotels.com links are forwarded to the new subdomains',()
  assert.ok(passes(visit('booking.nirilihotels.com','/api/guest-services')));
 });
 
+test('friendly alias subdomains forward to the guest sites, never the staff app',()=>{
+ const alias=(host,path,to)=>{const r=visit(host,path);assert.equal(r.status,308,host+path);assert.equal(location(r),to,host+path);};
+ alias('excursions.nirilihotels.com','/','https://tours.nirilihotels.com/');
+ alias('excursions.nirilihotels.com','/book/excursions/manage','https://tours.nirilihotels.com/book/excursions/manage');
+ alias('restaurant.nirilihotels.com','/','https://dine.nirilihotels.com/');
+ alias('travels.nirilihotels.com','/','https://nirilihotels.com/#travel');
+});
+
 test('the main domain offers short links to every service',()=>{
  const short=(path,to)=>{const r=visit('nirilihotels.com',path);assert.equal(r.status,302,path);assert.equal(location(r),to,path);};
  short('/tours','https://tours.nirilihotels.com/');

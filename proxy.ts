@@ -1,5 +1,5 @@
 import {NextResponse,NextRequest} from 'next/server';
-import {HOSTS,SITES} from './lib/public-sites';
+import {ALIAS_HOSTS,HOSTS,SITES} from './lib/public-sites';
 
 const tabPattern=/^[a-f0-9]{32}$/;
 const PUBLIC='public, max-age=0, must-revalidate';
@@ -98,6 +98,16 @@ function rideSiteResponse(){
  return NextResponse.redirect(SITES.my+'/?service=buggy',302);
 }
 
+// excursions., restaurant. and travels. forward to the service's real address. Keeps the
+// same path, so e.g. excursions.nirilihotels.com/book/excursions/manage still reaches the right page.
+function aliasSiteResponse(url:URL,target:string){
+ if(target==='main')return NextResponse.redirect(SITES.main+'/#travel',308);
+ const next=new URL(SITES[target as keyof typeof SITES]);
+ next.pathname=url.pathname;
+ next.search=url.search;
+ return NextResponse.redirect(next,308);
+}
+
 // booking.nirilihotels.com is retired: forward every page to the service's own subdomain.
 function bookingSiteResponse(url:URL){
  const api=guestApiResponse(url);
@@ -176,6 +186,7 @@ function routeRequest(request:NextRequest){
  if(host===HOSTS.ride)return rideSiteResponse();
  if(SERVICE_BY_HOST[host])return serviceSiteResponse(url,SERVICE_BY_HOST[host]);
  if(host===HOSTS.booking)return bookingSiteResponse(url);
+ if(ALIAS_HOSTS[host])return aliasSiteResponse(url,ALIAS_HOSTS[host]);
 
  const id=requestTab(request,url),valid=tabPattern.test(id);
  if(!valid&&!url.pathname.startsWith('/api/')&&request.method==='GET'){

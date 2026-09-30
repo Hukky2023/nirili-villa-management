@@ -93,6 +93,8 @@ Each service subdomain serves its page at `/` and redirects paths that belong to
 
 `booking.nirilihotels.com` is retired. Its pages redirect permanently to the matching subdomain, so old emails, bookmarks and printed QR codes keep working. `booking.nirilihotels.com/stay` is still served so guests already signed in there (and their push notifications) keep working.
 
+`excursions.nirilihotels.com` and `restaurant.nirilihotels.com` forward to `tours.` and `dine.`, and `travels.nirilihotels.com` forwards to the travel section of the main site. Any other `nirilihotels.com` hostname attached to the Worker without routing in `proxy.ts` falls through to the staff management app, so give every new public hostname an entry in `lib/public-sites.ts`.
+
 The main domain also offers short links for print and chat: `/stay`, `/rooms`, `/book`, `/tours`, `/dine`, `/menu`, `/restaurant`, `/transfers`, `/speedboat`, `/ride`, `/buggy`, `/my`, `/guest`.
 
 Each subdomain must be added as a Custom Domain on the `nirili-villa` Worker in Cloudflare (Workers & Pages → nirili-villa → Settings → Domains & Routes).

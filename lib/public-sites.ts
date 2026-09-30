@@ -13,6 +13,13 @@ export const HOSTS={
  booking:'booking.nirilihotels.com',
 } as const;
 
+// Friendly alternative names that forward to a service's real address.
+export const ALIAS_HOSTS:Record<string,string>={
+ 'excursions.nirilihotels.com':'tours',
+ 'restaurant.nirilihotels.com':'dine',
+ 'travels.nirilihotels.com':'main',
+};
+
 const origin=(host:string)=>'https://'+host;
 
 export const SITES={
