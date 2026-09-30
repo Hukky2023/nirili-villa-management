@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowLeft,ArrowRight,CalendarDays,CheckCircle2,MapPin,Plus,ShieldCheck,ShipWheel,Sparkles,Trash2,Users} from 'lucide-react';
 import {SITES} from '../../../lib/public-sites';
+import {EXCURSION_GUIDE,excursionPhoto,img} from '../../hotel/chrome';
 
 type Excursion={
  id:string;name:string;detail:string;longDetail?:string;youtubeUrl?:string;galleryUrls?:string[];cents:number;pricingUnit:'guest'|'couple';
@@ -79,7 +80,7 @@ export default function ExternalExcursionBooking(){
   finally{setBusy(false);}
  }
 
- if(success)return <main className="guest-booking-site external-excursion-site">
+ if(success)return <div className="guest-booking-site external-excursion-site">
   <section className="booking-success external-success">
    <div className="success-mark"><CheckCircle2/></div>
    <span className="eyebrow">NIRILI EXCURSIONS · DHIFFUSHI</span>
@@ -94,38 +95,29 @@ export default function ExternalExcursionBooking(){
     <span><Users/> {guests.length} {guests.length===1?'guest':'guests'}</span>
    </div>
    {success.packageSegments?.length>0&&<div className="external-package-itinerary"><small>AUTOMATIC PACKAGE ITINERARY</small>{success.packageSegments.map((segment:any,index:number)=><div key={segment.id||index}><b>{index+1}</b><span><strong>{segment.name}</strong><small>{segment.date} · {segment.time}{segment.endTime?'–'+segment.endTime:''} · Maldives time</small>{segment.matchedScheduleName&&segment.matchedScheduleName!==segment.name&&<em>Scheduled on: {segment.matchedScheduleName}</em>}</span><i>Confirmed</i></div>)}</div>}
-   <p className="success-note">{success.email?.sent?'Reserve now, pay later. We sent your private View / Manage Excursion link to '+email+'.':'Your excursion booking is saved. Email delivery could not be confirmed, so use the private View / Manage Excursion button below and keep the link.'} No Nirili Villa room booking or management-system login is required.</p>
+   <p className="success-note">{success.email?.sent?'Reserve now, pay later. We sent your private View / Manage Excursion link to '+email+'.':'Your excursion booking is saved. Email delivery could not be confirmed, so use the private View / Manage Excursion button below and keep the link.'}</p>
    <div className="external-success-actions">
     {success.manageUrl&&<a className="primary" href={success.manageUrl}>View / Manage Excursion <ArrowRight/></a>}
     <button onClick={()=>{setSuccess(null);token.current=crypto.randomUUID();}}>Book another excursion <ArrowRight/></button>
     <a href={SITES.main}><ArrowLeft/> Back to Nirili</a>
    </div>
   </section>
- </main>;
+ </div>;
 
- return <main className="guest-booking-site external-excursion-site">
-  <header className="guest-nav">
-   <a className="guest-brand" href={SITES.main} aria-label="Nirili home">
-    <span className="brand-sun">☀</span>
-    <div><strong>Nirili Excursions</strong><small>NIRILI TOURS · DHIFFUSHI</small></div>
-   </a>
-   <nav><a href={SITES.main}>Home</a><a href="#excursions">Excursions</a><a href={SITES.stay}>Stay</a><a href={SITES.transfers}>Transfers</a></nav>
-   <a className="nav-book" href="#external-excursion-form"><span>Book excursion</span><ArrowRight/></a>
-  </header>
-
-  <section className="external-excursion-hero">
-   <div>
-    <span className="eyebrow"><MapPin/> DHIFFUSHI ISLAND · MALDIVES</span>
-    <h1>Not staying with us?<br/><em>You can still explore with us.</em></h1>
-    <p>Guests from any hotel or guesthouse can book Nirili Tours excursions directly. Choose your experience, travel date and passenger details — no Nirili Villa login required.</p>
-    <div className="hero-actions"><a className="primary" href="#excursions">Explore excursions <ArrowRight/></a><a href={SITES.stay}><ArrowLeft/> Book a Nirili Villa stay</a></div>
-    <div className="trust-row"><span><ShieldCheck/> No guest login required</span><span><ShipWheel/> Same Nirili Tours operations team</span><span><CheckCircle2/> Reserve now, pay later</span></div>
+ return <div className="guest-booking-site external-excursion-site">
+  <section className="nh-page-hero" style={{backgroundImage:`url("${img('1437622368342-7a3d73a34c8f',2200)}")`}}>
+   <div className="nh-page-hero-inner">
+    <p className="nh-kicker nh-kicker-light"><MapPin/> Nirili Tours · Dhiffushi</p>
+    <h1>Not staying with us? <em>Explore with us anyway.</em></h1>
+    <p>Guests from any hotel or guesthouse on Dhiffushi can book our excursions. Choose your trip, pick a date and add everyone who&rsquo;s coming.</p>
+    <div className="nh-hero-actions"><a className="nh-btn nh-btn-light" href="#excursions">Explore excursions <ArrowRight/></a><a className="nh-btn nh-btn-ghost" href="#external-excursion-form">Go to booking</a></div>
    </div>
-   <aside className="external-hero-card">
-    <small>EXTERNAL GUEST BOOKING</small>
-    <strong>Stay anywhere in Dhiffushi.</strong>
-    <p>Enter your hotel or pickup location and WhatsApp number. We will keep those details with your excursion booking so the operations team can coordinate with you.</p>
-   </aside>
+  </section>
+
+  <section className="quick-strip">
+   <article><ShieldCheck/><div><strong>No login needed</strong><span>Book with your email and WhatsApp number</span></div></article>
+   <article><CheckCircle2/><div><strong>Reserve now, pay later</strong><span>We email you a private link to manage your trip</span></div></article>
+   <article><ShipWheel/><div><strong>Stay anywhere</strong><span>Tell us your hotel or meeting point for pickup</span></div></article>
   </section>
 
   <section className="external-excursion-list" id="excursions">
@@ -137,8 +129,7 @@ export default function ExternalExcursionBooking(){
    {error&&!data.items?.length&&<p className="form-error external-load-error" role="alert">{error}</p>}
    <div className="external-excursion-grid">
     {(data.items||[]).map(item=><article key={item.id} className={selected?.id===item.id?'selected':''}>
-     {item.galleryUrls?.length?<div className="external-card-gallery" aria-label={item.name+' photo gallery'}>{item.galleryUrls.map((url,index)=><img key={url} src={url} loading="lazy" alt={item.name+' photo '+(index+1)}/>)}</div>:null}
-     <div className="external-card-icon"><Sparkles/></div>
+     <div className="external-card-cover">{excursionPhoto(item)?<img src={excursionPhoto(item)} loading="lazy" alt={item.name}/>:<Sparkles/>}</div>
      <small>{item.group}</small>
      <h3>{item.name}</h3>
      <p>{item.detail}</p>
@@ -147,7 +138,7 @@ export default function ExternalExcursionBooking(){
       {item.cents>0&&<span>{item.pricingUnit==='couple'?'/ couple':'/ adult'}</span>}
      </div>
      <div className="external-card-actions">
-      <a className="external-view-details" href={'/book/excursions/details/'+encodeURIComponent(item.id)}>View details</a>
+      <a className="external-view-details" href={EXCURSION_GUIDE+'/'+encodeURIComponent(item.id)}>View details</a>
       <button type="button" onClick={()=>choose(item)}>{selected?.id===item.id?'Selected':'Book this excursion'} <ArrowRight/></button>
      </div>
     </article>)}
@@ -156,9 +147,9 @@ export default function ExternalExcursionBooking(){
 
   <section className="external-booking-zone" id="external-excursion-form">
    <div className="booking-intro">
-    <span className="eyebrow">EXTERNAL GUEST</span>
-    <h2>Book without a Nirili Villa room.</h2>
-    <p>Your booking goes directly into the Nirili excursion system. If a matching departure has space, the system can reserve it; otherwise our team receives it for scheduling.</p>
+    <span className="eyebrow">BOOK YOUR TRIP</span>
+    <h2>Book your excursion.</h2>
+    <p>If a scheduled departure has space, your seats are reserved straight away. Otherwise our team schedules your trip and lets you know.</p>
     <div className="booking-points">
      <span><CheckCircle2/> WhatsApp number required for trip updates</span>
      <span><CheckCircle2/> Every passenger name and age category recorded</span>
@@ -222,14 +213,9 @@ export default function ExternalExcursionBooking(){
     <p className="external-policy">{data.childPolicy}</p>
     {error&&<p className="form-error" role="alert">{error}</p>}
     <button className="submit-booking" disabled={busy||!selected||!date}>{busy?'Sending booking…':'Reserve excursion'} <ArrowRight/></button>
-    <p className="privacy-note"><ShieldCheck/> No management-system account is created. We email you a private link to view live trip status, payment, changes and cancellation.</p>
+    <p className="privacy-note"><ShieldCheck/> No account needed. We email you a private link to see your trip status, payment, changes and cancellation.</p>
    </form>
   </section>
 
-  <footer className="guest-footer">
-   <div className="guest-brand"><span className="brand-sun">☀</span><div><strong>Nirili Excursions</strong><small>NIRILI TOURS · DHIFFUSHI</small></div></div>
-   <p>Arrive as a Guest, Leave as a Friend.</p>
-   <a href={SITES.main}><ArrowLeft/> All Nirili services</a>
-  </footer>
- </main>;
+ </div>;
 }

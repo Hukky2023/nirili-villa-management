@@ -1,6 +1,9 @@
 import type {Metadata} from 'next';
 import ExternalExcursionBooking from './site';
 import {SITES} from '../../../lib/public-sites';
+import {Fonts,SiteFooter,SiteHeader} from '../../hotel/chrome';
+import '../../hotel/home.css';
+import '../../hotel/excursions/style.css';
 import '../style.css';
 import './style.css';
 
@@ -14,5 +17,10 @@ export const metadata:Metadata={
 };
 
 export default function ExternalExcursionsPage(){
- return <ExternalExcursionBooking/>;
+ return <main className="nh nh-sub-page nh-book">
+  <Fonts/>
+  <SiteHeader/>
+  <ExternalExcursionBooking/>
+  <SiteFooter/>
+ </main>;
 }
