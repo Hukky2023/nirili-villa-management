@@ -132,3 +132,15 @@ test('guest websites can ask for translations; the API stays closed elsewhere',(
  assert.ok(passes(visit('nirilihotels.com','/api/translate','POST')));
  assert.equal(visit('nirilihotels.com','/api/translate').status,404);
 });
+
+test('operators serves the operator portal; its APIs stay on that host only',()=>{
+ assert.equal(rewrite(visit('operators.nirilihotels.com','/')),'/operators');
+ assert.ok(passes(visit('operators.nirilihotels.com','/api/operator-portal/session','POST')));
+ assert.ok(passes(visit('operators.nirilihotels.com','/api/operator-portal/speedboats')));
+ assert.ok(passes(visit('operators.nirilihotels.com','/api/operator-portal/buggy')));
+ assert.equal(visit('tours.nirilihotels.com','/api/operator-portal/speedboats').status,404);
+ assert.equal(visit('agents.nirilihotels.com','/api/operator-portal/buggy').status,404);
+ assert.equal(visit('operators.nirilihotels.com','/api/travel-operators').status,404);
+ assert.ok(passes(visit('agents.nirilihotels.com','/api/agent-portal/travel','POST')));
+ assert.equal(location(visit('nirilihotels.com','/operators')),'https://operators.nirilihotels.com/');
+});

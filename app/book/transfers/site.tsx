@@ -18,10 +18,15 @@ export default function TransferBookingSite(){
  useEffect(()=>{token.current=crypto.randomUUID();void refresh()},[]);
  async function refresh(){try{const r=await fetch('/api/walkin-transfers',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not load transfers.');setData(d);}catch(e){setError((e as Error).message)}}
  const route=(s:any,kind:'arrival'|'departure')=>kind==='arrival'?String(s.from).toLowerCase().includes('airport')&&String(s.to).toLowerCase().includes('dhiffushi'):String(s.from).toLowerCase().includes('dhiffushi')&&String(s.to).toLowerCase().includes('airport');
- const arrivals=(data?.sailings||[]).filter((s:any)=>route(s,'arrival'));
- const departures=(data?.sailings||[]).filter((s:any)=>route(s,'departure'));
- useEffect(()=>{if(!outbound){const list=trip==='departure'?departures:arrivals;if(list[0])setOutbound(list[0].id)}},[data,trip]);
- useEffect(()=>{if(trip==='return'&&!inbound&&departures[0])setInbound(departures[0].id)},[data,trip]);
+ // Operators publish the days each departure runs (0 = Sunday); none listed means daily.
+ const runs=(s:any,d:string)=>!Array.isArray(s.days)||!s.days.length||s.days.includes(new Date(d+'T00:00:00Z').getUTCDay());
+ const sortByTime=(list:any[])=>list.slice().sort((a,b)=>String(a.depart).localeCompare(String(b.depart))||String(a.operatorName||a.boat).localeCompare(String(b.operatorName||b.boat)));
+ const arrivals=sortByTime((data?.sailings||[]).filter((s:any)=>route(s,'arrival')&&runs(s,date)));
+ const departures=sortByTime((data?.sailings||[]).filter((s:any)=>route(s,'departure')&&runs(s,date)));
+ const returns=sortByTime((data?.sailings||[]).filter((s:any)=>route(s,'departure')&&runs(s,returnDate)));
+ const label=(s:any)=>s.depart+' · '+(s.operatorName||s.boat)+' · '+money(s.fare)+' adult';
+ useEffect(()=>{const list=trip==='departure'?departures:arrivals;if(!list.some((s:any)=>s.id===outbound))setOutbound(list[0]?.id||'')},[data,trip,date]);
+ useEffect(()=>{if(trip==='return'&&!returns.some((s:any)=>s.id===inbound))setInbound(returns[0]?.id||'')},[data,trip,returnDate]);
  const taken=(id:string,d:string)=>new Set((data?.availability||[]).filter((x:any)=>x.scheduleId===id&&x.date===d).flatMap((x:any)=>x.seats||[]));
  function seatsFor(id:string,d:string){const sailing=(data?.sailings||[]).find((x:any)=>x.id===id);if(!sailing)return [];const used=taken(id,d),need=adults+children,out:number[]=[];for(let i=1;i<=sailing.capacity&&out.length<need;i++)if(!used.has(i))out.push(i);return out.length===need?out:[]}
  const outboundSailing=(data?.sailings||[]).find((x:any)=>x.id===outbound);
@@ -32,16 +37,17 @@ export default function TransferBookingSite(){
   const first=trip==='departure'?departures.find((s:any)=>s.id===outbound):arrivals.find((s:any)=>s.id===outbound);
   const firstSeats=seatsFor(outbound,date);if(!first||!firstSeats.length)throw Error('The selected departure does not have enough seats. Choose another time.');
   journeys.push({scheduleId:first.id,date,seats:firstSeats});
-  if(trip==='return'){const second=departures.find((s:any)=>s.id===inbound),secondSeats=seatsFor(inbound,returnDate);if(!second||!secondSeats.length)throw Error('The selected return departure does not have enough seats. Choose another time.');journeys.push({scheduleId:second.id,date:returnDate,seats:secondSeats});}
+  if(trip==='return'){const second=returns.find((s:any)=>s.id===inbound),secondSeats=seatsFor(inbound,returnDate);if(!second||!secondSeats.length)throw Error('The selected return departure does not have enough seats. Choose another time.');journeys.push({scheduleId:second.id,date:returnDate,seats:secondSeats});}
   const r=await fetch('/api/walkin-transfers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'book',payment:'later',revision:data.revision,token:token.current,name,phone,traveller:'Tourist',adults,children,infants,journeys,expectedTotal,notes})}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not book transfer.');
   const latest=(d.bookings||[]).at(-1);setData(d);setSuccess(latest||{id:'Confirmed'});token.current=crypto.randomUUID();
  }catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  const outboundSeats=outbound?seatsFor(outbound,date).length>0:true;
+ const byOperator=!!outboundSailing?.operatorId||(trip==='return'&&!!inboundSailing?.operatorId);
  if(success)return <section className="nh-transfer-done">
   <CheckCircle2/>
   <p className="nh-kicker">Nirili Transfers</p>
   <h2>Your transfer <em>is booked.</em></h2>
-  <p>Keep this reference handy. Payment is handled by Nirili reception, and you can message us on WhatsApp with any changes.</p>
+  <p>{(success.journeys||[]).some((j:any)=>j.operatorId)?'Your seats are reserved with the speedboat operator, who confirms your boat on WhatsApp before departure. Pay the operator when you board.':'Keep this reference handy. Payment is handled by Nirili reception, and you can message us on WhatsApp with any changes.'}</p>
   <strong>{success.id}</strong>
   <a className="nh-btn nh-btn-primary" href={SITES.main+'/'}>Back to Nirili <ArrowRight/></a>
  </section>;
@@ -59,8 +65,9 @@ export default function TransferBookingSite(){
     <h3>{trip==='return'?'Outbound':'When'}</h3>
     <div className="nh-fields">
      <label><span><CalendarDays/>Travel date</span><input required type="date" min={today()} value={date} onChange={e=>setDate(e.target.value)}/></label>
-     <label><span><ShipWheel/>Departure</span><select required value={outbound} onChange={e=>setOutbound(e.target.value)}>{(trip==='departure'?departures:arrivals).map((s:any)=><option key={s.id} value={s.id}>{s.depart} · {s.boat} · {money(s.fare)} adult</option>)}</select></label>
+     <label><span><ShipWheel/>Departure</span><select required value={outbound} onChange={e=>setOutbound(e.target.value)}>{(trip==='departure'?departures:arrivals).map((s:any)=><option key={s.id} value={s.id}>{label(s)}</option>)}</select></label>
     </div>
+    {!(trip==='departure'?departures:arrivals).length&&<p className="nh-hint">No speedboat departures on this day. Try another date.</p>}
     {!outboundSeats&&<p className="nh-hint">Not enough seats left on this boat for your group. Try another time or date.</p>}
    </div>
 
@@ -68,7 +75,7 @@ export default function TransferBookingSite(){
     <h3>Return</h3>
     <div className="nh-fields">
      <label><span><CalendarDays/>Return date</span><input required type="date" min={date} value={returnDate} onChange={e=>setReturnDate(e.target.value)}/></label>
-     <label><span><ShipWheel/>Return departure</span><select required value={inbound} onChange={e=>setInbound(e.target.value)}>{departures.map((s:any)=><option key={s.id} value={s.id}>{s.depart} · {s.boat} · {money(s.fare)} adult</option>)}</select></label>
+     <label><span><ShipWheel/>Return departure</span><select required value={inbound} onChange={e=>setInbound(e.target.value)}>{returns.map((s:any)=><option key={s.id} value={s.id}>{label(s)}</option>)}</select></label>
     </div>
    </div>}
 
@@ -99,11 +106,12 @@ export default function TransferBookingSite(){
    <dl>
     <div><dt>Route</dt><dd>{trip==='arrival'?'Airport → Dhiffushi':trip==='departure'?'Dhiffushi → Airport':'Return trip'}</dd></div>
     <div><dt>Departure</dt><dd>{outboundSailing?niceDate(date)+' · '+outboundSailing.depart:'Choose a time'}</dd></div>
+    {outboundSailing&&<div><dt>Operator</dt><dd>{outboundSailing.operatorName||outboundSailing.boat}</dd></div>}
     {trip==='return'&&<div><dt>Return</dt><dd>{inboundSailing?niceDate(returnDate)+' · '+inboundSailing.depart:'Choose a time'}</dd></div>}
     <div><dt>Travellers</dt><dd>{adults} adult{adults>1?'s':''}{children?', '+children+' child'+(children>1?'ren':''):''}{infants?', '+infants+' infant'+(infants>1?'s':''):''}</dd></div>
    </dl>
    <div className="nh-fare-total"><span>Estimated total</span><strong>{money(expectedTotal)}</strong></div>
-   <small>Children travel at 50% of the adult fare. Pay at Nirili reception.</small>
+   <small>{byOperator?'Children travel at 50% of the adult fare. Pay the speedboat operator when you board.':'Children travel at 50% of the adult fare. Pay at Nirili reception.'}</small>
   </aside>
  </section>;
 }

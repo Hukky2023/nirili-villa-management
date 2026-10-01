@@ -112,3 +112,4 @@
  .buggy-live-fleet-table .head span:last-child,.buggy-live-fleet-table>button>span:last-child{display:none}
  .buggy-book-cta{align-items:stretch;flex-direction:column}.buggy-book-cta button{justify-content:center}
 }
+.buggy-owner-note{margin:0;padding:6px 10px;border-radius:8px;background:#eef6ff;color:#0b4f7a;font-size:13px;font-weight:600}

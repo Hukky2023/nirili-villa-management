@@ -13,7 +13,7 @@ import {authDb,currentUser,currentGuestUser,hasPermission,sameOrigin,hashPasswor
 import {credentialStatement,mirrorCredentialRecord} from '../../../lib/credential-store';
 import {appendAccountHistory} from '../../../lib/account-history';
 import {loadStays,stayKey,folioFor} from '../../../lib/stays';
-import {activeOnDemandRide} from '../../../lib/buggy-rides';
+import {activeOnDemandRide,houseBuggyFor} from '../../../lib/buggy-rides';
 import {catalog,plans,nightly,islandToday,validDate,excursionDeparturePassed} from '../../../lib/guest-catalog';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
 import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
@@ -167,7 +167,7 @@ else if(b.action==='buggy-request'){
  if(!location||!destination||location.toLowerCase()===destination.toLowerCase())throw Error('Choose different pickup and drop-off points.');
  const now=new Date().toISOString(),fareCents=Math.max(0,Number(state.buggySettings.guestRideFareCents)||0);
  const ride:any={id:'BUG-'+crypto.randomUUID().slice(0,8).toUpperCase(),token:b.token,bookingType:'guest-ride',accountId:u.userId,stayId:s.id,guest:s.guest,phone:s.whatsapp||'',room:s.room,date:today,pickupTime:maldivesClock(),location,destination,quantity,notes,chargeToRoom:true,fareCents,buggyStatus:'Requested',createdAt:now,createdBy:'guest:'+u.userId};
- const buggy=(state.buggyFleet||[]).find((x:any)=>x.status==='Available'&&Math.max(1,Number(x.capacity)||4)>=quantity);
+ const buggy=houseBuggyFor(state,quantity);
  if(buggy){ride.buggyId=buggy.id;ride.buggyDriver=buggy.driver||'';ride.buggyAssignedAt=now;ride.buggyAssignedBy='auto-dispatch';ride.buggyStatus='Assigned';buggy.status='Assigned';buggy.updatedAt=now;buggy.updatedBy='auto-dispatch';state.buggyTripHistory.push({id:'buggy-history-'+crypto.randomUUID(),at:now,type:'Auto assigned',buggyId:buggy.id,buggyName:buggy.name,bookingId:ride.id,guest:s.guest,driver:ride.buggyDriver||'',by:'guest request'});buggyPush={...ride,buggyName:buggy.name,driver:ride.buggyDriver||''};}
  state.buggyBookings.push(ride);state.buggyTripHistory.push({id:'buggy-history-'+crypto.randomUUID(),at:now,type:'Requested',buggyId:ride.buggyId||'',buggyName:buggy?.name||'',bookingId:ride.id,guest:s.guest,driver:ride.buggyDriver||'',by:'Guest'});syncBuggyRideBill(s,ride);s.history??=[];s.history.unshift({date:now,by:'Guest',detail:'Buggy requested · '+location+' → '+destination+(fareCents?' · USD '+(fareCents/100).toFixed(2)+' added to room bill':' · Complimentary / no configured fare')});adminNotice={id:'buggy:new:'+ride.id,type:'buggy',title:'New buggy booking',detail:s.guest+' · Room '+s.room+' · '+location+' → '+destination+' · '+ride.pickupTime,ref:ride.id,url:'/home'};
 }

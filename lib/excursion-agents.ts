@@ -1,5 +1,5 @@
-import {digest,hashPassword,validPassword,verifyPassword} from './auth';
 import {readRecord,readRecords,saveRecord} from './operation-records';
+import {cleanUsername,partnerAuth} from './partner-auth';
 import {walkInExcursionPaidCents} from './walkin-excursion-access';
 
 // Partner Agent Portal. Guest houses on Dhiffushi that do not run excursions send their guests'
@@ -11,7 +11,6 @@ export const USERNAME_PREFIX='excursion-agent-username:';
 export const SESSION_PREFIX='excursion-agent-session:';
 export const AGENT_COOKIE='nirili_agent_session';
 export const AGENT_SOURCE='Agent portal';
-const SESSION_MS=30*24*60*60*1000;
 export const MAX_DISCOUNT_PERCENT=50;
 
 export type Agent={
@@ -24,11 +23,10 @@ export type Agent={
  active:boolean;createdAt:string;updatedAt:string;createdBy:string;
 };
 export type PublicAgent=Omit<Agent,'passwordHash'|'salt'|'passwordVersion'>;
-type Session={agentId:string;passwordVersion:number;expiresAt:number;createdAt:string;revoked?:boolean};
 
 export const text=(value:any,max:number)=>String(value??'').trim().replace(/\s+/g,' ').slice(0,max);
 const cleanPhone=(value:any)=>String(value||'').replace(/[\s()-]/g,'');
-const PHONE=/^\+[1-9]\d{7,14}$/,EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/,USERNAME=/^[a-z0-9._-]{3,40}$/;
+const PHONE=/^\+[1-9]\d{7,14}$/,EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function publicAgent(agent:Agent):PublicAgent{
  const {passwordHash,salt,passwordVersion,...rest}=agent;
@@ -63,14 +61,11 @@ export async function loadAgent(id:string){
 
 export async function createAgent(input:any,by:string):Promise<Agent>{
  const details=cleanAgentDetails(input);
- const username=text(input?.username,40).toLowerCase();
- if(!USERNAME.test(username))throw Error('Choose a username of 3–40 letters, numbers, dots, dashes or underscores.');
- if(!validPassword(input?.password))throw Error('Choose a password of 8–128 characters.');
+ const username=cleanUsername(input?.username);
  const id='AG-'+crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase(),now=new Date().toISOString();
- // The username record is created only if absent, so two partners can never share a login.
- if(!await saveRecord(USERNAME_PREFIX+username,{agentId:id},0,by))throw Error('That username is already in use.');
- const {hash,salt}=await hashPassword(input.password);
- const agent:Agent={id,...details,username,passwordHash:hash,salt,passwordVersion:1,createdAt:now,updatedAt:now,createdBy:by};
+ const secret=await auth.credentials(input?.password);
+ if(!await auth.reserveUsername(username,id,by))throw Error('That username is already in use.');
+ const agent:Agent={id,...details,username,...secret,passwordVersion:1,createdAt:now,updatedAt:now,createdBy:by};
  if(!await saveRecord(AGENT_PREFIX+id,agent,0,by))throw Error('Could not save the agent. Please try again.');
  return agent;
 }
@@ -82,57 +77,22 @@ export async function updateAgent(id:string,revision:number,input:any,by:string)
  if(current.revision!==revision)return 'conflict';
  const agent:Agent={...current.agent,...cleanAgentDetails({...current.agent,...input}),updatedAt:new Date().toISOString()};
  if(input?.password!==undefined&&input.password!==''){
-  if(!validPassword(input.password))throw Error('Choose a password of 8–128 characters.');
-  const {hash,salt}=await hashPassword(input.password);
-  agent.passwordHash=hash;agent.salt=salt;agent.passwordVersion=(Number(agent.passwordVersion)||1)+1;
+  Object.assign(agent,await auth.credentials(input.password));agent.passwordVersion=(Number(agent.passwordVersion)||1)+1;
  }
  const next=await saveRecord(AGENT_PREFIX+id,agent,revision,by);
  return next?{agent,revision:next}:'conflict';
 }
 
-// ---- Sessions
-function randomToken(){return Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');}
-function readCookie(request:Request,name:string){
- for(const part of (request.headers.get('cookie')||'').split(';')){
-  const [key,...value]=part.trim().split('=');
-  if(key===name)return value.join('=');
- }
- return '';
-}
-export const sessionCookie=(token:string)=>AGENT_COOKIE+'='+token+'; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age='+Math.floor(SESSION_MS/1000);
-export const clearedSessionCookie=AGENT_COOKIE+'=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0';
-
+// ---- Sessions: shared partner login system (lib/partner-auth.ts) with the agent records.
+const auth=partnerAuth<Agent>({accountPrefix:AGENT_PREFIX,usernamePrefix:USERNAME_PREFIX,sessionPrefix:SESSION_PREFIX,cookie:AGENT_COOKIE});
+export const sessionCookie=auth.sessionCookie;
+export const clearedSessionCookie=auth.clearedCookie;
 export async function signIn(username:string,password:string):Promise<{agent:Agent;cookie:string}|null>{
- const login=text(username,40).toLowerCase();
- if(!USERNAME.test(login)||typeof password!=='string'||!password||password.length>128)return null;
- const index=await readRecord<{agentId:string}>(USERNAME_PREFIX+login);
- const found=index?await loadAgent(index.value.agentId):null;
- const agent=found?.agent;
- // Always run the hash so unknown usernames take as long as wrong passwords.
- const match=await verifyPassword(password,agent?.salt||'00000000000000000000000000000000',agent?.passwordHash||'0'.repeat(64));
- if(!agent||!match||!agent.active||agent.username!==login)return null;
- const token=randomToken();
- const session:Session={agentId:agent.id,passwordVersion:Number(agent.passwordVersion)||1,expiresAt:Date.now()+SESSION_MS,createdAt:new Date().toISOString()};
- if(!await saveRecord(SESSION_PREFIX+await digest(token),session,0,'agent:'+agent.id))return null;
- return {agent,cookie:sessionCookie(token)};
+ const result=await auth.signIn(username,password);
+ return result?{agent:result.account,cookie:result.cookie}:null;
 }
-
-export async function agentFromRequest(request:Request):Promise<Agent|null>{
- const token=readCookie(request,AGENT_COOKIE);
- if(!/^[a-f0-9]{64}$/.test(token))return null;
- const session=await readRecord<Session>(SESSION_PREFIX+await digest(token));
- if(!session||session.value.revoked||session.value.expiresAt<Date.now())return null;
- const found=await loadAgent(session.value.agentId);
- if(!found||!found.agent.active||(Number(found.agent.passwordVersion)||1)!==session.value.passwordVersion)return null;
- return found.agent;
-}
-
-export async function signOut(request:Request){
- const token=readCookie(request,AGENT_COOKIE);
- if(!/^[a-f0-9]{64}$/.test(token))return;
- const key=SESSION_PREFIX+await digest(token),session=await readRecord<Session>(key);
- if(session&&!session.value.revoked)await saveRecord(key,{...session.value,revoked:true},session.revision,'agent:'+session.value.agentId);
-}
+export const agentFromRequest=auth.fromRequest;
+export const signOut=auth.signOut;
 
 // ---- Bookings
 const cancelled=(order:any)=>order.status==='Cancelled'||order.approvalStatus==='Cancelled'||order.approvalStatus==='Declined';

@@ -6,6 +6,7 @@ import {isOnDemandRide,isPublicRide} from '../../../lib/buggy-rides';
 import {isRomanticBeachDinner} from '../../../lib/excursion-services';
 import {sendGuestPushForRide} from '../../../lib/web-push';
 
+const owner=(buggy:any)=>String(buggy?.ownerName||'an independent owner');
 const fleetStatuses=['Available','Assigned','Charging','Maintenance','Out of Service'] as const;
 const clean=(value:any,max=120)=>String(value||'').trim().slice(0,max);
 const allowed=async()=>{const user=await currentUser();return {user,ok:!!user&&(user.role==='admin'||hasPermission(user,'guesthouse_reception'))};};
@@ -33,7 +34,7 @@ function assignmentConflict(state:any,id:string,buggyId:string,date:string,picku
 }
 function normalizedFleet(state:any){
  state.buggyFleet??=[];
- return state.buggyFleet.map((b:any)=>({id:b.id,name:b.name,capacity:Number(b.capacity)||4,status:fleetStatuses.includes(b.status)?b.status:'Available',driver:b.driver||'',driverPhone:b.driverPhone||'',battery:b.battery===''||b.battery==null?null:Math.max(0,Math.min(100,Number(b.battery)||0)),trackerProvider:b.trackerProvider||'',trackerId:b.trackerId||'',lastLatitude:Number.isFinite(Number(b.lastLatitude))?Number(b.lastLatitude):null,lastLongitude:Number.isFinite(Number(b.lastLongitude))?Number(b.lastLongitude):null,lastLocationAt:b.lastLocationAt||'',maintenanceDue:b.maintenanceDue||'',notes:b.notes||''}));
+ return state.buggyFleet.map((b:any)=>({ownerId:b.ownerId||'',ownerName:b.ownerName||'',id:b.id,name:b.name,capacity:Number(b.capacity)||4,status:fleetStatuses.includes(b.status)?b.status:'Available',driver:b.driver||'',driverPhone:b.driverPhone||'',battery:b.battery===''||b.battery==null?null:Math.max(0,Math.min(100,Number(b.battery)||0)),trackerProvider:b.trackerProvider||'',trackerId:b.trackerId||'',lastLatitude:Number.isFinite(Number(b.lastLatitude))?Number(b.lastLatitude):null,lastLongitude:Number.isFinite(Number(b.lastLongitude))?Number(b.lastLongitude):null,lastLocationAt:b.lastLocationAt||'',maintenanceDue:b.maintenanceDue||'',notes:b.notes||''}));
 }
 function dispatchesFor(state:any,date?:string){
  const excursions=(state.orders||[]).filter((o:any)=>confirmed(o)&&(!!o.stayId||o.buggyRequested===true)&&(!date||(o.date||o.schedule?.date)===date)).map((o:any)=>dispatchFor(o,state));
@@ -57,6 +58,10 @@ export async function POST(r:Request){
  try{
   const body=await r.json(),action=clean(body.action,40),{state,revision}=await loadStays();state.buggyFleet??=[];state.buggyMaintenance??=[];state.buggyTripHistory??=[];state.buggyBookings??=[];state.buggySettings??={guestRideFareCents:0};
   const actor=user?.username||user?.displayName||'management',now=new Date().toISOString();let pushRide:any=null;
+  // Buggies registered by independent owners are managed by their owner in the operator portal.
+  const ownerBuggy=(id:any)=>(state.buggyFleet||[]).find((x:any)=>x.id===clean(id,100)&&x.ownerId);
+  const owned=['save-buggy','delete-buggy','set-status','maintenance'].includes(action)?ownerBuggy(body.id||body.buggyId):action==='assign'?ownerBuggy(body.buggyId):null;
+  if(owned)throw Error(owned.name+' belongs to '+(owner(owned))+'. The owner manages it and accepts rides in the operator portal.');
   if(action==='save-settings'){
    if(user?.role!=='admin')throw Error('Only Admin can change buggy pricing.');
    const fareCents=Math.max(0,Math.min(100000,Math.round(Number(body.guestRideFareCents)||0)));

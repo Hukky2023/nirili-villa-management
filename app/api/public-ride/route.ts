@@ -3,7 +3,7 @@ import {loadStays} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {islandToday} from '../../../lib/guest-catalog';
 import {emitAdminNotification} from '../../../lib/admin-notifications';
-import {PUBLIC_RIDE,activeOnDemandRide} from '../../../lib/buggy-rides';
+import {PUBLIC_RIDE,activeOnDemandRide,addPublicRide} from '../../../lib/buggy-rides';
 
 // Nirili Ride for everyone (ride.nirilihotels.com). Requests join the same buggy dispatch as
 // in-house guest rides; there is no room bill, so the fare is paid to the driver.
@@ -68,20 +68,10 @@ export async function POST(request:Request){
    if(repeat)return Response.json({ride:publicView(state,repeat),key:repeat.rideKey},{headers});
    if(state.buggyBookings.some((x:any)=>x.bookingType===PUBLIC_RIDE&&x.phone===phone&&activeOnDemandRide(x)))throw Error('This number already has an active ride. Follow it on this page or message us on WhatsApp.');
 
-   const now=new Date().toISOString(),rideKey=Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
-   const ride:any={id:'BUG-'+crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase(),token,rideKey,bookingType:PUBLIC_RIDE,guest:name,phone,room:'',date:islandToday(),pickupTime:maldivesClock(),location,destination,quantity,notes,chargeToRoom:false,fareCents:fareFor(state),buggyStatus:'Requested',createdAt:now,createdBy:'public:ride.nirilihotels.com'};
-   // Same auto-dispatch as in-house guest rides.
-   const buggy=state.buggyFleet.find((x:any)=>x.status==='Available'&&Math.max(1,Number(x.capacity)||4)>=quantity);
-   if(buggy){
-    Object.assign(ride,{buggyId:buggy.id,buggyDriver:buggy.driver||'',buggyAssignedAt:now,buggyAssignedBy:'auto-dispatch',buggyStatus:'Assigned'});
-    Object.assign(buggy,{status:'Assigned',updatedAt:now,updatedBy:'auto-dispatch'});
-    state.buggyTripHistory.push({id:'buggy-history-'+crypto.randomUUID(),at:now,type:'Auto assigned',buggyId:buggy.id,buggyName:buggy.name,bookingId:ride.id,guest:name,driver:ride.buggyDriver,by:'Nirili Ride request'});
-   }
-   state.buggyBookings.push(ride);
-   state.buggyTripHistory.push({id:'buggy-history-'+crypto.randomUUID(),at:now,type:'Requested',buggyId:ride.buggyId||'',buggyName:buggy?.name||'',bookingId:ride.id,guest:name,driver:ride.buggyDriver||'',by:'Nirili Ride'});
+   const ride=addPublicRide(state,{token,name,phone,location,destination,quantity,notes,date:islandToday(),pickupTime:maldivesClock(),fareCents:fareFor(state),createdBy:'public:ride.nirilihotels.com'});
    if(!await saveStayAccess(state,revision,'public-ride'))continue;
    try{await emitAdminNotification({id:'buggy:new:'+ride.id,type:'buggy',title:'New Nirili Ride request',detail:name+' · '+phone+' · '+location+' → '+destination+' · '+ride.pickupTime,ref:ride.id,url:'/home'});}catch{}
-   return Response.json({ride:publicView(state,ride),key:rideKey},{headers});
+   return Response.json({ride:publicView(state,ride),key:ride.rideKey},{headers});
   }
   return Response.json({error:'Dispatch is busy right now. Please try again.'},{status:409,headers});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not request a ride.'},{status:400,headers});}

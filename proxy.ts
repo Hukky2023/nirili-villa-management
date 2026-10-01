@@ -11,7 +11,7 @@ function cache(response:NextResponse,value:string){
 }
 
 // Each public service has its own subdomain, which serves the service's page at "/".
-type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'watersports'|'agents'|'my';
+type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'watersports'|'agents'|'operators'|'my';
 const SERVICE_HOME:Record<Exclude<Service,'stay'>,string>={
  tours:'/book/excursions',
  dine:'/book/restaurant',
@@ -19,6 +19,7 @@ const SERVICE_HOME:Record<Exclude<Service,'stay'>,string>={
  ride:'/book/ride',
  watersports:'/book/water-sports',
  agents:'/book/agents',
+ operators:'/operators',
  my:'/stay',
 };
 const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
@@ -28,6 +29,7 @@ const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
  [HOSTS.ride]:'ride',
  [HOSTS.watersports]:'watersports',
  [HOSTS.agents]:'agents',
+ [HOSTS.operators]:'operators',
  [HOSTS.my]:'my',
 };
 
@@ -79,13 +81,16 @@ function staySiteResponse(url:URL){
 }
 
 // The partner Agent Portal APIs are served only on the agents host.
-const agentApi=new Set(['/api/agent-portal/session','/api/agent-portal/bookings']);
+const agentApi=new Set(['/api/agent-portal/session','/api/agent-portal/bookings','/api/agent-portal/travel']);
+// Operator portal APIs are served only on the operators host.
+const operatorApi=new Set(['/api/operator-portal/session','/api/operator-portal/speedboats','/api/operator-portal/buggy']);
 
 function serviceSiteResponse(url:URL,service:Exclude<Service,'stay'>){
  if(service==='agents'&&agentApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);
+ if(service==='operators'&&operatorApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);
  const api=guestApiResponse(url);
  if(api)return api;
- const home=SERVICE_HOME[service],pageCache=service==='my'||service==='agents'?PRIVATE:PUBLIC;
+ const home=SERVICE_HOME[service],pageCache=service==='my'||service==='agents'||service==='operators'?PRIVATE:PUBLIC;
 
  if(url.pathname==='/'){
   url.pathname=home;
@@ -137,6 +142,7 @@ const SHORTCUTS:Record<string,string>={
  '/ride':SITES.ride,'/buggy':SITES.ride,
  '/watersports':SITES.watersports,'/water-sports':SITES.watersports,
  '/agents':SITES.agents,'/partners':SITES.agents,
+ '/operators':SITES.operators,
  '/my':SITES.my,'/guest':SITES.my,
 };
 

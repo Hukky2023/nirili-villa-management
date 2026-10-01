@@ -96,3 +96,9 @@
  .nh-agent-guest select,.nh-agent-guest .nh-agent-feet{grid-column:2}
  .nh-agent-login{padding:28px 22px}
 }
+
+/* Transfers and buggy rides for partners */
+.nh-agent-travel{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start}
+.nh-agent-travel .nh-agent-travel-list{grid-column:1/-1}
+.nh-agent-travel .nh-agent-tabs{margin-bottom:4px}
+@media(max-width:1000px){.nh-agent-travel{grid-template-columns:1fr}.nh-agent-travel .nh-fare{position:static}}

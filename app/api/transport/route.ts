@@ -4,18 +4,18 @@ import {loadStays,stayKey} from '../../../lib/stays';
 import {canTransport,isTransportAgent,transportRole} from '../../../lib/transport-access';
 import {authDb,currentUser,currentGuestUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {restaurantOnly} from '../../../lib/pos-access';
-import {createTransfer,initialTransport,TransportState,Sailing} from '../../../lib/transport';
+import {createTransfer,initialTransport,journeyFor,journeyLive,normalizeTransport,runsOn,TransportState,Sailing} from '../../../lib/transport';
 import {minutes,syncTransportBuggy} from '../../../lib/transport-plan';
 import {syncTransportPlanBill} from '../../../lib/transport-plan-billing';
 import {sendTransportScheduleEmail} from '../../../lib/booking-email';
 import {mirrorTransportState,mirrorHotelState,mirrorOperationalRecord,readOperationalRecordPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 const key='transport-bookings-v1';
 async function transportUser(){return (await currentUser())||(await currentGuestUser());}
-async function load(){const row=await authDb().prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(key).first<any>();return {state:row?JSON.parse(row.payload) as TransportState:initialTransport(),revision:row?.revision||0};}
+async function load(){const row=await authDb().prepare('SELECT payload,revision FROM operation_records WHERE key=?').bind(key).first<any>();return {state:normalizeTransport(row?JSON.parse(row.payload):initialTransport()),revision:row?.revision||0};}
 async function loadForRead(){
  try{
   const row=await readOperationalRecordPrimary(key);
-  if(row)return {state:(row.payload||initialTransport()) as TransportState,revision:Number(row.revision)||0};
+  if(row)return {state:normalizeTransport(row.payload||initialTransport()),revision:Number(row.revision)||0};
  }catch{}
  return load();
 }
@@ -37,7 +37,7 @@ function canonicalLocation(value:any){
  return raw;
 }
 function bookedPax(state:TransportState,scheduleId:string,date:string,excludeId=''){
- return state.bookings.filter(b=>b.id!==excludeId&&b.status!=='Cancelled'&&b.journeys.some(j=>j.scheduleId===scheduleId&&j.date===date)).reduce((sum,b)=>sum+b.adults+b.children+b.infants,0);
+ return state.bookings.filter(b=>b.id!==excludeId&&b.journeys.some(j=>journeyLive(b,j)&&j.scheduleId===scheduleId&&j.date===date)).reduce((sum,b)=>sum+b.adults+b.children+b.infants,0);
 }
 function planRows(state:TransportState,hotelState:any){
  const rows:any[]=[];
@@ -57,7 +57,8 @@ function planRows(state:TransportState,hotelState:any){
     else if(leg==='departure'&&flight!=null)recommended=[...eligible].reverse().find(s=>(minutes(s.arrive)??1440)<=flight-120);
     else recommended=leg==='arrival'?eligible[0]:eligible[eligible.length-1];
    }
-   rows.push({stayId:stay.id,leg,guest:stay.guest,phone:stay.whatsapp||'',room:stay.room||'',pax,adults:Number(stay.adults??stay.pax??1),children:Number(stay.children??0),date,needTransfer:plan.needTransfer||'later',from,to,flightNumber:plan.flightNumber||'',flightTime:plan.flightTime||'',ownTransport:plan.ownTransport||'',ownTime:leg==='arrival'?plan.dhiffushiArrivalTime||'':plan.ownDepartureTime||'',status:plan.status||'',launch:plan.launch||null,transportBookingId:plan.transportBookingId||'',needsReview:!!plan.needsReview,billing:plan.billing||null,roomChargeCents:linkedBill?.status==='Cancelled'?0:Number(linkedBill?.cents??plan.billing?.cents??0),roomBaseCents:Number(linkedBill?.baseCents??plan.billing?.baseCents??0),recommendedScheduleId:recommended?.id||'',eligibleScheduleIds:eligible.map(s=>s.id)});
+   const ticket=state.bookings.find(b=>b.id===plan.transportBookingId)?.journeys?.[0];
+   rows.push({operatorName:ticket?.operatorName||'',operatorStatus:ticket?.operatorStatus||'',boatName:ticket?.boatName||'',declineReason:ticket?.declineReason||'',stayId:stay.id,leg,guest:stay.guest,phone:stay.whatsapp||'',room:stay.room||'',pax,adults:Number(stay.adults??stay.pax??1),children:Number(stay.children??0),date,needTransfer:plan.needTransfer||'later',from,to,flightNumber:plan.flightNumber||'',flightTime:plan.flightTime||'',ownTransport:plan.ownTransport||'',ownTime:leg==='arrival'?plan.dhiffushiArrivalTime||'':plan.ownDepartureTime||'',status:plan.status||'',launch:plan.launch||null,transportBookingId:plan.transportBookingId||'',needsReview:!!plan.needsReview,billing:plan.billing||null,roomChargeCents:linkedBill?.status==='Cancelled'?0:Number(linkedBill?.cents??plan.billing?.cents??0),roomBaseCents:Number(linkedBill?.baseCents??plan.billing?.baseCents??0),recommendedScheduleId:recommended?.id||'',eligibleScheduleIds:eligible.map(s=>s.id)});
   }
  }
  return rows.sort((a,b)=>a.date.localeCompare(b.date)||a.leg.localeCompare(b.leg)||String(a.guest).localeCompare(String(b.guest)));
@@ -67,7 +68,7 @@ async function visible(state:TransportState,revision:number,u:any){
  const eligible=u.role==='guest'&&!isTransportAgent(u)?hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&s.checkOut>=new Date(Date.now()+5*3600000).toISOString().slice(0,10)):[];
  const ownRoom=eligible.length===1?{id:eligible[0].id,room:eligible[0].room,checkIn:eligible[0].checkIn,checkOut:eligible[0].checkOut}:null;
  const guestStays=u.role==='admin'?(hotel.state.stays||[]).filter((s:any)=>['Confirmed','In House'].includes(String(s.status||''))).map((s:any)=>({id:s.id,guest:s.guest,room:s.room,phone:s.whatsapp||'',email:s.email||'',checkIn:s.checkIn,checkOut:s.checkOut,pax:Number(s.pax)||1,adults:Number(s.adults??s.pax??1),children:Number(s.children??0),transportPlan:s.transportPlan||null})):[];
- return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,guestStays,transportPlans:canEdit?planRows(state,hotel.state):[],sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.filter(b=>b.status!=='Cancelled').flatMap(b=>b.journeys.map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };
+ return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,guestStays,transportPlans:canEdit?planRows(state,hotel.state):[],sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.flatMap(b=>b.journeys.filter(j=>journeyLive(b,j)).map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };
 }
 export async function GET(){const u=await transportUser();if(!u||!canTransport(u))return Response.json({error:'Sign in to access transfers.'},{status:403});try{const {state,revision}=await loadForRead();return Response.json(await visible(state,revision,u),{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Unable to load transfers. Please retry.'},{status:503});}}
 export async function POST(r:Request){const u=await transportUser();if(!u||!canTransport(u)||!sameOrigin(r))return Response.json({error:'Not allowed.'},{status:403});try{
@@ -87,9 +88,9 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   if(Date.parse(date+'T'+sailing.depart+':00+05:00')<=Date.now())throw Error('Choose a future launch departure.');
   const oldId=String(plan.transportBookingId||plan.previousTransportBookingId||''),old=oldId?state.bookings.find(item=>item.id===oldId):undefined,wasScheduled=!!old&&!!plan.launch;
   const adults=Math.max(1,Number(stay.adults??stay.pax??1)),children=Math.max(0,Number(stay.children??0)),infants=0,seatCount=adults+children;
-  const used=state.bookings.filter(item=>item.id!==oldId&&item.status!=='Cancelled').flatMap(item=>item.journeys.filter(j=>j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
+  const used=state.bookings.filter(item=>item.id!==oldId).flatMap(item=>item.journeys.filter(j=>journeyLive(item,j)&&j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
   const seats=Array.from({length:sailing.capacity},(_,i)=>i+1).filter(n=>!used.includes(n)).slice(0,seatCount);if(seats.length!==seatCount)throw Error('This launch no longer has enough seats. Choose another departure.');
-  const journey={scheduleId:sailing.id,date,seats,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,fare:sailing.fare},total=sailing.fare*adults+Math.round(sailing.fare/2)*children,now=new Date().toISOString();
+  const journey=journeyFor(sailing,date,seats),total=sailing.fare*adults+Math.round(sailing.fare/2)*children,now=new Date().toISOString();
   const booking:any=old||{id:'NT-'+crypto.randomUUID().slice(0,8).toUpperCase(),token:crypto.randomUUID(),owner:'stay:'+stay.id,created:now,paid:false};
   Object.assign(booking,{name:stay.guest,phone:stay.whatsapp||'',traveller:'Tourist',adults,children,infants,journeys:[journey],total,status:'Confirmed',checked:[],notes:'Room transport plan · '+leg+(plan.flightNumber?' · Flight '+plan.flightNumber:'')+(plan.flightTime?' · '+plan.flightTime:''),stayId:stay.id,room:stay.room,transportPlanLeg:leg});
   if(!old)state.bookings.push(booking);
@@ -113,11 +114,11 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   const adults=Math.max(1,Number(stay.adults??stay.pax??1)),children=Math.max(0,Number(stay.children??0)),infants=0,seatCount=adults+children;
   const requestedSeats=Array.isArray(b.seats)?b.seats.map(Number):[];
   if(requestedSeats.length!==seatCount||new Set(requestedSeats).size!==seatCount||requestedSeats.some((n:number)=>!Number.isInteger(n)||n<1||n>sailing.capacity))throw Error('Select one valid seat for every adult and child.');
-  const used=state.bookings.filter(item=>item.id!==oldId&&item.status!=='Cancelled').flatMap(item=>item.journeys.filter(j=>j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
+  const used=state.bookings.filter(item=>item.id!==oldId).flatMap(item=>item.journeys.filter(j=>journeyLive(item,j)&&j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
   if(requestedSeats.some((n:number)=>used.includes(n)))throw Error('One or more selected seats were just booked. Choose available seats.');
   const free=b.free===true,discountPercent=Math.max(0,Math.min(100,Number(b.discountPercent)||0));let priceCents:any=undefined;
   if(b.priceCents!==undefined&&b.priceCents!==null&&b.priceCents!==''){const value=Number(b.priceCents);if(!Number.isInteger(value)||value<0||value>1000000)throw Error('Enter a valid custom USD total.');priceCents=value;}
-  const now=new Date().toISOString(),journey={scheduleId:sailing.id,date,seats:requestedSeats,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,fare:sailing.fare},total=sailing.fare*adults+Math.round(sailing.fare/2)*children;
+  const now=new Date().toISOString(),journey=journeyFor(sailing,date,requestedSeats),total=sailing.fare*adults+Math.round(sailing.fare/2)*children;
   const booking:any=old||{id:'NT-'+crypto.randomUUID().slice(0,8).toUpperCase(),token:crypto.randomUUID(),owner:'stay:'+stay.id,created:now,paid:false};
   Object.assign(booking,{name:stay.guest,phone:stay.whatsapp||'',traveller:'Tourist',adults,children,infants,journeys:[journey],total,status:'Confirmed',checked:[],notes:'Admin manual room transfer · '+leg,stayId:stay.id,room:stay.room,transportPlanLeg:leg});
   if(!old)state.bookings.push(booking);
@@ -166,8 +167,11 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
  if(!s||['boat','from','to'].some(k=>typeof s[k]!=='string'||!s[k].trim()||s[k].length>100)||s.from===s.to||!['depart','arrive'].every(k=>/^([01]\d|2[0-3]):[0-5]\d$/.test(s[k]))||s.arrive<=s.depart||!Number.isInteger(s.capacity)||s.capacity<1||s.capacity>100||!Number.isInteger(s.fare)||s.fare<0||s.fare>10000000||typeof s.active!=='boolean')throw Error('Check route, same-day departure and arrival times, fare and capacity.');
  if(s.roomFare!==undefined&&(!Number.isInteger(s.roomFare)||s.roomFare<0||s.roomFare>10000000))throw Error('Enter a valid USD room fare.');
  const previous=state.sailings.find(x=>x.id===s.id);if(s.id&&!previous)throw Error('Departure not found.');
+ // Operator departures belong to the speedboat operator; staff may only take one off sale.
+ if(previous?.operatorId){if(['boat','from','to','depart','arrive','capacity','fare','roomFare'].some(k=>previous[k as keyof Sailing]!==s[k]))throw Error('This departure belongs to '+(previous.operatorName||'an operator')+'. They manage its times, fares and seats in the operator portal; staff can only take it off sale.');state.sailings=state.sailings.map(x=>x.id===s.id?{...x,active:s.active}:x);}
+ else{
  if(previous&&state.bookings.some(x=>x.status!=='Cancelled'&&x.journeys.some(j=>j.scheduleId===s.id&&Date.parse(j.date+'T'+j.depart+':00+05:00')>Date.now()))&&['boat','from','to','depart','arrive','capacity'].some(k=>previous[k as keyof Sailing]!==s[k]))throw Error('This departure has future bookings. Create a new schedule to change its route, time, boat or capacity.');
- const sailing:Sailing={id:previous?.id||crypto.randomUUID(),boat:s.boat.trim(),from:s.from.trim(),to:s.to.trim(),depart:s.depart,arrive:s.arrive,capacity:s.capacity,fare:s.fare,roomFare:s.roomFare,active:s.active};state.sailings=previous?state.sailings.map(x=>x.id===s.id?sailing:x):[...state.sailings,sailing];
+ const sailing:Sailing={id:previous?.id||crypto.randomUUID(),boat:s.boat.trim(),from:s.from.trim(),to:s.to.trim(),depart:s.depart,arrive:s.arrive,capacity:s.capacity,fare:s.fare,roomFare:s.roomFare,active:s.active};state.sailings=previous?state.sailings.map(x=>x.id===s.id?sailing:x):[...state.sailings,sailing];}
  }else if(b.action==='status'){
  if(!canEdit)return Response.json({error:'Transfer editing permission required.'},{status:403});const booking=state.bookings.find(x=>x.id===b.id);if(!booking)throw Error('Booking not found.');
  if(booking.stayId&&Number.isInteger(booking.roomCents)&&['cancel','paid'].includes(b.operation))throw Error('This ticket is charged to a room. Manage payment through the guest room bill; contact Admin for cancellation.');

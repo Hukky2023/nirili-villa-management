@@ -11,6 +11,8 @@ export const HOSTS={
  watersports:'watersports.nirilihotels.com',
  // Partner guest houses send excursion bookings through the Agent Portal.
  agents:'agents.nirilihotels.com',
+ // Speedboat operators and buggy owners run Nirili Travels trips from the operator portal.
+ operators:'operators.nirilihotels.com',
  my:'my.nirilihotels.com',
  // Retired public address. Old links, emails and printed QR codes are forwarded from here.
  booking:'booking.nirilihotels.com',
@@ -34,6 +36,7 @@ export const SITES={
  ride:origin(HOSTS.ride),
  watersports:origin(HOSTS.watersports),
  agents:origin(HOSTS.agents),
+ operators:origin(HOSTS.operators),
  my:origin(HOSTS.my),
 } as const;
 

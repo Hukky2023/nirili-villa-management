@@ -83,6 +83,8 @@ jobs:
         run: node --test tests/find-booking.test.mjs
       - name: Guest website translation regression tests
         run: node --test tests/site-i18n.test.mjs
+      - name: Nirili Travels marketplace regression tests
+        run: node --test tests/travel-marketplace.test.mjs
       - name: Booking.com channel import regression tests
         run: node --test tests/booking-com-channel.test.mjs
       - name: Build production worker

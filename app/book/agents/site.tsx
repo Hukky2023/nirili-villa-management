@@ -1,7 +1,8 @@
 'use client';
 
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {ArrowRight,CalendarDays,CheckCircle2,ClipboardList,LogOut,MapPin,MessageCircle,Plus,Ship,Trash2,X} from 'lucide-react';
+import {ArrowRight,CalendarDays,Car,CheckCircle2,ClipboardList,LogOut,MapPin,MessageCircle,Plus,Ship,ShipWheel,Trash2,X} from 'lucide-react';
+import {Rides,Transfers,useTravel} from './travel';
 import {WHATSAPP} from '../../hotel/chrome';
 
 type Agent={id:string;name:string;contactName:string;pickup:string;discountPercent:number;autoConfirm:boolean};
@@ -28,11 +29,16 @@ function voucher(b:{ref:string;excursion:string;date:string;time?:string;pickup?
  return ['Your excursion with Nirili Tours','',b.excursion,niceDate(b.date)+(b.time?' · departure '+b.time+' (Maldives time)':' · departure time to be confirmed'),
   b.guests+' guest'+(b.guests===1?'':'s')+(b.pickup?' · pickup: '+b.pickup:''),'Reference: '+b.ref,'','Booked by '+agent.name+'. Please be ready 10 minutes before departure.'].join('\n');
 }
+// Transfers and buggy rides load their own data when opened.
+function Travel({kind,pickup}:{kind:'transfers'|'rides';pickup:string}){
+ const travel=useTravel();
+ return <>{travel.error&&<p className="nh-error" role="alert">{travel.error}</p>}{!travel.data?<p className="nh-exc-none">Loading…</p>:kind==='transfers'?<Transfers travel={travel} pickup={pickup}/>:<Rides travel={travel} pickup={pickup}/>}</>;
+}
 const waLink=(phone:string,message:string)=>'https://wa.me/'+phone.replace(/\D/g,'')+'?text='+encodeURIComponent(message);
 
 export default function AgentPortal(){
  const [agent,setAgent]=useState<Agent|null|undefined>(undefined);
- const [tab,setTab]=useState<'book'|'bookings'>('book');
+ const [tab,setTab]=useState<'book'|'bookings'|'transfers'|'rides'>('book');
  const [items,setItems]=useState<Item[]>([]),[today,setToday]=useState(''),[surcharge,setSurcharge]=useState(0),[bookings,setBookings]=useState<Booking[]>([]);
  const [loadError,setLoadError]=useState('');
 
@@ -65,11 +71,14 @@ export default function AgentPortal(){
   <div className="nh-agent-tabs" role="group" aria-label="Portal section">
    <button type="button" aria-pressed={tab==='book'} onClick={()=>setTab('book')}><Plus size={16}/>New booking</button>
    <button type="button" aria-pressed={tab==='bookings'} onClick={()=>{setTab('bookings');void load();}}><ClipboardList size={16}/>My bookings{open>0&&<b>{open}</b>}</button>
+   <button type="button" aria-pressed={tab==='transfers'} onClick={()=>setTab('transfers')}><ShipWheel size={16}/>Transfers</button>
+   <button type="button" aria-pressed={tab==='rides'} onClick={()=>setTab('rides')}><Car size={16}/>Buggy</button>
   </div>
   {loadError&&<p className="nh-error" role="alert">{loadError}</p>}
   {tab==='book'
    ?<BookingForm agent={agent} items={items} today={today} surcharge={surcharge} onBooked={()=>void load()} onViewBookings={()=>setTab('bookings')}/>
-   :<Bookings agent={agent} bookings={bookings} today={today} onChanged={list=>setBookings(list)}/>}
+   :tab==='bookings'?<Bookings agent={agent} bookings={bookings} today={today} onChanged={list=>setBookings(list)}/>
+   :<Travel kind={tab} pickup={agent.pickup}/>}
  </section>;
 }
 
