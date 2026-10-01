@@ -1527,11 +1527,13 @@ export async function runBookingComCertificationScenario(scenario:number){
         );
         const seasonal=(month>=11||month<=3)?35:month>=6&&month<=8?18:0;
         const weekend=[5,6].includes(new Date(date+'T00:00:00Z').getUTCDay())?20:0;
+        // Full sync must carry every declared restriction on every object, not just the one that varies.
+        const full=(o:any)=>({max_stay:0,closed_to_arrival:false,closed_to_departure:false,stop_sell:false,...o});
         restrictions.push(
-          {property_id:propertyId,rate_plan_id:ids.twinBarId,date,rate:String(100+seasonal+weekend+(day%9)),min_stay_arrival:day%17===0?2:1,stop_sell:day%113===0},
-          {property_id:propertyId,rate_plan_id:ids.twinBbId,date,rate:String(120+seasonal+weekend+(day%7)),min_stay_arrival:day%19===0?2:1,closed_to_arrival:day%127===0},
-          {property_id:propertyId,rate_plan_id:ids.doubleBarId,date,rate:String(105+seasonal+weekend+(day%11)),min_stay_arrival:day%23===0?3:1,closed_to_departure:day%131===0},
-          {property_id:propertyId,rate_plan_id:ids.doubleBbId,date,rate:String(125+seasonal+weekend+(day%5)),min_stay_arrival:day%29===0?2:1,max_stay:day%97===0?7:0}
+          full({property_id:propertyId,rate_plan_id:ids.twinBarId,date,rate:String(100+seasonal+weekend+(day%9)),min_stay_arrival:day%17===0?2:1,stop_sell:day%113===0}),
+          full({property_id:propertyId,rate_plan_id:ids.twinBbId,date,rate:String(120+seasonal+weekend+(day%7)),min_stay_arrival:day%19===0?2:1,closed_to_arrival:day%127===0}),
+          full({property_id:propertyId,rate_plan_id:ids.doubleBarId,date,rate:String(105+seasonal+weekend+(day%11)),min_stay_arrival:day%23===0?3:1,closed_to_departure:day%131===0}),
+          full({property_id:propertyId,rate_plan_id:ids.doubleBbId,date,rate:String(125+seasonal+weekend+(day%5)),min_stay_arrival:day%29===0?2:1,max_stay:day%97===0?7:0})
         );
       }
       const availabilityResponse=await certPost(connection,'/availability',availability);
