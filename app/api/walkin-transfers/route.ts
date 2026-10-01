@@ -1,7 +1,7 @@
 import {cookies} from 'next/headers';
 import {sessionCookieName} from '../../../lib/tab-session';
 import {randomToken,digest,sameOrigin,limit} from '../../../lib/auth';
-import {addHistory,createTransfer,journeyLive,type TransportState} from '../../../lib/transport';
+import {addHistory,createTransfer,freeSeats,journeyLive,type TransportState} from '../../../lib/transport';
 import {loadTransport,saveTransport} from '../../../lib/transport-store';
 import {emitAdminNotification} from '../../../lib/admin-notifications';
 
@@ -31,17 +31,31 @@ export async function POST(r:Request){
  if(!sameOrigin(r))return Response.json({error:'Invalid request.'},{status:403,headers});
  try{
   const id=await identity();if(!id.token)throw Error('Refresh before booking.');
-  const owner='walk-transfer:'+await digest(id.token),b=await r.json();
+  const owner='walk-transfer:'+await digest(id.token),b:Record<string,any>=await r.json();
   if(b.action!=='book'||b.payment!=='later')return Response.json({error:'Walk-in guests can book transfers with payment at reception only.'},{status:403,headers});
-  const {state,revision}=await loadTransport();
-  if(state.bookings.some(x=>x.owner===owner&&x.token===b.token))return Response.json(view(state,revision,owner),{headers});
-  if(b.revision!==revision)return Response.json({error:'Availability changed. Refresh and review your seats.'},{status:409,headers});
   if(!await limit(owner,10,3600000)||!await limit('walk-transfer-ip:'+(r.headers.get('cf-connecting-ip')||'unknown'),40,3600000))throw Error('Please contact reception for further bookings.');
-  const booking=createTransfer(state,b,owner);
-  booking.source='Website';addHistory(booking,'guest','Booked','Transfers website');
-  state.bookings.push(booking);
-  const next=await saveTransport(state,revision,owner);
-  if(!next)return Response.json({error:'Another booking arrived. Refresh and review your seats.'},{status:409,headers});
+  // Seat numbers are ticket slots, so the server picks free ones from the latest ledger. Other
+  // bookings or an operator accepting tickets while the page was open never block the guest;
+  // only a real lack of seats does. A lost race is retried on fresh data.
+  let saved:{state:TransportState;revision:number;booking:any}|null=null;
+  for(let attempt=0;attempt<4&&!saved;attempt++){
+   const {state,revision}=await loadTransport();
+   const repeat=state.bookings.find(x=>x.owner===owner&&x.token===b.token);
+   if(repeat)return Response.json(view(state,revision,owner),{headers});
+   const journeys=(Array.isArray(b.journeys)?b.journeys:[]).map((j:any)=>{
+    const sailing=state.sailings.find(s=>s.id===j?.scheduleId&&s.active);
+    const seats=sailing?freeSeats(state,sailing,String(j.date||''),Number(b.adults)+Number(b.children)):null;
+    if(sailing&&!seats)throw Error('Not enough seats left on this boat for your group. Try another time or date.');
+    return {...j,seats:seats||j?.seats};
+   });
+   const booking=createTransfer(state,{...b,journeys},owner);
+   booking.source='Website';addHistory(booking,'guest','Booked','Transfers website');
+   state.bookings.push(booking);
+   const next=await saveTransport(state,revision,owner);
+   if(next)saved={state,revision:next,booking};
+  }
+  if(!saved)return Response.json({error:'Many bookings are arriving at once. Please try again.'},{status:409,headers});
+  const {state,booking}=saved,next=saved.revision;
   try{
    const journey=booking.journeys?.[0];
    await emitAdminNotification({id:'transport:new:'+booking.id,type:'transport',title:'New transport booking',detail:String(booking.name||'Walk-in guest')+' · '+String(journey?.from||'')+' → '+String(journey?.to||'')+' · '+String(journey?.date||'')+' '+String(journey?.depart||'')+(journey?.operatorName?' · '+journey.operatorName:''),ref:booking.id,url:'/home'});

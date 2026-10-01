@@ -14,6 +14,7 @@ function load(path,stubs={},cache=new Map()){
  const source=ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
  new Function('require','module','exports',source)(id=>{
   const name=basename(id).replace(/\.ts$/,'');
+  if(!id.startsWith('.')&&Object.hasOwn(stubs,id))return stubs[id];
   if(id.startsWith('.')&&Object.hasOwn(stubs,name))return stubs[name];
   if(!id.startsWith('.'))return require(id);
   const base=resolve(dirname(file),id);
@@ -190,6 +191,8 @@ function apis(){
   'guest-catalog':{islandToday:()=>'2030-06-03',validDate:d=>/^\d{4}-\d{2}-\d{2}$/.test(d)},
   'admin-notifications':{emitAdminNotification:async n=>{notices.push(n);}},
   'web-push':{sendGuestPushForRide:async()=>{}},
+  'next/headers':{cookies:async()=>({get:()=>({value:'a'.repeat(64)})})},
+  'tab-session':{sessionCookieName:async n=>n},
  };
  const cache=new Map();
  const ops=load('lib/travel-operators.ts',stubs,cache);
@@ -197,11 +200,12 @@ function apis(){
  const boats=load('app/api/operator-portal/speedboats/route.ts',stubs,cache);
  const buggy=load('app/api/operator-portal/buggy/route.ts',stubs,cache);
  const admin=load('app/api/travel-operators/route.ts',stubs,cache);
+ const walkin=load('app/api/walkin-transfers/route.ts',stubs,cache);
  const ORIGIN='https://operators.nirilihotels.test';
  const req=(path,method,body,cookie='')=>new Request(ORIGIN+path,{method,headers:{origin:ORIGIN,'content-type':'application/json',...(cookie?{cookie}:{})},body:body&&JSON.stringify(body)});
  const create=async extra=>{const r=await admin.POST(req('/api/travel-operators','POST',{name:'Coral Speed',phone:'+960 777 1111',services:['boat'],commissionPercent:10,username:'coralspeed',password:'coral-pass-1',...extra}));assert.equal(r.status,201,JSON.stringify(await r.clone().json()));return (await r.json()).operator;};
  const signIn=async(username,password)=>{const r=await session.POST(req('/api/operator-portal/session','POST',{username,password}));return {status:r.status,cookie:(r.headers.get('set-cookie')||'').split(';')[0]};};
- return {sea,hotel,notices,who,admin,session,boats,buggy,req,create,signIn,ops};
+ return {sea,hotel,notices,who,admin,session,boats,buggy,walkin,req,create,signIn,ops};
 }
 
 test('admin creates operators; operators sign in to their own portal only',async()=>{
@@ -288,4 +292,20 @@ test('buggy owners go online, see waiting rides without phone numbers, and take 
 test('staff cannot edit or dispatch an owner’s buggy from buggy management',()=>{
  const src=readFileSync(resolve(root,'app/api/buggy-management/route.ts'),'utf8');
  assert.match(src,/The owner manages it and accepts rides in the operator portal/);
+});
+
+test('a guest with an out-of-date page still books: the server picks free seats from the latest data',async()=>{
+ const s=apis();
+ s.sea.state.sailings.push({id:'S1',boat:'Altec',operatorId:'OP-A',operatorName:'Altec',from:'Velana Airport',to:'Dhiffushi',depart:'16:30',arrive:'17:15',capacity:3,fare:46000,active:true});
+ const ask=(body)=>s.walkin.POST(new Request('https://transfers.nirilihotels.test/api/walkin-transfers',{method:'POST',headers:{origin:'https://transfers.nirilihotels.test','content-type':'application/json'},body:JSON.stringify({action:'book',payment:'later',traveller:'Tourist',children:0,infants:0,notes:'',...body})}));
+ // Both pages were loaded at revision 1 and both chose seats 1–2.
+ const first=await ask({revision:1,token:crypto.randomUUID(),name:'First',phone:'+447700900123',adults:2,expectedTotal:92000,journeys:[{scheduleId:'S1',date:FUTURE,seats:[1,2]}]});
+ assert.equal(first.status,200,JSON.stringify(await first.clone().json()));
+ const second=await ask({revision:1,token:crypto.randomUUID(),name:'Second',phone:'+447700900123',adults:1,expectedTotal:46000,journeys:[{scheduleId:'S1',date:FUTURE,seats:[1]}]});
+ assert.equal(second.status,200,JSON.stringify(await second.clone().json()));
+ assert.deepEqual(s.sea.state.bookings.map(b=>b.journeys[0].seats),[[1,2],[3]]);
+ // A real lack of seats is still refused.
+ const third=await ask({revision:1,token:crypto.randomUUID(),name:'Third',phone:'+447700900123',adults:1,expectedTotal:46000,journeys:[{scheduleId:'S1',date:FUTURE,seats:[1]}]});
+ assert.equal(third.status,400);
+ assert.match((await third.json()).error,/Not enough seats/);
 });

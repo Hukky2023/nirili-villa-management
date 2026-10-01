@@ -4,7 +4,7 @@ import {loadStays} from '../../../../lib/stays';
 import {saveStayAccess} from '../../../../lib/stay-login';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
 import {activeOnDemandRide,addPublicRide} from '../../../../lib/buggy-rides';
-import {addHistory,createTransfer,journeyLive,type TransportState} from '../../../../lib/transport';
+import {addHistory,createTransfer,freeSeats,journeyLive,type TransportState} from '../../../../lib/transport';
 import {loadTransport,saveTransport} from '../../../../lib/transport-store';
 import {agentFromRequest,text,type Agent} from '../../../../lib/excursion-agents';
 
@@ -66,7 +66,13 @@ export async function POST(r:Request){
     if(state.bookings.some(b=>b.owner===owner&&b.token===body.token))return Response.json(await view(agent),{headers});
     const phone=cleanPhone(body.phone)||agent.phone;
     if(!PHONE.test(phone))throw Error(cleanPhone(body.phone)?'Enter the guest WhatsApp number with country code.':'Add the guest’s WhatsApp number so the operator can reach them (your guest house has no WhatsApp number on file with Nirili).');
-    const booking=createTransfer(state,{...body,phone,traveller:'Tourist',notes:text(body.notes,1000)},owner);
+    const journeys=(Array.isArray(body.journeys)?body.journeys:[]).map((j:any)=>{
+     const sailing=state.sailings.find(s=>s.id===j?.scheduleId&&s.active);
+     const seats=sailing?freeSeats(state,sailing,String(j.date||''),Number(body.adults)+Number(body.children)):null;
+     if(sailing&&!seats)throw Error('Not enough seats left on this boat for your group. Try another time or date.');
+     return {...j,seats:seats||j?.seats};
+    });
+    const booking=createTransfer(state,{...body,journeys,phone,traveller:'Tourist',notes:text(body.notes,1000)},owner);
     Object.assign(booking,{source:'Partner',agentId:agent.id,agentName:agent.name,agentReference:text(body.agentReference,60),pickup:agent.pickup});
     addHistory(booking,by,'Booked','Partner portal');
     state.bookings.push(booking);
