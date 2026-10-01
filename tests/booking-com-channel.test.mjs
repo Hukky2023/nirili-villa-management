@@ -10,10 +10,10 @@ const stubs={
  'cloudflare:workers':{env},
  './auth':{authDb:()=>({prepare:()=>({bind:()=>({run:async()=>({})})})})},
  './booking-reference':{nextBookingReference:()=>'NV-1'},
- './guest-catalog':{nightly:()=>0},
+ './guest-catalog':{nightly:(plan,pax)=>[5000,6000,7000][pax-1]},
  './rooms':{updateRoomInventory:state=>state},
  './stays':{stayKey:'stays'},
- './supabase-bridge':{mirrorHotelState:async()=>{},readOperationalRecordPrimary:async()=>({payload:{rooms:hotelRooms,stays:[]},revision:1}),saveOperationalRecordPrimary:async()=>1},
+ './supabase-bridge':{mirrorHotelState:async()=>{},readOperationalRecordPrimary:async()=>({payload:{rooms:hotelRooms,stays:hotelStays},revision:1}),saveOperationalRecordPrimary:async()=>1},
  './admin-notifications':{emitAdminNotification:async notice=>{notices.push(notice)}},
  './booking-closures':{bookingClosureForStay:()=>null,isBookingDateClosed:()=>false}
 };
@@ -22,10 +22,10 @@ const mod={exports:{}};
 new Function('require','module','exports',src)(id=>{if(!(id in stubs))throw Error('Unexpected import '+id);return stubs[id]},mod,mod.exports);
 const channels=mod.exports;
 
-let connection,reservations,calls,ariPayload,hotelRooms;
+let connection,reservations,calls,ariPayload,hotelRooms,hotelStays;
 function reset(overrides={}){
  connection={id:'booking-com',channel:'booking-com',provider:'channex',enabled:true,mode:'production',status:'connected',property_id:'prop-1',settings:{dryRun:false,autoImportReservations:true,autoPushAvailability:true},...overrides};
- reservations=[];calls=[];notices.length=0;ariPayload=null;hotelRooms=[{number:'101',capacity:3}];
+ reservations=[];calls=[];notices.length=0;ariPayload=null;hotelRooms=[{number:'101',capacity:3},{number:'102',capacity:3}];hotelStays=[];
 }
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json'}});
 globalThis.fetch=async(input,init={})=>{
@@ -38,7 +38,11 @@ globalThis.fetch=async(input,init={})=>{
   if(method==='GET')return json(ariPayload?[{payload:ariPayload}]:[]);
   ariPayload=JSON.parse(init.body)[0].payload;return json([{}]);
  }
- if(url.endsWith('/availability'))return json({meta:{message:'Success'}});
+ if(url.includes('/rest/v1/channel_rate_mappings'))return json([
+  {channel_rate_id:'rate-pp',pms_meal_plan:'Bed & Breakfast',active:true,settings:{}},
+  {channel_rate_id:'rate-room',pms_meal_plan:'Bed & Breakfast',active:true,settings:{stagingOnly:true,stagingOccupancy:1}}
+ ]);
+ if(url.endsWith('/availability')||url.endsWith('/restrictions'))return json({meta:{message:'Success'}});
  if(url.includes('/rest/v1/'))return method==='GET'?json([]):json([{}]);
  if(url.includes('/webhooks?'))return json({data:[]});
  if(url.endsWith('/webhooks'))return json({data:{id:'hook-1',attributes:{}}});
@@ -112,12 +116,12 @@ test('automatic availability push sends only dates that changed',async()=>{
  assert.equal(again.skipped,true,'nothing changed, so nothing is sent');
  assert.equal(availabilityCalls().length,1);
 
- hotelRooms=[{number:'101',capacity:3},{number:'102',capacity:3}];
+ hotelRooms=[...hotelRooms,{number:'103',capacity:3}];
  const changed=await channels.autoPushBookingComAvailability(5);
  assert.equal(changed.changedDates,5);
  const sent=availabilityCalls().at(-1);
  assert.equal(sent.length,1,'consecutive changed dates collapse into one range');
- assert.equal(sent[0].availability,2);
+ assert.equal(sent[0].availability,3);
 });
 
 test('availability pushes stay within 10 requests per minute',async()=>{
@@ -139,4 +143,47 @@ test('change detection compares against the last values sent',()=>{
  const values=[{date:'2026-12-01',availability:3},{date:'2026-12-02',availability:4}];
  assert.deepEqual(channels.changedAvailability(values,{'2026-12-01':3,'2026-12-02':5}),[values[1]]);
  assert.equal(channels.recentAvailabilityRequests([new Date(Date.now()-59000).toISOString(),new Date(Date.now()-61000).toISOString()]).length,1);
+});
+
+test('full sync is exactly two Channex calls carrying every declared restriction',async()=>{
+ reset({mode:'staging'});
+ env.CHANNEX_STAGING_API_KEY='staging-key';
+ try{
+  const result=await channels.fullSyncBookingComAri(30);
+  assert.equal(result.apiCalls,2);
+  const channexCalls=calls.filter(call=>!call.url.includes('/rest/v1/'));
+  assert.deepEqual(channexCalls.map(call=>call.url.split('/').pop()),['availability','restrictions']);
+  const restrictions=JSON.parse(channexCalls[1].body).values;
+  assert.equal(restrictions.length,2,'30 open days collapse into one range per rate plan');
+  for(const value of restrictions){
+   for(const key of ['min_stay_arrival','max_stay','closed_to_arrival','closed_to_departure','stop_sell'])assert.ok(key in value,key+' is sent');
+  }
+  assert.deepEqual(restrictions[0].rates,[{occupancy:1,rate:'50.00'},{occupancy:2,rate:'60.00'},{occupancy:3,rate:'70.00'}],'per-person plans price every occupancy');
+  assert.equal(restrictions[1].rate,'50.00','per-room plans use their occupancy');
+ }finally{delete env.CHANNEX_STAGING_API_KEY;}
+});
+
+test('staging availability follows bookings in the real PMS calendar',async()=>{
+ reset({mode:'staging'});
+ env.CHANNEX_STAGING_API_KEY='staging-key';
+ try{
+  await channels.autoPushBookingComAvailability(5);
+  hotelRooms=[...hotelRooms,{number:'103',capacity:3}];
+  const result=await channels.autoPushBookingComAvailability(5);
+  assert.equal(result.changedDates,5);
+ }finally{delete env.CHANNEX_STAGING_API_KEY;}
+});
+
+test('a 1-night booking sends one date; moving it a week later sends old and new dates',async()=>{
+ reset();
+ const day=n=>new Date(Date.now()+n*86400000+5*3600000).toISOString().slice(0,10);
+ await channels.fullSyncBookingComAri(30);
+ const booking={id:'NV-9',room:'101',status:'Confirmed',checkIn:day(3),checkOut:day(4)};
+ hotelStays=[booking];
+ await channels.autoPushBookingComAvailability(30);
+ assert.deepEqual(availabilityCalls().at(-1).map(v=>[v.date_from,v.date_to,v.availability]),[[day(3),day(3),1]]);
+
+ Object.assign(booking,{checkIn:day(10),checkOut:day(11)});
+ await channels.autoPushBookingComAvailability(30);
+ assert.deepEqual(availabilityCalls().at(-1).map(v=>[v.date_from,v.date_to,v.availability]),[[day(3),day(3),2],[day(10),day(10),1]]);
 });

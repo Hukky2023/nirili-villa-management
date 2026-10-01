@@ -39,6 +39,7 @@ export default function ChannelManager(){
       const b=await r.json();if(!r.ok)throw Error(b.error||'Channel action failed.');
       if(b.connection){setData(b);setDraft((d:any)=>({...d,enabled:!!b.connection.enabled,mode:b.connection.mode,propertyId:b.connection.property_id||'',channelPropertyId:b.connection.channel_property_id||'',stagingPropertyId:b.connection.settings?.stagingPropertyId||d?.stagingPropertyId||'',productionPropertyId:b.connection.settings?.productionPropertyId||d?.productionPropertyId||'',stagingBookingHotelId:b.connection.settings?.stagingBookingHotelId||d?.stagingBookingHotelId||'6519420',dryRun:b.connection.settings?.dryRun!==false,autoPushAvailability:!!b.connection.settings?.autoPushAvailability,autoImportReservations:b.connection.settings?.autoImportReservations!==false}));}
       if(action==='preview')setPreview(b);
+      if(action==='fullsync'){setPreview(b.preview||null);setNotice(b.dryRun?'Dry-run complete. No external inventory changed.':'Full sync sent: '+b.apiCalls+' API calls (availability + rates and restrictions, 365 days).');}
       if(action==='push'){setPreview(b.preview||null);setNotice(b.dryRun?'Dry-run complete. No external inventory changed.':'Availability sent to Channex.');}
       if(action==='selftest')setNotice((b.message||'PMS self-test passed.')+' Simulated '+(b.simulatedReference||'booking')+(b.simulatedRoom?' in room '+b.simulatedRoom:'')+'.');
       if(action==='bootstrap')setNotice(b.bootstrap?.message||'Nirili Villa staging property created.');
@@ -128,8 +129,8 @@ export default function ChannelManager(){
     </article>
 
     <article className="channel-card">
-      <header><Send/><div><h2>Availability</h2><p>Calculated from the 14-room PMS calendar, excluding maintenance and overlapping active stays.</p></div></header>
-      <div className="channel-actions"><button disabled={!!busy} onClick={()=>post('preview',{days:30})}><RefreshCw/>Preview 30 days</button><button className="primary" disabled={!!busy||!draft.enabled} onClick={()=>post('push',{days:30})}><Send/>{draft.dryRun?'Run dry-run sync':'Push to Channex'}</button></div>
+      <header><Send/><div><h2>Availability</h2><p>Calculated from the PMS calendar, excluding maintenance and overlapping active stays. Booking changes send only the dates that changed; Full sync sends 365 days of availability, rates and restrictions in 2 API calls.</p></div></header>
+      <div className="channel-actions"><button disabled={!!busy} onClick={()=>post('preview',{days:30})}><RefreshCw/>Preview 30 days</button><button className="primary" disabled={!!busy||!draft.enabled} onClick={()=>post('fullsync',{days:365})}><Send/>{draft.dryRun?'Run dry-run sync':'Full sync to Channex'}</button></div>
       {preview&&<div className="channel-preview"><b>{preview.totalInventory} sellable rooms</b><div>{(preview.values||[]).slice(0,14).map((x:any)=><span key={x.date}><small>{x.date.slice(5)}</small><strong>{x.availability}</strong></span>)}</div></div>}
     </article>
 
