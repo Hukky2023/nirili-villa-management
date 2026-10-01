@@ -83,7 +83,7 @@ function staySiteResponse(url:URL){
 // The partner Agent Portal APIs are served only on the agents host.
 const agentApi=new Set(['/api/agent-portal/session','/api/agent-portal/bookings','/api/agent-portal/travel']);
 // Operator portal APIs are served only on the operators host.
-const operatorApi=new Set(['/api/operator-portal/session','/api/operator-portal/speedboats','/api/operator-portal/buggy']);
+const operatorApi=new Set(['/api/operator-portal/session','/api/operator-portal/speedboats','/api/operator-portal/buggy','/api/operator-portal/crew']);
 
 function serviceSiteResponse(url:URL,service:Exclude<Service,'stay'>){
  if(service==='agents'&&agentApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);

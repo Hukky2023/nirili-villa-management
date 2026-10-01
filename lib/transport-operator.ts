@@ -83,7 +83,15 @@ function ownBoat(state:TransportState,operatorId:string,boatId:string){
  return boat;
 }
 
-export function saveOperatorSailing(state:TransportState,operator:OperatorRef,input:any):Sailing{
+// Crew ids an operator may assign: only their own active crew members (checked by the caller).
+function cleanCrewIds(input:any,crewIds:Set<string>){
+ const ids=[...new Set((Array.isArray(input)?input:[]).map((x:any)=>String(x)))];
+ const unknown=ids.find(id=>!crewIds.has(id));
+ if(unknown)throw Error('Choose crew members from your own active crew.');
+ return ids;
+}
+
+export function saveOperatorSailing(state:TransportState,operator:OperatorRef,input:any,crewIds?:Set<string>):Sailing{
  const from=text(input?.from,60),to=text(input?.to,60),depart=String(input?.depart||''),arrive=String(input?.arrive||'');
  const fare=Number(input?.fare),roomFare=input?.roomFare===''||input?.roomFare==null?undefined:Number(input.roomFare);
  const days=Array.isArray(input?.days)?[...new Set(input.days.map(Number))].filter((d:any)=>Number.isInteger(d)&&d>=0&&d<=6).sort() as number[]:[];
@@ -96,7 +104,9 @@ export function saveOperatorSailing(state:TransportState,operator:OperatorRef,in
  const boat=ownBoat(state,operator.id,text(input?.boatId,60));
  const next:Sailing={id:previous?.id||'OPS-'+crypto.randomUUID().slice(0,8).toUpperCase(),boat:operator.name,operatorId:operator.id,operatorName:operator.name,from,to,depart,arrive,
   capacity:boatSeats(boat).length,fare,...(roomFare!==undefined?{roomFare}:{}),days:days.length===7?[]:days,active:input?.active!==false,boatId:boat.id,
-  ...(previous?.boatOverrides?{boatOverrides:previous.boatOverrides}:{})};
+  ...(previous?.boatOverrides?{boatOverrides:previous.boatOverrides}:{}),...(previous?.crewOverrides?{crewOverrides:previous.crewOverrides}:{})};
+ const crew=Array.isArray(input?.crewIds)&&crewIds?cleanCrewIds(input.crewIds,new Set([...crewIds,...(previous?.crewIds||[])])):previous?.crewIds;
+ if(crew?.length)next.crewIds=crew;
  // A boat cannot run two departures at the same time on the same day.
  const clash=state.sailings.find(s=>s.id!==next.id&&s.active&&next.active&&s.boatId===boat.id&&daysOverlap(s.days,next.days)&&timesOverlap(s,next));
  if(clash)throw Error(boat.name+' already runs the '+clash.depart+' '+clash.from+' → '+clash.to+' departure at that time.');
@@ -135,6 +145,34 @@ export function setTripBoat(state:TransportState,operator:OperatorRef,scheduleId
  for(const b of state.bookings)for(const j of b.journeys)if(j.scheduleId===sailing.id&&j.date===date&&journeyLive(b,j)){j.boatId=boat.id;j.boatName=boat.name;addHistory(b,by,'Boat changed',boat.name);}
  return boat;
 }
+
+// ---- Crew
+export const tripCrew=(sailing:Sailing,date:string)=>sailing.crewOverrides?.[date]??sailing.crewIds??[];
+// Put a crew on one trip (a departure on one date). An empty list leaves the trip without crew;
+// `regular:true` goes back to the departure's regular crew.
+export function setTripCrew(state:TransportState,operator:OperatorRef,scheduleId:string,date:string,input:any,crewIds:Set<string>,regular=false){
+ const sailing=state.sailings.find(s=>s.id===scheduleId&&s.operatorId===operator.id);
+ if(!sailing)throw Error('Departure not found.');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||departs({date,depart:sailing.arrive})<=Date.now())throw Error('This trip has already finished.');
+ const overrides={...(sailing.crewOverrides||{})};
+ if(regular)delete overrides[date];else overrides[date]=cleanCrewIds(input,crewIds);
+ for(const d of Object.keys(overrides))if(departs({date:d,depart:sailing.arrive})<Date.now())delete overrides[d];
+ sailing.crewOverrides=overrides;
+ return tripCrew(sailing,date);
+}
+// Trips a crew member works between two dates (inclusive), earliest first.
+export function crewTrips(state:TransportState,operatorId:string,crewId:string,from:string,to:string){
+ const out:{scheduleId:string;date:string}[]=[];
+ for(let d=from;d<=to;d=nextDate(d))
+  for(const s of operatorSailings(state,operatorId))
+   if(tripCrew(s,d).includes(crewId)&&(s.active&&runsOn(s,d)||state.bookings.some(b=>b.journeys.some(j=>j.scheduleId===s.id&&j.date===d))))out.push({scheduleId:s.id,date:d});
+ return out;
+}
+export function crewOnTrip(state:TransportState,operatorId:string,crewId:string,scheduleId:string,date:string){
+ const sailing=state.sailings.find(s=>s.id===scheduleId&&s.operatorId===operatorId);
+ return !!sailing&&tripCrew(sailing,date).includes(crewId);
+}
+const nextDate=(d:string)=>new Date(Date.parse(d+'T00:00:00Z')+86400000).toISOString().slice(0,10);
 
 // ---- Tickets
 export type Ticket={bookingId:string;index:number;booking:TransferBooking;journey:Journey};
@@ -203,7 +241,7 @@ export function operatorDay(state:TransportState,operatorId:string,date:string){
   const sailing=sailings.find(s=>s.id===id),mine=tickets.filter(t=>t.journey.scheduleId===id),sample=mine[0]?.journey;
   const live=mine.filter(t=>t.journey.operatorStatus!=='Declined'),boat=sailing?tripBoat(state,sailing,date):undefined;
   return {scheduleId:id,date,from:sailing?.from||sample?.from||'',to:sailing?.to||sample?.to||'',depart:sailing?.depart||sample?.depart||'',arrive:sailing?.arrive||sample?.arrive||'',
-   boatId:boat?.id||'',boatName:boat?.name||sample?.boatName||'',swapped:!!(sailing&&sailing.boatOverrides?.[date]),layout:boat?.layout||null,
+   boatId:boat?.id||'',boatName:boat?.name||sample?.boatName||'',crewIds:sailing?tripCrew(sailing,date):[],crewChanged:!!sailing?.crewOverrides?.[date],swapped:!!(sailing&&sailing.boatOverrides?.[date]),layout:boat?.layout||null,
    seats:sailing?tripSeats(state,sailing,date).length:0,sold:live.reduce((n,t)=>n+t.journey.seats.length,0),boarded:live.reduce((n,t)=>n+(t.journey.boardedPax||0),0),
    closed:live.length>0&&live.every(t=>t.journey.departedAt),tickets:mine};
  }).sort((a,b)=>a.depart.localeCompare(b.depart));

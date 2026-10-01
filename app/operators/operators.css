@@ -119,3 +119,12 @@
 .op-seats-mode button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
 .op-seats-number{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
 .op-seats-number input{width:110px}
+
+/* Crew */
+.op-crew-line{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0;font-size:14px}
+.op-portal .op-crew-line button{min-height:34px;padding:4px 12px;font-size:13px}
+.op-crew-pick{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.op-trips{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.op-portal .op-trips button{width:100%;display:grid;justify-items:start;gap:2px;border-radius:14px;padding:10px 14px;white-space:normal;text-align:left;font-weight:500}
+.op-trips button span{font-size:13px;color:var(--muted)}
+.op-trips button[aria-pressed=true]{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}

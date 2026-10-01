@@ -253,11 +253,12 @@ function apis(){
  const buggy=load('app/api/operator-portal/buggy/route.ts',stubs,cache);
  const admin=load('app/api/travel-operators/route.ts',stubs,cache);
  const walkin=load('app/api/walkin-transfers/route.ts',stubs,cache);
+ const crewApi=load('app/api/operator-portal/crew/route.ts',stubs,cache);
  const ORIGIN='https://operators.nirilihotels.test';
  const req=(path,method,body,cookie='')=>new Request(ORIGIN+path,{method,headers:{origin:ORIGIN,'content-type':'application/json',...(cookie?{cookie}:{})},body:body&&JSON.stringify(body)});
  const create=async extra=>{const r=await admin.POST(req('/api/travel-operators','POST',{name:'Coral Speed',phone:'+960 777 1111',services:['boat'],commissionPercent:10,username:'coralspeed',password:'coral-pass-1',...extra}));assert.equal(r.status,201,JSON.stringify(await r.clone().json()));return (await r.json()).operator;};
  const signIn=async(username,password)=>{const r=await session.POST(req('/api/operator-portal/session','POST',{username,password}));return {status:r.status,cookie:(r.headers.get('set-cookie')||'').split(';')[0]};};
- return {sea,hotel,notices,who,admin,session,boats,buggy,walkin,req,create,signIn,ops};
+ return {sea,hotel,notices,who,admin,session,boats,buggy,walkin,crewApi,req,create,signIn,ops};
 }
 
 test('admin creates operators; operators sign in to their own portal only',async()=>{
@@ -414,4 +415,82 @@ test('an operator can cancel a ticket before boarding; Nirili is told and the se
  // Closing works per trip.
  assert.equal((await post({action:'close',scheduleId:sailingId,date:FUTURE})).status,200);
  assert.ok(s.sea.state.bookings.find(x=>x.id===b.id).journeys[0].departedAt);
+});
+
+test('crew are assigned per departure or per trip, and changing one day leaves the others',()=>{
+ const {state,sailing}=sea();
+ const crew=new Set(['CREW-A','CREW-B']);
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{...sailing,crewIds:['CREW-X']},crew),/your own active crew/);
+ OP.saveOperatorSailing(state,coral,{...sailing,crewIds:['CREW-A']},crew);
+ const s=state.sailings.find(x=>x.id===sailing.id);
+ assert.deepEqual(OP.tripCrew(s,FUTURE),['CREW-A']);
+ OP.setTripCrew(state,coral,sailing.id,FUTURE,['CREW-B'],crew);
+ assert.deepEqual(OP.tripCrew(s,FUTURE),['CREW-B']);
+ assert.deepEqual(OP.tripCrew(s,'2030-06-05'),['CREW-A']);
+ assert.deepEqual(OP.crewTrips(state,coral.id,'CREW-A','2030-06-03','2030-06-07').map(t=>t.date),['2030-06-05','2030-06-07']);
+ assert.equal(OP.crewOnTrip(state,coral.id,'CREW-B',sailing.id,FUTURE),true);
+ assert.equal(OP.crewOnTrip(state,blue.id,'CREW-B',sailing.id,FUTURE),false);
+ OP.setTripCrew(state,coral,sailing.id,FUTURE,null,crew,true);
+ assert.deepEqual(OP.tripCrew(s,FUTURE),['CREW-A']);
+ // Editing the departure without crew ids keeps its crew.
+ OP.saveOperatorSailing(state,coral,{...s,crewIds:undefined},crew);
+ assert.deepEqual(state.sailings.find(x=>x.id===sailing.id).crewIds,['CREW-A']);
+ assert.throws(()=>OP.setTripCrew(state,blue,sailing.id,FUTURE,[],crew),/Departure not found/);
+});
+
+test('operators create crew logins; crew see and board only their own trips',async()=>{
+ const s=apis();
+ await s.create();
+ const {cookie}=await s.signIn('coralspeed','coral-pass-1');
+ const post=body=>s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{...body,viewDate:FUTURE},cookie));
+ assert.equal((await post({action:'save-crew',crew:{name:'Clash',username:'coralspeed',password:'crew-pass-1'}})).status,400);
+ let d=await (await post({action:'save-crew',crew:{name:'Ali',role:'Captain',username:'ali.captain',password:'crew-pass-1'}})).json();
+ d=await (await post({action:'save-crew',crew:{name:'Hassan',username:'hassan',password:'crew-pass-2'}})).json();
+ assert.equal(d.crew.length,2);
+ assert.equal(d.crew[0].passwordHash,undefined);
+ const ali=d.crew.find(c=>c.name==='Ali').id,hassan=d.crew.find(c=>c.name==='Hassan').id;
+ d=await (await post({action:'save-boat',boat:{name:'Coral 1',layout:T.defaultLayout(10)}})).json();
+ d=await (await post({action:'save-sailing',sailing:{from:'Velana Airport',to:'Dhiffushi',depart:'10:00',arrive:'11:00',boatId:d.boats[0].id,fare:20000,crewIds:[ali]}})).json();
+ const sailingId=d.sailings[0].id;
+ assert.deepEqual(d.sailings[0].crewIds,[ali]);
+ const b=T.createTransfer(s.sea.state,{token:'c1',name:'Guest',phone:'+447700900123',traveller:'Tourist',adults:2,children:0,infants:0,notes:'',expectedTotal:40000,journeys:[{scheduleId:sailingId,date:FUTURE,seats:[1,2]}]},'walk-transfer:x');
+ s.sea.state.bookings.push(b);
+ // Crew sign in on the same page and get a crew session, not an operator one.
+ const login=await s.session.POST(s.req('/api/operator-portal/session','POST',{username:'ali.captain',password:'crew-pass-1'}));
+ assert.equal(login.status,200);
+ assert.equal((await login.json()).crew.operatorName,'Coral Speed');
+ const aliCookie=(login.headers.get('set-cookie')||'').split(';')[0];
+ assert.match(aliCookie,/^nirili_crew_session=/);
+ const hassanCookie=((await s.session.POST(s.req('/api/operator-portal/session','POST',{username:'hassan',password:'crew-pass-2'}))).headers.get('set-cookie')||'').split(';')[0];
+ const crewGet=c=>s.crewApi.GET(s.req('/api/operator-portal/crew?date='+FUTURE,'GET',null,c));
+ const crewPost=(c,body)=>s.crewApi.POST(s.req('/api/operator-portal/crew','POST',{...body,viewDate:FUTURE},c));
+ let view=await (await crewGet(aliCookie)).json();
+ assert.equal(view.day.length,1);
+ assert.deepEqual(view.day[0].tickets[0].seats,[1,2]);
+ assert.equal((await (await crewGet(hassanCookie)).json()).day.length,0);
+ // Crew cannot use the operator API.
+ assert.equal((await s.boats.GET(s.req('/api/operator-portal/speedboats','GET',null,aliCookie))).status,401);
+ const board=c=>crewPost(c,{action:'board',bookingId:b.id,index:0,boarded:2});
+ assert.match((await (await board(hassanCookie)).json()).error,/not on one of your trips/);
+ assert.match((await (await board(aliCookie)).json()).error,/day of departure/);
+ assert.match((await (await crewPost(aliCookie,{action:'close',scheduleId:sailingId,date:FUTURE})).json()).error,/day it leaves/);
+ assert.match((await (await crewPost(aliCookie,{action:'cancel',bookingId:b.id,index:0,reason:'x'})).json()).error,/board guests and close/);
+ // The operator moves this one trip to Hassan.
+ d=await (await post({action:'trip-crew',scheduleId:sailingId,date:FUTURE,crewIds:[hassan]})).json();
+ assert.deepEqual(d.day[0].crewIds,[hassan]);
+ assert.equal(d.day[0].crewChanged,true);
+ assert.equal((await (await crewGet(aliCookie)).json()).day.length,0);
+ assert.equal((await (await crewGet(hassanCookie)).json()).day.length,1);
+ assert.equal((await post({action:'trip-crew',scheduleId:sailingId,date:FUTURE,crewIds:['CREW-NOPE']})).status,400);
+ // Pausing a crew login ends their access at once.
+ await post({action:'save-crew',crew:{...d.crew.find(c=>c.id===hassan),active:false}});
+ assert.equal((await crewGet(hassanCookie)).status,401);
+ assert.equal((await s.session.POST(s.req('/api/operator-portal/session','POST',{username:'hassan',password:'crew-pass-2'}))).status,401);
+ // Staff see the operator's crew.
+ const ops=await (await s.admin.GET(s.req('/api/travel-operators','GET'))).json();
+ assert.deepEqual(ops.operators[0].crew.map(c=>[c.name,c.active]),[['Ali',true],['Hassan',false]]);
+ // Pausing the operator locks out its crew too.
+ const op=ops.operators[0];
+ await s.admin.PATCH(s.req('/api/travel-operators','PATCH',{id:op.id,revision:op.revision,active:false}));
+ assert.equal((await crewGet(aliCookie)).status,401);
 });

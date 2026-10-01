@@ -48,6 +48,7 @@ export default function TravelOperatorsAdmin(){
      <div><dt>Commission</dt><dd>{o.commissionPercent}%</dd></div>
      <div><dt>Contact</dt><dd>{o.contactName||"—"}<br/><a href={"https://wa.me/"+String(o.phone).replace(/\D/g,"")} target="_blank" rel="noreferrer">{o.phone}</a></dd></div>
      {o.services.includes("boat")&&<div><dt>Fleet</dt><dd>{o.boats.length} boat{o.boats.length===1?"":"s"} · {o.departures} departure{o.departures===1?"":"s"}{o.boats.length?<small style={{display:"block"}}>{o.boats.map((b:any)=>b.name+" ("+b.capacity+" seats)").join(", ")}</small>:null}</dd></div>}
+     {o.services.includes("boat")&&<div><dt>Crew logins</dt><dd>{o.crew?.length?o.crew.map((c:any)=>c.name+" ("+c.role+(c.active?"":", paused")+")").join(", "):"None"}</dd></div>}
      {o.services.includes("buggy")&&<div><dt>Buggies</dt><dd>{o.buggies.length} · {o.buggyOnline?"Online now":"Offline"}{o.buggies.length?<small style={{display:"block"}}>{o.buggies.map((b:any)=>b.name+" · "+b.status).join(", ")}</small>:null}</dd></div>}
      {o.services.includes("boat")&&<div><dt>Upcoming tickets</dt><dd>{o.upcomingTickets||0}</dd></div>}
     </dl>

@@ -1,18 +1,19 @@
 'use client';
 import {useCallback,useEffect,useMemo,useState} from 'react';
-import {Anchor,CalendarDays,Car,CheckCircle2,ClipboardList,LogOut,MessageCircle,Plus,RefreshCw,Ship,Users,Wallet,XCircle} from 'lucide-react';
+import {Anchor,CalendarDays,Car,CheckCircle2,ClipboardList,LogOut,MessageCircle,Plus,RefreshCw,Ship,UserRound,Users,Wallet,XCircle} from 'lucide-react';
 import TimeField24 from '../time-field-24';
 import SeatMap,{type SeatMark} from '../seat-map';
 import SeatEditor from './seat-editor';
 import {defaultLayout,type SeatLayout} from '../../lib/transport';
 
+type CrewMember={id:string;operatorId:string;operatorName?:string;name:string;phone:string;role:'Captain'|'Crew';username:string;active:boolean};
 type Operator={id:string;name:string;contactName:string;services:('boat'|'buggy')[];commissionPercent:number;buggyOnline?:boolean};
 type Boat={id:string;name:string;registration:string;capacity:number;active:boolean;layout?:SeatLayout};
-type Sailing={id:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;roomFare?:number;days?:number[];active:boolean;boatId?:string};
+type Sailing={id:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;roomFare?:number;days?:number[];active:boolean;boatId?:string;crewIds?:string[]};
 type Ticket={cancelledByOperator?:boolean;bookingId:string;index:number;name:string;phone:string;adults:number;children:number;infants:number;pax:number;notes:string;source:string;pickup:string;seats:number[];date:string;depart:string;arrive:string;from:string;to:string;scheduleId:string;status:'New'|'Accepted'|'Declined';boatId:string;boatName:string;boardedPax:number;departed:boolean;noShow:boolean;declineReason:string;roomBilled:boolean;fareMvr:number};
-type Departure={scheduleId:string;date:string;from:string;to:string;depart:string;arrive:string;boatId:string;boatName:string;swapped:boolean;layout:SeatLayout|null;seats:number;sold:number;boarded:number;closed:boolean;tickets:Ticket[]};
+type Departure={crewIds?:string[];crewChanged?:boolean;scheduleId:string;date:string;from:string;to:string;depart:string;arrive:string;boatId:string;boatName:string;swapped:boolean;layout:SeatLayout|null;seats:number;sold:number;boarded:number;closed:boolean;tickets:Ticket[]};
 type Ride={id:string;guest:string;phone:string;location:string;destination:string;quantity:number;notes:string;date:string;pickupTime:string;status:string;fareCents:number;roomBilled:boolean;buggyId:string};
-type Tab='boarding'|'bookings'|'departures'|'boats'|'rides'|'buggies'|'statement';
+type Tab='boarding'|'bookings'|'crew'|'departures'|'boats'|'rides'|'buggies'|'statement';
 
 const mvr=(c:number)=>'MVR '+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const usd=(c:number)=>'$'+(Math.max(0,Number(c)||0)/100).toFixed(2);
@@ -22,6 +23,8 @@ const niceDate=(d:string)=>d?new Date(d+'T00:00:00Z').toLocaleDateString('en-GB'
 const party=(t:{adults:number;children:number;infants:number})=>[t.adults+' adult'+(t.adults===1?'':'s'),t.children?t.children+' child'+(t.children===1?'':'ren'):'',t.infants?t.infants+' infant'+(t.infants===1?'':'s'):''].filter(Boolean).join(', ');
 const wa=(phone:string,message='')=>'https://wa.me/'+phone.replace(/\D/g,'')+(message?'?text='+encodeURIComponent(message):'');
 
+const crewNames=(crew:CrewMember[],ids?:string[])=>(ids||[]).map(id=>crew.find(c=>c.id===id)?.name).filter(Boolean).join(', ')||'none yet';
+
 async function call(url:string,body?:any){
  const r=await fetch(url,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'});
  const d:any=await r.json().catch(()=>({}));
@@ -30,25 +33,26 @@ async function call(url:string,body?:any){
 }
 
 export default function OperatorPortal(){
- const [operator,setOperator]=useState<Operator|null|undefined>(undefined);
- useEffect(()=>{call('/api/operator-portal/session').then(d=>setOperator(d.operator)).catch(()=>setOperator(null));},[]);
- if(operator===undefined)return <div className="op-wrap"><p className="op-muted">Loading…</p></div>;
- if(!operator)return <div className="op-wrap"><Login onSignedIn={setOperator}/></div>;
- return <Workspace operator={operator} onSignedOut={()=>setOperator(null)}/>;
+ const [who,setWho]=useState<{operator:Operator|null;crew:CrewMember|null}|null|undefined>(undefined);
+ useEffect(()=>{call('/api/operator-portal/session').then(d=>setWho(d.operator||d.crew?d:null)).catch(()=>setWho(null));},[]);
+ if(who===undefined)return <div className="op-wrap"><p className="op-muted">Loading…</p></div>;
+ if(!who)return <div className="op-wrap"><Login onSignedIn={setWho}/></div>;
+ if(who.crew)return <CrewWorkspace crew={who.crew} onSignedOut={()=>setWho(null)}/>;
+ return <Workspace operator={who.operator!} onSignedOut={()=>setWho(null)}/>;
 }
 
-function Login({onSignedIn}:{onSignedIn:(o:Operator)=>void}){
+function Login({onSignedIn}:{onSignedIn:(who:{operator:Operator|null;crew:CrewMember|null})=>void}){
  const [username,setUsername]=useState(''),[password,setPassword]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  async function submit(e:React.FormEvent){
   e.preventDefault();if(busy)return;setBusy(true);setError('');
-  try{const d=await call('/api/operator-portal/session',{username,password});setPassword('');onSignedIn(d.operator);}
+  try{const d=await call('/api/operator-portal/session',{username,password});setPassword('');onSignedIn(d);}
   catch(err){setError((err as Error).message)}finally{setBusy(false)}
  }
  return <form className="op-login" onSubmit={submit}>
   <span className="op-logo"><Anchor/></span>
   <p className="op-kicker">Nirili Travels</p>
   <h1>Operator portal</h1>
-  <p className="op-muted">For speedboat companies and buggy owners working with Nirili. Sign in with the login Nirili gave you.</p>
+  <p className="op-muted">For speedboat companies, their boat crew and buggy owners working with Nirili. Sign in with the login you were given.</p>
   <label>Username<input required autoComplete="username" autoCapitalize="none" maxLength={40} value={username} onChange={e=>setUsername(e.target.value)}/></label>
   <label>Password<input required type="password" autoComplete="current-password" maxLength={128} value={password} onChange={e=>setPassword(e.target.value)}/></label>
   {error&&<p className="op-error" role="alert">{error}</p>}
@@ -61,7 +65,7 @@ function Workspace({operator,onSignedOut}:{operator:Operator;onSignedOut:()=>voi
  const boats=operator.services.includes('boat'),buggies=operator.services.includes('buggy');
  const tabs:{id:Tab;label:string;icon:any;show:boolean}[]=[
   {id:'boarding',label:'Boarding',icon:Users,show:boats},{id:'bookings',label:'Bookings',icon:ClipboardList,show:boats},
-  {id:'departures',label:'Departures',icon:CalendarDays,show:boats},{id:'boats',label:'Boats',icon:Ship,show:boats},
+  {id:'departures',label:'Departures',icon:CalendarDays,show:boats},{id:'boats',label:'Boats',icon:Ship,show:boats},{id:'crew',label:'Crew',icon:UserRound,show:boats},
   {id:'rides',label:'Rides',icon:Car,show:buggies},{id:'buggies',label:'Buggies',icon:Car,show:buggies},
   {id:'statement',label:'Statement',icon:Wallet,show:true}];
  const [tab,setTab]=useState<Tab>(boats?'boarding':'rides');
@@ -106,8 +110,9 @@ function Workspace({operator,onSignedOut}:{operator:Operator;onSignedOut:()=>voi
   {message&&<p className="op-message" role="status"><CheckCircle2/>{message}</p>}
   {error&&<p className="op-error" role="alert">{error}</p>}
   {tab==='boarding'&&sea&&<Boarding data={sea} date={date} setDate={setDate} busy={!!busy} act={sea$}/>}
-  {tab==='bookings'&&sea&&<Bookings trips={sea.bookings||[]} openDay={d=>{setDate(d);setTab('boarding');}} busy={!!busy} act={sea$}/>}
-  {tab==='departures'&&sea&&<Departures sailings={sea.sailings} boats={sea.boats} busy={!!busy} act={sea$}/>}
+  {tab==='crew'&&sea&&<CrewTab crew={sea.crew||[]} busy={!!busy} act={sea$}/>}
+  {tab==='bookings'&&sea&&<Bookings trips={sea.bookings||[]} crew={sea.crew||[]} openDay={d=>{setDate(d);setTab('boarding');}} busy={!!busy} act={sea$}/>}
+  {tab==='departures'&&sea&&<Departures sailings={sea.sailings} boats={sea.boats} crew={sea.crew||[]} busy={!!busy} act={sea$}/>}
   {tab==='boats'&&sea&&<Boats boats={sea.boats} busy={!!busy} act={sea$}/>}
   {tab==='rides'&&land&&<Rides data={land} operator={operator} busy={!!busy} act={land$}/>}
   {tab==='buggies'&&land&&<Buggies buggies={land.buggies} busy={!!busy} act={land$}/>}
@@ -117,12 +122,12 @@ function Workspace({operator,onSignedOut}:{operator:Operator;onSignedOut:()=>voi
 }
 
 // Every upcoming trip with bookings, grouped by day. Tickets are confirmed at booking.
-function Bookings({trips,openDay,busy,act}:{trips:any[];openDay:(d:string)=>void;busy:boolean;act:(b:any,done?:string)=>Promise<boolean>}){
+function Bookings({trips,crew,openDay,busy,act}:{trips:any[];crew:CrewMember[];openDay:(d:string)=>void;busy:boolean;act:(b:any,done?:string)=>Promise<boolean>}){
  if(!trips.length)return <p className="op-empty">No upcoming bookings yet. New bookings appear here as soon as guests choose their seats.</p>;
  return <section className="op-list">{trips.map(trip=><article key={trip.scheduleId+trip.date} className="op-departure">
-  <header><div><small>{niceDate(trip.date)} · {trip.boatName||'No boat chosen'}{trip.swapped?' (swapped for this day)':''}</small><h3>{trip.depart} · {trip.from} → {trip.to}</h3></div><span className="op-pill is-ok">{trip.sold} seat{trip.sold===1?'':'s'} sold</span></header>
+  <header><div><small>{niceDate(trip.date)} · {trip.boatName||'No boat chosen'}{trip.swapped?' (swapped for this day)':''} · Crew: {crewNames(crew,trip.crewIds)}</small><h3>{trip.depart} · {trip.from} → {trip.to}</h3></div><span className="op-pill is-ok">{trip.sold} seat{trip.sold===1?'':'s'} sold</span></header>
   <div className="op-boat"><ul>{trip.tickets.map((t:Ticket)=><li key={t.bookingId+':'+t.index}>
-   <div><strong>{t.name}</strong><small>{t.bookingId} · Seat{t.seats.length===1?'':'s'} {t.seats.join(', ')} · {party(t)} · {t.source}{t.roomBilled?' · room bill':' · collect '+mvr(t.fareMvr)}</small>{t.pickup&&<small>Pickup: {t.pickup}</small>}{t.notes&&<small className="op-note">{t.notes}</small>}</div>
+   <div><strong>{t.name}</strong><small>{t.bookingId} · Seat{t.seats.length===1?'':'s'} {t.seats.slice().sort((a,b)=>a-b).join(', ')} · {party(t)} · {t.source}{t.roomBilled?' · room bill':' · collect '+mvr(t.fareMvr)}</small>{t.pickup&&<small>Pickup: {t.pickup}</small>}{t.notes&&<small className="op-note">{t.notes}</small>}</div>
    <div className="op-actions">
     {t.phone&&<a className="op-ghost" href={wa(t.phone)} target="_blank" rel="noopener noreferrer" aria-label={'WhatsApp '+t.name}><MessageCircle/></a>}
     <CancelTicket t={t} busy={busy} act={act}/>
@@ -137,16 +142,18 @@ function CancelTicket({t,busy,act}:{t:Ticket;busy:boolean;act:(b:any,done?:strin
  return <button className="op-danger" disabled={busy} onClick={()=>{const reason=window.prompt('Cancel '+t.name+' ('+t.bookingId+')? Tell Nirili why, e.g. the guest asked to cancel.');if(reason)void act({action:'cancel',bookingId:t.bookingId,index:t.index,reason},'Ticket '+t.bookingId+' cancelled. Seats '+t.seats.join(', ')+' are on sale again and Nirili has been told.');}}><XCircle/>Cancel</button>;
 }
 
-function Boarding({data,date,setDate,busy,act}:{data:any;date:string;setDate:(d:string)=>void;busy:boolean;act:(b:any,done?:string)=>Promise<boolean>}){
- const day:Departure[]=data.day||[],boats:Boat[]=data.boats||[];
+// The day's trips with seat maps and passengers. Crew (crewMode) see only their own trips and
+// can board guests and close the trip; operators also change the boat, crew and cancel tickets.
+function Boarding({data,date,setDate,busy,act,crewMode=false}:{data:any;date:string;setDate:(d:string)=>void;busy:boolean;act:(b:any,done?:string)=>Promise<boolean>;crewMode?:boolean}){
+ const day:Departure[]=data.day||[],boats:Boat[]=data.boats||[],crew:CrewMember[]=data.crew||[];
  return <section className="op-list">
   <div className="op-toolbar"><label>Date<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label><span className="op-muted">{date===data.today?'Today':niceDate(date)}</span></div>
-  {!day.length&&<p className="op-empty">No departures on this day.</p>}
+  {!day.length&&<p className="op-empty">{crewMode?'You are not on any trip this day.':'No departures on this day.'}</p>}
   {day.map(d=>{
    const live=d.tickets.filter(t=>t.status!=='Declined'),open=live.filter(t=>!t.departed),total=live.reduce((n,t)=>n+t.pax,0);
    const marks:Record<number,SeatMark>={},titles:Record<number,string>={};
    for(const t of live)for(const n of t.seats){marks[n]=t.departed&&t.noShow?'noshow':t.boardedPax>=t.pax?'boarded':'booked';titles[n]=t.name;}
-   const layout=d.layout||defaultLayout(Math.max(1,d.seats||1)),canSwap=!d.closed&&(date>data.today||date===data.today&&!live.some(t=>t.boardedPax>0));
+   const layout=d.layout||defaultLayout(Math.max(1,d.seats||1)),canSwap=!crewMode&&!d.closed&&(date>data.today||date===data.today&&!live.some(t=>t.boardedPax>0));
    return <article key={d.scheduleId} className="op-departure">
     <header><div><small>Arrives {d.arrive} · {d.sold}/{d.seats||'–'} seats sold · {d.boarded}/{total} on board</small><h3>{d.depart} · {d.from} → {d.to}</h3></div>{d.closed?<span className="op-pill">Departed</span>:<span className="op-pill is-ok"><Ship/>{d.boatName||'No boat'}</span>}</header>
     {d.swapped&&<p className="op-note">Running on {d.boatName} instead of the usual boat for this day.</p>}
@@ -154,9 +161,10 @@ function Boarding({data,date,setDate,busy,act}:{data:any;date:string;setDate:(d:
      <select value={d.boatId} disabled={busy} onChange={e=>{const b=boats.find(x=>x.id===e.target.value);if(b&&window.confirm('Run the '+d.depart+' trip on '+niceDate(date)+' with '+b.name+'? Booked guests keep their seat numbers.'))void act({action:'trip-boat',scheduleId:d.scheduleId,date,boatId:b.id},'This trip now runs on '+b.name+'.');}}>
       {!d.boatId&&<option value="">Choose…</option>}{boats.filter(b=>b.active||b.id===d.boatId).map(b=><option key={b.id} value={b.id}>{b.name} · {b.capacity} seats</option>)}
      </select></label>}
-    <details className="op-seatmap"><summary>Seat map</summary><SeatMap layout={layout} taken={Object.keys(marks).map(Number)} marks={marks} titles={titles} caption={'Seats on '+(d.boatName||'this trip')}/></details>
+    {!crewMode&&<TripCrew d={d} date={date} today={data.today} crew={crew} busy={busy} act={act}/>}
+    <details className="op-seatmap" open={crewMode||undefined}><summary>Seat map</summary><SeatMap layout={layout} taken={Object.keys(marks).map(Number)} marks={marks} titles={titles} caption={'Seats on '+(d.boatName||'this trip')}/></details>
     {!live.length?<p className="op-muted">No tickets yet.</p>:<div className="op-boat"><ul>{live.map(t=>{const key=t.bookingId+':'+t.index;return <li key={key} className={t.departed?(t.noShow?'is-noshow':'is-gone'):t.boardedPax===t.pax?'is-in':''}>
-     <div><strong>{t.name} · Seat{t.seats.length===1?'':'s'} {t.seats.join(', ')}</strong><small>{t.bookingId} · {party(t)} · {t.source}{t.roomBilled?' · room bill':' · collect '+mvr(t.fareMvr)}</small>{t.notes&&<small className="op-note">{t.notes}</small>}</div>
+     <div><strong>{t.name} · Seat{t.seats.length===1?'':'s'} {t.seats.slice().sort((a,b)=>a-b).join(', ')}</strong><small>{t.bookingId} · {party(t)} · {t.source}{t.roomBilled?' · room bill':' · collect '+mvr(t.fareMvr)}</small>{t.notes&&<small className="op-note">{t.notes}</small>}</div>
      {t.departed?<span className="op-pill">{t.noShow?'No-show':'Departed · '+t.boardedPax+'/'+t.pax}</span>
      :<div className="op-actions">
       {t.phone&&<a className="op-ghost" href={wa(t.phone)} target="_blank" rel="noopener noreferrer" aria-label={'WhatsApp '+t.name}><MessageCircle/></a>}
@@ -164,7 +172,7 @@ function Boarding({data,date,setDate,busy,act}:{data:any;date:string;setDate:(d:
        {Array.from({length:t.pax+1},(_,n)=><option key={n} value={n}>{n} on board</option>)}
       </select>
       <button className={t.boardedPax===t.pax?'op-done':'op-primary'} disabled={busy||date>data.today} onClick={()=>void act({action:'board',bookingId:t.bookingId,index:t.index,boarded:t.boardedPax===t.pax?0:t.pax})}>{t.boardedPax===t.pax?'All on board ✓':'Board all'}</button>
-      <CancelTicket t={t} busy={busy} act={act}/>
+      {!crewMode&&<CancelTicket t={t} busy={busy} act={act}/>}
      </div>}
     </li>;})}</ul></div>}
     {open.length>0&&date<=data.today&&<button className="op-close" disabled={busy} onClick={()=>{if(window.confirm('Close the '+d.depart+' trip? Anyone not on board is marked a no-show.'))void act({action:'close',scheduleId:d.scheduleId,date:d.date},'Trip closed.');}}><Anchor/>Close trip</button>}
@@ -173,8 +181,8 @@ function Boarding({data,date,setDate,busy,act}:{data:any;date:string;setDate:(d:
  </section>;
 }
 
-const emptySailing={id:'',from:'Velana Airport',to:'Dhiffushi',depart:'',arrive:'',boatId:'',fare:'',roomFare:'',days:[] as number[],active:true};
-function Departures({sailings,boats,busy,act}:{sailings:Sailing[];boats:Boat[];busy:boolean;act:(b:any,done?:string)=>Promise<boolean>}){
+const emptySailing={id:'',from:'Velana Airport',to:'Dhiffushi',depart:'',arrive:'',boatId:'',crewIds:[] as string[],fare:'',roomFare:'',days:[] as number[],active:true};
+function Departures({sailings,boats,crew,busy,act}:{sailings:Sailing[];boats:Boat[];crew:CrewMember[];busy:boolean;act:(b:any,done?:string)=>Promise<boolean>}){
  const [draft,setDraft]=useState<any>(null);
  const sorted=useMemo(()=>sailings.slice().sort((a,b)=>(a.from+a.depart).localeCompare(b.from+b.depart)),[sailings]);
  const usable=boats.filter(b=>b.active),boatName=(id?:string)=>boats.find(b=>b.id===id)?.name;
@@ -196,6 +204,7 @@ function Departures({sailings,boats,busy,act}:{sailings:Sailing[];boats:Boat[];b
    <label>Fare for Nirili Villa guests (USD, optional)<input type="number" min={0} step="0.01" value={draft.roomFare} onChange={e=>setDraft({...draft,roomFare:e.target.value})} placeholder="Leave empty if not offered"/></label>
   </div>
   <datalist id="op-places">{PLACES.map(p=><option key={p} value={p}/>)}</datalist>
+  {crew.some(c=>c.active)&&<fieldset className="op-days"><legend>Regular crew (change it for one day under Boarding)</legend>{crew.filter(c=>c.active||draft.crewIds.includes(c.id)).map(c=><label key={c.id}><input type="checkbox" checked={draft.crewIds.includes(c.id)} onChange={e=>setDraft({...draft,crewIds:e.target.checked?[...draft.crewIds,c.id]:draft.crewIds.filter((x:string)=>x!==c.id)})}/>{c.name} · {c.role}</label>)}</fieldset>}
   <fieldset className="op-days"><legend>Runs on (none ticked = every day)</legend>{DAYS.map((d,i)=><label key={d}><input type="checkbox" checked={draft.days.includes(i)} onChange={e=>setDraft({...draft,days:e.target.checked?[...draft.days,i]:draft.days.filter((x:number)=>x!==i)})}/>{d}</label>)}</fieldset>
   <label className="op-check"><input type="checkbox" checked={draft.active} onChange={e=>setDraft({...draft,active:e.target.checked})}/>On sale</label>
   <p className="op-muted">Guests choose their seats on this boat's seat map. To use a different boat on one day only, change it in Boarding for that date. Children pay half the adult fare; infants travel free on a lap.</p>
@@ -207,8 +216,9 @@ function Departures({sailings,boats,busy,act}:{sailings:Sailing[];boats:Boat[];b
   {sorted.map(s=><article key={s.id} className={'op-card'+(s.active?'':' is-off')}>
    <header><div><small>{s.days?.length?s.days.map(d=>DAYS[d]).join(' · '):'Every day'}</small><h3>{s.depart} {s.from} → {s.to}</h3></div><span className={'op-pill'+(s.active?' is-ok':'')}>{s.active?'On sale':'Off sale'}</span></header>
    <p>Arrives {s.arrive} · {boatName(s.boatId)?boatName(s.boatId)+' · '+s.capacity+' seats':s.capacity+' seats'} · {mvr(s.fare)} adult{Number.isInteger(s.roomFare)?' · Villa guests '+usd(s.roomFare!):''}</p>
+   {crew.length>0&&<p className="op-muted">Crew: {crewNames(crew,s.crewIds)}</p>}
    {!s.boatId&&<p className="op-note">Choose the boat for this departure so guests see its seat map. Tap Edit.</p>}
-   <div className="op-actions"><button onClick={()=>setDraft({...s,boatId:s.boatId||'',fare:(s.fare/100).toFixed(2),roomFare:Number.isInteger(s.roomFare)?(s.roomFare!/100).toFixed(2):'',days:s.days||[]})}>Edit</button>
+   <div className="op-actions"><button onClick={()=>setDraft({...s,boatId:s.boatId||'',crewIds:s.crewIds||[],fare:(s.fare/100).toFixed(2),roomFare:Number.isInteger(s.roomFare)?(s.roomFare!/100).toFixed(2):'',days:s.days||[]})}>Edit</button>
     {s.boatId&&<button disabled={busy} onClick={()=>void act({action:'save-sailing',sailing:{...s,active:!s.active}},s.active?'Taken off sale.':'Back on sale.')}>{s.active?'Take off sale':'Put on sale'}</button>}</div>
   </article>)}
  </section>;
@@ -239,6 +249,94 @@ function Boats({boats,busy,act}:{boats:Boat[];busy:boolean;act:(b:any,done?:stri
    <div className="op-actions"><button onClick={()=>setDraft({...b,layout:b.layout||defaultLayout(b.capacity)})}>Edit boat and seats</button></div>
   </article>)}
  </section>;
+}
+
+// Who works a trip. The departure's regular crew apply unless the operator changes them for the day.
+function TripCrew({d,date,today,crew,busy,act}:{d:Departure;date:string;today:string;crew:CrewMember[];busy:boolean;act:(b:any,done?:string)=>Promise<boolean>}){
+ const [pick,setPick]=useState<string[]|null>(null);
+ if(!crew.length)return null;
+ const ids=d.crewIds||[];
+ if(pick)return <div className="op-crew-pick">
+  <p className="op-h">Crew for the {d.depart} trip on {niceDate(date)}</p>
+  <div className="op-days">{crew.filter(c=>c.active||ids.includes(c.id)).map(c=><label key={c.id}><input type="checkbox" checked={pick.includes(c.id)} onChange={e=>setPick(e.target.checked?[...pick,c.id]:pick.filter(x=>x!==c.id))}/>{c.name} · {c.role}</label>)}</div>
+  <div className="op-actions">
+   <button className="op-primary" disabled={busy} onClick={async()=>{if(await act({action:'trip-crew',scheduleId:d.scheduleId,date,crewIds:pick},'Crew updated for this trip. They see it when they sign in.'))setPick(null);}}>Save crew</button>
+   {d.crewChanged&&<button disabled={busy} onClick={async()=>{if(await act({action:'trip-crew',scheduleId:d.scheduleId,date,regular:true},'This trip is back to the regular crew.'))setPick(null);}}>Use regular crew</button>}
+   <button type="button" onClick={()=>setPick(null)}>Cancel</button>
+  </div>
+ </div>;
+ return <p className="op-crew-line"><UserRound/><span>Crew: {crewNames(crew,ids)}{d.crewChanged?' (changed for this day)':''}</span>{!d.closed&&date>=today&&<button disabled={busy} onClick={()=>setPick(ids)}>Change crew</button>}</p>;
+}
+
+// The operator's crew logins.
+function CrewTab({crew,busy,act}:{crew:CrewMember[];busy:boolean;act:(b:any,done?:string)=>Promise<boolean>}){
+ const [draft,setDraft]=useState<any>(null);
+ async function save(e:React.FormEvent){
+  e.preventDefault();
+  const done=draft.id?draft.name+' saved.'+(draft.password?' The new password signs them out of other devices.':''):draft.name+' can now sign in at this page with username '+draft.username+'.';
+  if(await act({action:'save-crew',crew:draft},done))setDraft(null);
+ }
+ if(draft)return <form className="op-form" onSubmit={save}>
+  <h3>{draft.id?'Edit crew member':'Add a crew member'}</h3>
+  <div className="op-grid">
+   <label>Name<input required maxLength={80} value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
+   <label>Role<select value={draft.role} onChange={e=>setDraft({...draft,role:e.target.value})}><option>Captain</option><option>Crew</option></select></label>
+   <label>WhatsApp (optional)<input maxLength={30} inputMode="tel" value={draft.phone} onChange={e=>setDraft({...draft,phone:e.target.value})} placeholder="+960 7XX XXXX"/></label>
+   {draft.id?<label>Username<input value={draft.username} disabled/></label>
+   :<label>Username<input required minLength={3} maxLength={40} pattern="[a-z0-9._\-]+" autoCapitalize="none" value={draft.username} onChange={e=>setDraft({...draft,username:e.target.value.toLowerCase()})} placeholder="e.g. ali.captain"/></label>}
+   <label>{draft.id?'New password (leave empty to keep)':'Password (8+ characters)'}<input type="password" autoComplete="new-password" required={!draft.id} minLength={8} maxLength={128} value={draft.password} onChange={e=>setDraft({...draft,password:e.target.value})}/></label>
+  </div>
+  {draft.id&&<label className="op-check"><input type="checkbox" checked={draft.active} onChange={e=>setDraft({...draft,active:e.target.checked})}/>Can sign in</label>}
+  <p className="op-muted">Crew sign in on this page. They only see the trips you put them on, where they board guests and close the trip. They cannot change departures, boats, fares or bookings.</p>
+  <div className="op-actions"><button className="op-primary" disabled={busy}>Save</button><button type="button" onClick={()=>setDraft(null)}>Cancel</button></div>
+ </form>;
+ return <section className="op-list">
+  <button className="op-add" onClick={()=>setDraft({id:'',name:'',role:'Crew',phone:'',username:'',password:'',active:true})}><Plus/>Add a crew member</button>
+  {!crew.length&&<p className="op-empty">Add your captains and crew so they can board guests on the trips you give them.</p>}
+  {crew.map(c=><article key={c.id} className={'op-card'+(c.active?'':' is-off')}>
+   <header><div><small>{c.role} · Username {c.username}</small><h3>{c.name}</h3></div><span className={'op-pill'+(c.active?' is-ok':'')}>{c.active?'Can sign in':'Paused'}</span></header>
+   {c.phone&&<p><a href={wa(c.phone)} target="_blank" rel="noopener noreferrer">{c.phone}</a></p>}
+   <div className="op-actions"><button onClick={()=>setDraft({...c,password:''})}>Edit</button>
+    <button disabled={busy} onClick={()=>void act({action:'save-crew',crew:{...c,active:!c.active}},c.active?c.name+' can no longer sign in.':c.name+' can sign in again.')}>{c.active?'Pause login':'Allow sign-in'}</button></div>
+  </article>)}
+ </section>;
+}
+
+// What a crew member sees: their trips for the next 7 days and boarding for the chosen day.
+function CrewWorkspace({crew,onSignedOut}:{crew:CrewMember;onSignedOut:()=>void}){
+ const [date,setDate]=useState(''),[data,setData]=useState<any>(null);
+ const [message,setMessage]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const handle=useCallback((e:any)=>{if(e?.status===401){onSignedOut();return;}setError(e?.message||'Something went wrong.');},[onSignedOut]);
+ const load=useCallback(async()=>{try{const d=await call('/api/operator-portal/crew'+(date?'?date='+date:''));setData(d);if(!date)setDate(d.date);}catch(e){handle(e)}},[date,handle]);
+ useEffect(()=>{void load();},[load]);
+ useEffect(()=>{const t=setInterval(()=>{if(document.visibilityState==='visible')void load();},20000);return ()=>clearInterval(t);},[load]);
+ async function act(body:any,done=''){
+  if(busy)return false;setBusy(true);setError('');setMessage('');
+  try{setData(await call('/api/operator-portal/crew',{...body,viewDate:date}));if(done)setMessage(done);return true;}
+  catch(e){handle(e);return false}finally{setBusy(false)}
+ }
+ async function signOut(){await fetch('/api/operator-portal/session',{method:'DELETE'}).catch(()=>null);onSignedOut();}
+ return <div className="op-wrap">
+  <header className="op-bar">
+   <div><small>{crew.operatorName} · {crew.role}</small><strong>{crew.name}</strong><span>Board guests on your trips</span></div>
+   <div className="op-bar-actions">
+    <button type="button" onClick={()=>void load()} aria-label="Refresh"><RefreshCw/></button>
+    <button type="button" onClick={()=>void signOut()}><LogOut/>Sign out</button>
+   </div>
+  </header>
+  {message&&<p className="op-message" role="status"><CheckCircle2/>{message}</p>}
+  {error&&<p className="op-error" role="alert">{error}</p>}
+  {!data?<p className="op-muted">Loading…</p>:<>
+   <section className="op-departure">
+    <h3>Your trips</h3>
+    {!data.upcoming.length?<p className="op-muted">You are not on any trip in the next 7 days. Your operator assigns trips to you.</p>
+    :<ul className="op-trips">{data.upcoming.map((t:any)=><li key={t.scheduleId+t.date}><button aria-pressed={t.date===date} onClick={()=>setDate(t.date)}>
+     <b>{t.date===data.today?'Today':niceDate(t.date)} · {t.depart}</b><span>{t.from} → {t.to} · {t.boatName||'Boat to be confirmed'} · {t.sold}/{t.seats} seats{t.closed?' · departed':''}</span>
+    </button></li>)}</ul>}
+   </section>
+   <Boarding data={data} date={date} setDate={setDate} busy={busy} act={act} crewMode/>
+  </>}
+ </div>;
 }
 
 const NEXT:Record<string,{step:string;label:string}>={Assigned:{step:'on-the-way',label:'Start pickup'},'Driver on the way':{step:'arrived',label:'I have arrived'},Arrived:{step:'boarded',label:'Guest on board'},'On trip':{step:'complete',label:'Complete ride'}};

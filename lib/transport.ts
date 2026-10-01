@@ -13,7 +13,9 @@ export type Sailing={id:string;boat:string;from:string;to:string;depart:string;a
  // Days the departure runs, 0 = Sunday … 6 = Saturday. Missing or empty means every day.
  days?:number[];
  // The boat that normally runs this departure, and one-day swaps (date → boat id).
- boatId?:string;boatOverrides?:Record<string,string>};
+ boatId?:string;boatOverrides?:Record<string,string>;
+ // The operator's crew who normally work this departure, and one-day changes (date → crew ids).
+ crewIds?:string[];crewOverrides?:Record<string,string[]>};
 export type TicketStatus='New'|'Accepted'|'Declined';
 export type Journey={scheduleId:string;date:string;seats:number[];boat:string;from:string;to:string;depart:string;arrive:string;fare:number;roomFare?:number;
  operatorId?:string;operatorName?:string;operatorStatus?:TicketStatus;

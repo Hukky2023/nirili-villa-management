@@ -4,6 +4,8 @@ import {loadStays} from '../../../lib/stays';
 import {loadTransport} from '../../../lib/transport-store';
 import {operatorBoats,operatorSailings,operatorStatement,operatorTickets} from '../../../lib/transport-operator';
 import {buggyStatement,ownerBuggies} from '../../../lib/buggy-operator';
+import {readRecords} from '../../../lib/operation-records';
+import {CREW_PREFIX,publicCrew,type Crew} from '../../../lib/operator-crew';
 import {createOperator,loadOperators,offers,publicOperator,updateOperator} from '../../../lib/travel-operators';
 
 // Staff side of the Nirili Travels marketplace: operator accounts and commission, their fleets,
@@ -18,10 +20,11 @@ export async function GET(r:Request){
  try{
   const month=new URL(r.url).searchParams.get('month')||islandToday().slice(0,7);
   if(!/^\d{4}-\d{2}$/.test(month))throw Error('Choose a valid month.');
-  const [rows,{state:transport},{state:hotel}]=await Promise.all([loadOperators(),loadTransport(),loadStays()]);
+  const [rows,{state:transport},{state:hotel},crewRows]=await Promise.all([loadOperators(),loadTransport(),loadStays(),readRecords<Crew>(CREW_PREFIX)]);
   const today=islandToday();
   const operators=rows.map(({operator,revision})=>({...publicOperator(operator),revision,
    boats:offers(operator,'boat')?operatorBoats(transport,operator.id):[],
+   crew:crewRows.filter(c=>c.value.operatorId===operator.id).map(c=>{const p=publicCrew(c.value);return {id:p.id,name:p.name,role:p.role,active:p.active};}),
    departures:offers(operator,'boat')?operatorSailings(transport,operator.id).length:0,
    upcomingTickets:offers(operator,'boat')?operatorTickets(transport,operator.id,t=>t.journey.operatorStatus!=='Declined'&&!t.journey.departedAt&&t.journey.date>=today).length:0,
    boatStatement:offers(operator,'boat')?operatorStatement(transport,operator,month,today):null,

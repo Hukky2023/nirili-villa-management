@@ -2,11 +2,12 @@ import {sameOrigin} from '../../../../lib/auth';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
 import {occupied,transportToday,tripBoat,type Journey,type TransferBooking} from '../../../../lib/transport';
 import {loadTransport,updateTransport} from '../../../../lib/transport-store';
-import {closeDeparture,declineTicket,operatorBoats,operatorDay,operatorSailings,operatorStatement,operatorTickets,saveBoat,saveOperatorSailing,setBoarded,setTripBoat,ticketPax} from '../../../../lib/transport-operator';
+import {closeDeparture,declineTicket,operatorBoats,operatorDay,operatorSailings,operatorStatement,operatorTickets,saveBoat,saveOperatorSailing,setBoarded,setTripBoat,setTripCrew,ticketPax,tripCrew} from '../../../../lib/transport-operator';
 import {offers,operatorFromRequest,publicOperator,type Operator} from '../../../../lib/travel-operators';
+import {createCrew,operatorCrew,publicCrew,updateCrew} from '../../../../lib/operator-crew';
 
-// Speedboat operator portal: fleet with seat maps, published departures, bookings, boarding and
-// the monthly statement. Only the signed-in operator's own boats, departures and tickets appear.
+// Speedboat operator portal: fleet with seat maps, crew logins, published departures with their
+// crew, bookings, boarding and the monthly statement. Only the signed-in operator's own boats, departures and tickets appear.
 const headers={'Cache-Control':'private, no-store'};
 const denied=()=>Response.json({error:'Your session has ended. Please sign in again.'},{status:401,headers});
 const dateOk=(d:string)=>/^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -21,17 +22,18 @@ function ticketView(booking:TransferBooking,journey:Journey,index:number){
 }
 
 async function view(operator:Operator,date:string,month:string){
- const {state,revision}=await loadTransport(),today=transportToday();
+ const [{state,revision},crewRows]=await Promise.all([loadTransport(),operatorCrew(operator.id)]),today=transportToday();
+ const crew=crewRows.map(r=>publicCrew(r.crew));
  const day=operatorDay(state,operator.id,date).map(d=>({...d,taken:occupied(state,d.scheduleId,date),tickets:d.tickets.map(t=>ticketView(t.booking,t.journey,t.index))}));
  // Upcoming trips that have bookings, each with the boat it runs on.
  const upcoming=operatorTickets(state,operator.id,t=>t.journey.date>=today&&t.journey.operatorStatus!=='Declined'&&!t.journey.departedAt);
  const trips=new Map<string,any>();
  for(const t of upcoming){
   const key=t.journey.scheduleId+'|'+t.journey.date,sailing=state.sailings.find(s=>s.id===t.journey.scheduleId),boat=sailing?tripBoat(state,sailing,t.journey.date):undefined;
-  if(!trips.has(key))trips.set(key,{scheduleId:t.journey.scheduleId,date:t.journey.date,depart:t.journey.depart,arrive:t.journey.arrive,from:t.journey.from,to:t.journey.to,boatId:boat?.id||'',boatName:boat?.name||t.journey.boatName||'',swapped:!!sailing?.boatOverrides?.[t.journey.date],sold:0,tickets:[]});
+  if(!trips.has(key))trips.set(key,{crewIds:sailing?tripCrew(sailing,t.journey.date):[],scheduleId:t.journey.scheduleId,date:t.journey.date,depart:t.journey.depart,arrive:t.journey.arrive,from:t.journey.from,to:t.journey.to,boatId:boat?.id||'',boatName:boat?.name||t.journey.boatName||'',swapped:!!sailing?.boatOverrides?.[t.journey.date],sold:0,tickets:[]});
   const trip=trips.get(key);trip.sold+=t.journey.seats.length;trip.tickets.push(ticketView(t.booking,t.journey,t.index));
  }
- return {revision,today,date,month,operator:publicOperator(operator),boats:operatorBoats(state,operator.id),sailings:operatorSailings(state,operator.id),day,bookings:[...trips.values()],statement:operatorStatement(state,operator,month,today)};
+ return {revision,today,date,month,operator:publicOperator(operator),boats:operatorBoats(state,operator.id),sailings:operatorSailings(state,operator.id),crew,day,bookings:[...trips.values()],statement:operatorStatement(state,operator,month,today)};
 }
 
 async function speedboatOperator(r:Request){
@@ -56,11 +58,20 @@ export async function POST(r:Request){
   const operator=await speedboatOperator(r);
   if(!operator)return denied();
   const body:Record<string,any>=await r.json(),by=operator.name,ref={id:operator.id,name:operator.name};
+  // Crew logins live outside the speedboat ledger.
+  if(body.action==='save-crew'){
+   const c=body.crew||{};
+   if(c.id)await updateCrew(operator.id,String(c.id),c,'operator:'+operator.id);else await createCrew(operator.id,c,'operator:'+operator.id);
+   const today=transportToday();
+   return Response.json(await view(operator,dateOk(String(body.viewDate||''))?String(body.viewDate):today,/^\d{4}-\d{2}$/.test(String(body.viewMonth||''))?String(body.viewMonth):today.slice(0,7)),{headers});
+  }
+  const activeCrew=new Set((await operatorCrew(operator.id)).filter(r=>r.crew.active).map(r=>r.crew.id));
   let notice:any=null;
   await updateTransport('operator:'+operator.id,state=>{
    switch(body.action){
     case 'save-boat':return saveBoat(state,ref,body.boat);
-    case 'save-sailing':return saveOperatorSailing(state,ref,body.sailing);
+    case 'save-sailing':return saveOperatorSailing(state,ref,body.sailing,activeCrew);
+    case 'trip-crew':return setTripCrew(state,ref,String(body.scheduleId||''),String(body.date||''),body.crewIds,activeCrew,body.regular===true);
     case 'trip-boat':return setTripBoat(state,ref,String(body.scheduleId||''),String(body.date||''),String(body.boatId||''),by);
     case 'decline':
     case 'cancel':{
