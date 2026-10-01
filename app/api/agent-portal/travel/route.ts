@@ -4,7 +4,7 @@ import {loadStays} from '../../../../lib/stays';
 import {saveStayAccess} from '../../../../lib/stay-login';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
 import {activeOnDemandRide,addPublicRide} from '../../../../lib/buggy-rides';
-import {addHistory,createTransfer,freeSeats,journeyLive,type TransportState} from '../../../../lib/transport';
+import {addHistory,createTransfer,publicBoats,seatAvailability,seatsForBooking,seatTaken,type TransportState} from '../../../../lib/transport';
 import {loadTransport,saveTransport} from '../../../../lib/transport-store';
 import {agentFromRequest,text,type Agent} from '../../../../lib/excursion-agents';
 
@@ -23,9 +23,10 @@ function maldivesClock(){
 function transferView(state:TransportState,agent:Agent){
  return {
   sailings:state.sailings.filter(s=>s.active).map(({roomFare,...s})=>s),
-  availability:state.bookings.flatMap(b=>b.journeys.filter(j=>journeyLive(b,j)).map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))),
+  boats:publicBoats(state),
+  availability:seatAvailability(state),
   transfers:state.bookings.filter(b=>b.agentId===agent.id).map(b=>({id:b.id,name:b.name,phone:b.phone,adults:b.adults,children:b.children,infants:b.infants,total:b.total,status:b.status,agentReference:b.agentReference||'',created:b.created,
-   journeys:b.journeys.map(j=>({date:j.date,depart:j.depart,arrive:j.arrive,from:j.from,to:j.to,operatorName:j.operatorName||j.boat,status:j.operatorStatus||'Accepted',boatName:j.boatName||'',declineReason:j.declineReason||'',cancelledByOperator:!!j.cancelledByOperator,departed:!!j.departedAt,noShow:!!j.noShow,boardedPax:j.boardedPax||0}))}))
+   journeys:b.journeys.map(j=>({seats:j.seats,date:j.date,depart:j.depart,arrive:j.arrive,from:j.from,to:j.to,operatorName:j.operatorName||j.boat,status:j.operatorStatus||'Accepted',boatName:j.boatName||'',declineReason:j.declineReason||'',cancelledByOperator:!!j.cancelledByOperator,departed:!!j.departedAt,noShow:!!j.noShow,boardedPax:j.boardedPax||0}))}))
    .sort((a,b)=>b.created.localeCompare(a.created)),
  };
 }
@@ -66,12 +67,7 @@ export async function POST(r:Request){
     if(state.bookings.some(b=>b.owner===owner&&b.token===body.token))return Response.json(await view(agent),{headers});
     const phone=cleanPhone(body.phone)||agent.phone;
     if(!PHONE.test(phone))throw Error(cleanPhone(body.phone)?'Enter the guest WhatsApp number with country code.':'Add the guest’s WhatsApp number so the operator can reach them (your guest house has no WhatsApp number on file with Nirili).');
-    const journeys=(Array.isArray(body.journeys)?body.journeys:[]).map((j:any)=>{
-     const sailing=state.sailings.find(s=>s.id===j?.scheduleId&&s.active);
-     const seats=sailing?freeSeats(state,sailing,String(j.date||''),Number(body.adults)+Number(body.children)):null;
-     if(sailing&&!seats)throw Error('Not enough seats left on this boat for your group. Try another time or date.');
-     return {...j,seats:seats||j?.seats};
-    });
+    const journeys=seatsForBooking(state,body.journeys,Number(body.adults)+Number(body.children));
     const booking=createTransfer(state,{...body,journeys,phone,traveller:'Tourist',notes:text(body.notes,1000)},owner);
     Object.assign(booking,{source:'Partner',agentId:agent.id,agentName:agent.name,agentReference:text(body.agentReference,60),pickup:agent.pickup});
     addHistory(booking,by,'Booked','Partner portal');
@@ -133,5 +129,8 @@ export async function POST(r:Request){
    throw Error('Please try again in a moment.');
   }
   throw Error('Unknown action.');
- }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not save. Please try again.'},{status:400,headers});}
+ }catch(e){
+  if(seatTaken(e))try{const agent=await agentFromRequest(r);if(agent)return Response.json({error:(e as Error).message,...await view(agent)},{status:409,headers});}catch{}
+  return Response.json({error:e instanceof Error?e.message:'Could not save. Please try again.'},{status:400,headers});
+ }
 }

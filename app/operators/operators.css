@@ -50,7 +50,7 @@
 .op-card h3,.op-departure h3,.op-form h3{font-family:var(--serif);font-weight:400;font-size:21px;margin:2px 0 0;line-height:1.2}
 .op-card p{margin:0}
 .op-note{margin:0;padding:8px 10px;border-radius:10px;background:var(--sand);font-size:14px;color:var(--ink-soft)}
-.op-pill{flex:none;white-space:nowrap;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#eef0f1;color:var(--ink-soft)}
+.op-pill{flex:none;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#eef0f1;color:var(--ink-soft)}
 .op-pill.is-ok{background:#dff3ec;color:#0f6b4f}
 .op-pill.is-new{background:#fbefe0;color:#8a5a1c}
 .op-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -69,6 +69,7 @@
 .op-boat li.is-noshow{opacity:.6}
 .op-boat li.is-gone{opacity:.75}
 .op-close{justify-self:start}
+.op-pill svg{width:14px;height:14px}
 
 /* Forms */
 .op-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
@@ -98,3 +99,23 @@
 .op-table th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 @media print{.op-tabs,.op-bar-actions,.op-toolbar button{display:none!important}}
 @media(max-width:600px){.op-actions select{min-width:0;flex:1}.op-boat li{align-items:stretch}.op-boat li .op-actions{width:100%}}
+
+/* Seat maps */
+.op-seatmap summary{cursor:pointer;font-weight:600;padding:4px 0}
+.op-seatmap .sm{margin-top:8px}
+.op-swap{display:grid;gap:4px;font-size:13px;font-weight:600;max-width:320px}
+.op-seats{display:grid;gap:12px}
+.op-seats-start{border:1px solid var(--line);border-radius:14px;padding:12px;margin:0;display:flex;flex-wrap:wrap;gap:10px;align-items:end;background:#fff}
+.op-seats-start legend{font-size:14px;font-weight:600;padding:0 4px}
+.op-seats-start label,.op-seats-tools label,.op-seats-number label{display:grid;gap:4px;font-size:13px;font-weight:600}
+.op-seats-start input{width:100px}
+.op-seats-start select,.op-seats-tools select{width:auto}
+.op-seats-tools{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.op-seats-tools>span{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.op-seats-tools>span b{min-width:22px;text-align:center}
+.op-portal .op-seats-tools>span button{min-height:36px;width:36px;padding:0}
+.op-seats-mode{display:flex;flex-wrap:wrap;gap:6px}
+.op-portal .op-seats-mode button{min-height:38px;font-size:14px}
+.op-seats-mode button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.op-seats-number{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+.op-seats-number input{width:110px}

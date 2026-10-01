@@ -23,7 +23,7 @@ export async function GET(r:Request){
   const operators=rows.map(({operator,revision})=>({...publicOperator(operator),revision,
    boats:offers(operator,'boat')?operatorBoats(transport,operator.id):[],
    departures:offers(operator,'boat')?operatorSailings(transport,operator.id).length:0,
-   waitingTickets:offers(operator,'boat')?operatorTickets(transport,operator.id,t=>t.journey.operatorStatus==='New'&&t.journey.date>=today).length:0,
+   upcomingTickets:offers(operator,'boat')?operatorTickets(transport,operator.id,t=>t.journey.operatorStatus!=='Declined'&&!t.journey.departedAt&&t.journey.date>=today).length:0,
    boatStatement:offers(operator,'boat')?operatorStatement(transport,operator,month,today):null,
    buggies:offers(operator,'buggy')?ownerBuggies(hotel,operator.id).map((b:any)=>({id:b.id,name:b.name,capacity:b.capacity,status:b.status,driver:b.driver||''})):[],
    buggyStatement:offers(operator,'buggy')?buggyStatement(hotel,operator,month):null}));

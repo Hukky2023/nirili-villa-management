@@ -4,7 +4,7 @@ import {loadStays,stayKey} from '../../../lib/stays';
 import {canTransport,isTransportAgent,transportRole} from '../../../lib/transport-access';
 import {authDb,currentUser,currentGuestUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {restaurantOnly} from '../../../lib/pos-access';
-import {createTransfer,initialTransport,journeyFor,journeyLive,normalizeTransport,runsOn,TransportState,Sailing} from '../../../lib/transport';
+import {createTransfer,initialTransport,journeyFor,journeyLive,normalizeTransport,publicBoats,runsOn,seatAvailability,tripBoat,tripSeats,TransportState,Sailing} from '../../../lib/transport';
 import {minutes,syncTransportBuggy} from '../../../lib/transport-plan';
 import {syncTransportPlanBill} from '../../../lib/transport-plan-billing';
 import {sendTransportScheduleEmail} from '../../../lib/booking-email';
@@ -68,7 +68,7 @@ async function visible(state:TransportState,revision:number,u:any){
  const eligible=u.role==='guest'&&!isTransportAgent(u)?hotel.state.stays.filter((s:any)=>s.accountId===u.userId&&['In House','Confirmed'].includes(s.status)&&s.checkOut>=new Date(Date.now()+5*3600000).toISOString().slice(0,10)):[];
  const ownRoom=eligible.length===1?{id:eligible[0].id,room:eligible[0].room,checkIn:eligible[0].checkIn,checkOut:eligible[0].checkOut}:null;
  const guestStays=u.role==='admin'?(hotel.state.stays||[]).filter((s:any)=>['Confirmed','In House'].includes(String(s.status||''))).map((s:any)=>({id:s.id,guest:s.guest,room:s.room,phone:s.whatsapp||'',email:s.email||'',checkIn:s.checkIn,checkOut:s.checkOut,pax:Number(s.pax)||1,adults:Number(s.adults??s.pax??1),children:Number(s.children??0),transportPlan:s.transportPlan||null})):[];
- return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,guestStays,transportPlans:canEdit?planRows(state,hotel.state):[],sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),availability:state.bookings.flatMap(b=>b.journeys.filter(j=>journeyLive(b,j)).map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))) };
+ return {revision,canEdit,isAdmin:u.role==='admin',role:transportRole(u),ownRoom,guestStays,transportPlans:canEdit?planRows(state,hotel.state):[],sailings:canEdit?state.sailings:state.sailings.filter(s=>s.active),bookings:state.bookings.filter(b=>canEdit||b.owner===u.userId).map(({token,owner,...b})=>b),boats:publicBoats(state),availability:seatAvailability(state) };
 }
 export async function GET(){const u=await transportUser();if(!u||!canTransport(u))return Response.json({error:'Sign in to access transfers.'},{status:403});try{const {state,revision}=await loadForRead();return Response.json(await visible(state,revision,u),{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Unable to load transfers. Please retry.'},{status:503});}}
 export async function POST(r:Request){const u=await transportUser();if(!u||!canTransport(u)||!sameOrigin(r))return Response.json({error:'Not allowed.'},{status:403});try{
@@ -89,8 +89,8 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   const oldId=String(plan.transportBookingId||plan.previousTransportBookingId||''),old=oldId?state.bookings.find(item=>item.id===oldId):undefined,wasScheduled=!!old&&!!plan.launch;
   const adults=Math.max(1,Number(stay.adults??stay.pax??1)),children=Math.max(0,Number(stay.children??0)),infants=0,seatCount=adults+children;
   const used=state.bookings.filter(item=>item.id!==oldId).flatMap(item=>item.journeys.filter(j=>journeyLive(item,j)&&j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
-  const seats=Array.from({length:sailing.capacity},(_,i)=>i+1).filter(n=>!used.includes(n)).slice(0,seatCount);if(seats.length!==seatCount)throw Error('This launch no longer has enough seats. Choose another departure.');
-  const journey=journeyFor(sailing,date,seats),total=sailing.fare*adults+Math.round(sailing.fare/2)*children,now=new Date().toISOString();
+  const seats=tripSeats(state,sailing,date).filter(n=>!used.includes(n)).slice(0,seatCount);if(seats.length!==seatCount)throw Error('This launch no longer has enough seats. Choose another departure.');
+  const journey=journeyFor(sailing,date,seats,tripBoat(state,sailing,date)),total=sailing.fare*adults+Math.round(sailing.fare/2)*children,now=new Date().toISOString();
   const booking:any=old||{id:'NT-'+crypto.randomUUID().slice(0,8).toUpperCase(),token:crypto.randomUUID(),owner:'stay:'+stay.id,created:now,paid:false};
   Object.assign(booking,{name:stay.guest,phone:stay.whatsapp||'',traveller:'Tourist',adults,children,infants,journeys:[journey],total,status:'Confirmed',checked:[],notes:'Room transport plan · '+leg+(plan.flightNumber?' · Flight '+plan.flightNumber:'')+(plan.flightTime?' · '+plan.flightTime:''),stayId:stay.id,room:stay.room,transportPlanLeg:leg});
   if(!old)state.bookings.push(booking);
@@ -113,12 +113,12 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   const oldId=String(plan.transportBookingId||plan.previousTransportBookingId||''),old=oldId?state.bookings.find(item=>item.id===oldId):undefined,wasScheduled=!!old&&!!plan.launch;
   const adults=Math.max(1,Number(stay.adults??stay.pax??1)),children=Math.max(0,Number(stay.children??0)),infants=0,seatCount=adults+children;
   const requestedSeats=Array.isArray(b.seats)?b.seats.map(Number):[];
-  if(requestedSeats.length!==seatCount||new Set(requestedSeats).size!==seatCount||requestedSeats.some((n:number)=>!Number.isInteger(n)||n<1||n>sailing.capacity))throw Error('Select one valid seat for every adult and child.');
+  if(requestedSeats.length!==seatCount||new Set(requestedSeats).size!==seatCount||requestedSeats.some((n:number)=>!Number.isInteger(n)||!tripSeats(state,sailing,date).includes(n)))throw Error('Select one valid seat for every adult and child.');
   const used=state.bookings.filter(item=>item.id!==oldId).flatMap(item=>item.journeys.filter(j=>journeyLive(item,j)&&j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
   if(requestedSeats.some((n:number)=>used.includes(n)))throw Error('One or more selected seats were just booked. Choose available seats.');
   const free=b.free===true,discountPercent=Math.max(0,Math.min(100,Number(b.discountPercent)||0));let priceCents:any=undefined;
   if(b.priceCents!==undefined&&b.priceCents!==null&&b.priceCents!==''){const value=Number(b.priceCents);if(!Number.isInteger(value)||value<0||value>1000000)throw Error('Enter a valid custom USD total.');priceCents=value;}
-  const now=new Date().toISOString(),journey=journeyFor(sailing,date,requestedSeats),total=sailing.fare*adults+Math.round(sailing.fare/2)*children;
+  const now=new Date().toISOString(),journey=journeyFor(sailing,date,requestedSeats,tripBoat(state,sailing,date)),total=sailing.fare*adults+Math.round(sailing.fare/2)*children;
   const booking:any=old||{id:'NT-'+crypto.randomUUID().slice(0,8).toUpperCase(),token:crypto.randomUUID(),owner:'stay:'+stay.id,created:now,paid:false};
   Object.assign(booking,{name:stay.guest,phone:stay.whatsapp||'',traveller:'Tourist',adults,children,infants,journeys:[journey],total,status:'Confirmed',checked:[],notes:'Admin manual room transfer · '+leg,stayId:stay.id,room:stay.room,transportPlanLeg:leg});
   if(!old)state.bookings.push(booking);

@@ -1,9 +1,10 @@
 'use client';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowRight,CalendarDays,Car,MapPin,MessageCircle,ShipWheel,Users,X} from 'lucide-react';
+import {Seats,seatsLeft} from '../../seat-map';
 
 // Partner portal: book speedboat seats with independent operators and buggy rides for guests.
-type Sailing={id:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;operatorName?:string;boat:string;days?:number[]};
+type Sailing={id:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;operatorName?:string;boat:string;days?:number[];boatId?:string;boatOverrides?:Record<string,string>};
 const mvr=(c:number)=>'MVR '+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const usd=(c:number)=>'$'+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const niceDate=(d:string)=>d?new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}):'';
@@ -19,6 +20,8 @@ export function useTravel(){
  useEffect(()=>{void load();const t=setInterval(()=>{if(document.visibilityState==='visible')void load();},30000);return ()=>clearInterval(t);},[load]);
  async function send(body:any){
   const r=await fetch('/api/agent-portal/travel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),d:any=await r.json();
+  // A seat someone else just took comes back with the fresh seat map.
+  if(r.status===409&&d.sailings)setData(d);
   if(!r.ok)throw Error(d.error||'Could not save.');
   setData(d);return d;
  }
@@ -30,7 +33,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
  const [kind,setKind]=useState<'arrival'|'departure'>('arrival'),[date,setDate]=useState(''),[sailingId,setSailingId]=useState('');
  const [adults,setAdults]=useState(2),[children,setChildren]=useState(0),[infants,setInfants]=useState(0);
  const [name,setName]=useState(''),[phone,setPhone]=useState(''),[reference,setReference]=useState(''),[notes,setNotes]=useState('');
- const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState('');
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState(''),[picked,setPicked]=useState<number[]>([]);
  const token=useRef('');
  useEffect(()=>{token.current=crypto.randomUUID();},[]);
  useEffect(()=>{if(!date&&data?.today)setDate(data.today);},[data,date]);
@@ -38,18 +41,17 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
  useEffect(()=>{if(!options.some((s:Sailing)=>s.id===sailingId))setSailingId(options[0]?.id||'');},[options,sailingId]);
  const sailing=options.find((s:Sailing)=>s.id===sailingId);
  const total=sailing?sailing.fare*adults+Math.round(sailing.fare/2)*children:0;
- function seats(){
-  if(!sailing)return [];
-  const used=new Set((data?.availability||[]).filter((x:any)=>x.scheduleId===sailing.id&&x.date===date).flatMap((x:any)=>x.seats||[]));
-  const out:number[]=[];for(let n=1;n<=sailing.capacity&&out.length<adults+children;n++)if(!used.has(n))out.push(n);
-  return out.length===adults+children?out:[];
- }
+ const need=adults+children,enough=!sailing||seatsLeft(sailing,date,data)>=need;
+ useEffect(()=>setPicked([]),[sailingId,date,need]);
+ // Drop chosen seats that someone else has booked in the meantime.
+ useEffect(()=>{if(!sailing)return;const used=new Set((data?.availability||[]).filter((x:any)=>x.scheduleId===sailing.id&&x.date===date).flatMap((x:any)=>x.seats||[]));setPicked(p=>p.some(n=>used.has(n))?p.filter(n=>!used.has(n)):p);},[data]);
  async function submit(e:React.FormEvent){
   e.preventDefault();if(busy)return;setBusy(true);setError('');setDone('');
   try{
-   const picked=seats();if(!sailing||!picked.length)throw Error('Not enough seats left on this boat for your group. Try another time or date.');
+   if(!sailing||!enough)throw Error('Not enough seats left on this boat for your group. Try another time or date.');
+   if(picked.length&&picked.length!==need)throw Error('Choose '+need+' seats on the seat map, or tap Choose for me.');
    await send({action:'book-transfer',token:token.current,name,phone,adults,children,infants,notes,agentReference:reference,expectedTotal:total,journeys:[{scheduleId:sailing.id,date,seats:picked}]});
-   setDone('Seats reserved. The operator confirms the boat; you can follow it below.');token.current=crypto.randomUUID();setName('');setPhone('');setReference('');setNotes('');
+   setDone('Seats confirmed with the operator. You can follow the booking below.');token.current=crypto.randomUUID();setPicked([]);setName('');setPhone('');setReference('');setNotes('');
   }catch(err){setError((err as Error).message)}finally{setBusy(false)}
  }
  async function cancel(id:string){
@@ -75,6 +77,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
      <label><span>Children</span><select value={children} onChange={e=>setChildren(Number(e.target.value))}>{[0,1,2,3,4,5,6].map(x=><option key={x}>{x}</option>)}</select></label>
      <label><span>Infants</span><select value={infants} onChange={e=>setInfants(Number(e.target.value))}>{[0,1,2,3].map(x=><option key={x}>{x}</option>)}</select></label>
     </div>
+    {sailing&&(enough?<Seats sailing={sailing} date={date} data={data} need={need} selected={picked} onChange={setPicked}/>:<p className="nh-hint">Not enough seats left on this boat for your group. Try another time or date.</p>)}
     <div className="nh-fields nh-fields-3">
      <label><span>Lead guest name</span><input required maxLength={120} value={name} onChange={e=>setName(e.target.value)}/></label>
      <label><span>Guest WhatsApp (optional)</span><input maxLength={30} inputMode="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+44 7XXX XXXXXX"/></label>
@@ -96,7 +99,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
     <div><dt>Pickup</dt><dd>{pickup}</dd></div>
    </dl>
    <div className="nh-fare-total"><span>Guest pays the operator</span><strong>{sailing?mvr(total):'—'}</strong></div>
-   <small>Children travel at 50% of the adult fare; infants free. The operator confirms the boat and collects the fare when guests board.</small>
+   <small>Children travel at 50% of the adult fare; infants free. Seats are confirmed straight away; the operator collects the fare when guests board.</small>
   </aside>
   <section className="nh-agent-list nh-agent-travel-list">
    {!transfers.length&&<div className="nh-agent-empty">No transfers booked yet.</div>}
@@ -106,6 +109,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
      <div><dt>Departure</dt><dd>{niceDate(j.date)} · {j.depart}</dd></div>
      <div><dt>Route</dt><dd>{j.from} → {j.to}</dd></div>
      <div><dt>Operator</dt><dd>{j.operatorName}{j.boatName?' · '+j.boatName:''}</dd></div>
+     {j.seats?.length>0&&<div><dt>Seats</dt><dd>{j.seats.join(', ')}</dd></div>}
      <div><dt>Guests</dt><dd>{t.adults+t.children+t.infants}{j.departed?(j.noShow?' · No-show':' · '+j.boardedPax+' boarded'):''}</dd></div>
      {j.declineReason&&<div><dt>Reason</dt><dd>{j.declineReason}</dd></div>}
     </dl>)}

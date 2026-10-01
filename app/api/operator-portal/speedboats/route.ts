@@ -1,33 +1,37 @@
 import {sameOrigin} from '../../../../lib/auth';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
-import {transportToday,type Journey,type TransferBooking} from '../../../../lib/transport';
+import {occupied,transportToday,tripBoat,type Journey,type TransferBooking} from '../../../../lib/transport';
 import {loadTransport,updateTransport} from '../../../../lib/transport-store';
-import {acceptTicket,closeDeparture,declineTicket,operatorBoats,operatorDay,operatorSailings,operatorStatement,operatorTickets,saveBoat,saveOperatorSailing,setBoarded,ticketPax} from '../../../../lib/transport-operator';
+import {closeDeparture,declineTicket,operatorBoats,operatorDay,operatorSailings,operatorStatement,operatorTickets,saveBoat,saveOperatorSailing,setBoarded,setTripBoat,ticketPax} from '../../../../lib/transport-operator';
 import {offers,operatorFromRequest,publicOperator,type Operator} from '../../../../lib/travel-operators';
 
-// Speedboat operator portal: fleet, published departures, incoming tickets, boarding and the
-// monthly statement. Only the signed-in operator's own boats, departures and tickets appear.
+// Speedboat operator portal: fleet with seat maps, published departures, bookings, boarding and
+// the monthly statement. Only the signed-in operator's own boats, departures and tickets appear.
 const headers={'Cache-Control':'private, no-store'};
 const denied=()=>Response.json({error:'Your session has ended. Please sign in again.'},{status:401,headers});
 const dateOk=(d:string)=>/^\d{4}-\d{2}-\d{2}$/.test(d);
 
-// Guest contact details are shared once the operator has accepted the ticket.
 function ticketView(booking:TransferBooking,journey:Journey,index:number){
- const accepted=journey.operatorStatus==='Accepted';
  const roomBilled=!!booking.stayId&&Number.isInteger(booking.roomCents);
- return {bookingId:booking.id,index,name:booking.name,phone:accepted?booking.phone:'',adults:booking.adults,children:booking.children,infants:booking.infants,pax:ticketPax(booking),
+ return {bookingId:booking.id,index,name:booking.name,phone:journey.operatorStatus==='Declined'?'':booking.phone,seats:journey.seats,adults:booking.adults,children:booking.children,infants:booking.infants,pax:ticketPax(booking),
   notes:booking.notes||'',source:booking.agentName?'Partner: '+booking.agentName:booking.stayId?'Nirili Villa guest':booking.source||'Website',pickup:booking.pickup||'',
   date:journey.date,depart:journey.depart,arrive:journey.arrive,from:journey.from,to:journey.to,scheduleId:journey.scheduleId,
-  status:journey.operatorStatus||'New',cancelledByOperator:!!journey.cancelledByOperator,boatId:journey.boatId||'',boatName:journey.boatName||'',boardedPax:journey.boardedPax||0,departed:!!journey.departedAt,noShow:!!journey.noShow,declineReason:journey.declineReason||'',
+  status:journey.operatorStatus||'Accepted',cancelledByOperator:!!journey.cancelledByOperator,boatId:journey.boatId||'',boatName:journey.boatName||'',boardedPax:journey.boardedPax||0,departed:!!journey.departedAt,noShow:!!journey.noShow,declineReason:journey.declineReason||'',
   roomBilled,fareMvr:roomBilled?0:journey.fare*booking.adults+Math.round(journey.fare/2)*booking.children,created:booking.created};
 }
 
 async function view(operator:Operator,date:string,month:string){
  const {state,revision}=await loadTransport(),today=transportToday();
- const inbox=operatorTickets(state,operator.id,t=>t.journey.operatorStatus==='New'&&t.journey.date>=today).map(t=>ticketView(t.booking,t.journey,t.index));
- const day=operatorDay(state,operator.id,date).map(d=>({...d,tickets:d.tickets.map(t=>ticketView(t.booking,t.journey,t.index))}));
- const upcoming=operatorTickets(state,operator.id,t=>t.journey.date>=today&&t.journey.operatorStatus==='Accepted'&&!t.journey.departedAt).map(t=>ticketView(t.booking,t.journey,t.index));
- return {revision,today,date,month,operator:publicOperator(operator),boats:operatorBoats(state,operator.id),sailings:operatorSailings(state,operator.id),inbox,day,upcoming,statement:operatorStatement(state,operator,month,today)};
+ const day=operatorDay(state,operator.id,date).map(d=>({...d,taken:occupied(state,d.scheduleId,date),tickets:d.tickets.map(t=>ticketView(t.booking,t.journey,t.index))}));
+ // Upcoming trips that have bookings, each with the boat it runs on.
+ const upcoming=operatorTickets(state,operator.id,t=>t.journey.date>=today&&t.journey.operatorStatus!=='Declined'&&!t.journey.departedAt);
+ const trips=new Map<string,any>();
+ for(const t of upcoming){
+  const key=t.journey.scheduleId+'|'+t.journey.date,sailing=state.sailings.find(s=>s.id===t.journey.scheduleId),boat=sailing?tripBoat(state,sailing,t.journey.date):undefined;
+  if(!trips.has(key))trips.set(key,{scheduleId:t.journey.scheduleId,date:t.journey.date,depart:t.journey.depart,arrive:t.journey.arrive,from:t.journey.from,to:t.journey.to,boatId:boat?.id||'',boatName:boat?.name||t.journey.boatName||'',swapped:!!sailing?.boatOverrides?.[t.journey.date],sold:0,tickets:[]});
+  const trip=trips.get(key);trip.sold+=t.journey.seats.length;trip.tickets.push(ticketView(t.booking,t.journey,t.index));
+ }
+ return {revision,today,date,month,operator:publicOperator(operator),boats:operatorBoats(state,operator.id),sailings:operatorSailings(state,operator.id),day,bookings:[...trips.values()],statement:operatorStatement(state,operator,month,today)};
 }
 
 async function speedboatOperator(r:Request){
@@ -57,7 +61,7 @@ export async function POST(r:Request){
    switch(body.action){
     case 'save-boat':return saveBoat(state,ref,body.boat);
     case 'save-sailing':return saveOperatorSailing(state,ref,body.sailing);
-    case 'accept':return acceptTicket(state,operator.id,String(body.bookingId||''),Number(body.index),String(body.boatId||''),by);
+    case 'trip-boat':return setTripBoat(state,ref,String(body.scheduleId||''),String(body.date||''),String(body.boatId||''),by);
     case 'decline':
     case 'cancel':{
      const kind=body.action==='cancel'?'cancel':'decline';
@@ -66,7 +70,7 @@ export async function POST(r:Request){
      return booking;
     }
     case 'board':return setBoarded(state,operator.id,String(body.bookingId||''),Number(body.index),Number(body.boarded),by,transportToday());
-    case 'close':return closeDeparture(state,operator.id,String(body.scheduleId||''),String(body.date||''),String(body.boatId||''),by);
+    case 'close':return closeDeparture(state,operator.id,String(body.scheduleId||''),String(body.date||''),by);
     default:throw Error('Unknown action.');
    }
   });

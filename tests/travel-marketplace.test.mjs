@@ -32,71 +32,109 @@ const BO=load('lib/buggy-operator.ts');
 
 const FUTURE='2030-06-03'; // a Monday
 const coral={id:'OP-CORAL',name:'Coral Speed'},blue={id:'OP-BLUE',name:'Blue Line'};
+const L=(n,per=4)=>T.defaultLayout(n,per);
 function sea(){
  const state=T.normalizeTransport({sailings:[],bookings:[]});
- const big=OP.saveBoat(state,coral,{name:'Coral 1',registration:'A-1',capacity:10});
- const small=OP.saveBoat(state,coral,{name:'Coral 2',capacity:4});
- const sailing=OP.saveOperatorSailing(state,coral,{from:'Velana Airport',to:'Dhiffushi',depart:'10:00',arrive:'11:00',capacity:12,fare:20000,roomFare:2500,days:[1,3,5]});
- const book=(adults=2,extra={})=>{const b=T.createTransfer(state,{token:crypto.randomUUID(),name:'Guest '+adults,phone:'+447700900123',traveller:'Tourist',adults,children:0,infants:0,notes:'',expectedTotal:20000*adults,journeys:[{scheduleId:sailing.id,date:FUTURE,seats:T.freeSeats(state,sailing,FUTURE,adults)}],...extra},'walk-transfer:x');state.bookings.push(b);return b;};
+ const big=OP.saveBoat(state,coral,{name:'Coral 1',registration:'A-1',layout:L(10)});
+ const small=OP.saveBoat(state,coral,{name:'Coral 2',layout:L(4)});
+ const sailing=OP.saveOperatorSailing(state,coral,{from:'Velana Airport',to:'Dhiffushi',depart:'10:00',arrive:'11:00',boatId:big.id,fare:20000,roomFare:2500,days:[1,3,5]});
+ const book=(adults=2,extra={},seats)=>{const b=T.createTransfer(state,{token:crypto.randomUUID(),name:'Guest '+adults,phone:'+447700900123',traveller:'Tourist',adults,children:0,infants:0,notes:'',expectedTotal:20000*adults,journeys:[{scheduleId:sailing.id,date:FUTURE,seats:seats||T.freeSeats(state,sailing,FUTURE,adults)}],...extra},'walk-transfer:x');state.bookings.push(b);return b;};
  return {state,big,small,sailing,book};
 }
+const ticket=(state,sailing,seats,adults=seats.length)=>T.createTransfer(state,{token:crypto.randomUUID(),name:'G',phone:'+447700900123',traveller:'Tourist',adults,children:0,infants:0,notes:'',expectedTotal:sailing.fare*adults,journeys:[{scheduleId:sailing.id,date:FUTURE,seats}]},'x');
 
-test('operator departures run only on their days and every ticket starts as New',()=>{
- const {state,sailing,book}=sea();
+test('departures run on a boat and tickets are confirmed on that boat at booking',()=>{
+ const {state,big,sailing,book}=sea();
+ assert.equal(sailing.capacity,10);
  assert.equal(T.runsOn(sailing,FUTURE),true);
  assert.equal(T.runsOn(sailing,'2030-06-04'),false);
  assert.throws(()=>T.createTransfer(state,{token:'t',name:'A',phone:'+447700900123',traveller:'Tourist',adults:1,children:0,infants:0,notes:'',expectedTotal:20000,journeys:[{scheduleId:sailing.id,date:'2030-06-04',seats:[1]}]},'x'),/does not run/);
  const b=book();
  assert.equal(b.journeys[0].operatorId,coral.id);
- assert.equal(b.journeys[0].operatorStatus,'New');
+ assert.equal(b.journeys[0].operatorStatus,'Accepted');
+ assert.equal(b.journeys[0].boatId,big.id);
+ assert.equal(b.journeys[0].boatName,'Coral 1');
  assert.equal(b.journeys[0].roomFare,2500);
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{from:'A',to:'B',depart:'12:00',arrive:'13:00',fare:1}),/Choose one of your boats/);
+ assert.throws(()=>OP.saveOperatorSailing(state,blue,{from:'A',to:'B',depart:'12:00',arrive:'13:00',fare:1,boatId:big.id}),/Choose one of your boats/);
 });
 
-test('accepting puts a ticket on a boat without overfilling it or double-booking the boat',()=>{
+test('seat maps: operators draw seats, guests book the exact seats they chose',()=>{
+ const {state,sailing}=sea();
+ assert.throws(()=>OP.cleanLayout({rows:1,cols:3,cells:[1,0,1]}),/Seat 1 appears twice/);
+ assert.throws(()=>OP.cleanLayout({rows:1,cols:2,cells:[0,0]}),/at least one seat/);
+ assert.throws(()=>OP.cleanLayout({rows:2,cols:2,cells:[1,2]}),/incomplete/);
+ // A 3+3 boat with seat 1 at the back right, like ODI's seat plans.
+ const l=T.defaultLayout(12,6);
+ assert.deepEqual([l.rows,l.cols],[2,7]);
+ assert.deepEqual(l.cells.slice(7),[6,5,4,0,3,2,1]);
+ const b=ticket(state,sailing,[7,8]);state.bookings.push(b);
+ assert.deepEqual(b.journeys[0].seats,[7,8]);
+ assert.throws(()=>ticket(state,sailing,[8,9]),/Seat 8 was just booked by someone else/);
+ assert.throws(()=>ticket(state,sailing,[11]),/one seat per adult/);
+ assert.equal(T.seatTaken(Error('Seat 8 was just booked by someone else. Choose another seat.')),true);
+ // With no seats chosen the server seats the party together.
+ assert.deepEqual(T.seatsForBooking(state,[{scheduleId:sailing.id,date:FUTURE}],2)[0].seats,[1,2]);
+ assert.deepEqual(T.seatsForBooking(state,[{scheduleId:sailing.id,date:FUTURE,seats:[3,4]}],2)[0].seats,[3,4]);
+ assert.throws(()=>T.seatsForBooking(state,[{scheduleId:sailing.id,date:FUTURE}],9),/Not enough seats/);
+ // Guests see the boat's map and only seat numbers, never names.
+ assert.deepEqual(T.publicBoats(state).map(b=>b.name),['Coral 1']);
+ assert.deepEqual(Object.keys(T.seatAvailability(state)[0]).sort(),['date','pax','scheduleId','seats']);
+});
+
+test('a boat is swapped for one trip only, keeping every booked seat',()=>{
  const {state,big,small,sailing,book}=sea();
- const a=book(5),b=book(2);
- assert.throws(()=>OP.acceptTicket(state,coral.id,a.id,0,small.id,'op'),/seats left/);
- OP.acceptTicket(state,coral.id,a.id,0,big.id,'op');
- assert.equal(a.journeys[0].operatorStatus,'Accepted');
- assert.equal(a.journeys[0].boatName,'Coral 1');
- OP.acceptTicket(state,coral.id,b.id,0,small.id,'op');
- // Same boat cannot run an overlapping departure.
- const other=OP.saveOperatorSailing(state,coral,{from:'Dhiffushi',to:'Velana Airport',depart:'10:30',arrive:'11:30',capacity:10,fare:20000});
- const c=T.createTransfer(state,{token:'c',name:'C',phone:'+447700900123',traveller:'Tourist',adults:1,children:0,infants:0,notes:'',expectedTotal:20000,journeys:[{scheduleId:other.id,date:FUTURE,seats:[1]}]},'x');state.bookings.push(c);
- assert.throws(()=>OP.acceptTicket(state,coral.id,c.id,0,big.id,'op'),/already on the 10:00 departure/);
- // Another operator can never touch these tickets.
- assert.throws(()=>OP.acceptTicket(state,blue.id,a.id,0,big.id,'op'),/Ticket not found/);
- assert.deepEqual(a.history.map(h=>h.action),['Accepted by operator']);
+ const a=book(2);
+ OP.setTripBoat(state,coral,sailing.id,FUTURE,small.id,'op');
+ assert.equal(T.tripBoat(state,sailing,FUTURE).id,small.id);
+ assert.equal(T.tripBoat(state,sailing,'2030-06-05').id,big.id);
+ assert.equal(a.journeys[0].boatName,'Coral 2');
+ assert.equal(T.tripCapacity(state,sailing,FUTURE),4);
+ // Seat 5 is not on the small boat, so a trip with seat 5 sold cannot move to it.
+ OP.setTripBoat(state,coral,sailing.id,FUTURE,big.id,'op');
+ assert.equal(sailing.boatOverrides[FUTURE],undefined);
+ const far=ticket(state,sailing,[5]);state.bookings.push(far);
+ assert.throws(()=>OP.setTripBoat(state,coral,sailing.id,FUTURE,small.id,'op'),/no seat 5/);
+ // A boat cannot be on two overlapping trips.
+ const other=OP.saveOperatorSailing(state,coral,{from:'Dhiffushi',to:'Velana Airport',depart:'10:30',arrive:'11:30',boatId:small.id,fare:20000});
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{from:'Dhiffushi',to:'Velana Airport',depart:'10:15',arrive:'11:15',boatId:small.id,fare:20000}),/already runs the 10:30/);
+ assert.ok(other.id);
+ assert.throws(()=>OP.setTripBoat(state,blue,sailing.id,FUTURE,small.id,'op'),/Departure not found/);
 });
 
-test('declining frees the seats and closes a walk-in booking; room transfers stay for reception',()=>{
+test('cancelling frees the seats and closes a walk-in booking; room transfers stay for reception',()=>{
  const {state,sailing,book}=sea();
  const a=book(2);
  assert.throws(()=>OP.declineTicket(state,coral.id,a.id,0,'','op'),/why/);
  OP.declineTicket(state,coral.id,a.id,0,'Engine repair','op');
  assert.equal(a.status,'Cancelled');
+ assert.equal(a.journeys[0].cancelledByOperator,true);
  assert.equal(T.bookedPassengers(state,sailing.id,FUTURE),0);
+ assert.deepEqual(T.occupied(state,sailing.id,FUTURE),[]);
  const r=book(2,{});r.stayId='S1';r.roomCents=5000;
  OP.declineTicket(state,coral.id,r.id,0,'Full','op');
  assert.equal(r.status,'Confirmed');
  assert.equal(r.journeys[0].operatorStatus,'Declined');
+ assert.throws(()=>OP.declineTicket(state,blue.id,r.id,0,'x','op'),/Ticket not found/);
 });
 
-test('boarding, closing a departure, no-shows and the monthly statement',()=>{
- const {state,big,book}=sea();
+test('boarding, closing a trip, no-shows and the monthly statement',()=>{
+ const {state,sailing,book}=sea();
  const a=book(2),b=book(1),room=book(2);room.stayId='S1';room.roomCents=5000;
- for(const t of [a,b,room])OP.acceptTicket(state,coral.id,t.id,0,big.id,'op');
  assert.throws(()=>OP.setBoarded(state,coral.id,a.id,0,2,'op','2030-06-02'),/day of departure/);
  OP.setBoarded(state,coral.id,a.id,0,2,'op',FUTURE);
  OP.setBoarded(state,coral.id,room.id,0,2,'op',FUTURE);
  assert.throws(()=>OP.setBoarded(state,coral.id,a.id,0,3,'op',FUTURE),/between 0 and 2/);
- assert.equal(OP.closeDeparture(state,coral.id,a.journeys[0].scheduleId,FUTURE,big.id,'op'),3);
+ const day=OP.operatorDay(state,coral.id,FUTURE)[0];
+ assert.deepEqual([day.boatName,day.seats,day.sold,day.boarded,day.closed],['Coral 1',10,5,4,false]);
+ assert.equal(OP.closeDeparture(state,coral.id,sailing.id,FUTURE,'op'),3);
+ assert.equal(OP.operatorDay(state,coral.id,FUTURE)[0].closed,true);
  assert.equal(b.journeys[0].noShow,true);
  assert.equal(a.journeys[0].noShow,false);
  assert.throws(()=>OP.setBoarded(state,coral.id,a.id,0,1,'op',FUTURE),/closed/);
  const st=OP.operatorStatement(state,{id:coral.id,commissionPercent:10},'2030-06');
- // Tickets that have not travelled yet are not on the statement.
- const later=book(1);OP.acceptTicket(state,coral.id,later.id,0,big.id,'op');
+ const later=book(1);
+ assert.ok(later);
  assert.equal(OP.operatorStatement(state,{id:coral.id,commissionPercent:10},'2030-06','2030-06-01').tickets,3);
  assert.equal(OP.operatorStatement(state,{id:coral.id,commissionPercent:10},'2030-06','2030-06-01').upcoming,1);
  assert.equal(st.tickets,3);
@@ -107,15 +145,29 @@ test('boarding, closing a departure, no-shows and the monthly statement',()=>{
  assert.equal(st.payableToOperatorUsd,4500);
 });
 
-test('operators cannot change a sold departure or shrink a boat below its passengers',()=>{
- const {state,big,sailing,book}=sea();
- const a=book(6);OP.acceptTicket(state,coral.id,a.id,0,big.id,'op');
- assert.throws(()=>OP.saveOperatorSailing(state,coral,{...sailing,depart:'09:00'}),/upcoming tickets/);
- assert.throws(()=>OP.saveOperatorSailing(state,coral,{...sailing,capacity:5}),/already sold 6/);
+test('operators cannot change a sold departure, remove a sold seat or retire a busy boat',()=>{
+ const {state,big,small,sailing,book}=sea();
+ book(2,{},[9,10]);
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{...sailing,depart:'09:00'}),/upcoming bookings/);
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{...sailing,boatId:small.id}),/no seat 9, 10/);
  OP.saveOperatorSailing(state,coral,{...sailing,active:false});
  assert.equal(state.sailings.find(s=>s.id===sailing.id).active,false);
- assert.throws(()=>OP.saveBoat(state,coral,{...big,capacity:5}),/already has 6/);
+ OP.saveOperatorSailing(state,coral,{...sailing,active:true});
+ assert.throws(()=>OP.saveBoat(state,coral,{...big,layout:L(8)}),/Seat 9, 10 is booked/);
+ assert.throws(()=>OP.saveBoat(state,coral,{...big,active:false}),/upcoming bookings/);
+ // Adding seats is fine and every departure on the boat sells them.
+ OP.saveBoat(state,coral,{...big,layout:L(12)});
+ assert.equal(state.sailings.find(s=>s.id===sailing.id).capacity,12);
+ assert.throws(()=>OP.saveBoat(state,blue,{...big}),/Boat not found/);
  assert.throws(()=>OP.saveOperatorSailing(state,blue,{...sailing}),/Departure not found/);
+});
+
+test('tickets booked before trip boats confirm onto the trip boat',()=>{
+ const {state,big,sailing}=sea();
+ const old=ticket(state,sailing,[1]);old.journeys[0].operatorStatus='New';delete old.journeys[0].boatId;delete old.journeys[0].boatName;state.bookings.push(old);
+ const next=T.normalizeTransport(structuredClone(state));
+ assert.equal(next.bookings[0].journeys[0].operatorStatus,'Accepted');
+ assert.equal(next.bookings[0].journeys[0].boatId,big.id);
 });
 
 function land(){
@@ -226,41 +278,13 @@ test('admin creates operators; operators sign in to their own portal only',async
  assert.equal((await s.admin.GET(s.req('/api/travel-operators','GET'))).status,403);
 });
 
-test('through the API an operator publishes, accepts, boards and sees guest contacts only after accepting',async()=>{
- const s=apis();
- await s.create();
- const {cookie}=await s.signIn('coralspeed','coral-pass-1');
- const post=body=>s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{...body,viewDate:FUTURE},cookie));
- let d=await (await post({action:'save-boat',boat:{name:'Coral 1',capacity:10}})).json();
- const boatId=d.boats[0].id;
- d=await (await post({action:'save-sailing',sailing:{from:'Velana Airport',to:'Dhiffushi',depart:'10:00',arrive:'11:00',capacity:12,fare:20000}})).json();
- const sailing=d.sailings[0];
- assert.equal(sailing.operatorName,'Coral Speed');
- // A guest books on the public site.
- const b=T.createTransfer(s.sea.state,{token:'g1',name:'Guest',phone:'+447700900123',traveller:'Tourist',adults:2,children:0,infants:0,notes:'',expectedTotal:40000,journeys:[{scheduleId:sailing.id,date:FUTURE,seats:[1,2]}]},'walk-transfer:x');
- s.sea.state.bookings.push(b);
- d=await (await s.boats.GET(s.req('/api/operator-portal/speedboats?date='+FUTURE,'GET',null,cookie))).json();
- assert.equal(d.inbox.length,1);
- assert.equal(d.inbox[0].phone,'');
- d=await (await post({action:'accept',bookingId:b.id,index:0,boatId})).json();
- assert.equal(d.inbox.length,0);
- const ticket=d.day[0].tickets[0];
- assert.equal(ticket.status,'Accepted');
- assert.equal(ticket.phone,'+447700900123');
- // Another operator sees nothing and cannot act on it.
- await s.create({name:'Blue Line',username:'blueline',phone:'+9607772222'});
- const other=(await s.signIn('blueline','coral-pass-1')).cookie;
- const theirs=await (await s.boats.GET(s.req('/api/operator-portal/speedboats?date='+FUTURE,'GET',null,other))).json();
- assert.equal(theirs.day.length,0);
- assert.equal((await s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{action:'decline',bookingId:b.id,index:0,reason:'x'},other))).status,400);
-});
-
 test('a decline notifies Nirili so the guest can be rebooked',async()=>{
  const s=apis();
  await s.create();
  const {cookie}=await s.signIn('coralspeed','coral-pass-1');
  const post=body=>s.boats.POST(s.req('/api/operator-portal/speedboats','POST',body,cookie));
- const d=await (await post({action:'save-sailing',sailing:{from:'Dhiffushi',to:'Velana Airport',depart:'07:00',arrive:'08:00',capacity:12,fare:20000}})).json();
+ const boat=await (await post({action:'save-boat',boat:{name:'Coral 1',layout:T.defaultLayout(12)}})).json();
+ const d=await (await post({action:'save-sailing',sailing:{from:'Dhiffushi',to:'Velana Airport',depart:'07:00',arrive:'08:00',boatId:boat.boats[0].id,fare:20000}})).json();
  const b=T.createTransfer(s.sea.state,{token:'g2',name:'Guest',phone:'+447700900123',traveller:'Tourist',adults:1,children:0,infants:0,notes:'',expectedTotal:20000,journeys:[{scheduleId:d.sailings[0].id,date:FUTURE,seats:[1]}]},'walk-transfer:x');
  s.sea.state.bookings.push(b);
  assert.equal((await post({action:'decline',bookingId:b.id,index:0,reason:'Weather warning'})).status,200);
@@ -294,34 +318,85 @@ test('staff cannot edit or dispatch an owner’s buggy from buggy management',()
  assert.match(src,/The owner manages it and accepts rides in the operator portal/);
 });
 
-test('a guest with an out-of-date page still books: the server picks free seats from the latest data',async()=>{
- const s=apis();
- s.sea.state.sailings.push({id:'S1',boat:'Altec',operatorId:'OP-A',operatorName:'Altec',from:'Velana Airport',to:'Dhiffushi',depart:'16:30',arrive:'17:15',capacity:3,fare:46000,active:true});
- const ask=(body)=>s.walkin.POST(new Request('https://transfers.nirilihotels.test/api/walkin-transfers',{method:'POST',headers:{origin:'https://transfers.nirilihotels.test','content-type':'application/json'},body:JSON.stringify({action:'book',payment:'later',traveller:'Tourist',children:0,infants:0,notes:'',...body})}));
- // Both pages were loaded at revision 1 and both chose seats 1–2.
- const first=await ask({revision:1,token:crypto.randomUUID(),name:'First',phone:'+447700900123',adults:2,expectedTotal:92000,journeys:[{scheduleId:'S1',date:FUTURE,seats:[1,2]}]});
- assert.equal(first.status,200,JSON.stringify(await first.clone().json()));
- const second=await ask({revision:1,token:crypto.randomUUID(),name:'Second',phone:'+447700900123',adults:1,expectedTotal:46000,journeys:[{scheduleId:'S1',date:FUTURE,seats:[1]}]});
- assert.equal(second.status,200,JSON.stringify(await second.clone().json()));
- assert.deepEqual(s.sea.state.bookings.map(b=>b.journeys[0].seats),[[1,2],[3]]);
- // A real lack of seats is still refused.
- const third=await ask({revision:1,token:crypto.randomUUID(),name:'Third',phone:'+447700900123',adults:1,expectedTotal:46000,journeys:[{scheduleId:'S1',date:FUTURE,seats:[1]}]});
- assert.equal(third.status,400);
- assert.match((await third.json()).error,/Not enough seats/);
-});
-
-test('an operator can cancel an accepted ticket before boarding; Nirili is told and the seats are freed',async()=>{
+test('through the API an operator draws a boat, publishes a departure, sees bookings and swaps the boat for a day',async()=>{
  const s=apis();
  await s.create();
  const {cookie}=await s.signIn('coralspeed','coral-pass-1');
  const post=body=>s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{...body,viewDate:FUTURE},cookie));
- let d=await (await post({action:'save-boat',boat:{name:'Coral 1',capacity:10}})).json();
+ assert.equal((await post({action:'save-boat',boat:{name:'No map'}})).status,400);
+ let d=await (await post({action:'save-boat',boat:{name:'Coral 1',layout:T.defaultLayout(10)}})).json();
  const boatId=d.boats[0].id;
- d=await (await post({action:'save-sailing',sailing:{from:'Velana Airport',to:'Dhiffushi',depart:'16:30',arrive:'17:15',capacity:10,fare:46000}})).json();
+ assert.equal(d.boats[0].capacity,10);
+ d=await (await post({action:'save-boat',boat:{name:'Coral 2',layout:T.defaultLayout(6,6)}})).json();
+ const spare=d.boats[1].id;
+ d=await (await post({action:'save-sailing',sailing:{from:'Velana Airport',to:'Dhiffushi',depart:'10:00',arrive:'11:00',boatId,fare:20000}})).json();
+ const sailing=d.sailings[0];
+ assert.equal(sailing.operatorName,'Coral Speed');
+ assert.equal(sailing.capacity,10);
+ // A guest books seats 3 and 4 on the public site.
+ const b=T.createTransfer(s.sea.state,{token:'g1',name:'Guest',phone:'+447700900123',traveller:'Tourist',adults:2,children:0,infants:0,notes:'',expectedTotal:40000,journeys:[{scheduleId:sailing.id,date:FUTURE,seats:[3,4]}]},'walk-transfer:x');
+ s.sea.state.bookings.push(b);
+ d=await (await s.boats.GET(s.req('/api/operator-portal/speedboats?date='+FUTURE,'GET',null,cookie))).json();
+ assert.equal(d.inbox,undefined);
+ assert.equal(d.bookings.length,1);
+ assert.deepEqual(d.bookings[0].tickets[0].seats,[3,4]);
+ const day=d.day[0];
+ assert.equal(day.boatName,'Coral 1');
+ assert.deepEqual(day.taken,[3,4]);
+ assert.equal(day.tickets[0].status,'Accepted');
+ assert.equal(day.tickets[0].phone,'+447700900123');
+ d=await (await post({action:'trip-boat',scheduleId:sailing.id,date:FUTURE,boatId:spare})).json();
+ assert.equal(d.day[0].boatName,'Coral 2');
+ assert.equal(d.day[0].swapped,true);
+ assert.equal(d.day[0].layout.cols,7);
+ // Another operator sees nothing and cannot act on it.
+ await s.create({name:'Blue Line',username:'blueline',phone:'+9607772222'});
+ const other=(await s.signIn('blueline','coral-pass-1')).cookie;
+ const theirs=await (await s.boats.GET(s.req('/api/operator-portal/speedboats?date='+FUTURE,'GET',null,other))).json();
+ assert.equal(theirs.day.length,0);
+ assert.equal(theirs.bookings.length,0);
+ assert.equal((await s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{action:'cancel',bookingId:b.id,index:0,reason:'x'},other))).status,400);
+ assert.equal((await s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{action:'trip-boat',scheduleId:sailing.id,date:FUTURE,boatId:spare},other))).status,400);
+ // Staff see upcoming tickets per operator.
+ const ops=await (await s.admin.GET(s.req('/api/travel-operators','GET'))).json();
+ assert.equal(ops.operators.find(o=>o.username==='coralspeed').upcomingTickets,1);
+});
+
+test('the public site shows seat maps and books the seats the guest chose',async()=>{
+ const s=apis();
+ s.sea.state.boats.push({id:'B1',operatorId:'OP-A',name:'Altec 1',registration:'',capacity:4,active:true,layout:T.defaultLayout(4),createdAt:'',updatedAt:''});
+ s.sea.state.sailings.push({id:'S1',boat:'Altec',operatorId:'OP-A',operatorName:'Altec',from:'Velana Airport',to:'Dhiffushi',depart:'16:30',arrive:'17:15',capacity:4,fare:46000,active:true,boatId:'B1'});
+ const ask=(body)=>s.walkin.POST(new Request('https://transfers.nirilihotels.test/api/walkin-transfers',{method:'POST',headers:{origin:'https://transfers.nirilihotels.test','content-type':'application/json'},body:JSON.stringify({action:'book',payment:'later',traveller:'Tourist',children:0,infants:0,notes:'',...body})}));
+ const view=await (await s.walkin.GET()).json();
+ assert.deepEqual(view.boats.map(b=>[b.id,b.layout.cells.filter(n=>n>0).length]),[['B1',4]]);
+ const first=await ask({token:crypto.randomUUID(),name:'First',phone:'+447700900123',adults:2,expectedTotal:92000,journeys:[{scheduleId:'S1',date:FUTURE,seats:[3,4]}]});
+ assert.equal(first.status,200,JSON.stringify(await first.clone().json()));
+ // Someone with an out-of-date page picked seat 4 too: they get the fresh map to choose again.
+ const clash=await ask({token:crypto.randomUUID(),name:'Second',phone:'+447700900123',adults:1,expectedTotal:46000,journeys:[{scheduleId:'S1',date:FUTURE,seats:[4]}]});
+ assert.equal(clash.status,409);
+ const fresh=await clash.json();
+ assert.match(fresh.error,/Seat 4 was just booked/);
+ assert.deepEqual(fresh.availability.flatMap(a=>a.seats),[3,4]);
+ // No seats chosen: the server seats them.
+ const auto=await ask({token:crypto.randomUUID(),name:'Third',phone:'+447700900123',adults:2,expectedTotal:92000,journeys:[{scheduleId:'S1',date:FUTURE}]});
+ assert.equal(auto.status,200);
+ assert.deepEqual(s.sea.state.bookings.map(b=>b.journeys[0].seats),[[3,4],[1,2]]);
+ const full=await ask({token:crypto.randomUUID(),name:'Fourth',phone:'+447700900123',adults:1,expectedTotal:46000,journeys:[{scheduleId:'S1',date:FUTURE}]});
+ assert.equal(full.status,400);
+ assert.match((await full.json()).error,/Not enough seats/);
+});
+
+test('an operator can cancel a ticket before boarding; Nirili is told and the seats are freed',async()=>{
+ const s=apis();
+ await s.create();
+ const {cookie}=await s.signIn('coralspeed','coral-pass-1');
+ const post=body=>s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{...body,viewDate:FUTURE},cookie));
+ let d=await (await post({action:'save-boat',boat:{name:'Coral 1',layout:T.defaultLayout(10)}})).json();
+ const boatId=d.boats[0].id;
+ d=await (await post({action:'save-sailing',sailing:{from:'Velana Airport',to:'Dhiffushi',depart:'16:30',arrive:'17:15',boatId,fare:46000}})).json();
  const sailingId=d.sailings[0].id;
  const book=name=>{const b=T.createTransfer(s.sea.state,{token:crypto.randomUUID(),name,phone:'+447700900123',traveller:'Tourist',adults:2,children:0,infants:0,notes:'',expectedTotal:92000,journeys:[{scheduleId:sailingId,date:FUTURE,seats:T.freeSeats(s.sea.state,s.sea.state.sailings[0],FUTURE,2)}]},'walk-transfer:x');s.sea.state.bookings.push(b);return b;};
  const a=book('Guest A');
- await post({action:'accept',bookingId:a.id,index:0,boatId});
  assert.equal((await post({action:'cancel',bookingId:a.id,index:0,reason:''})).status,400);
  assert.equal((await post({action:'cancel',bookingId:a.id,index:0,reason:'Guest asked to cancel'})).status,200);
  const saved=s.sea.state.bookings.find(b=>b.id===a.id);
@@ -329,12 +404,14 @@ test('an operator can cancel an accepted ticket before boarding; Nirili is told 
  assert.equal(saved.journeys[0].cancelledByOperator,true);
  assert.equal(T.bookedPassengers(s.sea.state,sailingId,FUTURE),0);
  assert.equal(s.notices.at(-1).title,'Speedboat ticket cancelled by operator');
- assert.deepEqual(saved.history.map(h=>h.action),['Accepted by operator','Cancelled by operator']);
+ assert.deepEqual(saved.history.map(h=>h.action),['Cancelled by operator']);
  // Once passengers have boarded, the ticket can no longer be cancelled.
  const b=book('Guest B');
- await post({action:'accept',bookingId:b.id,index:0,boatId});
  OP.setBoarded(s.sea.state,s.sea.state.boats[0].operatorId,b.id,0,1,'op',FUTURE);
  const late=await post({action:'cancel',bookingId:b.id,index:0,reason:'Changed plans'});
  assert.equal(late.status,400);
  assert.match((await late.json()).error,/already boarded/);
+ // Closing works per trip.
+ assert.equal((await post({action:'close',scheduleId:sailingId,date:FUTURE})).status,200);
+ assert.ok(s.sea.state.bookings.find(x=>x.id===b.id).journeys[0].departedAt);
 });

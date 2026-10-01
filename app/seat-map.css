@@ -1,0 +1,40 @@
+/* Speedboat seat map shared by the guest site, partner portal, operator portal and staff panel. */
+.sm{--sm-ink:#0f2a2e;--sm-line:rgba(15,42,46,.22);--sm-hull:#f7f4ee;--sm-seat:#fff;--sm-pick:#0d6e72;--sm-taken:#d9dcdd;--sm-boarded:#2e9b72;--sm-noshow:#e4b9bf;
+ display:grid;gap:12px;color:var(--sm-ink);width:100%;max-width:440px}
+.sm-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.sm-count{font-size:14px}
+.sm-count b{font-size:18px}
+.sm button.sm-auto{min-height:36px;padding:6px 14px;border-radius:999px;border:1px solid var(--sm-line);background:#fff;color:var(--sm-ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.sm button.sm-auto:disabled{opacity:.5;cursor:default}
+.sm-boat{position:relative;padding:0 12px 14px;background:var(--sm-hull);border:2px solid var(--sm-line);border-top:0;border-radius:0 0 26px 26px;margin-top:88px}
+.sm svg.sm-bow{position:absolute;left:-2px;right:-2px;bottom:100%;width:calc(100% + 4px);height:88px;overflow:visible}
+.sm svg.sm-bow path{fill:var(--sm-hull);stroke:var(--sm-line);stroke-width:2;vector-effect:non-scaling-stroke}
+.sm-front,.sm-back{display:block;text-align:center;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(15,42,46,.55)}
+.sm-front{position:absolute;left:0;right:0;top:-38px}
+.sm-back{margin-top:10px}
+.sm-grid{display:grid;gap:6px;padding-top:6px}
+.sm-gap{min-height:0}
+.sm .sm-cell{aspect-ratio:1;min-width:0;min-height:0;max-height:48px;padding:0;display:grid;place-items:center;border-radius:9px 9px 6px 6px;border:1.5px solid var(--sm-line);background:var(--sm-seat);color:var(--sm-ink);font:inherit;font-size:clamp(10px,2.6vw,13px);font-weight:700;line-height:1;cursor:default;box-shadow:inset 0 -3px 0 rgba(15,42,46,.08)}
+.sm button.sm-cell{cursor:pointer}
+.sm button.sm-cell:focus-visible{outline:3px solid var(--sm-pick);outline-offset:2px}
+.sm .sm-cell.is-selected{background:var(--sm-pick);border-color:var(--sm-pick);color:#fff}
+.sm .sm-cell.is-taken{background:var(--sm-taken);border-color:transparent;color:rgba(15,42,46,.35);box-shadow:none}
+.sm button.sm-cell.is-taken{cursor:not-allowed}
+.sm .sm-cell.is-booked{background:#cfe3e4;border-color:#9cc3c5}
+.sm .sm-cell.is-boarded{background:var(--sm-boarded);border-color:var(--sm-boarded);color:#fff}
+.sm .sm-cell.is-noshow{background:var(--sm-noshow);border-color:transparent;color:#7a2531}
+/* Editor */
+.sm .sm-cell.is-gap{border-style:dashed;background:transparent;color:rgba(15,42,46,.3);box-shadow:none;font-weight:400}
+.sm .sm-cell.is-highlight{outline:3px solid #e39b2d;outline-offset:1px}
+.sm-legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
+.sm-legend li{display:inline-flex;align-items:center;gap:6px}
+.sm-key{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--sm-line);background:var(--sm-seat)}
+.sm-key.is-selected{background:var(--sm-pick);border-color:var(--sm-pick)}
+.sm-key.is-taken{background:var(--sm-taken);border-color:transparent}
+.sm-key.is-booked{background:#cfe3e4;border-color:#9cc3c5}
+.sm-key.is-boarded{background:var(--sm-boarded);border-color:var(--sm-boarded)}
+.sm-key.is-noshow{background:var(--sm-noshow);border-color:transparent}
+/* Seat step on the guest and partner booking forms */
+.nh-seats{display:grid;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(15,42,46,.12)}
+.nh-seats-title{margin:0}
+.nh-seats-help{margin:0;font-size:14px;color:rgba(15,42,46,.7)}

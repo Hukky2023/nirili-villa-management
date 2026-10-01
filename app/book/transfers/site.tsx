@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowRight,CalendarDays,CheckCircle2,Plane,Repeat,ShipWheel,Users} from 'lucide-react';
 import {SITES} from '../../../lib/public-sites';
+import {Seats,tripLayout} from '../../seat-map';
 
 const money=(cents:number)=>'MVR '+(Math.max(0,Number(cents)||0)/100).toFixed(2);
 const niceDate=(d:string)=>new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
@@ -13,6 +14,7 @@ export default function TransferBookingSite(){
  const [date,setDate]=useState(today()),[returnDate,setReturnDate]=useState(today());
  const [outbound,setOutbound]=useState(''),[inbound,setInbound]=useState('');
  const [name,setName]=useState(''),[phone,setPhone]=useState(''),[adults,setAdults]=useState(2),[children,setChildren]=useState(0),[infants,setInfants]=useState(0),[notes,setNotes]=useState('');
+ const [outSeats,setOutSeats]=useState<number[]>([]),[inSeats,setInSeats]=useState<number[]>([]);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState<any>(null);
  const token=useRef('');
  useEffect(()=>{token.current=crypto.randomUUID();void refresh()},[]);
@@ -28,26 +30,37 @@ export default function TransferBookingSite(){
  useEffect(()=>{const list=trip==='departure'?departures:arrivals;if(!list.some((s:any)=>s.id===outbound))setOutbound(list[0]?.id||'')},[data,trip,date]);
  useEffect(()=>{if(trip==='return'&&!returns.some((s:any)=>s.id===inbound))setInbound(returns[0]?.id||'')},[data,trip,returnDate]);
  const taken=(id:string,d:string)=>new Set((data?.availability||[]).filter((x:any)=>x.scheduleId===id&&x.date===d).flatMap((x:any)=>x.seats||[]));
- function seatsFor(id:string,d:string){const sailing=(data?.sailings||[]).find((x:any)=>x.id===id);if(!sailing)return [];const used=taken(id,d),need=adults+children,out:number[]=[];for(let i=1;i<=sailing.capacity&&out.length<need;i++)if(!used.has(i))out.push(i);return out.length===need?out:[]}
+ const need=adults+children;
+ // Seats left on a trip: free seats on the boat that runs it that day.
+ const seatsLeft=(id:string,d:string)=>{const sailing=(data?.sailings||[]).find((x:any)=>x.id===id);if(!sailing)return 0;const used=taken(id,d);return tripLayout(sailing,d,data?.boats).layout.cells.filter(n=>n>0&&!used.has(n)).length;};
+ // A new trip or party size starts a fresh seat choice.
+ useEffect(()=>setOutSeats([]),[outbound,date,need]);
+ useEffect(()=>setInSeats([]),[inbound,returnDate,need]);
  const outboundSailing=(data?.sailings||[]).find((x:any)=>x.id===outbound);
  const inboundSailing=(data?.sailings||[]).find((x:any)=>x.id===inbound);
  const expectedTotal=useMemo(()=>{const calc=(s:any)=>s?Number(s.fare||0)*adults+Math.round(Number(s.fare||0)/2)*children:0;return calc(outboundSailing)+(trip==='return'?calc(inboundSailing):0)},[outboundSailing,inboundSailing,trip,adults,children]);
  async function submit(e:React.FormEvent){e.preventDefault();if(!data||busy)return;setBusy(true);setError('');try{
   const journeys:any[]=[];
   const first=trip==='departure'?departures.find((s:any)=>s.id===outbound):arrivals.find((s:any)=>s.id===outbound);
-  const firstSeats=seatsFor(outbound,date);if(!first||!firstSeats.length)throw Error('The selected departure does not have enough seats. Choose another time.');
-  journeys.push({scheduleId:first.id,date,seats:firstSeats});
-  if(trip==='return'){const second=returns.find((s:any)=>s.id===inbound),secondSeats=seatsFor(inbound,returnDate);if(!second||!secondSeats.length)throw Error('The selected return departure does not have enough seats. Choose another time.');journeys.push({scheduleId:second.id,date:returnDate,seats:secondSeats});}
-  const r=await fetch('/api/walkin-transfers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'book',payment:'later',revision:data.revision,token:token.current,name,phone,traveller:'Tourist',adults,children,infants,journeys,expectedTotal,notes})}),d=await r.json();if(!r.ok)throw Error(d.error||'Could not book transfer.');
+  // Seats the guest tapped go to the operator; with none tapped we seat the party together.
+  const partial=(seats:number[])=>seats.length>0&&seats.length!==need;
+  if(!first||seatsLeft(outbound,date)<need)throw Error('The selected departure does not have enough seats. Choose another time.');
+  if(partial(outSeats)||trip==='return'&&partial(inSeats))throw Error('Choose '+need+' seats on the seat map, or tap Choose for me.');
+  journeys.push({scheduleId:first.id,date,seats:outSeats});
+  if(trip==='return'){const second=returns.find((s:any)=>s.id===inbound);if(!second||seatsLeft(inbound,returnDate)<need)throw Error('The selected return departure does not have enough seats. Choose another time.');journeys.push({scheduleId:second.id,date:returnDate,seats:inSeats});}
+  const r=await fetch('/api/walkin-transfers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'book',payment:'later',revision:data.revision,token:token.current,name,phone,traveller:'Tourist',adults,children,infants,journeys,expectedTotal,notes})}),d=await r.json();
+  // Someone else took a chosen seat: show the fresh map and keep the seats that are still free.
+  if(r.status===409&&d.sailings){setData(d);const free=(id:string,dt:string,list:number[])=>{const used=new Set((d.availability||[]).filter((x:any)=>x.scheduleId===id&&x.date===dt).flatMap((x:any)=>x.seats||[]));return list.filter(n=>!used.has(n));};setOutSeats(free(outbound,date,outSeats));setInSeats(free(inbound,returnDate,inSeats));}
+  if(!r.ok)throw Error(d.error||'Could not book transfer.');
   const latest=(d.bookings||[]).at(-1);setData(d);setSuccess(latest||{id:'Confirmed'});token.current=crypto.randomUUID();
  }catch(e){setError((e as Error).message)}finally{setBusy(false)}}
- const outboundSeats=outbound?seatsFor(outbound,date).length>0:true;
+ const outboundSeats=outbound?seatsLeft(outbound,date)>=need:true;
  const byOperator=!!outboundSailing?.operatorId||(trip==='return'&&!!inboundSailing?.operatorId);
  if(success)return <section className="nh-transfer-done">
   <CheckCircle2/>
   <p className="nh-kicker">Nirili Transfers</p>
   <h2>Your transfer <em>is booked.</em></h2>
-  <p>{(success.journeys||[]).some((j:any)=>j.operatorId)?'Your seats are reserved with the speedboat operator, who confirms your boat on WhatsApp before departure. Pay the operator when you board.':'Keep this reference handy. Payment is handled by Nirili reception, and you can message us on WhatsApp with any changes.'}</p>
+  <p>{(success.journeys||[]).some((j:any)=>j.operatorId)?'Your seats are confirmed with the speedboat operator. Show this reference when you board and pay the operator on the boat.':'Keep this reference handy. Payment is handled by Nirili reception, and you can message us on WhatsApp with any changes.'}</p>
   <strong>{success.id}</strong>
   <a className="nh-btn nh-btn-primary" href={SITES.main+'/'}>Back to Nirili <ArrowRight/></a>
  </section>;
@@ -69,6 +82,7 @@ export default function TransferBookingSite(){
     </div>
     {!(trip==='departure'?departures:arrivals).length&&<p className="nh-hint">No speedboat departures on this day. Try another date.</p>}
     {!outboundSeats&&<p className="nh-hint">Not enough seats left on this boat for your group. Try another time or date.</p>}
+    {outboundSailing&&outboundSeats&&<Seats sailing={outboundSailing} date={date} data={data} need={need} selected={outSeats} onChange={setOutSeats}/>}
    </div>
 
    {trip==='return'&&<div className="nh-step">
@@ -77,6 +91,7 @@ export default function TransferBookingSite(){
      <label><span><CalendarDays/>Return date</span><input required type="date" min={date} value={returnDate} onChange={e=>setReturnDate(e.target.value)}/></label>
      <label><span><ShipWheel/>Return departure</span><select required value={inbound} onChange={e=>setInbound(e.target.value)}>{returns.map((s:any)=><option key={s.id} value={s.id}>{label(s)}</option>)}</select></label>
     </div>
+    {inboundSailing&&(seatsLeft(inbound,returnDate)>=need?<Seats sailing={inboundSailing} date={returnDate} data={data} need={need} selected={inSeats} onChange={setInSeats}/>:<p className="nh-hint">Not enough seats left on this boat for your group. Try another time or date.</p>)}
    </div>}
 
    <div className="nh-step">
@@ -106,8 +121,10 @@ export default function TransferBookingSite(){
    <dl>
     <div><dt>Route</dt><dd>{trip==='arrival'?'Airport → Dhiffushi':trip==='departure'?'Dhiffushi → Airport':'Return trip'}</dd></div>
     <div><dt>Departure</dt><dd>{outboundSailing?niceDate(date)+' · '+outboundSailing.depart:'Choose a time'}</dd></div>
+    {outboundSailing&&<div><dt>Seats</dt><dd>{outSeats.length===need?outSeats.slice().sort((a,b)=>a-b).join(', '):'Chosen for you'}</dd></div>}
     {outboundSailing&&<div><dt>Operator</dt><dd>{outboundSailing.operatorName||outboundSailing.boat}</dd></div>}
     {trip==='return'&&<div><dt>Return</dt><dd>{inboundSailing?niceDate(returnDate)+' · '+inboundSailing.depart:'Choose a time'}</dd></div>}
+    {trip==='return'&&inboundSailing&&<div><dt>Return seats</dt><dd>{inSeats.length===need?inSeats.slice().sort((a,b)=>a-b).join(', '):'Chosen for you'}</dd></div>}
     <div><dt>Travellers</dt><dd>{adults} adult{adults>1?'s':''}{children?', '+children+' child'+(children>1?'ren':''):''}{infants?', '+infants+' infant'+(infants>1?'s':''):''}</dd></div>
    </dl>
    <div className="nh-fare-total"><span>Estimated total</span><strong>{money(expectedTotal)}</strong></div>
@@ -115,3 +132,4 @@ export default function TransferBookingSite(){
   </aside>
  </section>;
 }
+
