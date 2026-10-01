@@ -5,6 +5,7 @@ import {startLiveRefresh,REFRESH_INTERVALS} from '../../../lib/live-refresh';
 import {useEffect,useState} from 'react';
 import {ArrowLeft,CalendarDays,CheckCircle2,Mail,ShieldCheck,Users,XCircle} from 'lucide-react';
 import TimeField24 from '../../time-field-24';
+import FindBooking from '../find-booking';
 
 const money=(cents:number)=>'$'+(Math.max(0,Number(cents)||0)/100).toFixed(2);
 
@@ -23,7 +24,7 @@ export default function ManageBookingSite(){
 
  useEffect(()=>{
   const value=decodeURIComponent(window.location.hash.replace(/^#/,'').trim());setToken(value);
-  if(!value){setError('This manage-booking link is incomplete. Open the link from your Nirili Villa booking email.');setReady(true);return;}
+  if(!value){setReady(true);return;}
   callWith(value);
   async function callWith(linkToken:string){
    try{
@@ -69,7 +70,8 @@ export default function ManageBookingSite(){
  }
 
  if(!ready)return <div className="manage-booking"><section className="manage-card"><p>Loading your booking…</p></section></div>;
- if(error&&!booking)return <div className="manage-booking"><section className="manage-card error-card"><XCircle/><h1>We couldn’t open this booking.</h1><p>{error}</p><Link href="/"><ArrowLeft/> Back to booking</Link></section></div>;
+ if(!token)return <div className="manage-booking"><FindBooking heading="Manage your booking"/></div>;
+ if(error&&!booking)return <div className="manage-booking"><section className="manage-card error-card"><XCircle/><h1>We couldn’t open this booking.</h1><p>{error}</p><Link href="/"><ArrowLeft/> Back to booking</Link></section><FindBooking heading="Get a new link" intro="If your link has stopped working, enter your booking reference and email and we’ll send a fresh one."/></div>;
 
  const pending=booking?.pendingAction;
  return <div className="manage-booking">

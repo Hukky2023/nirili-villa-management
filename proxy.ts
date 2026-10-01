@@ -51,7 +51,7 @@ function serviceRedirect(url:URL,target:{service:Service;path:string}){
 }
 
 // Browser APIs used by the public booking pages and the guest portal.
-const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules','/api/public-ride','/api/public-water-sports']);
+const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules','/api/public-ride','/api/public-water-sports','/api/public-booking/find']);
 
 function guestApiResponse(url:URL){
  // Uploaded menu photos are public; the upload endpoint remains blocked.
@@ -61,7 +61,7 @@ function guestApiResponse(url:URL){
 }
 
 function staySiteResponse(url:URL){
- const stayApi=new Set(['/api/public-booking','/api/public-booking/manage']);
+ const stayApi=new Set(['/api/public-booking','/api/public-booking/manage','/api/public-booking/find']);
  if(stayApi.has(url.pathname))return cache(NextResponse.next(),url.pathname==='/api/public-booking'?PUBLIC:PRIVATE);
 
  if(url.pathname==='/'){

@@ -119,3 +119,9 @@ test('agents serves the partner portal; its APIs stay on that host only',()=>{
  assert.equal(location(visit('nirilihotels.com','/partners')),'https://agents.nirilihotels.com/');
  assert.equal(visit('agents.nirilihotels.com','/').headers.get('cache-control'),'private, no-store, max-age=0');
 });
+
+test('find-my-booking is served on the guest sites, not the main hotel domain',()=>{
+ assert.ok(passes(visit('stay.nirilihotels.com','/api/public-booking/find','POST')));
+ assert.ok(passes(visit('tours.nirilihotels.com','/api/public-booking/find','POST')));
+ assert.equal(visit('nirilihotels.com','/api/public-booking/find','POST').status,404);
+});

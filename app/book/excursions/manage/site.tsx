@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import {startLiveRefresh,REFRESH_INTERVALS} from '../../../../lib/live-refresh';
 import {useEffect,useState} from 'react';
+import FindBooking from '../../find-booking';
 import {ArrowLeft,CalendarDays,CheckCircle2,Clock3,MapPin,Plus,ShieldCheck,ShipWheel,Trash2,Users,XCircle} from 'lucide-react';
 
 type Guest={name:string;ageCategory:'adult'|'child'|'infant';footSize:string};
@@ -21,7 +22,7 @@ export default function ManageExcursionSite(){
   const r=await fetch('/api/public-excursions/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,token,...payload}),cache:'no-store'});
   const d=await r.json();if(!r.ok)throw Error(d.error||'Could not manage this excursion.');return d;
  }
- useEffect(()=>{const value=decodeURIComponent(window.location.hash.replace(/^#/,'').trim());setToken(value);if(!value){setError('This manage-excursion link is incomplete. Open the private link from your Nirili Tours email.');setReady(true);return;}fetch('/api/public-excursions/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'view',token:value}),cache:'no-store'}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||'Could not load excursion.');setBooking(d.booking);setItems(d.items||[]);sync(d.booking)}).catch(e=>setError(e.message)).finally(()=>setReady(true));},[]);
+ useEffect(()=>{const value=decodeURIComponent(window.location.hash.replace(/^#/,'').trim());setToken(value);if(!value){setReady(true);return;}fetch('/api/public-excursions/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'view',token:value}),cache:'no-store'}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||'Could not load excursion.');setBooking(d.booking);setItems(d.items||[]);sync(d.booking)}).catch(e=>setError(e.message)).finally(()=>setReady(true));},[]);
  const needsFeet=!!selected?.needsFootSizes,adults=guests.filter(g=>g.ageCategory==='adult').length,children=guests.filter(g=>g.ageCategory==='child').length,infants=guests.filter(g=>g.ageCategory==='infant').length;
  function updateGuest(index:number,patch:Partial<Guest>){setGuests(list=>list.map((g,i)=>i===index?{...g,...patch}:g));}
  function addGuest(){setGuests(list=>list.length>=20?list:[...list,guest()]);}
@@ -39,7 +40,8 @@ export default function ManageExcursionSite(){
  async function save(e:React.FormEvent){e.preventDefault();if(busy)return;setBusy(true);setError('');setMessage('');try{const payload={...form,guest:guests[0]?.name||'',guestNames:guests.map(g=>g.name),guestCategories:guests.map(g=>g.ageCategory),footSizes:needsFeet?guests.map(g=>Number(g.footSize)):[],privateBoatRequested:form.privateBoatRequested&&guests.length>=4};const d=await call('update',payload);setBooking(d.booking);setItems(d.items||items);sync(d.booking);setMessage(d.applied?'Your excursion booking was updated.':'Your change request was sent to the Nirili Tours team. Your current confirmed trip stays active until it is approved.');}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  async function cancel(){if(busy||!booking?.canCancel)return;if(!window.confirm(booking.status==='Pending'?'Cancel this pending excursion booking?':'Request cancellation of this excursion? Your confirmed trip remains active until our team approves it.'))return;setBusy(true);setError('');setMessage('');try{const d=await call('cancel');setBooking(d.booking);sync(d.booking);setMessage(d.cancelled?'Your excursion booking has been cancelled.':'Your cancellation request was sent to Nirili Tours. Your current booking remains active until it is approved.');}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  if(!ready)return <div className="manage-excursion"><section className="manage-card">Loading your excursion…</section></div>;
- if(error&&!booking)return <div className="manage-excursion"><section className="manage-card error-card"><XCircle/><h1>We couldn’t open this excursion.</h1><p>{error}</p><Link href="/"><ArrowLeft/> Back to excursions</Link></section></div>;
+ if(!token)return <div className="manage-excursion"><FindBooking heading="Manage your excursion"/></div>;
+ if(error&&!booking)return <div className="manage-excursion"><section className="manage-card error-card"><XCircle/><h1>We couldn’t open this excursion.</h1><p>{error}</p><Link href="/"><ArrowLeft/> Back to excursions</Link></section><FindBooking heading="Get a new link" intro="If your link has stopped working, enter your booking reference and email and we’ll send a fresh one."/></div>;
  const pending=booking.pendingAction,isPackage=Array.isArray(booking.packageSegments)&&booking.packageSegments.length>1;
  return <div className="manage-excursion">
   <section className="manage-hero"><div><span className="eyebrow">MY EXCURSION</span><h1>{booking.excursion}</h1><p>Live booking status, departure details, payment and passenger information.</p></div><div className="reference"><small>BOOKING REFERENCE</small><strong>{booking.reference}</strong><span>{booking.status}</span></div></section>

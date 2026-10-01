@@ -221,3 +221,17 @@ export async function sendTransportScheduleEmail(input:TransportScheduleMail):Pr
  });
 }
 
+
+// Re-sends private manage links to the email address a booking was made with ("Find my booking").
+export async function sendManageLinkEmail(input:{email:string;guest:string;reference:string;links:{label:string;url:string}[]}):Promise<MailResult>{
+ const buttons=input.links.map(link=>`<p style="margin:18px 0 6px;font-weight:700">${escapeHtml(link.label)}</p><p style="margin:0 0 18px"><a href="${escapeHtml(link.url)}" style="display:inline-block;background:#0b536c;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 18px;border-radius:10px">Manage booking</a></p>`).join('');
+ const html=shell('Your manage-booking link',`
+  <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(input.guest||'guest')},</p>
+  <p style="font-size:15px;line-height:1.7">Someone asked for the link to manage booking <strong>${escapeHtml(input.reference)}</strong>. Use the button below to view your booking, request changes or cancel.</p>
+  ${buttons}
+  <p style="font-size:13px;line-height:1.7;color:#71858e">If you did not ask for this, you can ignore this email. The link is private: please do not share it.</p>
+ `);
+ const plain=`Nirili - your manage-booking link\n\nDear ${input.guest||'guest'},\nUse these private links to manage booking ${input.reference}:\n\n`+input.links.map(link=>link.label+'\n'+link.url).join('\n\n')+'\n\nIf you did not ask for this, you can ignore this email.';
+ const window=Math.floor(Date.now()/600000);
+ return sendEmail({to:input.email,subject:'Manage your Nirili booking · '+input.reference,html,text:plain,idempotencyKey:'manage-link/'+input.reference+'/'+window});
+}
