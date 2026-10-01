@@ -19,8 +19,11 @@ Admin → Channels). This guide lists what must be done to switch it on.
    oversell rooms booked on the website or at reception. Only dates whose
    availability changed since the last push are sent, and at most 10
    availability requests per minute (Channex's limit); anything held back by
-   the limit is sent by the next push. The manual "Push to Channex" button is a
-   full sync for recovery only.
+   the limit is sent by the next push. The manual "Full sync to Channex" button
+   (Admin → Channels → Availability) sends 365 days of availability, rates and
+   restrictions in exactly 2 API calls; use it at setup and for recovery only.
+   Availability is always calculated from the real PMS calendar, also in
+   staging, so PMS bookings can be demonstrated against Channex staging.
 6. Every 15 minutes the GitHub Actions workflow `booking-com-poll.yml` calls
    `POST /api/channels/booking-com/cron`. It imports any revision that Channex
    has not seen acknowledged, which covers missed webhook deliveries, and sends

@@ -670,7 +670,9 @@ export async function discoverBookingComMappings(){
     return {
       connection_id:connectionId,channel_rate_id:id,channel_rate_name:a.title||a.name||id,
       pms_meal_plan:old?.pms_meal_plan||null,currency:a.currency||old?.currency||'USD',
-      active:old?.active!==false,settings:{...(old?.settings||{}),roomTypeId:a.room_type_id||null},updated_at:isoNow()
+      active:old?.active!==false,updated_at:isoNow(),
+      settings:{...(old?.settings||{}),roomTypeId:a.room_type_id||null,sellMode:a.sell_mode||old?.settings?.sellMode||null,
+        occupancies:Array.isArray(a.options)?a.options.map((option:any)=>Number(option?.occupancy)).filter(Boolean):(old?.settings?.occupancies||null)}
     };
   }).filter(Boolean);
   await Promise.all([
@@ -806,14 +808,19 @@ export async function runBookingComSelfTest(){
   };
 }
 
+// Outbound availability always comes from the real PMS calendar, also in
+// staging, so bookings made in the PMS show up in Channex. Inbound staging
+// bookings are still imported into the separate staging sandbox.
+async function loadInventoryState(){
+  const state=(await readOperationalRecordPrimary(stayKey))?.payload;
+  if(!state)throw Error('Hotel inventory is not available in Supabase.');
+  return state;
+}
+
 export async function previewBookingComAvailability(days=30,startDate=maldivesToday()){
   const count=Math.max(1,Math.min(365,Math.trunc(Number(days)||30)));
   if(!/^\d{4}-\d{2}-\d{2}$/.test(startDate))startDate=maldivesToday();
-  const connection=await getConnection();
-  const state=connection.mode==='staging'
-    ?await loadStagingHotel()
-    :(await readOperationalRecordPrimary(stayKey))?.payload;
-  if(!state)throw Error('Hotel inventory is not available in Supabase.');
+  const state=await loadInventoryState();
   const rooms=(Array.isArray(state.rooms)?state.rooms:[]).filter((room:any)=>String(room.status||'').toLowerCase()!=='maintenance');
   const stays=Array.isArray(state.stays)?state.stays:[];
   const values=Array.from({length:count},(_,i)=>{
@@ -880,17 +887,77 @@ export function recentAvailabilityRequests(requests:string[],now=Date.now()){
   return requests.filter(at=>now-Date.parse(at)<60000);
 }
 
+async function selectedRoomMappings(connection:ChannelConnection){
+  const mappings=await select('channel_room_mappings','connection_id=eq.'+connectionId+'&active=eq.true&pms_room_type=eq.'+encodeURIComponent('Double Room')+'&select=*');
+  if(!mappings.length)throw Error('No active room mapping is configured.');
+  const productionMappings=mappings.filter((mapping:any)=>mapping?.settings?.stagingOnly!==true);
+  const selected=connection.mode==='staging'?mappings:productionMappings.slice(0,1);
+  if(!selected.length)throw Error(connection.mode==='production'?'No production room mapping is configured.':'No staging room mapping is configured.');
+  return selected;
+}
+
+async function selectedRateMappings(connection:ChannelConnection){
+  const rates=await select('channel_rate_mappings','connection_id=eq.'+connectionId+'&active=eq.true&pms_meal_plan=not.is.null&select=*');
+  const selected=connection.mode==='staging'?rates:rates.filter((rate:any)=>rate?.settings?.stagingOnly!==true);
+  if(!selected.length)throw Error('No active rate plan is mapped to a Nirili meal plan.');
+  return selected;
+}
+
+// One restriction range per rate plan and run of dates with the same stop-sell
+// state. Every object carries every declared restriction, as Channex requires
+// for a full sync. Per-person rate plans get a price for each occupancy.
+export function fullSyncRestrictions(propertyId:string,rateMappings:any[],state:any,startDate:string,days:number){
+  const values:any[]=[];
+  for(const mapping of rateMappings){
+    const meal=String(mapping.pms_meal_plan);
+    if(!allowedMeals.has(meal))continue;
+    const occupancy=Number(mapping.settings?.stagingOccupancy)||0;
+    const sellMode=mapping.settings?.sellMode||(occupancy?'per_room':'per_person');
+    const occupancies=Array.isArray(mapping.settings?.occupancies)&&mapping.settings.occupancies.length?mapping.settings.occupancies.map(Number):[1,2,3];
+    const price=(pax:number)=>(nightly(meal,Math.min(3,Math.max(1,pax)),state.roomRates)/100).toFixed(2);
+    const pricing=sellMode==='per_person'
+      ?{rates:occupancies.map((pax:number)=>({occupancy:pax,rate:price(pax)}))}
+      :{rate:price(occupancy||2)};
+    let range:any=null;
+    for(let i=0;i<days;i++){
+      const date=addDays(startDate,i);
+      const stopSell=isBookingDateClosed(state,date);
+      if(range&&range.stop_sell===stopSell&&addDays(range.date_to,1)===date){range.date_to=date;continue;}
+      range={
+        property_id:propertyId,rate_plan_id:mapping.channel_rate_id,date_from:date,date_to:date,...pricing,
+        min_stay_arrival:1,max_stay:0,closed_to_arrival:false,closed_to_departure:false,stop_sell:stopSell
+      };
+      values.push(range);
+    }
+  }
+  return values;
+}
+
+// Manual full sync for setup and recovery: exactly two Channex calls, one for
+// availability and one for rates and restrictions.
+export async function fullSyncBookingComAri(days=365){
+  const connection=await getConnection();
+  if(!connection.enabled)throw Error('Enable the Booking.com channel before sending inventory.');
+  const count=Math.max(1,Math.min(365,Math.trunc(Number(days)||365)));
+  const startDate=maldivesToday();
+  if(connection.settings?.dryRun!==false)return {ok:true,dryRun:true,preview:await previewBookingComAvailability(count,startDate)};
+  if(!connection.property_id)throw Error('Channex property ID is missing.');
+  const [state,rateMappings]=await Promise.all([loadInventoryState(),selectedRateMappings(connection)]);
+  const restrictions=fullSyncRestrictions(connection.property_id,rateMappings,state,startDate,count);
+  const availability=await pushBookingComAvailability(count,startDate);
+  const response=await channex(connection,'/restrictions',{method:'POST',body:JSON.stringify({values:restrictions})});
+  const now=isoNow();
+  await recordEvent('restrictions:'+startDate+':'+now,'outbound','restrictions_full_sync','processed',{values:restrictions.length,response});
+  return {...availability,apiCalls:2,restrictionRanges:restrictions.length};
+}
+
 export async function pushBookingComAvailability(days=30,startDate=maldivesToday(),options:{changesOnly?:boolean}={}){
   const connection=await getConnection();
   if(!connection.enabled)throw Error('Enable the Booking.com channel before sending inventory.');
   const preview=await previewBookingComAvailability(days,startDate);
   if(connection.settings?.dryRun!==false)return {ok:true,dryRun:true,preview};
   if(!connection.property_id)throw Error('Channex property ID is missing.');
-  const mappings=await select('channel_room_mappings','connection_id=eq.'+connectionId+'&active=eq.true&pms_room_type=eq.'+encodeURIComponent('Double Room')+'&select=*');
-  if(!mappings.length)throw Error('No active room mapping is configured.');
-  const productionMappings=mappings.filter((mapping:any)=>mapping?.settings?.stagingOnly!==true);
-  const selectedMappings=connection.mode==='staging'?mappings:productionMappings.slice(0,1);
-  if(!selectedMappings.length)throw Error(connection.mode==='production'?'No production room mapping is configured.':'No staging room mapping is configured.');
+  const selectedMappings=await selectedRoomMappings(connection);
 
   const ari=await loadAriState(connection);
   const mappingKey=selectedMappings.map((mapping:any)=>String(mapping.channel_room_id)).sort().join(',');
