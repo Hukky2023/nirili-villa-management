@@ -8,7 +8,7 @@ const path=require('path');
 
 const root=path.resolve(__dirname,'..');
 // Every page a guest can reach (the PMS is English only and is not listed here).
-const GUEST_SOURCES=['app/hotel','app/book','app/stay','app/website-chat.tsx','app/restaurant/guest/menu.tsx','app/guest-services.tsx','app/guest-stay-card.tsx','app/guest-push-notifications.tsx','app/excursion-weather.tsx','app/time-field-24.tsx','app/seat-map.tsx'];
+const GUEST_SOURCES=['app/hotel','app/book','app/stay','app/website-chat.tsx','app/restaurant/guest/menu.tsx','app/guest-services.tsx','app/guest-stay-card.tsx','app/guest-push-notifications.tsx','app/excursion-weather.tsx','app/time-field-24.tsx','app/seat-map.tsx','app/passenger-type.tsx'];
 const ATTRS=new Set(['placeholder','aria-label','title','alt','label','ariaLabel']);
 const NOT_TEXT_KEYS=new Set(['id','href','src','className','icon','image','key','url','photo','type','kind','value','method','mode','variant','tone','as','target','rel','path','slug','unit','pricingUnit','status','role','name','category','group','lang','locale','timeZone','format','color','background','tab','portal','action','source','serviceType','weekday','month','day','year','hour','minute','currency','style','display']);
 const human=s=>/[A-Za-z]{2}/.test(s)&&!/^(https?:|mailto:|tel:|\/|#|\.\/|[\w-]+\.(css|tsx?|png|jpe?g|svg|webp|json)$)/.test(s)&&!/^[a-z0-9]+([_-][a-z0-9]+)+$/.test(s)&&!/^[a-z]+[A-Z]\w*$/.test(s)&&!/[{}<>]|=>|\(\)/.test(s)&&!/^(nh|nv|nge|is|has|ws|ag)-/.test(s);

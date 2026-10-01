@@ -494,3 +494,28 @@ test('operators create crew logins; crew see and board only their own trips',asy
  await s.admin.PATCH(s.req('/api/travel-operators','PATCH',{id:op.id,revision:op.revision,active:false}));
  assert.equal((await crewGet(aliCookie)).status,401);
 });
+
+test('locals pay the local fare; expats too when the operator allows it',()=>{
+ const {state,sailing}=sea();
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{...sailing,localFare:-1}),/valid local fare/);
+ OP.saveOperatorSailing(state,coral,{...sailing,localFare:12000});
+ const s=state.sailings.find(x=>x.id===sailing.id);
+ assert.deepEqual([T.fareFor(s,'Tourist'),T.fareFor(s,'Local'),T.fareFor(s,'Expat')],[20000,12000,20000]);
+ assert.equal(T.hasLocalFare(s),true);
+ const book=(traveller,expectedTotal,seats)=>T.createTransfer(state,{token:crypto.randomUUID(),name:'G',phone:'+9607000000',traveller,adults:1,children:1,infants:0,notes:'',expectedTotal,journeys:[{scheduleId:sailing.id,date:FUTURE,seats}]},'x');
+ // One adult and one child (half fare).
+ const local=book('Local',18000,[1,2]);
+ assert.equal(local.total,18000);
+ assert.equal(local.journeys[0].fare,12000);
+ assert.throws(()=>book('Local',30000,[3,4]),/fare changed/);
+ assert.equal(book('Expat',30000,[3,4]).total,30000);
+ assert.throws(()=>book('Martian',30000,[3,4]),/passenger type/);
+ // Fares can change on a departure with bookings; sold tickets keep their fare.
+ state.bookings.push(local);
+ OP.saveOperatorSailing(state,coral,{...s,localFare:10000,expatLocal:true});
+ assert.equal(T.fareFor(state.sailings.find(x=>x.id===sailing.id),'Expat'),10000);
+ assert.equal(local.journeys[0].fare,12000);
+ // Without a local fare everyone pays the tourist fare.
+ OP.saveOperatorSailing(state,coral,{...s,localFare:''});
+ assert.equal(T.fareFor(state.sailings.find(x=>x.id===sailing.id),'Local'),20000);
+});

@@ -2,9 +2,11 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowRight,CalendarDays,Car,MapPin,MessageCircle,ShipWheel,Users,X} from 'lucide-react';
 import {Seats,seatsLeft} from '../../seat-map';
+import PassengerType,{fareLabel,needsType} from '../../passenger-type';
+import {fareFor} from '../../../lib/transport';
 
 // Partner portal: book speedboat seats with independent operators and buggy rides for guests.
-type Sailing={id:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;operatorName?:string;boat:string;days?:number[];boatId?:string;boatOverrides?:Record<string,string>};
+type Sailing={id:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;operatorName?:string;boat:string;days?:number[];localFare?:number;expatLocal?:boolean;boatId?:string;boatOverrides?:Record<string,string>};
 const mvr=(c:number)=>'MVR '+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const usd=(c:number)=>'$'+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const niceDate=(d:string)=>d?new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}):'';
@@ -33,14 +35,14 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
  const [kind,setKind]=useState<'arrival'|'departure'>('arrival'),[date,setDate]=useState(''),[sailingId,setSailingId]=useState('');
  const [adults,setAdults]=useState(2),[children,setChildren]=useState(0),[infants,setInfants]=useState(0);
  const [name,setName]=useState(''),[phone,setPhone]=useState(''),[reference,setReference]=useState(''),[notes,setNotes]=useState('');
- const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState(''),[picked,setPicked]=useState<number[]>([]);
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState(''),[picked,setPicked]=useState<number[]>([]),[traveller,setTraveller]=useState('');
  const token=useRef('');
  useEffect(()=>{token.current=crypto.randomUUID();},[]);
  useEffect(()=>{if(!date&&data?.today)setDate(data.today);},[data,date]);
  const options=useMemo(()=>(data?.sailings||[]).filter((s:Sailing)=>leg(s,kind)&&date&&runs(s,date)).sort((a:Sailing,b:Sailing)=>a.depart.localeCompare(b.depart)),[data,kind,date]);
  useEffect(()=>{if(!options.some((s:Sailing)=>s.id===sailingId))setSailingId(options[0]?.id||'');},[options,sailingId]);
  const sailing=options.find((s:Sailing)=>s.id===sailingId);
- const total=sailing?sailing.fare*adults+Math.round(sailing.fare/2)*children:0;
+ const adultFare=sailing?fareFor(sailing,traveller||'Tourist'):0,total=adultFare*adults+Math.round(adultFare/2)*children;
  const need=adults+children,enough=!sailing||seatsLeft(sailing,date,data)>=need;
  useEffect(()=>setPicked([]),[sailingId,date,need]);
  // Drop chosen seats that someone else has booked in the meantime.
@@ -49,8 +51,10 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
   e.preventDefault();if(busy)return;setBusy(true);setError('');setDone('');
   try{
    if(!sailing||!enough)throw Error('Not enough seats left on this boat for your group. Try another time or date.');
+   const typed=needsType([sailing]);
+   if(typed&&!traveller)throw Error('Choose the passenger type: tourist, Maldivian or expat.');
    if(picked.length&&picked.length!==need)throw Error('Choose '+need+' seats on the seat map, or tap Choose for me.');
-   await send({action:'book-transfer',token:token.current,name,phone,adults,children,infants,notes,agentReference:reference,expectedTotal:total,journeys:[{scheduleId:sailing.id,date,seats:picked}]});
+   await send({action:'book-transfer',token:token.current,name,phone,traveller:needsType([sailing])?traveller:'Tourist',adults,children,infants,notes,agentReference:reference,expectedTotal:total,journeys:[{scheduleId:sailing.id,date,seats:picked}]});
    setDone('Seats confirmed with the operator. You can follow the booking below.');token.current=crypto.randomUUID();setPicked([]);setName('');setPhone('');setReference('');setNotes('');
   }catch(err){setError((err as Error).message)}finally{setBusy(false)}
  }
@@ -69,7 +73,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
     </div>
     <div className="nh-fields">
      <label><span><CalendarDays/>Travel date</span><input required type="date" min={data?.today} value={date} onChange={e=>setDate(e.target.value)}/></label>
-     <label><span><ShipWheel/>Departure</span><select required value={sailingId} onChange={e=>setSailingId(e.target.value)}>{options.map((s:Sailing)=><option key={s.id} value={s.id}>{s.depart} · {s.operatorName||s.boat} · {mvr(s.fare)} adult</option>)}</select></label>
+     <label><span><ShipWheel/>Departure</span><select required value={sailingId} onChange={e=>setSailingId(e.target.value)}>{options.map((s:Sailing)=><option key={s.id} value={s.id}>{s.depart} · {s.operatorName||s.boat} · {fareLabel(s)}</option>)}</select></label>
     </div>
     {!options.length&&<p className="nh-hint">No speedboat departures on this day. Try another date.</p>}
     <div className="nh-fields nh-fields-3">
@@ -77,6 +81,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
      <label><span>Children</span><select value={children} onChange={e=>setChildren(Number(e.target.value))}>{[0,1,2,3,4,5,6].map(x=><option key={x}>{x}</option>)}</select></label>
      <label><span>Infants</span><select value={infants} onChange={e=>setInfants(Number(e.target.value))}>{[0,1,2,3].map(x=><option key={x}>{x}</option>)}</select></label>
     </div>
+    <PassengerType sailings={[sailing]} value={traveller} onChange={setTraveller}/>
     {sailing&&(enough?<Seats sailing={sailing} date={date} data={data} need={need} selected={picked} onChange={setPicked}/>:<p className="nh-hint">Not enough seats left on this boat for your group. Try another time or date.</p>)}
     <div className="nh-fields nh-fields-3">
      <label><span>Lead guest name</span><input required maxLength={120} value={name} onChange={e=>setName(e.target.value)}/></label>
@@ -110,7 +115,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
      <div><dt>Route</dt><dd>{j.from} → {j.to}</dd></div>
      <div><dt>Operator</dt><dd>{j.operatorName}{j.boatName?' · '+j.boatName:''}</dd></div>
      {j.seats?.length>0&&<div><dt>Seats</dt><dd>{j.seats.join(', ')}</dd></div>}
-     <div><dt>Guests</dt><dd>{t.adults+t.children+t.infants}{j.departed?(j.noShow?' · No-show':' · '+j.boardedPax+' boarded'):''}</dd></div>
+     <div><dt>Guests</dt><dd>{t.adults+t.children+t.infants}{t.traveller&&t.traveller!=='Tourist'?' · '+(t.traveller==='Local'?'Maldivian':'Expat')+' fare':''}{j.departed?(j.noShow?' · No-show':' · '+j.boardedPax+' boarded'):''}</dd></div>
      {j.declineReason&&<div><dt>Reason</dt><dd>{j.declineReason}</dd></div>}
     </dl>)}
     {t.status!=='Cancelled'&&!t.journeys.some((j:any)=>j.departed||j.boardedPax)&&<div className="nh-agent-actions"><button type="button" className="is-danger" onClick={()=>void cancel(t.id)}><X/>Cancel</button></div>}

@@ -14,7 +14,7 @@ const dateOk=(d:string)=>/^\d{4}-\d{2}-\d{2}$/.test(d);
 
 function ticketView(booking:TransferBooking,journey:Journey,index:number){
  const roomBilled=!!booking.stayId&&Number.isInteger(booking.roomCents);
- return {bookingId:booking.id,index,name:booking.name,phone:journey.operatorStatus==='Declined'?'':booking.phone,seats:journey.seats,adults:booking.adults,children:booking.children,infants:booking.infants,pax:ticketPax(booking),
+ return {bookingId:booking.id,index,name:booking.name,traveller:booking.traveller,localFare:booking.traveller==='Local'||booking.traveller==='Expat',phone:journey.operatorStatus==='Declined'?'':booking.phone,seats:journey.seats,adults:booking.adults,children:booking.children,infants:booking.infants,pax:ticketPax(booking),
   notes:booking.notes||'',source:booking.agentName?'Partner: '+booking.agentName:booking.stayId?'Nirili Villa guest':booking.source||'Website',pickup:booking.pickup||'',
   date:journey.date,depart:journey.depart,arrive:journey.arrive,from:journey.from,to:journey.to,scheduleId:journey.scheduleId,
   status:journey.operatorStatus||'Accepted',cancelledByOperator:!!journey.cancelledByOperator,boatId:journey.boatId||'',boatName:journey.boatName||'',boardedPax:journey.boardedPax||0,departed:!!journey.departedAt,noShow:!!journey.noShow,declineReason:journey.declineReason||'',

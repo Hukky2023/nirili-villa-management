@@ -93,17 +93,18 @@ function cleanCrewIds(input:any,crewIds:Set<string>){
 
 export function saveOperatorSailing(state:TransportState,operator:OperatorRef,input:any,crewIds?:Set<string>):Sailing{
  const from=text(input?.from,60),to=text(input?.to,60),depart=String(input?.depart||''),arrive=String(input?.arrive||'');
- const fare=Number(input?.fare),roomFare=input?.roomFare===''||input?.roomFare==null?undefined:Number(input.roomFare);
+ const fare=Number(input?.fare),localFare=input?.localFare===''||input?.localFare==null?undefined:Number(input.localFare),roomFare=input?.roomFare===''||input?.roomFare==null?undefined:Number(input.roomFare);
  const days=Array.isArray(input?.days)?[...new Set(input.days.map(Number))].filter((d:any)=>Number.isInteger(d)&&d>=0&&d<=6).sort() as number[]:[];
  if(!from||!to||from===to)throw Error('Choose where the boat leaves from and where it goes.');
  if(!TIME.test(depart)||!TIME.test(arrive)||arrive<=depart)throw Error('Enter same-day departure and arrival times (24-hour), arrival after departure.');
  if(!Number.isInteger(fare)||fare<0||fare>10000000)throw Error('Enter the adult fare in MVR.');
+ if(localFare!==undefined&&(!Number.isInteger(localFare)||localFare<0||localFare>10000000))throw Error('Enter a valid local fare in MVR, or leave it empty if locals pay the same.');
  if(roomFare!==undefined&&(!Number.isInteger(roomFare)||roomFare<0||roomFare>10000000))throw Error('Enter a valid USD fare for Nirili Villa guests, or leave it empty.');
  const id=text(input?.id,80),previous=id?state.sailings.find(s=>s.id===id&&s.operatorId===operator.id):undefined;
  if(id&&!previous)throw Error('Departure not found.');
  const boat=ownBoat(state,operator.id,text(input?.boatId,60));
  const next:Sailing={id:previous?.id||'OPS-'+crypto.randomUUID().slice(0,8).toUpperCase(),boat:operator.name,operatorId:operator.id,operatorName:operator.name,from,to,depart,arrive,
-  capacity:boatSeats(boat).length,fare,...(roomFare!==undefined?{roomFare}:{}),days:days.length===7?[]:days,active:input?.active!==false,boatId:boat.id,
+  capacity:boatSeats(boat).length,fare,...(localFare!==undefined?{localFare,expatLocal:input?.expatLocal===true}:{}),...(roomFare!==undefined?{roomFare}:{}),days:days.length===7?[]:days,active:input?.active!==false,boatId:boat.id,
   ...(previous?.boatOverrides?{boatOverrides:previous.boatOverrides}:{}),...(previous?.crewOverrides?{crewOverrides:previous.crewOverrides}:{})};
  const crew=Array.isArray(input?.crewIds)&&crewIds?cleanCrewIds(input.crewIds,new Set([...crewIds,...(previous?.crewIds||[])])):previous?.crewIds;
  if(crew?.length)next.crewIds=crew;
@@ -111,10 +112,11 @@ export function saveOperatorSailing(state:TransportState,operator:OperatorRef,in
  const clash=state.sailings.find(s=>s.id!==next.id&&s.active&&next.active&&s.boatId===boat.id&&daysOverlap(s.days,next.days)&&timesOverlap(s,next));
  if(clash)throw Error(boat.name+' already runs the '+clash.depart+' '+clash.from+' → '+clash.to+' departure at that time.');
  if(previous){
+  // Fares can change at any time: every ticket keeps the fare it was booked at.
   const futureDates=[...new Set(state.bookings.flatMap(b=>b.journeys.filter(j=>journeyLive(b,j)&&j.scheduleId===previous.id&&departs(j)>Date.now()).map(j=>j.date)))];
   if(futureDates.length){
-   const changed=(['from','to','depart','arrive','fare','roomFare'] as const).some(k=>previous[k]!==next[k])||!sameDays(previous.days,next.days);
-   if(changed)throw Error('This departure has upcoming bookings. Create a new departure for a new time, route, fare or days, and take this one off sale once its passengers have travelled.');
+   const changed=(['from','to','depart','arrive'] as const).some(k=>previous[k]!==next[k])||!sameDays(previous.days,next.days);
+   if(changed)throw Error('This departure has upcoming bookings. Create a new departure for a new time, route or days, and take this one off sale once its passengers have travelled. (Fares can be changed: booked tickets keep the fare they were sold at.)');
    // A new regular boat must have every seat already sold on trips that don't have a one-day swap.
    for(const date of futureDates){
     if(previous.boatOverrides?.[date])continue;

@@ -38,3 +38,10 @@
 .nh-seats{display:grid;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(15,42,46,.12)}
 .nh-seats-title{margin:0}
 .nh-seats-help{margin:0;font-size:14px;color:rgba(15,42,46,.7)}
+/* Passenger type (tourist or local fare) on the booking forms */
+.nh-ptype{border:0;margin:14px 0 0;padding:0;display:grid;gap:8px}
+.nh-ptype legend{font-weight:600;margin-bottom:6px}
+.nh-ptype [role=radiogroup]{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.nh-ptype button{display:grid;gap:2px;justify-items:start;text-align:left;padding:10px 14px;border-radius:14px;border:1.5px solid rgba(15,42,46,.2);background:#fff;color:#0f2a2e;font:inherit;cursor:pointer}
+.nh-ptype button small{font-size:13px;color:rgba(15,42,46,.65)}
+.nh-ptype button[aria-checked=true]{border-color:#0d6e72;box-shadow:0 0 0 1px #0d6e72;background:#eef7f7}

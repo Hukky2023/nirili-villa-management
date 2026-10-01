@@ -9,6 +9,9 @@
 export type SeatLayout={rows:number;cols:number;cells:number[]};
 export type Boat={id:string;operatorId:string;name:string;registration:string;capacity:number;active:boolean;layout?:SeatLayout;createdAt:string;updatedAt:string};
 export type Sailing={id:string;boat:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;roomFare?:number;active:boolean;
+ // Maldivians often pay less than tourists: `fare` is the tourist fare, `localFare` the optional
+ // local fare, and `expatLocal` gives expats living in the Maldives the local fare too.
+ localFare?:number;expatLocal?:boolean;
  operatorId?:string;operatorName?:string;
  // Days the departure runs, 0 = Sunday … 6 = Saturday. Missing or empty means every day.
  days?:number[];
@@ -78,8 +81,17 @@ export const runsOn=(sailing:Sailing,date:string)=>!Array.isArray(sailing.days)|
 
 // Every way of booking a seat builds the journey here. Operator tickets are confirmed on the
 // trip's boat straight away: the guest chose a real seat on it.
-export function journeyFor(sailing:Sailing,date:string,seats:number[],boat?:Boat):Journey{
- return {scheduleId:sailing.id,date,seats,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,fare:sailing.fare,
+export const TRAVELLERS=['Tourist','Local','Expat'] as const;
+export type Traveller=typeof TRAVELLERS[number];
+// The adult fare a passenger pays on a departure (children pay half; infants travel free).
+export function fareFor(sailing:Pick<Sailing,'fare'|'localFare'|'expatLocal'>,traveller:string){
+ const local=traveller==='Local'||traveller==='Expat'&&!!sailing.expatLocal;
+ return local&&Number.isInteger(sailing.localFare)?Number(sailing.localFare):sailing.fare;
+}
+export const hasLocalFare=(sailing:Pick<Sailing,'fare'|'localFare'>)=>Number.isInteger(sailing.localFare)&&sailing.localFare!==sailing.fare;
+
+export function journeyFor(sailing:Sailing,date:string,seats:number[],boat?:Boat,traveller='Tourist'):Journey{
+ return {scheduleId:sailing.id,date,seats,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,fare:fareFor(sailing,traveller),
   ...(Number.isInteger(sailing.roomFare)?{roomFare:sailing.roomFare}:{}),
   ...(sailing.operatorId?{operatorId:sailing.operatorId,operatorName:sailing.operatorName||sailing.boat,operatorStatus:'Accepted' as TicketStatus,...(boat?{boatId:boat.id,boatName:boat.name}:{})}:{})};
 }
@@ -90,7 +102,7 @@ export function addHistory(booking:TransferBooking,by:string,action:string,detai
 const dateValid=(x:any)=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x;
 const short=(x:any,n:number)=>typeof x==='string'&&x.trim().length>0&&x.length<=n;
 export function createTransfer(state:TransportState,b:any,owner:string):TransferBooking{
- if(!short(b.token,100)||!short(b.name,120)||!short(b.phone,80)||!['Local','Expat','Tourist'].includes(b.traveller)||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Enter your name, contact number and passenger type.');
+ if(!short(b.token,100)||!short(b.name,120)||!short(b.phone,80)||!TRAVELLERS.includes(b.traveller)||typeof b.notes!=='string'||b.notes.length>1000)throw Error('Enter your name, contact number and passenger type.');
  if(![b.adults,b.children,b.infants].every(n=>Number.isInteger(n)&&n>=0&&n<=20)||b.adults<1||b.adults+b.children+b.infants>20)throw Error('Choose between 1 and 20 passengers, including at least one adult.');
  if(!Array.isArray(b.journeys)||b.journeys.length<1||b.journeys.length>2)throw Error('Choose your journeys.');
  const journeys:Journey[]=b.journeys.map((j:any)=>{
@@ -102,7 +114,7 @@ export function createTransfer(state:TransportState,b:any,owner:string):Transfer
  const taken=occupied(state,s.id,j.date),clash=j.seats.filter((n:number)=>taken.includes(n));
  if(clash.length)throw Error('Seat '+clash.join(', ')+' was just booked by someone else. Choose another seat.');
  if(taken.length+j.seats.length>seatsOnTrip.size)throw Error('This departure does not have enough seats.');
- return journeyFor(s,j.date,j.seats,tripBoat(state,s,j.date));});
+ return journeyFor(s,j.date,j.seats,tripBoat(state,s,j.date),b.traveller);});
  if(journeys.length===2){const [a,z]=journeys;if(a.from!==z.to||a.to!==z.from||z.date+'T'+z.depart<=a.date+'T'+a.arrive)throw Error('The return journey must depart after arrival and reverse your route.');}
  const total=journeys.reduce((n,j)=>n+j.fare*b.adults+Math.round(j.fare/2)*b.children,0);
  if(b.expectedTotal!==total)throw Error('The fare changed. Review the current total and try again.');

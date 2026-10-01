@@ -4,6 +4,8 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowRight,CalendarDays,CheckCircle2,Plane,Repeat,ShipWheel,Users} from 'lucide-react';
 import {SITES} from '../../../lib/public-sites';
 import {Seats,tripLayout} from '../../seat-map';
+import PassengerType,{fareLabel,needsType} from '../../passenger-type';
+import {fareFor} from '../../../lib/transport';
 
 const money=(cents:number)=>'MVR '+(Math.max(0,Number(cents)||0)/100).toFixed(2);
 const niceDate=(d:string)=>new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
@@ -14,6 +16,7 @@ export default function TransferBookingSite(){
  const [date,setDate]=useState(today()),[returnDate,setReturnDate]=useState(today());
  const [outbound,setOutbound]=useState(''),[inbound,setInbound]=useState('');
  const [name,setName]=useState(''),[phone,setPhone]=useState(''),[adults,setAdults]=useState(2),[children,setChildren]=useState(0),[infants,setInfants]=useState(0),[notes,setNotes]=useState('');
+ const [traveller,setTraveller]=useState('');
  const [outSeats,setOutSeats]=useState<number[]>([]),[inSeats,setInSeats]=useState<number[]>([]);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState<any>(null);
  const token=useRef('');
@@ -26,7 +29,7 @@ export default function TransferBookingSite(){
  const arrivals=sortByTime((data?.sailings||[]).filter((s:any)=>route(s,'arrival')&&runs(s,date)));
  const departures=sortByTime((data?.sailings||[]).filter((s:any)=>route(s,'departure')&&runs(s,date)));
  const returns=sortByTime((data?.sailings||[]).filter((s:any)=>route(s,'departure')&&runs(s,returnDate)));
- const label=(s:any)=>s.depart+' · '+(s.operatorName||s.boat)+' · '+money(s.fare)+' adult';
+ const label=(s:any)=>s.depart+' · '+(s.operatorName||s.boat)+' · '+fareLabel(s);
  useEffect(()=>{const list=trip==='departure'?departures:arrivals;if(!list.some((s:any)=>s.id===outbound))setOutbound(list[0]?.id||'')},[data,trip,date]);
  useEffect(()=>{if(trip==='return'&&!returns.some((s:any)=>s.id===inbound))setInbound(returns[0]?.id||'')},[data,trip,returnDate]);
  const taken=(id:string,d:string)=>new Set((data?.availability||[]).filter((x:any)=>x.scheduleId===id&&x.date===d).flatMap((x:any)=>x.seats||[]));
@@ -38,8 +41,10 @@ export default function TransferBookingSite(){
  useEffect(()=>setInSeats([]),[inbound,returnDate,need]);
  const outboundSailing=(data?.sailings||[]).find((x:any)=>x.id===outbound);
  const inboundSailing=(data?.sailings||[]).find((x:any)=>x.id===inbound);
- const expectedTotal=useMemo(()=>{const calc=(s:any)=>s?Number(s.fare||0)*adults+Math.round(Number(s.fare||0)/2)*children:0;return calc(outboundSailing)+(trip==='return'?calc(inboundSailing):0)},[outboundSailing,inboundSailing,trip,adults,children]);
+ const expectedTotal=useMemo(()=>{const calc=(s:any)=>{if(!s)return 0;const f=fareFor(s,traveller||'Tourist');return f*adults+Math.round(f/2)*children;};return calc(outboundSailing)+(trip==='return'?calc(inboundSailing):0)},[outboundSailing,inboundSailing,trip,adults,children,traveller]);
  async function submit(e:React.FormEvent){e.preventDefault();if(!data||busy)return;setBusy(true);setError('');try{
+  const typed=needsType([outboundSailing,trip==='return'?inboundSailing:null]);
+  if(typed&&!traveller)throw Error('Choose your passenger type: tourist, Maldivian or expat.');
   const journeys:any[]=[];
   const first=trip==='departure'?departures.find((s:any)=>s.id===outbound):arrivals.find((s:any)=>s.id===outbound);
   // Seats the guest tapped go to the operator; with none tapped we seat the party together.
@@ -48,7 +53,7 @@ export default function TransferBookingSite(){
   if(partial(outSeats)||trip==='return'&&partial(inSeats))throw Error('Choose '+need+' seats on the seat map, or tap Choose for me.');
   journeys.push({scheduleId:first.id,date,seats:outSeats});
   if(trip==='return'){const second=returns.find((s:any)=>s.id===inbound);if(!second||seatsLeft(inbound,returnDate)<need)throw Error('The selected return departure does not have enough seats. Choose another time.');journeys.push({scheduleId:second.id,date:returnDate,seats:inSeats});}
-  const r=await fetch('/api/walkin-transfers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'book',payment:'later',revision:data.revision,token:token.current,name,phone,traveller:'Tourist',adults,children,infants,journeys,expectedTotal,notes})}),d=await r.json();
+  const r=await fetch('/api/walkin-transfers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'book',payment:'later',revision:data.revision,token:token.current,name,phone,traveller:typed?traveller:'Tourist',adults,children,infants,journeys,expectedTotal,notes})}),d=await r.json();
   // Someone else took a chosen seat: show the fresh map and keep the seats that are still free.
   if(r.status===409&&d.sailings){setData(d);const free=(id:string,dt:string,list:number[])=>{const used=new Set((d.availability||[]).filter((x:any)=>x.scheduleId===id&&x.date===dt).flatMap((x:any)=>x.seats||[]));return list.filter(n=>!used.has(n));};setOutSeats(free(outbound,date,outSeats));setInSeats(free(inbound,returnDate,inSeats));}
   if(!r.ok)throw Error(d.error||'Could not book transfer.');
@@ -101,6 +106,7 @@ export default function TransferBookingSite(){
      <label><span>Children</span><select value={children} onChange={e=>setChildren(Number(e.target.value))}>{[0,1,2,3,4].map(x=><option key={x}>{x}</option>)}</select></label>
      <label><span>Infants</span><select value={infants} onChange={e=>setInfants(Number(e.target.value))}>{[0,1,2,3].map(x=><option key={x}>{x}</option>)}</select></label>
     </div>
+    <PassengerType sailings={[outboundSailing,trip==='return'?inboundSailing:null]} value={traveller} onChange={setTraveller}/>
    </div>
 
    <div className="nh-step">
@@ -125,6 +131,7 @@ export default function TransferBookingSite(){
     {outboundSailing&&<div><dt>Operator</dt><dd>{outboundSailing.operatorName||outboundSailing.boat}</dd></div>}
     {trip==='return'&&<div><dt>Return</dt><dd>{inboundSailing?niceDate(returnDate)+' · '+inboundSailing.depart:'Choose a time'}</dd></div>}
     {trip==='return'&&inboundSailing&&<div><dt>Return seats</dt><dd>{inSeats.length===need?inSeats.slice().sort((a,b)=>a-b).join(', '):'Chosen for you'}</dd></div>}
+    {needsType([outboundSailing,trip==='return'?inboundSailing:null])&&<div><dt>Passenger type</dt><dd>{traveller==='Local'?'Maldivian':traveller==='Expat'?'Expat living in the Maldives':traveller==='Tourist'?'Tourist / visitor':'Choose above'}</dd></div>}
     <div><dt>Travellers</dt><dd>{adults} adult{adults>1?'s':''}{children?', '+children+' child'+(children>1?'ren':''):''}{infants?', '+infants+' infant'+(infants>1?'s':''):''}</dd></div>
    </dl>
    <div className="nh-fare-total"><span>Estimated total</span><strong>{money(expectedTotal)}</strong></div>
