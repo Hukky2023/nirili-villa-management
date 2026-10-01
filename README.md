@@ -12,7 +12,21 @@ Run `pnpm build` before initial deployment from a clone: compiled dist/ is delib
 
 ## Working together
 
-Each collaborator uses their own GitHub account. Clone this repository, create a branch for a change, commit and push it, then open a pull request for review. Pull the latest main branch before starting new work. Repository access does not grant Cloudflare access. Deployments are manual; pushing code here does not update the website automatically.
+Each collaborator uses their own GitHub account. Clone this repository, create a branch for a change, commit and push it, then open a pull request for review. Pull the latest main branch before starting new work. Repository access does not grant Cloudflare access. Pushing to main deploys the website automatically through Cloudflare Workers Builds.
+
+## Translations (guest websites)
+
+The guest websites (nirilihotels.com, stay., tours., dine., transfers., ride., watersports., agents. and the my. guest portal) are shown in English, Chinese, Russian, German, French, Italian, Spanish and Bengali. The management system (PMS) is English only.
+
+When you add or change English text that guests can see, add its translations too:
+
+1. Add the English text as a key in `lib/i18n/translations.json` with seven translations in this order: Chinese, Italian, Spanish, Bengali, Russian, German, French. For text containing a number, write `{0}` in place of the number, e.g. `"{0} guests"`.
+2. Run `node scripts/i18n-build.mjs` to rebuild the per-language files in `lib/i18n/site/`.
+3. Run `node scripts/i18n-extract.cjs`. It lists any guest-facing text that still has no translation; it should print nothing.
+
+`tests/site-i18n.test.mjs` runs in CI and fails if guest-facing text is missing a translation. Text that guests never see (reception or admin screens) does not need translations.
+
+You do not need to translate text that staff write in admin: excursion descriptions and other sentences are machine translated automatically the first time a guest views them, then cached. Short names such as menu items and excursion titles stay as written. A new public website outside `app/book`, `app/hotel` or `app/stay` must render `<SiteTranslator/>` (see `app/book/layout.tsx`) to be translated.
 
 Keep passwords, encryption keys, .dev.vars, environment files, database backups and generated ADMIN-LOGIN.txt outside Git. Source SQL migrations are included; production data and credentials are not. Store private operational backups separately.
 
