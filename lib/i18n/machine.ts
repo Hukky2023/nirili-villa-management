@@ -4,7 +4,7 @@ import {authDb,digest} from '../auth';
 // Machine translation for text the reviewed catalogs cannot know in advance: excursion
 // descriptions, notes and other copy staff write in admin. Each sentence is translated once per
 // language with Workers AI and cached in D1, so guests get an instant answer from then on.
-export const MACHINE_LANGUAGES={zh:'Simplified Chinese',ru:'Russian',it:'Italian',es:'Spanish',bn:'Bengali'} as const;
+export const MACHINE_LANGUAGES={zh:'Simplified Chinese',ru:'Russian',de:'German',fr:'French',it:'Italian',es:'Spanish',bn:'Bengali'} as const;
 export type MachineLanguage=keyof typeof MACHINE_LANGUAGES;
 export const isMachineLanguage=(v:unknown):v is MachineLanguage=>typeof v==='string'&&Object.hasOwn(MACHINE_LANGUAGES,v);
 const LLM='@cf/meta/llama-3.3-70b-instruct-fp8-fast',FALLBACK='@cf/meta/m2m100-1.2b';

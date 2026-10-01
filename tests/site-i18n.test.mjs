@@ -22,7 +22,7 @@ function load(path,stubs={},cache=new Map()){
  return mod.exports;
 }
 
-const ORDER=['zh','it','es','bn','ru'];
+const ORDER=['zh','it','es','bn','ru','de','fr'];
 const source=JSON.parse(readFileSync(resolve(root,'lib/i18n/translations.json'),'utf8'));
 const runtime=load('lib/i18n/runtime.ts');
 const catalog=lang=>runtime.catalogFrom(JSON.parse(readFileSync(resolve(root,'lib/i18n/site/'+lang+'.json'),'utf8')));
@@ -64,6 +64,12 @@ test('lookups handle case, surrounding symbols, numbers, prices, times and dates
  assert.equal(runtime.lookup('Your partner rate: 12.5% off public prices','ru',ru),'Ваш партнёрский тариф: скидка 12.5% от публичных цен');
  assert.match(runtime.lookup('Fri, 2 Oct 2026','ru',ru),/2 окт/);
  assert.match(runtime.lookup('Fri, 2 Oct 2026','zh',zh),/10月2日/);
+ const de=catalog('de'),fr=catalog('fr');
+ assert.equal(runtime.lookup('Book your stay','de',de),'Aufenthalt buchen');
+ assert.equal(runtime.lookup('3 passengers','fr',fr),'3 passagers');
+ assert.equal(runtime.lookup('Table 7','de',de),'Tisch 7');
+ assert.match(runtime.lookup('Fri, 2 Oct 2026','de',de),/2\. Okt/);
+ assert.match(runtime.lookup('Fri, 2 Oct 2026','fr',fr),/2 oct/);
  assert.equal(runtime.lookup('Husam','zh',zh),null);
  assert.equal(runtime.lookup('EXC-0C7B2C52','zh',zh),null);
  assert.equal(runtime.lookup('Book your stay','en',zh),null);
@@ -81,6 +87,10 @@ test('the management system (PMS) is English only: no language picker and no tra
  assert.equal(runtime.translate('Book your stay'),'Book your stay');
 });
 
+test('the picker offers German and French alongside the other languages',()=>{
+ assert.deepEqual(runtime.languages.map(([id])=>id),['en','zh','ru','de','fr','it','es','bn']);
+});
+
 test('every guest-facing site mounts the translator',()=>{
  for(const file of ['app/book/layout.tsx','app/hotel/page.tsx','app/stay/page.tsx'])
   assert.match(readFileSync(resolve(root,file),'utf8'),/<SiteTranslator\/>/,file);
@@ -93,7 +103,7 @@ function translateRoute(){
  const stubs={
   auth:{sameOrigin:r=>r.headers.get('origin')===new URL(r.url).origin,limit:async()=>limits.ok},
   machine:{
-   isMachineLanguage:v=>['zh','ru','it','es','bn'].includes(v),
+   isMachineLanguage:v=>['zh','ru','de','fr','it','es','bn'].includes(v),
    cachedTranslations:async(lang,texts)=>new Map(texts.filter(t=>cache.has(lang+'|'+t)).map(t=>[t,cache.get(lang+'|'+t)])),
    machineTranslate:async(lang,text)=>{calls.push(text);return '['+lang+'] '+text;},
   },
@@ -114,7 +124,7 @@ test('machine translation serves cached sentences and translates only new ones',
 test('machine translation rejects other languages, cross-site use and floods',async()=>{
  const {ask,limits,calls}=translateRoute();
  assert.equal((await ask({lang:'en',texts:['Hello there friend of mine']})).status,400);
- assert.equal((await ask({lang:'fr',texts:['Hello there friend of mine']})).status,400);
+ assert.equal((await ask({lang:'ja',texts:['Hello there friend of mine']})).status,400);
  assert.equal((await ask({lang:'zh',texts:['Hello there friend of mine']},'https://evil.example')).status,403);
  const many=Array.from({length:80},(_,i)=>'Sentence number '+i+' for the guests here');
  await ask({lang:'ru',texts:many});

@@ -1,8 +1,8 @@
 // Guest-facing website translation. The management system (PMS) is English only; translation is
 // switched on by <SiteTranslator/>, which only the public websites and the in-house guest portal mount.
-export type Language='en'|'zh'|'ru'|'it'|'es'|'bn';
-export const languages=[['en','English'],['zh','中文'],['ru','Русский'],['it','Italiano'],['es','Español'],['bn','বাংলা']] as const;
-export const locales:Record<Language,string>={en:'en-GB',zh:'zh-Hans',ru:'ru',it:'it',es:'es',bn:'bn'};
+export type Language='en'|'zh'|'ru'|'de'|'fr'|'it'|'es'|'bn';
+export const languages=[['en','English'],['zh','中文'],['ru','Русский'],['de','Deutsch'],['fr','Français'],['it','Italiano'],['es','Español'],['bn','বাংলা']] as const;
+export const locales:Record<Language,string>={en:'en-GB',zh:'zh-Hans',ru:'ru',de:'de',fr:'fr',it:'it',es:'es',bn:'bn'};
 const valid=(v:unknown):v is Language=>languages.some(([id])=>id===v);
 const KEY='nirili-language',COOKIE='nirili_lang',EVENT='nirili-language';
 
@@ -59,7 +59,7 @@ export function subscribe(fn:()=>void){window.addEventListener(EVENT,fn);return(
 
 // Reviewed translations, one file per language, loaded only when a guest picks that language.
 const loaders:Record<Exclude<Language,'en'>,()=>Promise<{default:Record<string,string>}>>={
- zh:()=>import('./site/zh.json'),ru:()=>import('./site/ru.json'),it:()=>import('./site/it.json'),es:()=>import('./site/es.json'),bn:()=>import('./site/bn.json'),
+ zh:()=>import('./site/zh.json'),ru:()=>import('./site/ru.json'),de:()=>import('./site/de.json'),fr:()=>import('./site/fr.json'),it:()=>import('./site/it.json'),es:()=>import('./site/es.json'),bn:()=>import('./site/bn.json'),
 };
 export const normalizeKey=(s:string)=>s.replace(/\s+/g,' ').trim().toLowerCase();
 export function catalogFrom(entries:Record<string,string>){return new Map(Object.entries(entries).map(([k,v])=>[normalizeKey(k),v]));}

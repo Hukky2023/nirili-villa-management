@@ -1,8 +1,8 @@
 // Builds the per-language catalogs the guest websites load (lib/i18n/site/<lang>.json) from the
-// single reviewed source, lib/i18n/translations.json: {"English": [zh, it, es, bn, ru]}.
+// single reviewed source, lib/i18n/translations.json: {"English": [zh, it, es, bn, ru, de, fr]}.
 // Run after editing translations: node scripts/i18n-build.mjs
 import {readFileSync,writeFileSync} from 'node:fs';
-const ORDER=['zh','it','es','bn','ru'];
+const ORDER=['zh','it','es','bn','ru','de','fr'];
 const root=new URL('../lib/i18n/',import.meta.url);
 const source=JSON.parse(readFileSync(new URL('translations.json',root),'utf8'));
 const keys=Object.keys(source).sort((a,b)=>a.localeCompare(b,'en'));

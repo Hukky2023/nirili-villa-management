@@ -15,7 +15,7 @@ export function UiOption({children,value,...props}:any){
 
 export function useLanguage():Language{return useSyncExternalStore(subscribe,getLanguage,()=>'en' as Language);}
 
-const short:Record<Language,string>={en:'EN',zh:'中文',ru:'RU',it:'IT',es:'ES',bn:'বাং'};
+const short:Record<Language,string>={en:'EN',zh:'中文',ru:'RU',de:'DE',fr:'FR',it:'IT',es:'ES',bn:'বাং'};
 
 // Language picker for the guest-facing websites. `tone="light"` sits on dark headers.
 export function LanguagePicker({tone='light',className=''}:{tone?:'light'|'dark';className?:string}){
@@ -23,7 +23,7 @@ export function LanguagePicker({tone='light',className=''}:{tone?:'light'|'dark'
  return <label className={'nh-lang nh-lang-'+tone+(className?' '+className:'')} translate="no">
   <Globe aria-hidden="true"/>
   <span aria-hidden="true">{short[lang]}</span>
-  <select aria-label="Language / 语言 / Язык / Lingua / Idioma / ভাষা" value={lang} onChange={e=>setLanguage(e.target.value as Language)}>
+  <select aria-label="Language / 语言 / Язык / Sprache / Langue / Lingua / Idioma / ভাষা" value={lang} onChange={e=>setLanguage(e.target.value as Language)}>
    {languages.map(([id,name])=><option value={id} key={id}>{name}</option>)}
   </select>
  </label>;
