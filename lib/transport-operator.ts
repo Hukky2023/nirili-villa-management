@@ -109,15 +109,18 @@ export function acceptTicket(state:TransportState,operatorId:string,bookingId:st
  return {booking,journey,boat};
 }
 
-export function declineTicket(state:TransportState,operatorId:string,bookingId:string,index:number,reason:string,by:string){
+// Decline a new ticket, or cancel one already accepted (for example when the guest asks the
+// operator to cancel). Either way the seats are freed and Nirili is told; it is only possible
+// before anyone on the ticket has boarded.
+export function declineTicket(state:TransportState,operatorId:string,bookingId:string,index:number,reason:string,by:string,kind:'decline'|'cancel'='decline'){
  const {booking,journey}=ticketFor(state,operatorId,bookingId,index);
  if(journey.departedAt||journey.boardedPax)throw Error('Passengers on this ticket have already boarded.');
- if(journey.operatorStatus==='Declined')throw Error('This ticket is already declined.');
+ if(journey.operatorStatus==='Declined')throw Error(journey.cancelledByOperator?'This ticket is already cancelled.':'This ticket is already declined.');
  const note=text(reason,300);
- if(!note)throw Error('Tell the guest and Nirili why you cannot take this ticket.');
- Object.assign(journey,{operatorStatus:'Declined',declinedAt:new Date().toISOString(),declineReason:note});
+ if(!note)throw Error(kind==='cancel'?'Tell Nirili why the ticket is cancelled, e.g. the guest asked to cancel.':'Tell the guest and Nirili why you cannot take this ticket.');
+ Object.assign(journey,{operatorStatus:'Declined',declinedAt:new Date().toISOString(),declineReason:note,...(kind==='cancel'?{cancelledByOperator:true}:{})});
  delete journey.boatId;delete journey.boatName;
- addHistory(booking,by,'Declined by operator',note);
+ addHistory(booking,by,kind==='cancel'?'Cancelled by operator':'Declined by operator',note);
  // A walk-in booking with nothing left to travel is closed; room transfers stay open so
  // reception can move the guest to another departure.
  if(!booking.stayId&&booking.journeys.every(j=>j.operatorStatus==='Declined'))booking.status='Cancelled';

@@ -11,7 +11,9 @@ export type TicketStatus='New'|'Accepted'|'Declined';
 export type Journey={scheduleId:string;date:string;seats:number[];boat:string;from:string;to:string;depart:string;arrive:string;fare:number;roomFare?:number;
  operatorId?:string;operatorName?:string;operatorStatus?:TicketStatus;
  boatId?:string;boatName?:string;acceptedAt?:string;acceptedBy?:string;declinedAt?:string;declineReason?:string;
- boardedPax?:number;boardedAt?:string;noShow?:boolean;departedAt?:string};
+ boardedPax?:number;boardedAt?:string;noShow?:boolean;departedAt?:string;
+ // Set when the operator cancels an accepted ticket (e.g. the guest asked them to) rather than declining a new one.
+ cancelledByOperator?:boolean};
 export type HistoryEntry={at:string;by:string;action:string;detail?:string};
 export type TransferBooking={id:string;token:string;owner:string;name:string;phone:string;traveller:string;adults:number;children:number;infants:number;journeys:Journey[];total:number;status:'Confirmed'|'Cancelled'|'Requested';paid:boolean;checked:string[];created:string;notes:string;stayId?:string;room?:string;roomCents?:number;transportPlanLeg?:'arrival'|'departure';
  source?:string;agentId?:string;agentName?:string;agentReference?:string;pickup?:string;history?:HistoryEntry[]};

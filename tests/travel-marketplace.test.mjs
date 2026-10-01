@@ -309,3 +309,32 @@ test('a guest with an out-of-date page still books: the server picks free seats 
  assert.equal(third.status,400);
  assert.match((await third.json()).error,/Not enough seats/);
 });
+
+test('an operator can cancel an accepted ticket before boarding; Nirili is told and the seats are freed',async()=>{
+ const s=apis();
+ await s.create();
+ const {cookie}=await s.signIn('coralspeed','coral-pass-1');
+ const post=body=>s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{...body,viewDate:FUTURE},cookie));
+ let d=await (await post({action:'save-boat',boat:{name:'Coral 1',capacity:10}})).json();
+ const boatId=d.boats[0].id;
+ d=await (await post({action:'save-sailing',sailing:{from:'Velana Airport',to:'Dhiffushi',depart:'16:30',arrive:'17:15',capacity:10,fare:46000}})).json();
+ const sailingId=d.sailings[0].id;
+ const book=name=>{const b=T.createTransfer(s.sea.state,{token:crypto.randomUUID(),name,phone:'+447700900123',traveller:'Tourist',adults:2,children:0,infants:0,notes:'',expectedTotal:92000,journeys:[{scheduleId:sailingId,date:FUTURE,seats:T.freeSeats(s.sea.state,s.sea.state.sailings[0],FUTURE,2)}]},'walk-transfer:x');s.sea.state.bookings.push(b);return b;};
+ const a=book('Guest A');
+ await post({action:'accept',bookingId:a.id,index:0,boatId});
+ assert.equal((await post({action:'cancel',bookingId:a.id,index:0,reason:''})).status,400);
+ assert.equal((await post({action:'cancel',bookingId:a.id,index:0,reason:'Guest asked to cancel'})).status,200);
+ const saved=s.sea.state.bookings.find(b=>b.id===a.id);
+ assert.equal(saved.status,'Cancelled');
+ assert.equal(saved.journeys[0].cancelledByOperator,true);
+ assert.equal(T.bookedPassengers(s.sea.state,sailingId,FUTURE),0);
+ assert.equal(s.notices.at(-1).title,'Speedboat ticket cancelled by operator');
+ assert.deepEqual(saved.history.map(h=>h.action),['Accepted by operator','Cancelled by operator']);
+ // Once passengers have boarded, the ticket can no longer be cancelled.
+ const b=book('Guest B');
+ await post({action:'accept',bookingId:b.id,index:0,boatId});
+ OP.setBoarded(s.sea.state,s.sea.state.boats[0].operatorId,b.id,0,1,'op',FUTURE);
+ const late=await post({action:'cancel',bookingId:b.id,index:0,reason:'Changed plans'});
+ assert.equal(late.status,400);
+ assert.match((await late.json()).error,/already boarded/);
+});

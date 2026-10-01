@@ -25,7 +25,7 @@ function transferView(state:TransportState,agent:Agent){
   sailings:state.sailings.filter(s=>s.active).map(({roomFare,...s})=>s),
   availability:state.bookings.flatMap(b=>b.journeys.filter(j=>journeyLive(b,j)).map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants}))),
   transfers:state.bookings.filter(b=>b.agentId===agent.id).map(b=>({id:b.id,name:b.name,phone:b.phone,adults:b.adults,children:b.children,infants:b.infants,total:b.total,status:b.status,agentReference:b.agentReference||'',created:b.created,
-   journeys:b.journeys.map(j=>({date:j.date,depart:j.depart,arrive:j.arrive,from:j.from,to:j.to,operatorName:j.operatorName||j.boat,status:j.operatorStatus||'Accepted',boatName:j.boatName||'',declineReason:j.declineReason||'',departed:!!j.departedAt,noShow:!!j.noShow,boardedPax:j.boardedPax||0}))}))
+   journeys:b.journeys.map(j=>({date:j.date,depart:j.depart,arrive:j.arrive,from:j.from,to:j.to,operatorName:j.operatorName||j.boat,status:j.operatorStatus||'Accepted',boatName:j.boatName||'',declineReason:j.declineReason||'',cancelledByOperator:!!j.cancelledByOperator,departed:!!j.departedAt,noShow:!!j.noShow,boardedPax:j.boardedPax||0}))}))
    .sort((a,b)=>b.created.localeCompare(a.created)),
  };
 }

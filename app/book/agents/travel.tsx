@@ -101,7 +101,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
   <section className="nh-agent-list nh-agent-travel-list">
    {!transfers.length&&<div className="nh-agent-empty">No transfers booked yet.</div>}
    {transfers.map(t=><article key={t.id} className="nh-agent-card">
-    <header><div><small>{t.id}{t.agentReference?' · '+t.agentReference:''}</small><h3>{t.name}</h3></div><span className={'nh-agent-pill is-'+(t.status==='Cancelled'?'cancelled':t.journeys.some((j:any)=>j.status==='Declined')?'request':t.journeys.every((j:any)=>j.status==='Accepted')?'confirmed':'pending')}>{t.status==='Cancelled'?'Cancelled':t.journeys.some((j:any)=>j.status==='Declined')?'Declined by operator':t.journeys.every((j:any)=>j.status==='Accepted')?'Confirmed':'Awaiting operator'}</span></header>
+    <header><div><small>{t.id}{t.agentReference?' · '+t.agentReference:''}</small><h3>{t.name}</h3></div><span className={'nh-agent-pill is-'+(t.status==='Cancelled'?'cancelled':t.journeys.some((j:any)=>j.status==='Declined')?'request':t.journeys.every((j:any)=>j.status==='Accepted')?'confirmed':'pending')}>{t.status==='Cancelled'?'Cancelled':t.journeys.some((j:any)=>j.status==='Declined')?(t.journeys.some((j:any)=>j.cancelledByOperator)?'Cancelled by operator':'Declined by operator'):t.journeys.every((j:any)=>j.status==='Accepted')?'Confirmed':'Awaiting operator'}</span></header>
     {t.journeys.map((j:any,i:number)=><dl key={i}>
      <div><dt>Departure</dt><dd>{niceDate(j.date)} · {j.depart}</dd></div>
      <div><dt>Route</dt><dd>{j.from} → {j.to}</dd></div>

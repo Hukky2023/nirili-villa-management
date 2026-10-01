@@ -6,7 +6,7 @@ import TimeField24 from '../time-field-24';
 type Operator={id:string;name:string;contactName:string;services:('boat'|'buggy')[];commissionPercent:number;buggyOnline?:boolean};
 type Boat={id:string;name:string;registration:string;capacity:number;active:boolean};
 type Sailing={id:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;roomFare?:number;days?:number[];active:boolean};
-type Ticket={bookingId:string;index:number;name:string;phone:string;adults:number;children:number;infants:number;pax:number;notes:string;source:string;pickup:string;date:string;depart:string;arrive:string;from:string;to:string;scheduleId:string;status:'New'|'Accepted'|'Declined';boatId:string;boatName:string;boardedPax:number;departed:boolean;noShow:boolean;declineReason:string;roomBilled:boolean;fareMvr:number};
+type Ticket={cancelledByOperator?:boolean;bookingId:string;index:number;name:string;phone:string;adults:number;children:number;infants:number;pax:number;notes:string;source:string;pickup:string;date:string;depart:string;arrive:string;from:string;to:string;scheduleId:string;status:'New'|'Accepted'|'Declined';boatId:string;boatName:string;boardedPax:number;departed:boolean;noShow:boolean;declineReason:string;roomBilled:boolean;fareMvr:number};
 type Departure={scheduleId:string;date:string;from:string;to:string;depart:string;arrive:string;seats:number;sold:number;boarded:number;tickets:Ticket[]};
 type Ride={id:string;guest:string;phone:string;location:string;destination:string;quantity:number;notes:string;date:string;pickupTime:string;status:string;fareCents:number;roomBilled:boolean;buggyId:string};
 type Tab='boarding'|'tickets'|'departures'|'boats'|'rides'|'buggies'|'statement';
@@ -164,6 +164,7 @@ function Boarding({data,date,setDate,busy,act}:{data:any;date:string;setDate:(d:
          {Array.from({length:t.pax+1},(_,n)=><option key={n} value={n}>{n} on board</option>)}
         </select>
         <button className={t.boardedPax===t.pax?'op-done':'op-primary'} disabled={busy||date>data.today} onClick={()=>void act({action:'board',bookingId:t.bookingId,index:t.index,boarded:t.boardedPax===t.pax?0:t.pax})}>{t.boardedPax===t.pax?'All on board ✓':'Board all'}</button>
+        {t.boardedPax===0&&<button className="op-danger" disabled={busy} onClick={()=>{const reason=window.prompt('Cancel '+t.name+' ('+t.bookingId+')? Tell Nirili why, e.g. the guest asked to cancel.');if(reason)void act({action:'cancel',bookingId:t.bookingId,index:t.index,reason},'Ticket '+t.bookingId+' cancelled. The seats are free again and Nirili has been told.');}}><XCircle/>Cancel</button>}
         <select aria-label={'Move '+t.name+' to another boat'} value="" disabled={busy||t.boardedPax>0} onChange={e=>e.target.value&&void act({action:'accept',bookingId:t.bookingId,index:t.index,boatId:e.target.value},'Ticket moved.')}>
          <option value="">Move…</option>{boats.filter(b=>b.active&&b.id!==t.boatId).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
         </select>

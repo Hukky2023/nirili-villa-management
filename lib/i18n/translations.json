@@ -328,6 +328,7 @@
 "Cancellation reason:":["取消原因：","Motivo annullamento:","Motivo de cancelación:","বাতিলের কারণ:","Причина отмены:","Stornierungsgrund:","Motif d'annulation :"],
 "Cancellation requested":["已申请取消","Annullamento richiesto","Cancelación solicitada","বাতিলের অনুরোধ করা হয়েছে","Запрошена отмена","Stornierung angefragt","Annulation demandée"],
 "Cancelled":["已取消","Annullato","Cancelado","বাতিল","Отменено","Storniert","Annulé"],
+"Cancelled by operator":["运营方已取消","Annullato dall'operatore","Cancelado por el operador","অপারেটর বাতিল করেছেন","Отменено оператором","Vom Betreiber storniert","Annulé par l'opérateur"],
 "cancelled.":["已取消。","annullata.","cancelado.","বাতিল হয়েছে।","отменена.","storniert.","annulée."],
 "Capacity":["容量","Capienza","Capacidad","ধারণক্ষমতা","Вместимость","Kapazität","Capacité"],
 "Card":["银行卡","Carta","Tarjeta","কার্ড","Карта","Karte","Carte"],

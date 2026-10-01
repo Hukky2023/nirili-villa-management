@@ -18,7 +18,7 @@ function ticketView(booking:TransferBooking,journey:Journey,index:number){
  return {bookingId:booking.id,index,name:booking.name,phone:accepted?booking.phone:'',adults:booking.adults,children:booking.children,infants:booking.infants,pax:ticketPax(booking),
   notes:booking.notes||'',source:booking.agentName?'Partner: '+booking.agentName:booking.stayId?'Nirili Villa guest':booking.source||'Website',pickup:booking.pickup||'',
   date:journey.date,depart:journey.depart,arrive:journey.arrive,from:journey.from,to:journey.to,scheduleId:journey.scheduleId,
-  status:journey.operatorStatus||'New',boatId:journey.boatId||'',boatName:journey.boatName||'',boardedPax:journey.boardedPax||0,departed:!!journey.departedAt,noShow:!!journey.noShow,declineReason:journey.declineReason||'',
+  status:journey.operatorStatus||'New',cancelledByOperator:!!journey.cancelledByOperator,boatId:journey.boatId||'',boatName:journey.boatName||'',boardedPax:journey.boardedPax||0,departed:!!journey.departedAt,noShow:!!journey.noShow,declineReason:journey.declineReason||'',
   roomBilled,fareMvr:roomBilled?0:journey.fare*booking.adults+Math.round(journey.fare/2)*booking.children,created:booking.created};
 }
 
@@ -58,9 +58,11 @@ export async function POST(r:Request){
     case 'save-boat':return saveBoat(state,ref,body.boat);
     case 'save-sailing':return saveOperatorSailing(state,ref,body.sailing);
     case 'accept':return acceptTicket(state,operator.id,String(body.bookingId||''),Number(body.index),String(body.boatId||''),by);
-    case 'decline':{
-     const {booking,journey}=declineTicket(state,operator.id,String(body.bookingId||''),Number(body.index),body.reason,by);
-     notice={id:'transport:declined:'+booking.id+':'+journey.scheduleId,type:'transport',title:'Speedboat ticket declined',detail:operator.name+' declined '+booking.id+' · '+booking.name+' · '+journey.date+' '+journey.depart+' '+journey.from+' → '+journey.to+' · '+journey.declineReason+(booking.stayId?' · Nirili Villa guest: reschedule in Transfers':' · help the guest rebook'),ref:booking.id,url:'/home'};
+    case 'decline':
+    case 'cancel':{
+     const kind=body.action==='cancel'?'cancel':'decline';
+     const {booking,journey}=declineTicket(state,operator.id,String(body.bookingId||''),Number(body.index),body.reason,by,kind);
+     notice={id:'transport:'+kind+':'+booking.id+':'+journey.scheduleId,type:'transport',title:kind==='cancel'?'Speedboat ticket cancelled by operator':'Speedboat ticket declined',detail:operator.name+' declined '+booking.id+' · '+booking.name+' · '+journey.date+' '+journey.depart+' '+journey.from+' → '+journey.to+' · '+journey.declineReason+(booking.stayId?' · Nirili Villa guest: reschedule in Transfers':kind==='cancel'?'':' · help the guest rebook'),ref:booking.id,url:'/home'};
      return booking;
     }
     case 'board':return setBoarded(state,operator.id,String(body.bookingId||''),Number(body.index),Number(body.boarded),by,transportToday());
