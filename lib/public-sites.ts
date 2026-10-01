@@ -9,6 +9,8 @@ export const HOSTS={
  transfers:'transfers.nirilihotels.com',
  ride:'ride.nirilihotels.com',
  watersports:'watersports.nirilihotels.com',
+ // Partner guest houses send excursion bookings through the Agent Portal.
+ agents:'agents.nirilihotels.com',
  my:'my.nirilihotels.com',
  // Retired public address. Old links, emails and printed QR codes are forwarded from here.
  booking:'booking.nirilihotels.com',
@@ -31,6 +33,7 @@ export const SITES={
  transfers:origin(HOSTS.transfers),
  ride:origin(HOSTS.ride),
  watersports:origin(HOSTS.watersports),
+ agents:origin(HOSTS.agents),
  my:origin(HOSTS.my),
 } as const;
 

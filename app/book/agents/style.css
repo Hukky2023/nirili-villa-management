@@ -1,0 +1,98 @@
+/* agents.nirilihotels.com: partner guest houses book excursions for their guests. */
+.nh-agents-hero{min-height:52vh}
+.nh-agents .nh-agent-wrap{width:var(--wrap);margin:0 auto;padding:60px 0 0;display:grid;gap:28px}
+.nh-agents button{font:inherit;cursor:pointer}
+
+/* Sign in */
+.nh-agent-login{width:min(460px,100%);margin:0 auto;padding:40px;border-radius:var(--radius);background:var(--paper);border:1px solid var(--line);display:grid;gap:18px}
+.nh-agent-login h2{font-size:34px;line-height:1.1}
+.nh-agent-login>p{color:var(--ink-soft);margin:0}
+.nh-agent-login label{display:grid;gap:8px;font-size:14px;font-weight:600}
+.nh-agent-login input{width:100%;min-height:50px;padding:12px 14px;border:1px solid rgba(15,42,46,.18);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-size:16px}
+.nh-agent-login small{color:var(--muted)}
+.nh-agent-login small a{text-decoration:underline;text-underline-offset:3px}
+
+/* Signed-in bar and tabs */
+.nh-agent-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px;border-radius:var(--radius);background:var(--paper);border:1px solid var(--line)}
+.nh-agent-bar div{display:grid;gap:2px}
+.nh-agent-bar small{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--lagoon)}
+.nh-agent-bar strong{font-family:var(--serif);font-weight:400;font-size:26px}
+.nh-agent-bar span{font-size:14px;color:var(--ink-soft)}
+.nh-agent-bar>button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 18px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.nh-agent-bar>button svg{width:16px;height:16px}
+.nh-agent-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.nh-agent-tabs button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:10px 20px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.nh-agent-tabs button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.nh-agent-tabs b{min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--sun);color:#fff;font-size:12px;display:grid;place-items:center}
+.nh-agents .nh-transfer{padding-top:0;width:100%}
+
+/* Guest list builder */
+.nh-agent-guests{display:grid;gap:10px}
+.nh-agent-guest{display:grid;grid-template-columns:28px minmax(0,1fr) 170px 110px 40px;gap:10px;align-items:center}
+.nh-agent-guest.no-feet{grid-template-columns:28px minmax(0,1fr) 170px 40px}
+.nh-agent-guest>span{font-weight:700;color:var(--muted);text-align:center}
+.nh-agent-guest>button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;color:var(--muted)}
+.nh-agent-guest>button:disabled{opacity:.35;cursor:default}
+.nh-agent-guest>button svg{width:16px;height:16px}
+.nh-agent-add{justify-self:start;border:1px dashed var(--lagoon);background:transparent;color:var(--lagoon);border-radius:999px;padding:10px 18px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.nh-agent-add svg{width:16px;height:16px}
+.nh-agent-check{display:flex!important;grid-template-columns:none;align-items:flex-start;gap:12px!important;font-weight:500}
+.nh-agent-check input{width:20px!important;min-height:0!important;height:20px;margin-top:2px;flex:none}
+.nh-agent-check span{display:grid!important;gap:2px!important;font-weight:600}
+.nh-agent-check small{font-weight:400;color:var(--muted);font-size:13px}
+.nh-fare .nh-agent-public dd{text-decoration:line-through;opacity:.7;font-weight:500}
+
+/* Result */
+.nh-agent-done{margin-top:0}
+.nh-agent-done .nh-hero-actions{justify-content:center;margin-top:6px}
+.nh-agent-pill{white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:13px;font-weight:700;background:var(--sand);color:var(--ink-soft)}
+.nh-agent-pill.is-confirmed{background:#dff3ec;color:#0f6b4f}
+.nh-agent-pill.is-pending{background:#fbefe0;color:#8a5a1c}
+.nh-agent-pill.is-cancelled,.nh-agent-pill.is-declined{background:#f1f1f1;color:#6f7f80}
+.nh-agent-pill.is-request{background:#fdecec;color:#9b3140}
+
+/* Bookings */
+.nh-agent-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.nh-agent-summary div{padding:18px 20px;border-radius:18px;background:var(--paper);border:1px solid var(--line);display:grid;gap:4px}
+.nh-agent-summary span{font-size:13px;color:var(--muted)}
+.nh-agent-summary strong{font-family:var(--serif);font-weight:400;font-size:30px;line-height:1.1}
+.nh-agent-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.nh-agent-filters div{display:flex;gap:8px;flex-wrap:wrap}
+.nh-agent-filters button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 16px;font-weight:600;font-size:14px}
+.nh-agent-filters button[aria-pressed=true]{border-color:var(--lagoon);color:var(--lagoon);box-shadow:0 0 0 1px var(--lagoon)}
+.nh-agent-filters input{min-height:44px;padding:10px 14px;border:1px solid rgba(15,42,46,.18);border-radius:12px;font:inherit;width:min(320px,100%)}
+.nh-agent-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+.nh-agent-card{padding:22px;border-radius:var(--radius);background:var(--paper);border:1px solid var(--line);display:grid;gap:14px;align-content:start}
+.nh-agent-card header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.nh-agent-card header small{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--muted)}
+.nh-agent-card h3{font-family:var(--serif);font-weight:400;font-size:24px;line-height:1.15;margin:2px 0 0}
+.nh-agent-card dl{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+.nh-agent-card dt{font-size:12px;color:var(--muted)}
+.nh-agent-card dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
+.nh-agent-card ol{margin:0;padding-left:20px;font-size:14px;color:var(--ink-soft)}
+.nh-agent-card .nh-agent-note{margin:0;padding:10px 12px;border-radius:12px;background:var(--sand);font-size:14px}
+.nh-agent-actions{display:flex;flex-wrap:wrap;gap:8px}
+.nh-agent-actions a,.nh-agent-actions button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.nh-agent-actions svg{width:15px;height:15px}
+.nh-agent-actions .is-danger{color:#9b3140}
+.nh-agent-empty{padding:40px;border-radius:var(--radius);background:var(--paper);border:1px dashed var(--line);text-align:center;color:var(--ink-soft)}
+
+/* Cancel dialog */
+.nh-agent-dialog{position:fixed;inset:0;z-index:60;background:rgba(15,42,46,.45);display:grid;place-items:center;padding:16px}
+.nh-agent-dialog>div{width:min(480px,100%);padding:28px;border-radius:var(--radius);background:var(--paper);display:grid;gap:12px}
+.nh-agent-dialog h3{font-family:var(--serif);font-weight:400;font-size:28px;margin:0}
+.nh-agent-dialog p{margin:0;color:var(--ink-soft)}
+.nh-agent-dialog label{display:grid;gap:8px;font-weight:600;font-size:14px}
+.nh-agent-dialog textarea{width:100%;padding:12px 14px;border:1px solid rgba(15,42,46,.18);border-radius:12px;font:inherit;font-size:16px;resize:vertical}
+.nh-agent-dialog footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.nh-agent-dialog footer button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 18px;font-weight:600}
+.nh-agent-dialog footer .is-danger{background:#9b3140;border-color:#9b3140;color:#fff}
+.nh-agent-dialog footer button:disabled{opacity:.6;cursor:default}
+.nh-agent-card details summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--lagoon)}
+
+@media(max-width:800px){
+ .nh-agent-summary{grid-template-columns:1fr 1fr}
+ .nh-agent-guest,.nh-agent-guest.no-feet{grid-template-columns:24px minmax(0,1fr) 40px}
+ .nh-agent-guest select,.nh-agent-guest .nh-agent-feet{grid-column:2}
+ .nh-agent-login{padding:28px 22px}
+}

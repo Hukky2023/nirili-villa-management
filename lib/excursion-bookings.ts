@@ -9,6 +9,7 @@ export type ConfirmedExcursionBooking = {
   paymentStatus: 'Paid' | 'Unpaid'; tripStatus: string;
   vessel: string; crew: string[]; separateVessel: boolean; privateBoatRequested: boolean; privateBoatSurchargeCents: number; buggyRequested: boolean; buggyRoundTrip: boolean; serviceType: string;
   notes: string; source: string; createdAt: string; createdBy: string;
+  agentName: string; agentReference: string; agentCancelRequested: boolean;
   packageGroupId: string; packageName: string; packagePart: number; packageParts: number;
   footSizes: number[]; people: ExcursionGuestPerson[]; attendanceReviewedAt: string;
   guestNotified: boolean; guestNotifiedAt: string; guestNotifiedBy: string; guestNotificationChannel: string;
@@ -95,6 +96,7 @@ export function toConfirmedExcursionBooking(
     vessel: romanticDinner ? 'Not required' : text(vessel?.name) || text(assignment.vessel) || 'Not assigned',
     crew: romanticDinner ? [] : crew, separateVessel: !!order.separateVessel, privateBoatRequested: !!order.privateBoatRequested, privateBoatSurchargeCents: Math.max(0,Number(order.privateBoatSurchargeCents)||0), buggyRequested: inhouse ? true : !!order.buggyRequested, buggyRoundTrip: !!order.buggyRoundTrip, serviceType: text(order.serviceType),
     notes: text(order.notes), source: text(order.source),
+    agentName: text(order.agentName), agentReference: text(order.agentReference), agentCancelRequested: !!order.agentCancelRequest,
     packageGroupId: text(order.packageGroupId), packageName: text(order.packageName), packagePart: Math.max(0,Math.trunc(Number(order.packagePart)||0)), packageParts: Math.max(0,Math.trunc(Number(order.packageParts)||0)),
     createdAt: text(order.createdAt), createdBy: text(order.createdBy),
     footSizes, people, attendanceReviewedAt: text(order.attendanceReviewedAt),

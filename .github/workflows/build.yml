@@ -77,6 +77,8 @@ jobs:
         run: node --test tests/public-ride.test.mjs
       - name: Nirili Water Sports regression tests
         run: node --test tests/water-sports.test.mjs
+      - name: Partner Agent Portal regression tests
+        run: node --test tests/agent-portal.test.mjs
       - name: Booking.com channel import regression tests
         run: node --test tests/booking-com-channel.test.mjs
       - name: Build production worker

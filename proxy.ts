@@ -11,13 +11,14 @@ function cache(response:NextResponse,value:string){
 }
 
 // Each public service has its own subdomain, which serves the service's page at "/".
-type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'watersports'|'my';
+type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'watersports'|'agents'|'my';
 const SERVICE_HOME:Record<Exclude<Service,'stay'>,string>={
  tours:'/book/excursions',
  dine:'/book/restaurant',
  transfers:'/book/transfers',
  ride:'/book/ride',
  watersports:'/book/water-sports',
+ agents:'/book/agents',
  my:'/stay',
 };
 const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
@@ -26,6 +27,7 @@ const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
  [HOSTS.transfers]:'transfers',
  [HOSTS.ride]:'ride',
  [HOSTS.watersports]:'watersports',
+ [HOSTS.agents]:'agents',
  [HOSTS.my]:'my',
 };
 
@@ -76,10 +78,14 @@ function staySiteResponse(url:URL){
  return NextResponse.redirect(url);
 }
 
+// The partner Agent Portal APIs are served only on the agents host.
+const agentApi=new Set(['/api/agent-portal/session','/api/agent-portal/bookings']);
+
 function serviceSiteResponse(url:URL,service:Exclude<Service,'stay'>){
+ if(service==='agents'&&agentApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);
  const api=guestApiResponse(url);
  if(api)return api;
- const home=SERVICE_HOME[service],pageCache=service==='my'?PRIVATE:PUBLIC;
+ const home=SERVICE_HOME[service],pageCache=service==='my'||service==='agents'?PRIVATE:PUBLIC;
 
  if(url.pathname==='/'){
   url.pathname=home;
@@ -130,6 +136,7 @@ const SHORTCUTS:Record<string,string>={
  '/transfers':SITES.transfers,'/speedboat':SITES.transfers,
  '/ride':SITES.ride,'/buggy':SITES.ride,
  '/watersports':SITES.watersports,'/water-sports':SITES.watersports,
+ '/agents':SITES.agents,'/partners':SITES.agents,
  '/my':SITES.my,'/guest':SITES.my,
 };
 
