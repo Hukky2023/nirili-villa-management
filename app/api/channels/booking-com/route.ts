@@ -1,6 +1,7 @@
 import {currentUser,sameOrigin} from '../../../../lib/auth';
 import {
   bootstrapBookingComProduction,
+  fullSyncBookingComAri,
   bootstrapBookingComStaging,
   discoverBookingComMappings,
   ensureBookingComStagingRoomTypes,
@@ -60,6 +61,7 @@ export async function POST(request:Request){
     if(action==='mappings')return Response.json(await saveBookingComMappings(body),{headers});
     if(action==='preview')return Response.json(await previewBookingComAvailability(body.days,body.startDate),{headers});
     if(action==='push')return Response.json(await pushBookingComAvailability(body.days,body.startDate),{headers});
+    if(action==='fullsync')return Response.json(await fullSyncBookingComAri(body.days),{headers});
     if(action==='pull')return Response.json(await pullBookingComFeed(),{headers});
     return Response.json({error:'Unknown channel action.'},{status:400,headers});
   }catch(error){
