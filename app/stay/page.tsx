@@ -5,6 +5,7 @@ import GuestServices from '../guest-services';
 import GuestStayLogin from './login-form';
 import {SITES,guestPortalHost} from '../../lib/public-sites';
 import {Fonts} from '../hotel/chrome';
+import SiteTranslator from '../site-translator';
 import '../hotel/home.css';
 import '../book/restaurant/style.css';
 import './portal.css';
@@ -15,5 +16,5 @@ export default async function GuestStayPage(){
  if(host&&!guestPortalHost(host))redirect(SITES.my+'/');
  const user=await currentGuestUser();
  // nh-dine reuses the public restaurant menu styling for the portal's Restaurant tab.
- return <div className="nh nh-portal nh-dine"><Fonts/>{user?<GuestServices/>:<GuestStayLogin/>}</div>;
+ return <div className="nh nh-portal nh-dine"><Fonts/>{user?<GuestServices/>:<GuestStayLogin/>}<SiteTranslator/></div>;
 }

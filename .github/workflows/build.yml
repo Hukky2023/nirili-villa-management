@@ -81,6 +81,8 @@ jobs:
         run: node --test tests/agent-portal.test.mjs
       - name: Find-my-booking regression tests
         run: node --test tests/find-booking.test.mjs
+      - name: Guest website translation regression tests
+        run: node --test tests/site-i18n.test.mjs
       - name: Booking.com channel import regression tests
         run: node --test tests/booking-com-channel.test.mjs
       - name: Build production worker

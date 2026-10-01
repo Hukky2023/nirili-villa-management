@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {ArrowRight,Eye,EyeOff,LockKeyhole,MapPin,Sun,Waves,Utensils,Compass,Car,LoaderCircle,Globe2} from 'lucide-react';
+import {ArrowRight,Eye,EyeOff,LockKeyhole,MapPin,Sun,Waves,Utensils,Compass,Car,LoaderCircle} from 'lucide-react';
 import LanguageSelector,{UiField,UiText} from '../ui-language';
 import './guest-login.css';
 
@@ -52,7 +52,7 @@ export default function GuestStayLogin(){
  return <main className="nv-guest-entry">
   <header className="nge-header">
    <a className="nge-brand" href="https://nirilihotels.com"><span className="nge-mark" aria-hidden="true"><Sun size={22}/><Waves size={30}/></span><span>Nirili Guest Portal<small><UiText>IN-HOUSE GUESTS · DHIFFUSHI</UiText></small></span></a>
-   <div className="nge-language"><span><UiText>Language</UiText></span><div className="nge-language-control"><Globe2 size={21} aria-hidden="true"/><LanguageSelector inline/></div></div>
+   <div className="nge-language"><span><UiText>Language</UiText></span><LanguageSelector inline/></div>
   </header>
   <section className="nge-layout">
    <aside className="nge-welcome">

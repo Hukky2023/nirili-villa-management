@@ -125,3 +125,10 @@ test('find-my-booking is served on the guest sites, not the main hotel domain',(
  assert.ok(passes(visit('tours.nirilihotels.com','/api/public-booking/find','POST')));
  assert.equal(visit('nirilihotels.com','/api/public-booking/find','POST').status,404);
 });
+
+test('guest websites can ask for translations; the API stays closed elsewhere',()=>{
+ assert.ok(passes(visit('tours.nirilihotels.com','/api/translate','POST')));
+ assert.ok(passes(visit('my.nirilihotels.com','/api/translate','POST')));
+ assert.ok(passes(visit('nirilihotels.com','/api/translate','POST')));
+ assert.equal(visit('nirilihotels.com','/api/translate').status,404);
+});

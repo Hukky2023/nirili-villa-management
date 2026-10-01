@@ -43,7 +43,7 @@ body:has(.nh-portal){background:var(--sand,#f7f2ea)}
 .nh-portal .guest-services>header p{color:rgba(255,255,255,.88);font-size:17px}
 .nh-portal .guest-services>header .brand-home small{color:#f3dcc4;letter-spacing:.16em;font-size:12px}
 .nh-portal .guest-header-actions{top:20px;right:20px}
-.nh-portal .guest-header-actions :is(.nv-language label,.nv-session-button){border-radius:999px;border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(8px)}
+.nh-portal .guest-header-actions :is(.nh-lang,.nv-session-button){border-radius:999px;border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(8px)}
 
 /* Section tabs as a pill bar */
 .nh-portal .guest-services>nav{gap:6px;margin:-26px 16px 28px;padding:6px;position:relative;border-radius:999px;background:var(--paper);border:1px solid var(--line);box-shadow:0 18px 40px rgba(15,42,46,.1)}

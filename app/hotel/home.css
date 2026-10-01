@@ -74,7 +74,8 @@ body:has(main.nh) .nv-session-floating{display:none}
 .nh-nav a::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .25s ease}
 .nh-nav a:hover{opacity:1}
 .nh-nav a:hover::after{transform:scaleX(1)}
-.nh-header-cta{min-height:46px;padding:0 20px;font-size:14px;margin-right:52px}
+.nh-header-cta{min-height:46px;padding:0 20px;font-size:14px}
+.nh-header .nh-header-lang{margin-right:-14px}
 .nh-mobile-menu{display:none;margin-left:auto;position:relative}
 .nh-mobile-menu summary{list-style:none;cursor:pointer;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(8px)}
 .nh-mobile-menu summary::-webkit-details-marker{display:none}
@@ -193,7 +194,8 @@ body:has(main.nh) .nv-session-floating{display:none}
 /* Tablet */
 @media(max-width:1000px){
  .nh-nav,.nh-header-cta{display:none}
- .nh-mobile-menu{display:block;margin-right:52px}
+ .nh-mobile-menu{display:block;margin-left:-20px}
+ .nh-header .nh-header-lang{margin:0 0 0 auto}
  .nh-quick{grid-template-columns:repeat(2,1fr)}
  .nh-quick a:nth-child(odd){border-left:0}
  .nh-quick a:nth-child(n+3){border-top:1px solid rgba(255,255,255,.2)}
@@ -216,7 +218,6 @@ body:has(main.nh) .nv-session-floating{display:none}
 @media(max-width:640px){
  .nh{--wrap:calc(100% - 32px);font-size:15px}
  .nh-header{padding:8px 0}
- .nh-mobile-menu{margin-right:50px}
  .nh-mobile-menu{position:static}
  .nh-mobile-panel{left:0;right:0;top:62px;width:auto}
  .nh-brand-mark{width:38px;height:38px}

@@ -1,10 +1,22 @@
-.nv-language{font-family:Arial,sans-serif;flex-shrink:0}.nv-language-floating{position:fixed;right:max(12px,env(safe-area-inset-right));top:calc(8px + env(safe-area-inset-top));z-index:160}.nv-language.nv-language label{position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;box-sizing:border-box;padding:0;background:white;color:#123c50;border:1px solid #b8d1db;border-radius:10px;box-shadow:0 3px 15px #073b5426}.nv-language label>span{font-size:21px;line-height:1;pointer-events:none}.nv-language.nv-language select{position:absolute;inset:0;width:100%;height:100%;min-height:0;max-width:none;opacity:0;cursor:pointer}.nv-language label:focus-within{outline:3px solid #087da0;outline-offset:3px}.nv-language-inline{position:static;z-index:auto}.nv-language-inline label{box-shadow:none}body:has(.nv-language-inline) .nv-language-floating{display:none}body:not(:has(.nv-language-inline)){padding-top:calc(60px + env(safe-area-inset-top))}.nv-header-actions{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}.top>.brand-home{min-width:0}@media(max-width:600px){.nv-header-actions{gap:5px}.top>.brand-home b{overflow-wrap:anywhere}}html[lang=bn] body{font-family:'Noto Sans Bengali','Nirmala UI',sans-serif}html[lang=zh-Hans] body{font-family:'Noto Sans SC','Microsoft YaHei',sans-serif}@media print{.nv-language{display:none!important}body:not(:has(.nv-language-inline)){padding-top:0}}
+/* Language picker for the guest-facing websites (the PMS is English only). */
+.nh-lang{position:relative;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 12px;border-radius:999px;font:600 14px/1 var(--sans,system-ui,sans-serif);cursor:pointer;flex-shrink:0;white-space:nowrap}
+.nh-lang svg{width:17px;height:17px}
+.nh-lang select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px}
+.nh-lang:focus-within{outline:2px solid currentColor;outline-offset:2px}
+.nh-lang-light{color:#fff;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.08)}
+.nh-lang-light:hover{background:rgba(255,255,255,.16)}
+.nh-lang-dark{color:#0f2a2e;border:1px solid rgba(15,42,46,.2);background:#fff}
+html[lang=bn] body{font-family:'Noto Sans Bengali','Nirmala UI',sans-serif}
+html[lang=zh-Hans] body{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif}
+@media print{.nh-lang{display:none!important}}
 
 /* Keep account controls from squeezing the management title on narrow screens. */
 .admin .shell>.top{height:auto;min-height:70px;flex-wrap:wrap;padding:12px 20px}
 .admin .shell>.top>.brand-home{flex:1 1 170px;min-width:0;overflow-wrap:normal;word-break:normal}
 .admin .shell>.top>.brand-home b{overflow-wrap:normal;word-break:normal;line-height:1.4}
 .admin .top>.nv-header-actions{flex-wrap:wrap;max-width:100%;row-gap:8px}
+.nv-header-actions{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}.top>.brand-home{min-width:0}
+@media(max-width:600px){.nv-header-actions{gap:5px}.top>.brand-home b{overflow-wrap:anywhere}}
 @media(max-width:760px){
  .admin .shell>.top{display:grid;grid-template-columns:auto minmax(0,1fr);height:auto;min-height:0;padding:10px 12px;gap:8px 12px}
  .admin .shell>.top>.mobile-menu-trigger{grid-column:1;grid-row:1;margin:0}

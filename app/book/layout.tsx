@@ -1,4 +1,5 @@
 import WebsiteChat from '../website-chat';
+import SiteTranslator from '../site-translator';
 import type {Metadata} from 'next';
 
 export const metadata:Metadata={
@@ -14,5 +15,5 @@ export const metadata:Metadata={
 };
 
 export default function BookLayout({children}:{children:React.ReactNode}){
- return <>{children}<WebsiteChat/></>;
+ return <>{children}<WebsiteChat/><SiteTranslator/></>;
 }

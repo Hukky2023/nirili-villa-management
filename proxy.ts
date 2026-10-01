@@ -51,7 +51,7 @@ function serviceRedirect(url:URL,target:{service:Service;path:string}){
 }
 
 // Browser APIs used by the public booking pages and the guest portal.
-const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules','/api/public-ride','/api/public-water-sports','/api/public-booking/find']);
+const guestApi=new Set(['/api/excursion-weather','/api/public-excursions','/api/public-excursions/manage','/api/guest-auth/login','/api/guest-auth/setup','/api/guest-auth/logout','/api/guest-auth/status','/api/guest-services','/api/restaurant-guest','/api/transport','/api/walkin-transfers','/api/guest-excursion-schedules','/api/public-ride','/api/public-water-sports','/api/public-booking/find','/api/translate']);
 
 function guestApiResponse(url:URL){
  // Uploaded menu photos are public; the upload endpoint remains blocked.
@@ -142,6 +142,7 @@ const SHORTCUTS:Record<string,string>={
 
 function hotelSiteResponse(url:URL,method='GET'){
  // Public photo reads only; uploads and management APIs remain private.
+ if(method==='POST'&&url.pathname==='/api/translate')return cache(NextResponse.next(),PRIVATE);
  if(['GET','HEAD'].includes(method)&&/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url.pathname))return NextResponse.next();
  if(url.pathname==='/'){
   url.pathname='/hotel';

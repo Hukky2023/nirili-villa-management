@@ -1,5 +1,6 @@
 import type {Metadata} from 'next';
 import HotelHome from './site';
+import SiteTranslator from '../site-translator';
 import './home.css';
 
 export const dynamic='force-dynamic';
@@ -10,5 +11,5 @@ export const metadata:Metadata={
 };
 
 export default function HotelHomePage(){
- return <HotelHome/>;
+ return <><HotelHome/><SiteTranslator/></>;
 }

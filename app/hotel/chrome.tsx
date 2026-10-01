@@ -1,5 +1,6 @@
 import {ArrowRight,Menu,Waves,X} from 'lucide-react';
 import {SITES} from '../../lib/public-sites';
+import {LanguagePicker} from '../ui-language';
 
 // Shared header, footer and imagery for the public nirilihotels.com pages.
 export const STAY=SITES.stay+'/';
@@ -89,6 +90,7 @@ export function SiteHeader({solid=false,action={label:'Book your stay',href:STAY
   <nav className="nh-nav" aria-label="Main">
    {NAV.map(n=><a key={n.label} href={n.href}>{n.label}</a>)}
   </nav>
+  <LanguagePicker className="nh-header-lang"/>
   <a className="nh-btn nh-btn-light nh-header-cta" href={action.href}>{action.label}</a>
   <details className="nh-mobile-menu">
    <summary aria-label="Open menu"><Menu className="i-open"/><X className="i-close"/></summary>
