@@ -1443,6 +1443,32 @@
  .admin-private-boat strong{margin-left:27px;width:100%}
 }
 
+.admin-booking-top-error{
+ position:sticky;
+ top:0;
+ z-index:6;
+ display:grid;
+ gap:4px;
+ margin:0 0 12px;
+ padding:11px 13px;
+ border-top:3px solid #c62828;
+ border-bottom:3px solid #c62828;
+ border-left:1px solid #ef9a9a;
+ border-right:1px solid #ef9a9a;
+ border-radius:9px;
+ background:#fff3f3;
+ color:#9b1c1c;
+ box-shadow:0 4px 14px rgba(155,28,28,.12);
+}
+.admin-booking-top-error strong{
+ font-size:12px;
+ letter-spacing:.04em;
+}
+.admin-booking-top-error span{
+ font-size:12px;
+ line-height:1.45;
+ font-weight:650;
+}
 .admin-booking-form-error{
  display:grid;
  gap:3px;
