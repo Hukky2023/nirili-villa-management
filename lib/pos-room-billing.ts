@@ -36,6 +36,7 @@ export function syncRestaurantRoomBill(stay:any,order:any){
 
 export function restaurantPaymentStatus(order:any,stay:any){
  if(mealPlanIncludedOrder(order))return 'Meal plan included';
+ if(order?.complimentary&&!order?.stayId)return 'Paid';
  if(order?.complimentary)return 'Complimentary';
  if(['Cash','Card','Bank transfer'].includes(String(order?.method||'')))return 'Paid';
  if(stay?.paidBills?.['Restaurant:'+order?.id]===order?.cents)return 'Paid';
