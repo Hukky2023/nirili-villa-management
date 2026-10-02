@@ -661,17 +661,24 @@ export async function PATCH(r:Request){
    // Reading D1 directly here caused visible trips to fail with
    // "This scheduled excursion no longer exists" whenever the primary copy had
    // already synced but the D1 fallback row was missing/stale.
-   const sameDay=await schedulesForDate(date);
+   const sameDay=(await schedulesForDate(date)).filter((s:any)=>s.status!=='Cancelled');
    const schedule=sameDay.find((s:any)=>String(s.id||'')===scheduleId);
    if(!schedule)throw Error('This scheduled excursion is no longer available. Refresh the trip list and choose it again.');
    if(norm(schedule.name)==='special package')throw Error('Special Package cannot be booked as one scheduled trip. Use the Special Package booking option so its excursion legs are created separately.');
    if(schedule.status!=='Open')throw Error('This excursion is closed for bookings.');
    if(excursionDeparturePassed(schedule.date,schedule.time))throw Error('This excursion departure time has already passed. A booking cannot be created for it.');
-   const key=sharedKey(schedule),groupSchedules=key?sameDay.filter((s:any)=>sharedKey(s)===key):[schedule],groupIds=new Set(groupSchedules.map((s:any)=>s.id));
-   const capacity=Math.min(...groupSchedules.map((s:any)=>Math.max(1,Number(s.capacity)||1)));
-   const confirmedPax=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&!o.separateVessel&&isConfirmed(o)&&(groupIds.has(o.scheduleId)||groupSchedules.some((s:any)=>matches(o,s)))).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
-   const needsExtraVessel=!privateBoatRequested&&confirmedPax+quantity>capacity;
    const resources=excursionResources(state);
+   const key=sharedKey(schedule),groupSchedules=key?sameDay.filter((s:any)=>sharedKey(s)===key):[schedule];
+   const capacity=Math.min(...groupSchedules.map((s:any)=>Math.max(1,Number(s.capacity)||1)));
+   // Use the exact same manifest calculation used by the schedule screen.
+   // This prevents the booking API from counting stale/legacy orders that the
+   // visible trip capacity does not count. If the screen says 3/6, confirming
+   // two more guests must evaluate as 5/6, not "at capacity".
+   const confirmedPax=groupSchedules.reduce((total:number,groupSchedule:any)=>{
+    const manifest=buildExcursionManifest(groupSchedule,sameDay,state,resources,()=>false);
+    return total+Math.max(0,Number(manifest.totals.mainVesselPax)||0);
+   },0);
+   const needsExtraVessel=!privateBoatRequested&&confirmedPax+quantity>capacity;
    let vessel:any=null;
    if(needsExtraVessel){
     if(!requestedVesselId)throw Error('This departure is at capacity. Assign a new vessel for this booking.');
