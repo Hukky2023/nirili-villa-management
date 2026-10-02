@@ -655,13 +655,19 @@ export async function PATCH(r:Request){
    const privateBoatRequested=quantity>=4&&b.privateBoatRequested===true;
    if(!validDate(date)||!scheduleId||!['inhouse','walkin'].includes(guestType))throw Error('Check the excursion, guest type and number of guests.');
    const {state,revision}=await loadStays();
-   const row=await authDb().prepare('SELECT payload FROM operation_records WHERE key=?').bind(prefix+date+':'+scheduleId).first<any>();
-   if(!row)throw Error('This scheduled excursion no longer exists.');
-   const schedule=JSON.parse(row.payload);
+   // The booking screen is populated by schedulesForDate(), which may read the
+   // primary Supabase schedule mirror before falling back to D1. Confirming a
+   // booking must resolve the selected schedule through the exact same reader.
+   // Reading D1 directly here caused visible trips to fail with
+   // "This scheduled excursion no longer exists" whenever the primary copy had
+   // already synced but the D1 fallback row was missing/stale.
+   const sameDay=await schedulesForDate(date);
+   const schedule=sameDay.find((s:any)=>String(s.id||'')===scheduleId);
+   if(!schedule)throw Error('This scheduled excursion is no longer available. Refresh the trip list and choose it again.');
    if(norm(schedule.name)==='special package')throw Error('Special Package cannot be booked as one scheduled trip. Use the Special Package booking option so its excursion legs are created separately.');
    if(schedule.status!=='Open')throw Error('This excursion is closed for bookings.');
    if(excursionDeparturePassed(schedule.date,schedule.time))throw Error('This excursion departure time has already passed. A booking cannot be created for it.');
-   const sameDay=await schedulesForDate(date),key=sharedKey(schedule),groupSchedules=key?sameDay.filter((s:any)=>sharedKey(s)===key):[schedule],groupIds=new Set(groupSchedules.map((s:any)=>s.id));
+   const key=sharedKey(schedule),groupSchedules=key?sameDay.filter((s:any)=>sharedKey(s)===key):[schedule],groupIds=new Set(groupSchedules.map((s:any)=>s.id));
    const capacity=Math.min(...groupSchedules.map((s:any)=>Math.max(1,Number(s.capacity)||1)));
    const confirmedPax=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&!o.separateVessel&&isConfirmed(o)&&(groupIds.has(o.scheduleId)||groupSchedules.some((s:any)=>matches(o,s)))).reduce((n:number,o:any)=>n+Math.max(0,Number(o.quantity)||0),0);
    const needsExtraVessel=!privateBoatRequested&&confirmedPax+quantity>capacity;
