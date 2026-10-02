@@ -3,7 +3,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowRight,CalendarDays,Car,MapPin,MessageCircle,ShipWheel,Users,X} from 'lucide-react';
 import {Seats,seatsLeft} from '../../seat-map';
 import PassengerType,{fareLabel,needsType} from '../../passenger-type';
-import {fareFor} from '../../../lib/transport';
+import {fareFor,legsOf} from '../../../lib/transport';
 
 // Partner portal: book speedboat seats with independent operators and buggy rides for guests.
 type Sailing={id:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;operatorName?:string;boat:string;days?:number[];localFare?:number;expatLocal?:boolean;boatId?:string;boatOverrides?:Record<string,string>};
@@ -41,9 +41,10 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
  useEffect(()=>{if(!date&&data?.today)setDate(data.today);},[data,date]);
  const portList:string[]=data?.ports||[];
  useEffect(()=>{if(!data)return;if(!from)setFrom(portList.find(p=>/airport/i.test(p))||portList[0]||'');if(!to)setTo(portList.find(p=>/dhiffushi/i.test(p))||portList[1]||'');},[data]);
- const options=useMemo(()=>(data?.sailings||[]).filter((s:Sailing)=>same(s.from,from)&&same(s.to,to)&&date&&runs(s,date)).sort((a:Sailing,b:Sailing)=>a.depart.localeCompare(b.depart)),[data,from,to,date]);
- useEffect(()=>{if(!options.some((s:Sailing)=>s.id===sailingId))setSailingId(options[0]?.id||'');},[options,sailingId]);
- const sailing=options.find((s:Sailing)=>s.id===sailingId);
+ // Legs of routes that stop at both places (a route with stops sells each stretch separately).
+ const options=useMemo(()=>(data?.sailings||[]).flatMap((s:any)=>legsOf(s)).filter((s:any)=>same(s.from,from)&&same(s.to,to)&&date&&runs(s,date)).sort((a:Sailing,b:Sailing)=>a.depart.localeCompare(b.depart)),[data,from,to,date]);
+ useEffect(()=>{if(!options.some((s:any)=>s.key===sailingId))setSailingId(options[0]?.key||'');},[options,sailingId]);
+ const sailing:any=options.find((s:any)=>s.key===sailingId);
  const adultFare=sailing?fareFor(sailing,traveller||'Tourist'):0,total=adultFare*adults+Math.round(adultFare/2)*children;
  const need=adults+children,enough=!sailing||seatsLeft(sailing,date,data)>=need;
  useEffect(()=>setPicked([]),[sailingId,date,need]);
@@ -56,7 +57,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
    const typed=needsType([sailing]);
    if(typed&&!traveller)throw Error('Choose the passenger type: tourist, Maldivian or expat.');
    if(picked.length&&picked.length!==need)throw Error('Choose '+need+' seats on the seat map, or tap Choose for me.');
-   await send({action:'book-transfer',token:token.current,name,phone,traveller:needsType([sailing])?traveller:'Tourist',adults,children,infants,notes,agentReference:reference,expectedTotal:total,journeys:[{scheduleId:sailing.id,date,seats:picked}]});
+   await send({action:'book-transfer',token:token.current,name,phone,traveller:needsType([sailing])?traveller:'Tourist',adults,children,infants,notes,agentReference:reference,expectedTotal:total,journeys:[{scheduleId:sailing.id,fromStop:sailing.fromStop,toStop:sailing.toStop,date,seats:picked}]});
    setDone('Seats confirmed with the operator. You can follow the booking below.');token.current=crypto.randomUUID();setPicked([]);setName('');setPhone('');setReference('');setNotes('');
   }catch(err){setError((err as Error).message)}finally{setBusy(false)}
  }
@@ -75,7 +76,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
     </div>
     <div className="nh-fields">
      <label><span><CalendarDays/>Travel date</span><input required type="date" min={data?.today} value={date} onChange={e=>setDate(e.target.value)}/></label>
-     <label><span><ShipWheel/>Departure</span><select required value={sailingId} onChange={e=>setSailingId(e.target.value)}>{options.map((s:Sailing)=><option key={s.id} value={s.id}>{s.depart} · {s.operatorName||s.boat} · {fareLabel(s)}</option>)}</select></label>
+     <label><span><ShipWheel/>Departure</span><select required value={sailingId} onChange={e=>setSailingId(e.target.value)}>{options.map((s:any)=><option key={s.key} value={s.key}>{s.depart} · {s.operatorName||s.boat} · {fareLabel(s)}</option>)}</select></label>
     </div>
     {!options.length&&<p className="nh-hint">No speedboat departures on this day. Try another date.</p>}
     <div className="nh-fields nh-fields-3">

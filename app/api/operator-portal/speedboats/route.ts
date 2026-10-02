@@ -32,7 +32,7 @@ async function view(operator:Operator,date:string,month:string){
  const trips=new Map<string,any>();
  for(const t of upcoming){
   const key=t.journey.scheduleId+'|'+t.journey.date,sailing=state.sailings.find(s=>s.id===t.journey.scheduleId),boat=sailing?tripBoat(state,sailing,t.journey.date):undefined;
-  if(!trips.has(key))trips.set(key,{crewIds:sailing?tripCrew(sailing,t.journey.date):[],scheduleId:t.journey.scheduleId,date:t.journey.date,depart:t.journey.depart,arrive:t.journey.arrive,from:t.journey.from,to:t.journey.to,boatId:boat?.id||'',boatName:boat?.name||t.journey.boatName||'',swapped:!!sailing?.boatOverrides?.[t.journey.date],sold:0,tickets:[]});
+  if(!trips.has(key))trips.set(key,{crewIds:sailing?tripCrew(sailing,t.journey.date):[],scheduleId:t.journey.scheduleId,date:t.journey.date,depart:sailing?.depart||t.journey.depart,arrive:sailing?.arrive||t.journey.arrive,from:sailing?.from||t.journey.from,to:sailing?.to||t.journey.to,stops:sailing?.stops||null,boatId:boat?.id||'',boatName:boat?.name||t.journey.boatName||'',swapped:!!sailing?.boatOverrides?.[t.journey.date],sold:0,tickets:[]});
   const trip=trips.get(key);trip.sold+=t.journey.seats.length;trip.tickets.push(ticketView(t.booking,t.journey,t.index));
  }
  return {revision,today,date,month,operator:publicOperator(operator),boats:operatorBoats(state,operator.id),sailings:operatorSailings(state,operator.id),crew,day,

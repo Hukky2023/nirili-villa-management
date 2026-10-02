@@ -129,3 +129,12 @@
 .op-trips button span{font-size:13px;color:var(--muted)}
 .op-trips button[aria-pressed=true]{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
 .op-boat-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+
+/* Routes with stops */
+.op-stops{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+.op-stops li{padding:12px;border:1px solid var(--line);border-radius:14px;background:#fff;display:grid;gap:8px}
+.op-fares{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.op-fares fieldset{margin:0;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fff;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.op-fares legend{font-weight:700;font-size:14px;padding:0 4px}
+.op-fares label{display:grid;gap:4px;font-size:13px;font-weight:600}
+.op-fare-list{margin:0;padding-left:18px;font-size:14px;color:var(--ink-soft)}

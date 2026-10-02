@@ -1,4 +1,5 @@
 import {charterOnBoat,charterStatement} from './transport-charter';
+import {span,stopsOf,type LegFare,type Stop} from './transport';
 import {addHistory,boatSeats,journeyLive,layoutSeats,runsOn,tripBoat,tripSeats,weekday,type Boat,type Journey,type Sailing,type SeatLayout,type TransferBooking,type TransportState} from './transport';
 
 // What a speedboat operator can do in its portal. Every function checks that the boat,
@@ -93,24 +94,55 @@ function cleanCrewIds(input:any,crewIds:Set<string>){
  return ids;
 }
 
+// A route's stops and the fare for each stop-to-stop pair it sells. Older single-hop input
+// (from/to/depart/arrive and fares) becomes a two-stop route.
+const MAX_STOPS=8;
+const money=(v:any,label:string)=>{if(v===''||v==null)return undefined;const n=Number(v);if(!Number.isInteger(n)||n<0||n>10000000)throw Error('Enter a valid '+label+', or leave it empty.');return n;};
+export function cleanRoute(input:any):{stops:Stop[];fares:LegFare[]}{
+ const raw=Array.isArray(input?.stops)&&input.stops.length?input.stops:[{port:input?.from,depart:input?.depart},{port:input?.to,arrive:input?.arrive}];
+ if(raw.length<2||raw.length>MAX_STOPS)throw Error('A route has 2 to '+MAX_STOPS+' stops.');
+ const stops:Stop[]=raw.map((x:any,i:number)=>{
+  const port=text(x?.port,60),arrive=String(x?.arrive||''),depart=String(x?.depart||'');
+  if(!port)throw Error('Enter the place for stop '+(i+1)+'.');
+  const first=i===0,last=i===raw.length-1;
+  if(!first&&!TIME.test(arrive))throw Error('Enter the arrival time at '+port+' (24-hour).');
+  if(!last&&!TIME.test(depart))throw Error('Enter the departure time from '+port+' (24-hour).');
+  if(!first&&!last&&depart<arrive)throw Error('At '+port+' the boat must leave after it arrives.');
+  return {port,...(first?{}:{arrive}),...(last?{}:{depart})};
+ });
+ const names=stops.map(x=>x.port.toLowerCase());
+ if(new Set(names).size!==names.length)throw Error('Each place can only be one stop on a route.');
+ for(let i=0;i+1<stops.length;i++)if(stops[i+1].arrive!<=stops[i].depart!)throw Error('The boat must reach '+stops[i+1].port+' after it leaves '+stops[i].port+' (same day, 24-hour).');
+ const optional=(v:any)=>v===''||v==null?undefined:v;
+ const rawFares=Array.isArray(input?.fares)&&input.fares.length?input.fares:[{from:0,to:1,fare:input?.fare,localFare:input?.localFare,
+  // Older departures gave expats the local fare with a switch; keep that as an expat fare.
+  expatFare:optional(input?.expatFare)??(input?.expatLocal===true?input?.localFare:undefined),roomFare:input?.roomFare}];
+ const fares:LegFare[]=[];
+ for(const f of rawFares){
+  const from=Number(f?.from),to=Number(f?.to);
+  if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||to>=stops.length||from>=to)throw Error('A fare must go from one stop to a later stop.');
+  if(fares.some(x=>x.from===from&&x.to===to))throw Error('There are two fares for '+stops[from].port+' → '+stops[to].port+'.');
+  if(f?.fare===''||f?.fare==null)continue;
+  const leg=stops[from].port+' → '+stops[to].port,fare=money(f.fare,'tourist fare for '+leg)!;
+  const localFare=money(f.localFare,'local fare for '+leg),expatFare=money(f.expatFare,'expat fare for '+leg),roomFare=money(f.roomFare,'Nirili Villa guest fare for '+leg);
+  fares.push({from,to,fare,...(localFare!==undefined?{localFare}:{}),...(expatFare!==undefined?{expatFare}:{}),...(roomFare!==undefined?{roomFare}:{})});
+ }
+ if(!fares.length)throw Error('Enter the adult fare in MVR for at least one part of the route.');
+ return {stops,fares:fares.sort((a,b)=>a.from-b.from||a.to-b.to)};
+}
+
 export function saveOperatorSailing(state:TransportState,operator:OperatorRef,input:any,crewIds?:Set<string>):Sailing{
- const from=text(input?.from,60),to=text(input?.to,60),depart=String(input?.depart||''),arrive=String(input?.arrive||'');
- const optional=(v:any)=>v===''||v==null?undefined:Number(v);
- // Older departures gave expats the local fare with a switch; keep that as an expat fare.
- const expatFare=optional(input?.expatFare)??(input?.expatLocal===true?optional(input?.localFare):undefined);
- const fare=Number(input?.fare),localFare=optional(input?.localFare),roomFare=input?.roomFare===''||input?.roomFare==null?undefined:Number(input.roomFare);
+ const {stops,fares}=cleanRoute(input),first=stops[0],last=stops[stops.length-1];
+ // The whole-route fare (or the first one sold) describes the route in lists and older screens.
+ const main=fares.find(f=>f.from===0&&f.to===stops.length-1)||fares[0];
+ const from=first.port,to=last.port,depart=first.depart!,arrive=last.arrive!;
  const days=Array.isArray(input?.days)?[...new Set(input.days.map(Number))].filter((d:any)=>Number.isInteger(d)&&d>=0&&d<=6).sort() as number[]:[];
- if(!from||!to||from===to)throw Error('Choose where the boat leaves from and where it goes.');
- if(!TIME.test(depart)||!TIME.test(arrive)||arrive<=depart)throw Error('Enter same-day departure and arrival times (24-hour), arrival after departure.');
- if(!Number.isInteger(fare)||fare<0||fare>10000000)throw Error('Enter the adult fare in MVR.');
- if(localFare!==undefined&&(!Number.isInteger(localFare)||localFare<0||localFare>10000000))throw Error('Enter a valid local fare in MVR, or leave it empty if locals pay the same.');
- if(expatFare!==undefined&&(!Number.isInteger(expatFare)||expatFare<0||expatFare>10000000))throw Error('Enter a valid expat fare in MVR, or leave it empty if expats pay the tourist fare.');
- if(roomFare!==undefined&&(!Number.isInteger(roomFare)||roomFare<0||roomFare>10000000))throw Error('Enter a valid USD fare for Nirili Villa guests, or leave it empty.');
  const id=text(input?.id,80),previous=id?state.sailings.find(s=>s.id===id&&s.operatorId===operator.id):undefined;
  if(id&&!previous)throw Error('Departure not found.');
  const boat=ownBoat(state,operator.id,text(input?.boatId,60));
  const next:Sailing={id:previous?.id||'OPS-'+crypto.randomUUID().slice(0,8).toUpperCase(),boat:operator.name,operatorId:operator.id,operatorName:operator.name,from,to,depart,arrive,
-  capacity:boatSeats(boat).length,fare,...(localFare!==undefined?{localFare}:{}),...(expatFare!==undefined?{expatFare}:{}),...(roomFare!==undefined?{roomFare}:{}),days:days.length===7?[]:days,active:input?.active!==false,boatId:boat.id,
+  capacity:boatSeats(boat).length,fare:main.fare,...(main.localFare!==undefined?{localFare:main.localFare}:{}),...(main.expatFare!==undefined?{expatFare:main.expatFare}:{}),...(main.roomFare!==undefined?{roomFare:main.roomFare}:{}),
+  stops,fares,days:days.length===7?[]:days,active:input?.active!==false,boatId:boat.id,
   ...(previous?.boatOverrides?{boatOverrides:previous.boatOverrides}:{}),...(previous?.crewOverrides?{crewOverrides:previous.crewOverrides}:{})};
  const crew=Array.isArray(input?.crewIds)&&crewIds?cleanCrewIds(input.crewIds,new Set([...crewIds,...(previous?.crewIds||[])])):previous?.crewIds;
  if(crew?.length)next.crewIds=crew;
@@ -124,8 +156,8 @@ export function saveOperatorSailing(state:TransportState,operator:OperatorRef,in
   // Fares can change at any time: every ticket keeps the fare it was booked at.
   const futureDates=[...new Set(state.bookings.flatMap(b=>b.journeys.filter(j=>journeyLive(b,j)&&j.scheduleId===previous.id&&departs(j)>Date.now()).map(j=>j.date)))];
   if(futureDates.length){
-   const changed=(['from','to','depart','arrive'] as const).some(k=>previous[k]!==next[k])||!sameDays(previous.days,next.days);
-   if(changed)throw Error('This departure has upcoming bookings. Create a new departure for a new time, route or days, and take this one off sale once its passengers have travelled. (Fares can be changed: booked tickets keep the fare they were sold at.)');
+   const changed=JSON.stringify(stopsOf(previous))!==JSON.stringify(stopsOf(next))||!sameDays(previous.days,next.days);
+   if(changed)throw Error('This departure has upcoming bookings. Create a new route for new stops, times or days, and take this one off sale once its passengers have travelled. (Fares can be changed: booked tickets keep the fare they were sold at.)');
    // A new regular boat must have every seat already sold on trips that don't have a one-day swap.
    for(const date of futureDates){
     if(previous.boatOverrides?.[date])continue;
@@ -255,8 +287,11 @@ export function operatorDay(state:TransportState,operatorId:string,date:string){
   const live=mine.filter(t=>t.journey.operatorStatus!=='Declined'),boat=sailing?tripBoat(state,sailing,date):undefined;
   return {scheduleId:id,date,from:sailing?.from||sample?.from||'',to:sailing?.to||sample?.to||'',depart:sailing?.depart||sample?.depart||'',arrive:sailing?.arrive||sample?.arrive||'',
    boatId:boat?.id||'',boatName:boat?.name||sample?.boatName||'',crewIds:sailing?tripCrew(sailing,date):[],crewChanged:!!sailing?.crewOverrides?.[date],swapped:!!(sailing&&sailing.boatOverrides?.[date]),layout:boat?.layout||null,
-   seats:sailing?tripSeats(state,sailing,date).length:0,sold:live.reduce((n,t)=>n+t.journey.seats.length,0),boarded:live.reduce((n,t)=>n+(t.journey.boardedPax||0),0),
-   closed:live.length>0&&live.every(t=>t.journey.departedAt),tickets:mine};
+   // On a route with stops the boat is fullest on one stretch; that is what limits sales.
+   stops:sailing?stopsOf(sailing):[],
+   load:sailing?stopsOf(sailing).slice(0,-1).map((x,i)=>({from:x.port,to:stopsOf(sailing)[i+1].port,seats:live.filter(t=>span(t.journey).from<=i&&i<span(t.journey).to).reduce((n,t)=>n+t.journey.seats.length,0)})):[],
+   seats:sailing?tripSeats(state,sailing,date).length:0,sold:sailing&&stopsOf(sailing).length>2?Math.max(0,...stopsOf(sailing).slice(0,-1).map((_,i)=>live.filter(t=>span(t.journey).from<=i&&i<span(t.journey).to).reduce((n,t)=>n+t.journey.seats.length,0))):live.reduce((n,t)=>n+t.journey.seats.length,0),boarded:live.reduce((n,t)=>n+(t.journey.boardedPax||0),0),
+   closed:live.length>0&&live.every(t=>t.journey.departedAt),tickets:mine.slice().sort((a,b)=>span(a.journey).from-span(b.journey).from)};
  }).sort((a,b)=>a.depart.localeCompare(b.depart));
 }
 

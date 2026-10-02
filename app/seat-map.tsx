@@ -79,7 +79,7 @@ export default function SeatMap({layout,taken=[],selected=[],need=0,onChange,mar
 // children need seats.
 export function Seats({sailing,date,data,need,selected,onChange}:{sailing:any;date:string;data:any;need:number;selected:number[];onChange:(s:number[])=>void}){
  const {layout,boatName}=tripLayout(sailing,date,data?.boats||[]);
- const taken=(data?.availability||[]).filter((x:any)=>x.scheduleId===sailing.id&&x.date===date).flatMap((x:any)=>x.seats||[]);
+ const taken=takenSeats(sailing,date,data);
  return <div className="nh-seats">
   <p className="nh-seats-title"><b>Choose your seats</b>{boatName?<span> · {boatName}</span>:null}</p>
   <p className="nh-seats-help">Tap the seats you want, or let us seat your group together. Infants sit on a lap.</p>
@@ -89,6 +89,12 @@ export function Seats({sailing,date,data,need,selected,onChange}:{sailing:any;da
 // Seats still free on a trip.
 export function seatsLeft(sailing:any,date:string,data:any){
  if(!sailing)return 0;
- const used=new Set((data?.availability||[]).filter((x:any)=>x.scheduleId===sailing.id&&x.date===date).flatMap((x:any)=>x.seats||[]));
+ const used=new Set(takenSeats(sailing,date,data));
  return tripLayout(sailing,date,data?.boats||[]).layout.cells.filter(n=>n>0&&!used.has(n)).length;
+}
+// Seats taken on a trip. For a leg of a route with stops (fromStop/toStop), only passengers on
+// board for part of that stretch hold a seat; the same seat is free again after they get off.
+export function takenSeats(sailing:any,date:string,data:any):number[]{
+ const from=sailing?.fromStop??0,to=sailing?.toStop??99;
+ return (data?.availability||[]).filter((x:any)=>x.scheduleId===sailing?.id&&x.date===date&&(x.from??0)<to&&from<(x.to??99)).flatMap((x:any)=>x.seats||[]);
 }

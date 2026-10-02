@@ -4,7 +4,7 @@ import {loadStays,stayKey} from '../../../lib/stays';
 import {canTransport,isTransportAgent,transportRole} from '../../../lib/transport-access';
 import {authDb,currentUser,currentGuestUser,hasPermission,sameOrigin} from '../../../lib/auth';
 import {restaurantOnly} from '../../../lib/pos-access';
-import {createTransfer,initialTransport,journeyFor,journeyLive,normalizeTransport,publicBoats,runsOn,seatAvailability,tripBoat,tripSeats,TransportState,Sailing} from '../../../lib/transport';
+import {createTransfer,findLeg,legsOf,occupied,span,type Leg,initialTransport,journeyFor,journeyLive,normalizeTransport,publicBoats,runsOn,seatAvailability,tripBoat,tripSeats,TransportState,Sailing} from '../../../lib/transport';
 import {minutes,syncTransportBuggy} from '../../../lib/transport-plan';
 import {syncTransportPlanBill} from '../../../lib/transport-plan-billing';
 import {sendTransportScheduleEmail} from '../../../lib/booking-email';
@@ -35,7 +35,8 @@ function canonicalLocation(value:any){
  if(lower==='male'||lower==="male'"||lower==='malé')return "Male'";
  if(lower.includes('dhiffushi'))return 'Dhiffushi';
  return raw;
-}
+}const sameLocation=(a:string,b:string)=>canonicalLocation(a)===canonicalLocation(b);
+
 function bookedPax(state:TransportState,scheduleId:string,date:string,excludeId=''){
  return state.bookings.filter(b=>b.id!==excludeId&&b.journeys.some(j=>journeyLive(b,j)&&j.scheduleId===scheduleId&&j.date===date)).reduce((sum,b)=>sum+b.adults+b.children+b.infants,0);
 }
@@ -50,7 +51,8 @@ function planRows(state:TransportState,hotelState:any){
    const to=leg==='arrival'?'Dhiffushi':canonicalLocation(plan.destination||'Velana Airport');
    const date=String(plan.date||(leg==='arrival'?stay.checkIn:stay.checkOut)||'');
    const pax=Math.max(1,Number(stay.pax)||1);
-   const eligible=state.sailings.filter(s=>s.active&&Number.isInteger(s.roomFare)&&Number(s.roomFare)>=0&&canonicalLocation(s.from)===from&&canonicalLocation(s.to)===to&&s.capacity-bookedPax(state,s.id,date,plan.transportBookingId||plan.previousTransportBookingId||'')>=pax).sort((a,b)=>a.depart.localeCompare(b.depart));
+   // Routes with stops count when the guest's stretch (e.g. Dhiffushi → Airport) is one of their legs.
+   const eligible=state.sailings.filter(s=>s.active).map(s=>findLeg(s,from,to,sameLocation)).filter((s):s is Leg=>!!s&&Number.isInteger(s.roomFare)&&Number(s.roomFare)>=0&&s.capacity-bookedPax(state,s.id,date,plan.transportBookingId||plan.previousTransportBookingId||'')>=pax).sort((a,b)=>a.depart.localeCompare(b.depart));
    const flight=minutes(String(plan.flightTime||''));let recommended:Sailing|undefined;
    if(eligible.length){
     if(leg==='arrival'&&flight!=null)recommended=eligible.find(s=>(minutes(s.depart)??0)>=flight+90);
@@ -81,14 +83,16 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   const hotel=await loadHotelPrimary(),stay=hotel.state.stays.find((item:any)=>item.id===String(b.stayId||'')&&['Confirmed','In House'].includes(String(item.status||'')));
   const leg=b.leg==='arrival'||b.leg==='departure'?b.leg:null;if(!stay||!leg)throw Error('Guest transport plan not found.');
   const plan=stay.transportPlan?.[leg];if(!plan||plan.needTransfer!=='yes')throw Error('This guest has not asked Nirili Villa to arrange this launch.');
-  const sailing=state.sailings.find(s=>s.id===String(b.scheduleId||'')&&s.active);if(!sailing)throw Error('Choose an active speedboat departure.');
-  if(!Number.isInteger(sailing.roomFare)||Number(sailing.roomFare)<0)throw Error('Set the USD room fare for this launch before assigning it to a room transport plan.');
+  const route=state.sailings.find(s=>s.id===String(b.scheduleId||'')&&s.active);if(!route)throw Error('Choose an active speedboat departure.');
   const date=String(plan.date||(leg==='arrival'?stay.checkIn:stay.checkOut)||''),expectedFrom=leg==='arrival'?canonicalLocation(plan.from||'Velana Airport'):'Dhiffushi',expectedTo=leg==='arrival'?'Dhiffushi':canonicalLocation(plan.destination||'Velana Airport');
-  if(canonicalLocation(sailing.from)!==expectedFrom||canonicalLocation(sailing.to)!==expectedTo)throw Error('That launch does not match the guest transport route.');
+  // On a route with stops the guest travels only their stretch of it.
+  const sailing=findLeg(route,expectedFrom,expectedTo,sameLocation);
+  if(!sailing)throw Error('That launch does not match the guest transport route.');
+  if(!Number.isInteger(sailing.roomFare)||Number(sailing.roomFare)<0)throw Error('Set the USD room fare for this launch before assigning it to a room transport plan.');
   if(Date.parse(date+'T'+sailing.depart+':00+05:00')<=Date.now())throw Error('Choose a future launch departure.');
   const oldId=String(plan.transportBookingId||plan.previousTransportBookingId||''),old=oldId?state.bookings.find(item=>item.id===oldId):undefined,wasScheduled=!!old&&!!plan.launch;
   const adults=Math.max(1,Number(stay.adults??stay.pax??1)),children=Math.max(0,Number(stay.children??0)),infants=0,seatCount=adults+children;
-  const used=state.bookings.filter(item=>item.id!==oldId).flatMap(item=>item.journeys.filter(j=>journeyLive(item,j)&&j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
+  const used=occupied(state,sailing.id,date,span(sailing),oldId);
   const seats=tripSeats(state,sailing,date).filter(n=>!used.includes(n)).slice(0,seatCount);if(seats.length!==seatCount)throw Error('This launch no longer has enough seats. Choose another departure.');
   const journey=journeyFor(sailing,date,seats,tripBoat(state,sailing,date)),total=sailing.fare*adults+Math.round(sailing.fare/2)*children,now=new Date().toISOString();
   const booking:any=old||{id:'NT-'+crypto.randomUUID().slice(0,8).toUpperCase(),token:crypto.randomUUID(),owner:'stay:'+stay.id,created:now,paid:false};
@@ -102,7 +106,11 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   if(u.role!=='admin')return Response.json({error:'Only Admin can create a linked guest transfer manually.'},{status:403});
   const hotel=await loadHotelPrimary(),stay=hotel.state.stays.find((item:any)=>item.id===String(b.stayId||'')&&['Confirmed','In House'].includes(String(item.status||'')));
   const leg=b.leg==='arrival'||b.leg==='departure'?b.leg:null;if(!stay||!leg)throw Error('Choose a confirmed or in-house guest and Arrival or Departure.');
-  const sailing=state.sailings.find(s=>s.id===String(b.scheduleId||'')&&s.active);if(!sailing)throw Error('Choose an active speedboat departure.');
+  const route=state.sailings.find(s=>s.id===String(b.scheduleId||'')&&s.active);if(!route)throw Error('Choose an active speedboat departure.');
+  const planFrom=canonicalLocation(stay.transportPlan?.[leg]?.from||'Velana Airport'),planTo=canonicalLocation(stay.transportPlan?.[leg]?.destination||'Velana Airport');
+  // On a route with stops, use the guest's stretch: into Dhiffushi on arrival, out of it on departure.
+  const sailing=leg==='arrival'?(findLeg(route,planFrom,'Dhiffushi',sameLocation)||legsOf(route).find(l=>canonicalLocation(l.to)==='Dhiffushi')):(findLeg(route,'Dhiffushi',planTo,sameLocation)||legsOf(route).find(l=>canonicalLocation(l.from)==='Dhiffushi'));
+  if(!sailing)throw Error(leg==='arrival'?'Arrival transfers must arrive in Dhiffushi.':'Departure transfers must leave Dhiffushi.');
   if(!Number.isInteger(sailing.roomFare)||Number(sailing.roomFare)<0)throw Error('Set the USD room fare for this launch before assigning it to a guest.');
   const date=String(b.date||'');if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Choose a valid travel date.');
   if(Date.parse(date+'T'+sailing.depart+':00+05:00')<=Date.now())throw Error('Choose a future launch departure.');
@@ -114,7 +122,7 @@ export async function POST(r:Request){const u=await transportUser();if(!u||!canT
   const adults=Math.max(1,Number(stay.adults??stay.pax??1)),children=Math.max(0,Number(stay.children??0)),infants=0,seatCount=adults+children;
   const requestedSeats=Array.isArray(b.seats)?b.seats.map(Number):[];
   if(requestedSeats.length!==seatCount||new Set(requestedSeats).size!==seatCount||requestedSeats.some((n:number)=>!Number.isInteger(n)||!tripSeats(state,sailing,date).includes(n)))throw Error('Select one valid seat for every adult and child.');
-  const used=state.bookings.filter(item=>item.id!==oldId).flatMap(item=>item.journeys.filter(j=>journeyLive(item,j)&&j.scheduleId===sailing.id&&j.date===date).flatMap(j=>j.seats));
+  const used=occupied(state,sailing.id,date,span(sailing),oldId);
   if(requestedSeats.some((n:number)=>used.includes(n)))throw Error('One or more selected seats were just booked. Choose available seats.');
   const free=b.free===true,discountPercent=Math.max(0,Math.min(100,Number(b.discountPercent)||0));let priceCents:any=undefined;
   if(b.priceCents!==undefined&&b.priceCents!==null&&b.priceCents!==''){const value=Number(b.priceCents);if(!Number.isInteger(value)||value<0||value>1000000)throw Error('Enter a valid custom USD total.');priceCents=value;}

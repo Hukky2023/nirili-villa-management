@@ -16,7 +16,7 @@ function ticketView(booking:TransferBooking,journey:Journey,index:number){
  const roomBilled=!!booking.stayId&&Number.isInteger(booking.roomCents);
  return {bookingId:booking.id,index,name:booking.name,traveller:booking.traveller,localFare:booking.traveller==='Local'||booking.traveller==='Expat',phone:booking.phone,seats:journey.seats,adults:booking.adults,children:booking.children,infants:booking.infants,pax:ticketPax(booking),
   notes:booking.notes||'',source:booking.agentName?'Partner: '+booking.agentName:booking.stayId?'Nirili Villa guest':booking.source||'Website',pickup:booking.pickup||'',
-  date:journey.date,depart:journey.depart,scheduleId:journey.scheduleId,status:journey.operatorStatus||'Accepted',boardedPax:journey.boardedPax||0,departed:!!journey.departedAt,noShow:!!journey.noShow,
+  date:journey.date,depart:journey.depart,from:journey.from,to:journey.to,scheduleId:journey.scheduleId,status:journey.operatorStatus||'Accepted',boardedPax:journey.boardedPax||0,departed:!!journey.departedAt,noShow:!!journey.noShow,
   roomBilled,fareMvr:roomBilled?0:journey.fare*booking.adults+Math.round(journey.fare/2)*booking.children};
 }
 

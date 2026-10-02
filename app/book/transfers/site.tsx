@@ -4,7 +4,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowLeft,ArrowRight,ArrowUpDown,CalendarDays,CheckCircle2,Clock,MapPin,Search,Ship,ShipWheel,Users} from 'lucide-react';
 import {SITES} from '../../../lib/public-sites';
 import {Seats,seatsLeft} from '../../seat-map';
-import {fareFor} from '../../../lib/transport';
+import {fareFor,legsOf} from '../../../lib/transport';
 import TimeField24 from '../../time-field-24';
 
 // transfers.nirilihotels.com: find sea transport like the ODI and RTL apps. Guests choose a
@@ -43,9 +43,12 @@ export default function TransferBookingSite(){
  const runs=(s:any,d:string)=>!Array.isArray(s.days)||!s.days.length||s.days.includes(new Date(d+'T00:00:00Z').getUTCDay());
  const future=(s:any,d:string)=>Date.parse(d+'T'+s.depart+':00+05:00')>Date.now();
  const same=(a:string,b:string)=>a.trim().toLowerCase()===b.trim().toLowerCase();
- const departures=(a:string,b:string,d:string)=>(data?.sailings||[]).filter((s:any)=>same(s.from,a)&&same(s.to,b)&&runs(s,d)&&future(s,d)).sort((x:any,y:any)=>x.depart.localeCompare(y.depart));
+ // Every route that stops at the guest's port and later at their destination; each is the leg
+ // between those stops, with that leg's times and fares.
+ const legs=useMemo(()=>(data?.sailings||[]).flatMap((s:any)=>legsOf(s)),[data]);
+ const departures=(a:string,b:string,d:string)=>legs.filter((s:any)=>same(s.from,a)&&same(s.to,b)&&runs(s,d)&&future(s,d)).sort((x:any,y:any)=>x.depart.localeCompare(y.depart));
  const outList=useMemo(()=>departures(from,to,date),[data,from,to,date]);
- const outSailing=(data?.sailings||[]).find((s:any)=>s.id===outbound),inSailing=(data?.sailings||[]).find((s:any)=>s.id===inbound);
+ const outSailing=legs.find((s:any)=>s.key===outbound),inSailing=legs.find((s:any)=>s.key===inbound);
  const retList=useMemo(()=>departures(to,from,returnDate).filter((s:any)=>!outSailing||returnDate+'T'+s.depart>date+'T'+outSailing.arrive),[data,from,to,date,returnDate,outSailing]);
  const legTotal=(s:any)=>{if(!s)return 0;const f=fareFor(s,traveller||'Tourist');return f*adults+Math.round(f/2)*children;};
  const expectedTotal=legTotal(outSailing)+(returnTrip?legTotal(inSailing):0);
@@ -64,10 +67,10 @@ export default function TransferBookingSite(){
   try{
    const partial=(seats:number[])=>seats.length>0&&seats.length!==need;
    if(partial(outSeats)||returnTrip&&partial(inSeats))throw Error('Choose '+need+' seats on the seat map, or tap Choose for me.');
-   const journeys:any[]=[{scheduleId:outbound,date,seats:outSeats},...(returnTrip?[{scheduleId:inbound,date:returnDate,seats:inSeats}]:[])];
+   const journeys:any[]=[{scheduleId:outSailing.id,fromStop:outSailing.fromStop,toStop:outSailing.toStop,date,seats:outSeats},...(returnTrip?[{scheduleId:inSailing.id,fromStop:inSailing.fromStop,toStop:inSailing.toStop,date:returnDate,seats:inSeats}]:[])];
    const r=await fetch('/api/walkin-transfers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'book',payment:'later',revision:data.revision,token:token.current,name,phone,traveller,adults,children,infants,journeys,expectedTotal,notes})}),d:any=await r.json();
    // Someone else took a chosen seat: show the fresh map and keep the seats that are still free.
-   if(r.status===409&&d.sailings){setData(d);const free=(id:string,dt:string,list:number[])=>{const used=new Set((d.availability||[]).filter((x:any)=>x.scheduleId===id&&x.date===dt).flatMap((x:any)=>x.seats||[]));return list.filter(n=>!used.has(n));};setOutSeats(free(outbound,date,outSeats));setInSeats(free(inbound,returnDate,inSeats));}
+   if(r.status===409&&d.sailings){setData(d);const free=(id:string,dt:string,list:number[])=>{const used=new Set((d.availability||[]).filter((x:any)=>x.scheduleId===id&&x.date===dt).flatMap((x:any)=>x.seats||[]));return list.filter(n=>!used.has(n));};setOutSeats(free(outSailing.id,date,outSeats));if(inSailing)setInSeats(free(inSailing.id,returnDate,inSeats));}
    if(!r.ok)throw Error(d.error||'Could not book transfer.');
    setData(d);setDone({kind:'ferry',id:(d.bookings||[]).at(-1)?.id||'Confirmed'});token.current=crypto.randomUUID();
   }catch(err){setError((err as Error).message)}finally{setBusy(false)}
@@ -158,9 +161,10 @@ export default function TransferBookingSite(){
     {back(isReturn?'outbound':'search')}
     <div className="nh-step"><h3>{isReturn?'Return speedboats':'Speedboats'}</h3><p className="nh-results-route"><b>{isReturn?to:from} → {isReturn?from:to}</b><span><span>{niceDate(d)}</span> · <span>{typeName(traveller)}</span> · <span>{need===1?'1 seat':need+' seats'}</span></span></p></div>
     {!list.length?<p className="nh-hint">No speedboats on this route that day. Try another date, or ask for a private charter.</p>
-    :<ul className="nh-results">{list.map((s:any)=>{const left=seatsLeft(s,d,data),ok=left>=need,boat=(data?.boats||[]).find((x:any)=>x.id===(s.boatOverrides?.[d]||s.boatId));return <li key={s.id}><button type="button" disabled={!ok} onClick={()=>pick(s.id)}>
+    :<ul className="nh-results">{list.map((s:any)=>{const left=seatsLeft(s,d,data),ok=left>=need,boat=(data?.boats||[]).find((x:any)=>x.id===(s.boatOverrides?.[d]||s.boatId));return <li key={s.key}><button type="button" disabled={!ok} onClick={()=>pick(s.key)}>
      <span className="nh-results-time"><b>{s.depart}</b><ArrowRight/><b>{s.arrive}</b></span>
      <span className="nh-results-who"><ShipWheel/>{s.operatorName||s.boat}{boat?' · '+boat.name:''}</span>
+     {s.stops?.length>2&&<span className="nh-results-left">{s.stops.map((x:any)=>x.port).join(' → ')}</span>}
      <span className="nh-results-left">{ok?left+' seats left':'Not enough seats'}</span>
      <span className="nh-results-price"><b>{money(fareFor(s,traveller))}</b><small>per adult</small><small>{money(legTotal(s))} total</small></span>
     </button></li>;})}</ul>}

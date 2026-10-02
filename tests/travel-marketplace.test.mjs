@@ -34,6 +34,8 @@ const BO=load('lib/buggy-operator.ts');
 const FUTURE='2030-06-03'; // a Monday
 const coral={id:'OP-CORAL',name:'Coral Speed'},blue={id:'OP-BLUE',name:'Blue Line'};
 const L=(n,per=4)=>T.defaultLayout(n,per);
+// Single-hop input as older screens sent it (no stops or fare table).
+const flat=({stops,fares,...x})=>x;
 function sea(){
  const state=T.normalizeTransport({sailings:[],bookings:[]});
  const big=OP.saveBoat(state,coral,{name:'Coral 1',registration:'A-1',layout:L(10)});
@@ -80,7 +82,7 @@ test('seat maps: operators draw seats, guests book the exact seats they chose',(
  assert.throws(()=>T.seatsForBooking(state,[{scheduleId:sailing.id,date:FUTURE}],9),/Not enough seats/);
  // Guests see the boat's map and only seat numbers, never names.
  assert.deepEqual(T.publicBoats(state).map(b=>b.name),['Coral 1']);
- assert.deepEqual(Object.keys(T.seatAvailability(state)[0]).sort(),['date','pax','scheduleId','seats']);
+ assert.deepEqual(Object.keys(T.seatAvailability(state)[0]).sort(),['date','from','pax','scheduleId','seats','to']);
 });
 
 test('a boat is swapped for one trip only, keeping every booked seat',()=>{
@@ -149,7 +151,7 @@ test('boarding, closing a trip, no-shows and the monthly statement',()=>{
 test('operators cannot change a sold departure, remove a sold seat or retire a busy boat',()=>{
  const {state,big,small,sailing,book}=sea();
  book(2,{},[9,10]);
- assert.throws(()=>OP.saveOperatorSailing(state,coral,{...sailing,depart:'09:00'}),/upcoming bookings/);
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{...flat(sailing),depart:'09:00'}),/upcoming bookings/);
  assert.throws(()=>OP.saveOperatorSailing(state,coral,{...sailing,boatId:small.id}),/no seat 9, 10/);
  OP.saveOperatorSailing(state,coral,{...sailing,active:false});
  assert.equal(state.sailings.find(s=>s.id===sailing.id).active,false);
@@ -498,8 +500,8 @@ test('operators create crew logins; crew see and board only their own trips',asy
 
 test('locals pay the local fare; expats too when the operator allows it',()=>{
  const {state,sailing}=sea();
- assert.throws(()=>OP.saveOperatorSailing(state,coral,{...sailing,localFare:-1}),/valid local fare/);
- OP.saveOperatorSailing(state,coral,{...sailing,localFare:12000});
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{...flat(sailing),localFare:-1}),/valid local fare/);
+ OP.saveOperatorSailing(state,coral,{...flat(sailing),localFare:12000});
  const s=state.sailings.find(x=>x.id===sailing.id);
  assert.deepEqual([T.fareFor(s,'Tourist'),T.fareFor(s,'Local'),T.fareFor(s,'Expat')],[20000,12000,20000]);
  assert.equal(T.hasLocalFare(s),true);
@@ -513,15 +515,15 @@ test('locals pay the local fare; expats too when the operator allows it',()=>{
  assert.throws(()=>book('Martian',30000,[3,4]),/passenger type/);
  // Fares can change on a departure with bookings; sold tickets keep their fare.
  state.bookings.push(local);
- OP.saveOperatorSailing(state,coral,{...s,localFare:10000,expatFare:15000});
+ OP.saveOperatorSailing(state,coral,{...flat(s),localFare:10000,expatFare:15000});
  assert.deepEqual(['Tourist','Local','Expat'].map(t=>T.fareFor(state.sailings.find(x=>x.id===sailing.id),t)),[20000,10000,15000]);
  // Older departures that gave expats the local fare keep doing so.
  assert.equal(T.fareFor({fare:20000,localFare:9000,expatLocal:true},'Expat'),9000);
- OP.saveOperatorSailing(state,coral,{...s,localFare:10000,expatFare:'',expatLocal:true});
+ OP.saveOperatorSailing(state,coral,{...flat(s),localFare:10000,expatFare:'',expatLocal:true});
  assert.equal(state.sailings.find(x=>x.id===sailing.id).expatFare,10000);
  assert.equal(local.journeys[0].fare,12000);
  // Without a local fare everyone pays the tourist fare.
- OP.saveOperatorSailing(state,coral,{...s,localFare:''});
+ OP.saveOperatorSailing(state,coral,{...flat(s),localFare:''});
  assert.equal(T.fareFor(state.sailings.find(x=>x.id===sailing.id),'Local'),20000);
 });
 
@@ -588,4 +590,58 @@ test('the public site lists ports and vessels, searches charters and sends reque
  d=await (await post({action:'charter-confirm',id:body.charter.id,boatId:d.boats[0].id})).json();
  assert.equal(d.charters[0].status,'Confirmed');
  assert.equal(d.charters[0].phone,'+447700900123');
+});
+
+test('routes with stops: guests book any stretch and a seat is sold again after its guest gets off',()=>{
+ const {state,big}=sea();
+ const stops=[{port:'Dhiffushi',depart:'08:00'},{port:'Velana Airport',arrive:'08:40',depart:'08:45'},{port:"Male'",arrive:'08:55'}];
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{stops:[stops[0],{port:'Velana Airport',arrive:'07:00',depart:'07:10'},stops[2]],fares:[{from:0,to:2,fare:1}],boatId:big.id}),/must reach Velana Airport after it leaves Dhiffushi/);
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{stops:[stops[0],stops[1],{port:'dhiffushi',arrive:'09:00'}],fares:[{from:0,to:2,fare:1}],boatId:big.id}),/only be one stop/);
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{stops,fares:[{from:0,to:1,fare:''}],boatId:big.id}),/at least one part/);
+ const route=OP.saveOperatorSailing(state,coral,{stops,fares:[{from:0,to:1,fare:30000,localFare:15000,roomFare:2500},{from:0,to:2,fare:35000},{from:1,to:2,fare:5000}],boatId:big.id});
+ assert.deepEqual([route.from,route.to,route.depart,route.arrive,route.fare],['Dhiffushi',"Male'",'08:00','08:55',35000]);
+ assert.deepEqual(T.legsOf(route).map(l=>[l.from,l.to,l.depart,l.arrive,l.fare]),[['Dhiffushi','Velana Airport','08:00','08:40',30000],['Dhiffushi',"Male'",'08:00','08:55',35000],['Velana Airport',"Male'",'08:45','08:55',5000]]);
+ assert.equal(T.findLeg(route,'dhiffushi','velana airport').fromStop,0);
+ assert.deepEqual(T.ports(state).filter(p=>p==="Male'"),["Male'"]);
+ const book=(fromStop,toStop,seats,traveller='Tourist')=>{const leg=T.legOf(route,fromStop,toStop);const b=T.createTransfer(state,{token:crypto.randomUUID(),name:'G',phone:'+9607000000',traveller,adults:seats.length,children:0,infants:0,notes:'',expectedTotal:T.fareFor(leg,traveller)*seats.length,journeys:[{scheduleId:route.id,fromStop,toStop,date:FUTURE,seats}]},'x');state.bookings.push(b);return b;};
+ // Seat 1: Dhiffushi → Airport, then sold again Airport → Malé.
+ const a=book(0,1,[1],'Local');
+ assert.deepEqual([a.journeys[0].from,a.journeys[0].to,a.journeys[0].depart,a.journeys[0].arrive,a.journeys[0].fare],['Dhiffushi','Velana Airport','08:00','08:40',15000]);
+ const b=book(1,2,[1]);
+ assert.equal(b.total,5000);
+ assert.throws(()=>book(0,2,[1]),/Seat 1 was just booked/);
+ assert.throws(()=>T.createTransfer(state,{token:'z',name:'G',phone:'+9607000000',traveller:'Tourist',adults:1,children:0,infants:0,notes:'',expectedTotal:0,journeys:[{scheduleId:route.id,fromStop:1,toStop:0,date:FUTURE,seats:[2]}]},'x'),/where you get on and off/);
+ assert.deepEqual(T.freeSeats(state,T.legOf(route,0,2),FUTURE,1),[2]);
+ assert.deepEqual(T.freeSeats(state,T.legOf(route,1,2),FUTURE,1),[2]);
+ assert.deepEqual(T.seatsForBooking(state,[{scheduleId:route.id,fromStop:0,toStop:1,date:FUTURE}],2)[0].seats,[2,3]);
+ // The operator sees each stretch's load; the busiest decides how full the trip is.
+ const day=OP.operatorDay(state,coral.id,FUTURE).find(d=>d.scheduleId===route.id);
+ assert.deepEqual(day.load.map(l=>l.seats),[1,1]);
+ assert.equal(day.sold,1);
+ assert.deepEqual(day.tickets.map(t=>t.journey.fromStop),[0,1]);
+ // With tickets sold, stops and times are fixed but fares can change.
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{...route,stops:[stops[0],{...stops[1],depart:'08:50'},stops[2]]}),/upcoming bookings/);
+ OP.saveOperatorSailing(state,coral,{...route,fares:[{from:0,to:1,fare:32000},{from:1,to:2,fare:5000}]});
+ assert.equal(T.legOf(state.sailings.find(s=>s.id===route.id),0,2),null);
+ assert.equal(a.journeys[0].fare,15000);
+ // The boat is busy for the whole route.
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{from:'Dhiffushi',to:'Velana Airport',depart:'08:50',arrive:'09:30',fare:1,boatId:big.id}),/already runs the 08:00/);
+});
+
+test('the public site books a stretch of a route with stops',async()=>{
+ const s=apis();
+ s.sea.state.boats.push({id:'B1',operatorId:'OP-A',name:'Altec 1',registration:'',capacity:4,active:true,layout:T.defaultLayout(4),createdAt:'',updatedAt:''});
+ s.sea.state.sailings.push({id:'R1',boat:'Altec',operatorId:'OP-A',operatorName:'Altec',from:"Male'",to:'Dhiffushi',depart:'11:20',arrive:'12:00',capacity:4,fare:46000,active:true,boatId:'B1',
+  stops:[{port:"Male'",depart:'11:20'},{port:'Velana Airport',arrive:'11:25',depart:'11:30'},{port:'Dhiffushi',arrive:'12:00'}],fares:[{from:0,to:2,fare:46000},{from:1,to:2,fare:40000},{from:0,to:1,fare:3000}]});
+ const ask=(body)=>s.walkin.POST(new Request('https://transfers.nirilihotels.test/api/walkin-transfers',{method:'POST',headers:{origin:'https://transfers.nirilihotels.test','content-type':'application/json'},body:JSON.stringify({action:'book',payment:'later',traveller:'Tourist',children:0,infants:0,notes:'',name:'G',phone:'+447700900123',...body})}));
+ const view=await (await s.walkin.GET()).json();
+ assert.deepEqual(view.ports,['Dhiffushi',"Male'",'Velana Airport']);
+ // Malé → Airport on seats 1–2, then the same seats from the Airport to Dhiffushi.
+ assert.equal((await ask({token:'a',adults:2,expectedTotal:6000,journeys:[{scheduleId:'R1',fromStop:0,toStop:1,date:FUTURE,seats:[1,2]}]})).status,200);
+ const second=await ask({token:'b',adults:2,expectedTotal:80000,journeys:[{scheduleId:'R1',fromStop:1,toStop:2,date:FUTURE,seats:[1,2]}]});
+ assert.equal(second.status,200,JSON.stringify(await second.clone().json()));
+ const clash=await ask({token:'c',adults:1,expectedTotal:46000,journeys:[{scheduleId:'R1',fromStop:0,toStop:2,date:FUTURE,seats:[2]}]});
+ assert.equal(clash.status,409);
+ const avail=(await clash.json()).availability;
+ assert.deepEqual(avail.map(a=>[a.from,a.to]),[[0,1],[1,2]]);
 });
