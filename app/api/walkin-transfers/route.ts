@@ -1,8 +1,9 @@
 import {cookies} from 'next/headers';
 import {sessionCookieName} from '../../../lib/tab-session';
 import {randomToken,digest,sameOrigin,limit} from '../../../lib/auth';
-import {addHistory,createTransfer,publicBoats,seatAvailability,seatsForBooking,seatTaken,type TransportState} from '../../../lib/transport';
-import {loadTransport,saveTransport} from '../../../lib/transport-store';
+import {addHistory,createTransfer,ports,publicBoats,seatAvailability,seatsForBooking,seatTaken,type TransportState} from '../../../lib/transport';
+import {loadTransport,saveTransport,updateTransport} from '../../../lib/transport-store';
+import {publicCharterRates,requestCharter,searchCharters} from '../../../lib/transport-charter';
 import {emitAdminNotification} from '../../../lib/admin-notifications';
 
 // Public speedboat booking (transfers.nirilihotels.com). Departures come from independent
@@ -17,6 +18,11 @@ function view(state:TransportState,revision:number,owner:string){
   sailings:state.sailings.filter(s=>s.active).map(({roomFare,...s})=>s),
   bookings:state.bookings.filter(b=>b.owner===owner).map(({owner,token,history,...b})=>b),
   boats:publicBoats(state),
+  ports:ports(state),
+  charterRates:publicCharterRates(state),
+  // Like ODI's "Vessels onboard": boats in service and operators on the platform.
+  stats:{vessels:(state.boats||[]).filter(b=>b.active).length,operators:new Set((state.boats||[]).filter(b=>b.active).map(b=>b.operatorId)).size},
+  charters:(state.charters||[]).filter(c=>c.owner===owner).map(({owner,token,history,...c})=>c),
   availability:seatAvailability(state),
  };
 }
@@ -33,6 +39,16 @@ export async function POST(r:Request){
  try{
   const id=await identity();if(!id.token)throw Error('Refresh before booking.');
   const owner='walk-transfer:'+await digest(id.token),b:Record<string,any>=await r.json();
+  // Private charters: search is read-only; a request waits for the operator to confirm.
+  if(b.action==='charter-search'){const {state}=await loadTransport();return Response.json({offers:searchCharters(state,b)},{headers});}
+  if(b.action==='charter'){
+   if(!await limit(owner,10,3600000)||!await limit('walk-transfer-ip:'+(r.headers.get('cf-connecting-ip')||'unknown'),40,3600000))throw Error('Please contact reception for further bookings.');
+   const {state:before}=await loadTransport();
+   if((before.charters||[]).some(c=>c.owner===owner&&c.token===b.token)){const {state,revision}=await loadTransport();return Response.json(view(state,revision,owner),{headers});}
+   const {result:charter,state,revision}=await updateTransport(owner,state=>requestCharter(state,b,owner));
+   try{await emitAdminNotification({id:'transport:charter:'+charter.id,type:'transport',title:'New charter request',detail:charter.name+' · '+charter.from+' → '+charter.to+' · '+charter.date+' '+charter.time+' · '+charter.pax+' guests · '+charter.operatorName,ref:charter.id,url:'/home'});}catch{}
+   return Response.json({...view(state,revision,owner),charter:{id:charter.id}},{headers});
+  }
   if(b.action!=='book'||b.payment!=='later')return Response.json({error:'Walk-in guests can book transfers with payment at reception only.'},{status:403,headers});
   if(!await limit(owner,10,3600000)||!await limit('walk-transfer-ip:'+(r.headers.get('cf-connecting-ip')||'unknown'),40,3600000))throw Error('Please contact reception for further bookings.');
   // Guests pick seats on the trip boat's seat map (or let us choose the first free ones). Other

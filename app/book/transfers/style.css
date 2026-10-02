@@ -55,6 +55,43 @@
 .nh-transfer-done>p:not(.nh-kicker){color:var(--ink-soft);max-width:440px}
 .nh-transfer-done strong{font-family:var(--serif);font-weight:400;font-size:28px;padding:10px 20px;border-radius:12px;background:var(--sand)}
 
+/* Search (ODI-style): trip type tabs, ports, passenger type, date */
+.nh-transfer-search{grid-template-columns:minmax(0,760px);justify-content:center}
+.nh-search{gap:22px}
+.nh-search-form{display:grid;gap:22px}
+.nh-modes,.nh-types{display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:16px;background:var(--sand)}
+.nh-types{grid-template-columns:repeat(3,1fr)}
+.nh-modes button,.nh-types button{min-height:52px;border:0;border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-weight:600;font-size:16px;cursor:pointer}
+.nh-modes button[aria-selected=true],.nh-types button[aria-checked=true]{background:var(--lagoon-deep);color:#fff;box-shadow:0 6px 16px rgba(15,42,46,.18)}
+.nh-route{position:relative;display:grid;gap:10px;padding:14px;border-radius:18px;background:var(--sand)}
+.nh-route label{padding-right:56px}
+.nh-swap{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--ink);display:grid;place-items:center;cursor:pointer}
+.nh-swap svg{width:18px;height:18px}
+.nh-check{display:flex!important;align-items:center;gap:10px;font-weight:600}
+.nh-check input{width:20px!important;min-height:0!important;height:20px}
+.nh-transfer-submit svg{width:18px;height:18px}
+.nh-stats{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:0;padding:14px 16px;border-radius:14px;background:var(--sand);font-size:15px;color:var(--ink-soft)}
+.nh-stats svg{width:18px;height:18px;color:var(--lagoon)}
+.nh-stats b{font-family:var(--serif);font-weight:400;font-size:24px;color:var(--ink);margin-right:4px}
+.nh-back{justify-self:start;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.nh-back svg{width:16px;height:16px}
+.nh-results-route{margin:0;display:grid;gap:2px}
+.nh-results-route b{font-size:20px}
+.nh-results-route span{color:var(--muted);font-size:14px}
+.nh-results{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.nh-results button{width:100%;display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;text-align:left;padding:16px 18px;border-radius:16px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;cursor:pointer;transition:border-color .2s ease}
+.nh-results button:hover:not(:disabled){border-color:var(--lagoon)}
+.nh-results button:disabled{opacity:.5;cursor:default}
+.nh-results-time{display:flex;align-items:center;gap:8px;font-size:20px}
+.nh-results-time svg{width:16px;height:16px;color:var(--muted)}
+.nh-results-who{grid-column:1;display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-soft)}
+.nh-results-who svg{width:15px;height:15px}
+.nh-results-left{grid-column:1;font-size:13px;color:var(--muted)}
+.nh-results-price{grid-column:2;grid-row:1/span 3;display:grid;justify-items:end;text-align:right}
+.nh-results-price b{font-family:var(--serif);font-weight:400;font-size:24px}
+.nh-results-price small{font-size:12px;color:var(--muted)}
+.nh-leg-title{margin:0;font-size:15px}
+
 @media(max-width:1000px){
  .nh-transfer{grid-template-columns:1fr;gap:28px}
  .nh-fare{position:static}
@@ -66,5 +103,9 @@
  .nh-trip,.nh-fields{grid-template-columns:1fr}
  .nh-fields-3{grid-template-columns:repeat(3,1fr);gap:10px}
  .nh-transfer-done{margin-top:48px;padding:40px 22px}
+ .nh-results button{grid-template-columns:1fr}
+ .nh-results-price{grid-column:1;grid-row:auto;justify-items:start;text-align:left}
+ .nh-modes button,.nh-types button{font-size:15px}
 }
 
+.nh-transfer-form .time-field-24{display:flex;gap:6px;align-items:center}

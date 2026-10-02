@@ -9,9 +9,10 @@
 export type SeatLayout={rows:number;cols:number;cells:number[]};
 export type Boat={id:string;operatorId:string;name:string;registration:string;capacity:number;active:boolean;layout?:SeatLayout;createdAt:string;updatedAt:string};
 export type Sailing={id:string;boat:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;roomFare?:number;active:boolean;
- // Maldivians often pay less than tourists: `fare` is the tourist fare, `localFare` the optional
- // local fare, and `expatLocal` gives expats living in the Maldives the local fare too.
- localFare?:number;expatLocal?:boolean;
+ // Like ODI and RTL, fares depend on the passenger: `fare` is the tourist fare, `localFare` the
+ // optional fare for Maldivians and `expatFare` the optional fare for expats living in the
+ // Maldives. `expatLocal` (older departures) gives expats the local fare.
+ localFare?:number;expatFare?:number;expatLocal?:boolean;
  operatorId?:string;operatorName?:string;
  // Days the departure runs, 0 = Sunday … 6 = Saturday. Missing or empty means every day.
  days?:number[];
@@ -29,7 +30,14 @@ export type Journey={scheduleId:string;date:string;seats:number[];boat:string;fr
 export type HistoryEntry={at:string;by:string;action:string;detail?:string};
 export type TransferBooking={id:string;token:string;owner:string;name:string;phone:string;traveller:string;adults:number;children:number;infants:number;journeys:Journey[];total:number;status:'Confirmed'|'Cancelled'|'Requested';paid:boolean;checked:string[];created:string;notes:string;stayId?:string;room?:string;roomCents?:number;transportPlanLeg?:'arrival'|'departure';
  source?:string;agentId?:string;agentName?:string;agentReference?:string;pickup?:string;history?:HistoryEntry[]};
-export type TransportState={sailings:Sailing[];bookings:TransferBooking[];boats?:Boat[]};
+// Private charters: operators publish a price per route for a whole boat; guests request a
+// charter and the operator confirms it with a boat (lib/transport-charter.ts).
+export type CharterRate={id:string;operatorId:string;operatorName:string;from:string;to:string;price:number;blockMin:number;boatIds:string[];active:boolean;note?:string;createdAt:string;updatedAt:string};
+export type CharterStatus='Requested'|'Confirmed'|'Declined'|'Cancelled'|'Completed';
+export type Charter={id:string;token:string;owner:string;rateId:string;operatorId:string;operatorName:string;from:string;to:string;date:string;time:string;blockMin:number;
+ pax:number;name:string;phone:string;traveller:string;notes:string;price:number;status:CharterStatus;boatId?:string;boatName?:string;crewIds?:string[];reason?:string;
+ source:string;agentId?:string;agentName?:string;created:string;completedAt?:string;history?:HistoryEntry[]};
+export type TransportState={sailings:Sailing[];bookings:TransferBooking[];boats?:Boat[];charterRates?:CharterRate[];charters?:Charter[]};
 
 export const transportToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 export const transferMoney=(c:number)=>'MVR '+(c/100).toFixed(2);
@@ -37,6 +45,7 @@ export function initialTransport():TransportState{return {sailings:[['07:30','08
 export function normalizeTransport(state:any):TransportState{
  const s=state&&typeof state==='object'?state:initialTransport();
  s.sailings=Array.isArray(s.sailings)?s.sailings:[];s.bookings=Array.isArray(s.bookings)?s.bookings:[];s.boats=Array.isArray(s.boats)?s.boats:[];
+ s.charterRates=Array.isArray(s.charterRates)?s.charterRates:[];s.charters=Array.isArray(s.charters)?s.charters:[];
  // Tickets booked before boats were assigned to trips confirm onto the trip's boat.
  for(const b of s.bookings as TransferBooking[])for(const j of b.journeys||[]){
   if(j.operatorId&&j.operatorStatus==='New'){
@@ -84,11 +93,23 @@ export const runsOn=(sailing:Sailing,date:string)=>!Array.isArray(sailing.days)|
 export const TRAVELLERS=['Tourist','Local','Expat'] as const;
 export type Traveller=typeof TRAVELLERS[number];
 // The adult fare a passenger pays on a departure (children pay half; infants travel free).
-export function fareFor(sailing:Pick<Sailing,'fare'|'localFare'|'expatLocal'>,traveller:string){
- const local=traveller==='Local'||traveller==='Expat'&&!!sailing.expatLocal;
- return local&&Number.isInteger(sailing.localFare)?Number(sailing.localFare):sailing.fare;
+type Fares=Pick<Sailing,'fare'|'localFare'|'expatFare'|'expatLocal'>;
+export function fareFor(sailing:Fares,traveller:string){
+ const set=(n?:number)=>Number.isInteger(n);
+ if(traveller==='Local'&&set(sailing.localFare))return Number(sailing.localFare);
+ if(traveller==='Expat'){
+  if(set(sailing.expatFare))return Number(sailing.expatFare);
+  if(sailing.expatLocal&&set(sailing.localFare))return Number(sailing.localFare);
+ }
+ return sailing.fare;
 }
-export const hasLocalFare=(sailing:Pick<Sailing,'fare'|'localFare'>)=>Number.isInteger(sailing.localFare)&&sailing.localFare!==sailing.fare;
+// True when the passenger type changes the price, so the guest must say which they are.
+export const hasLocalFare=(sailing:Fares)=>TRAVELLERS.some(t=>fareFor(sailing,t)!==sailing.fare);
+// Every port a guest can travel between: scheduled departures and charter routes on sale.
+export function ports(state:TransportState){
+ const list=[...state.sailings.filter(s=>s.active).flatMap(s=>[s.from,s.to]),...(state.charterRates||[]).filter(r=>r.active).flatMap(r=>[r.from,r.to])];
+ return [...new Set(list.map(p=>p.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+}
 
 export function journeyFor(sailing:Sailing,date:string,seats:number[],boat?:Boat,traveller='Tourist'):Journey{
  return {scheduleId:sailing.id,date,seats,boat:sailing.boat,from:sailing.from,to:sailing.to,depart:sailing.depart,arrive:sailing.arrive,fare:fareFor(sailing,traveller),

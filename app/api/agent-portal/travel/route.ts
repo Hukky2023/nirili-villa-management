@@ -4,7 +4,7 @@ import {loadStays} from '../../../../lib/stays';
 import {saveStayAccess} from '../../../../lib/stay-login';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
 import {activeOnDemandRide,addPublicRide} from '../../../../lib/buggy-rides';
-import {TRAVELLERS,addHistory,createTransfer,publicBoats,seatAvailability,seatsForBooking,seatTaken,type TransportState} from '../../../../lib/transport';
+import {TRAVELLERS,addHistory,createTransfer,ports,publicBoats,seatAvailability,seatsForBooking,seatTaken,type TransportState} from '../../../../lib/transport';
 import {loadTransport,saveTransport} from '../../../../lib/transport-store';
 import {agentFromRequest,text,type Agent} from '../../../../lib/excursion-agents';
 
@@ -24,6 +24,7 @@ function transferView(state:TransportState,agent:Agent){
  return {
   sailings:state.sailings.filter(s=>s.active).map(({roomFare,...s})=>s),
   boats:publicBoats(state),
+  ports:ports(state),
   availability:seatAvailability(state),
   transfers:state.bookings.filter(b=>b.agentId===agent.id).map(b=>({id:b.id,name:b.name,traveller:b.traveller,phone:b.phone,adults:b.adults,children:b.children,infants:b.infants,total:b.total,status:b.status,agentReference:b.agentReference||'',created:b.created,
    journeys:b.journeys.map(j=>({seats:j.seats,date:j.date,depart:j.depart,arrive:j.arrive,from:j.from,to:j.to,operatorName:j.operatorName||j.boat,status:j.operatorStatus||'Accepted',boatName:j.boatName||'',declineReason:j.declineReason||'',cancelledByOperator:!!j.cancelledByOperator,departed:!!j.departedAt,noShow:!!j.noShow,boardedPax:j.boardedPax||0}))}))

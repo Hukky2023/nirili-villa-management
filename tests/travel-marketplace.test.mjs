@@ -27,6 +27,7 @@ const sha=s=>createHash('sha256').update(s).digest('hex');
 // Pure modules (no storage).
 const T=load('lib/transport.ts');
 const OP=load('lib/transport-operator.ts');
+const CH=load('lib/transport-charter.ts');
 const BR=load('lib/buggy-rides.ts');
 const BO=load('lib/buggy-operator.ts');
 
@@ -508,14 +509,83 @@ test('locals pay the local fare; expats too when the operator allows it',()=>{
  assert.equal(local.total,18000);
  assert.equal(local.journeys[0].fare,12000);
  assert.throws(()=>book('Local',30000,[3,4]),/fare changed/);
- assert.equal(book('Expat',30000,[3,4]).total,30000);
+ assert.equal(book('Expat',30000,[3,4]).total,30000); // no expat fare yet: tourist fare
  assert.throws(()=>book('Martian',30000,[3,4]),/passenger type/);
  // Fares can change on a departure with bookings; sold tickets keep their fare.
  state.bookings.push(local);
- OP.saveOperatorSailing(state,coral,{...s,localFare:10000,expatLocal:true});
- assert.equal(T.fareFor(state.sailings.find(x=>x.id===sailing.id),'Expat'),10000);
+ OP.saveOperatorSailing(state,coral,{...s,localFare:10000,expatFare:15000});
+ assert.deepEqual(['Tourist','Local','Expat'].map(t=>T.fareFor(state.sailings.find(x=>x.id===sailing.id),t)),[20000,10000,15000]);
+ // Older departures that gave expats the local fare keep doing so.
+ assert.equal(T.fareFor({fare:20000,localFare:9000,expatLocal:true},'Expat'),9000);
+ OP.saveOperatorSailing(state,coral,{...s,localFare:10000,expatFare:'',expatLocal:true});
+ assert.equal(state.sailings.find(x=>x.id===sailing.id).expatFare,10000);
  assert.equal(local.journeys[0].fare,12000);
  // Without a local fare everyone pays the tourist fare.
  OP.saveOperatorSailing(state,coral,{...s,localFare:''});
  assert.equal(T.fareFor(state.sailings.find(x=>x.id===sailing.id),'Local'),20000);
+});
+
+test('private charters: operators price routes, guests request, operators confirm with a free boat',()=>{
+ const {state,big,small,sailing}=sea();
+ assert.throws(()=>CH.saveCharterRate(state,coral,{from:'A',to:'A',price:100,blockMin:60}),/starts and where it goes/);
+ assert.throws(()=>CH.saveCharterRate(state,coral,{from:'Velana Airport',to:'Dhiffushi',price:500000,blockMin:120,boatIds:['BOAT-X']}),/own fleet/);
+ const rate=CH.saveCharterRate(state,coral,{from:'Velana Airport',to:'Dhiffushi',price:500000,blockMin:120});
+ assert.deepEqual(T.ports(state),['Dhiffushi','Velana Airport']);
+ assert.equal(CH.publicCharterRates(state)[0].maxPax,10);
+ // At 10:30 on a Monday the big boat runs the 10:00 departure, so only the small one is free.
+ assert.equal(CH.searchCharters(state,{from:'velana airport',to:'Dhiffushi',date:FUTURE,time:'10:30',pax:4}).length,1);
+ assert.equal(CH.searchCharters(state,{from:'Velana Airport',to:'Dhiffushi',date:FUTURE,time:'10:30',pax:6}).length,0);
+ assert.equal(CH.searchCharters(state,{from:'Velana Airport',to:'Dhiffushi',date:FUTURE,time:'14:00',pax:6})[0].price,500000);
+ const ask=extra=>CH.requestCharter(state,{rateId:rate.id,date:FUTURE,time:'14:00',pax:6,name:'Group',phone:'+9607000000',expectedPrice:500000,token:'t',...extra},'walk-transfer:x');
+ assert.throws(()=>ask({expectedPrice:1}),/price changed/);
+ assert.throws(()=>ask({pax:20}),/No boat is free/);
+ const c=ask();
+ assert.equal(c.status,'Requested');
+ assert.throws(()=>CH.confirmCharter(state,coral.id,c.id,small.id,'op'),/has 4 seats/);
+ assert.throws(()=>CH.confirmCharter(state,blue.id,c.id,big.id,'op'),/Charter not found/);
+ CH.confirmCharter(state,coral.id,c.id,big.id,'op');
+ assert.equal(c.boatName,'Coral 1');
+ // The boat is now busy: no second charter, no one-day swap onto that time, no new departure.
+ assert.equal(CH.searchCharters(state,{from:'Velana Airport',to:'Dhiffushi',date:FUTURE,time:'15:00',pax:6}).length,0);
+ assert.match(CH.boatBusy(state,big.id,FUTURE,'15:00',30),/14:00 charter/);
+ assert.throws(()=>OP.saveOperatorSailing(state,coral,{from:'Dhiffushi',to:'Velana Airport',depart:'14:30',arrive:'15:30',boatId:big.id,fare:1}),/confirmed charter/);
+ assert.throws(()=>OP.saveBoat(state,coral,{...big,active:false}),/confirmed charters/);
+ // Completing counts it on the statement with commission.
+ assert.throws(()=>CH.completeCharter(state,coral.id,c.id,'op','2030-06-02'),/day it runs/);
+ CH.completeCharter(state,coral.id,c.id,'op',FUTURE);
+ const st=OP.operatorStatement(state,{id:coral.id,commissionPercent:10},'2030-06');
+ assert.equal(st.charters.length,1);
+ assert.equal(st.charterCommissionMvr,50000);
+ assert.equal(st.commissionMvr,50000);
+ // Declining needs a reason.
+ const d=ask({token:'u'});
+ assert.throws(()=>CH.declineCharter(state,coral.id,d.id,'','op'),/why/);
+ assert.equal(CH.declineCharter(state,coral.id,d.id,'Weather','op').status,'Declined');
+ assert.ok(sailing);
+});
+
+test('the public site lists ports and vessels, searches charters and sends requests',async()=>{
+ const s=apis();
+ await s.create();
+ const {cookie}=await s.signIn('coralspeed','coral-pass-1');
+ const post=body=>s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{...body,viewDate:FUTURE},cookie));
+ let d=await (await post({action:'save-boat',boat:{name:'Coral 1',layout:T.defaultLayout(10)}})).json();
+ d=await (await post({action:'save-charter-rate',rate:{from:'Velana Airport',to:'Maafushi',price:800000,blockMin:120}})).json();
+ assert.equal(d.charterRates.length,1);
+ const ask=body=>s.walkin.POST(new Request('https://transfers.nirilihotels.test/api/walkin-transfers',{method:'POST',headers:{origin:'https://transfers.nirilihotels.test','content-type':'application/json'},body:JSON.stringify(body)}));
+ const view=await (await s.walkin.GET()).json();
+ assert.deepEqual(view.ports,['Maafushi','Velana Airport']);
+ assert.deepEqual(view.stats,{vessels:1,operators:1});
+ const offers=(await (await ask({action:'charter-search',from:'Velana Airport',to:'Maafushi',date:FUTURE,time:'09:00',pax:8})).json()).offers;
+ assert.equal(offers[0].operatorName,'Coral Speed');
+ const sent=await ask({action:'charter',token:'c1',rateId:offers[0].rateId,date:FUTURE,time:'09:00',pax:8,name:'Big Group',phone:'+447700900123',expectedPrice:800000});
+ assert.equal(sent.status,200,JSON.stringify(await sent.clone().json()));
+ const body=await sent.json();
+ assert.match(body.charter.id,/^CH-/);
+ assert.equal(body.charters[0].status,'Requested');
+ assert.equal(s.notices.at(-1).title,'New charter request');
+ // The operator sees it with the guest's number and confirms it.
+ d=await (await post({action:'charter-confirm',id:body.charter.id,boatId:d.boats[0].id})).json();
+ assert.equal(d.charters[0].status,'Confirmed');
+ assert.equal(d.charters[0].phone,'+447700900123');
 });

@@ -11,7 +11,7 @@ const mvr=(c:number)=>'MVR '+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const usd=(c:number)=>'$'+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const niceDate=(d:string)=>d?new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}):'';
 const runs=(s:Sailing,d:string)=>!Array.isArray(s.days)||!s.days.length||s.days.includes(new Date(d+'T00:00:00Z').getUTCDay());
-const leg=(s:Sailing,kind:'arrival'|'departure')=>kind==='arrival'?/airport/i.test(s.from)&&/dhiffushi/i.test(s.to):/dhiffushi/i.test(s.from)&&/airport/i.test(s.to);
+const same=(a:string,b:string)=>a.trim().toLowerCase()===b.trim().toLowerCase();
 
 export function useTravel(){
  const [data,setData]=useState<any>(null),[error,setError]=useState('');
@@ -32,14 +32,16 @@ export function useTravel(){
 
 export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;pickup:string}){
  const {data,send}=travel;
- const [kind,setKind]=useState<'arrival'|'departure'>('arrival'),[date,setDate]=useState(''),[sailingId,setSailingId]=useState('');
+ const [from,setFrom]=useState(''),[to,setTo]=useState(''),[date,setDate]=useState(''),[sailingId,setSailingId]=useState('');
  const [adults,setAdults]=useState(2),[children,setChildren]=useState(0),[infants,setInfants]=useState(0);
  const [name,setName]=useState(''),[phone,setPhone]=useState(''),[reference,setReference]=useState(''),[notes,setNotes]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState(''),[picked,setPicked]=useState<number[]>([]),[traveller,setTraveller]=useState('');
  const token=useRef('');
  useEffect(()=>{token.current=crypto.randomUUID();},[]);
  useEffect(()=>{if(!date&&data?.today)setDate(data.today);},[data,date]);
- const options=useMemo(()=>(data?.sailings||[]).filter((s:Sailing)=>leg(s,kind)&&date&&runs(s,date)).sort((a:Sailing,b:Sailing)=>a.depart.localeCompare(b.depart)),[data,kind,date]);
+ const portList:string[]=data?.ports||[];
+ useEffect(()=>{if(!data)return;if(!from)setFrom(portList.find(p=>/airport/i.test(p))||portList[0]||'');if(!to)setTo(portList.find(p=>/dhiffushi/i.test(p))||portList[1]||'');},[data]);
+ const options=useMemo(()=>(data?.sailings||[]).filter((s:Sailing)=>same(s.from,from)&&same(s.to,to)&&date&&runs(s,date)).sort((a:Sailing,b:Sailing)=>a.depart.localeCompare(b.depart)),[data,from,to,date]);
  useEffect(()=>{if(!options.some((s:Sailing)=>s.id===sailingId))setSailingId(options[0]?.id||'');},[options,sailingId]);
  const sailing=options.find((s:Sailing)=>s.id===sailingId);
  const adultFare=sailing?fareFor(sailing,traveller||'Tourist'):0,total=adultFare*adults+Math.round(adultFare/2)*children;
@@ -67,9 +69,9 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
   <form className="nh-transfer-form" onSubmit={submit}>
    <div className="nh-step">
     <h3>Speedboat transfer</h3>
-    <div className="nh-agent-tabs" role="group" aria-label="Route">
-     <button type="button" aria-pressed={kind==='arrival'} onClick={()=>setKind('arrival')}>Airport → Dhiffushi</button>
-     <button type="button" aria-pressed={kind==='departure'} onClick={()=>setKind('departure')}>Dhiffushi → Airport</button>
+    <div className="nh-fields">
+     <label><span><MapPin/>From</span><select required value={from} onChange={e=>setFrom(e.target.value)}>{portList.map(p=><option key={p}>{p}</option>)}</select></label>
+     <label><span><MapPin/>To</span><select required value={to} onChange={e=>setTo(e.target.value)}>{portList.filter(p=>p!==from).map(p=><option key={p}>{p}</option>)}</select></label>
     </div>
     <div className="nh-fields">
      <label><span><CalendarDays/>Travel date</span><input required type="date" min={data?.today} value={date} onChange={e=>setDate(e.target.value)}/></label>
@@ -98,7 +100,7 @@ export function Transfers({travel,pickup}:{travel:ReturnType<typeof useTravel>;p
   <aside className="nh-fare">
    <p className="nh-kicker">Speedboat transfer</p>
    <dl>
-    <div><dt>Route</dt><dd>{kind==='arrival'?'Airport → Dhiffushi':'Dhiffushi → Airport'}</dd></div>
+    <div><dt>Route</dt><dd>{from} → {to}</dd></div>
     <div><dt>Departure</dt><dd>{sailing?niceDate(date)+' · '+sailing.depart:'Choose a time'}</dd></div>
     {sailing&&<div><dt>Operator</dt><dd>{sailing.operatorName||sailing.boat}</dd></div>}
     <div><dt>Pickup</dt><dd>{pickup}</dd></div>

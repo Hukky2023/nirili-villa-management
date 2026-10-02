@@ -1,3 +1,4 @@
+import {charterOnBoat,charterStatement} from './transport-charter';
 import {addHistory,boatSeats,journeyLive,layoutSeats,runsOn,tripBoat,tripSeats,weekday,type Boat,type Journey,type Sailing,type SeatLayout,type TransferBooking,type TransportState} from './transport';
 
 // What a speedboat operator can do in its portal. Every function checks that the boat,
@@ -61,6 +62,7 @@ export function saveBoat(state:TransportState,operator:OperatorRef,input:any):Bo
    const lost=missingSeats(trip.seats,layoutSeats(layout));
    if(lost.length)throw Error('Seat '+lost.join(', ')+' is booked on the '+trip.sailing.depart+' trip on '+trip.date+'. Keep those seats in the map.');
   }
+  if(input?.active===false&&(state.charters||[]).some(c=>c.boatId===boat.id&&c.status==='Confirmed'&&departs({date:c.date,depart:c.time})>Date.now()))throw Error(boat.name+' has confirmed charters. Move them to another boat first.');
   if(input?.active===false&&soldOnBoat(state,boat.id).length)throw Error(boat.name+' has upcoming bookings. Move its trips to another boat before taking it out of service.');
   Object.assign(boat,{name,registration,layout,capacity,active:input?.active!==false,updatedAt:now});
   for(const s of state.sailings)if(s.boatId===boat.id)s.capacity=capacity;
@@ -93,24 +95,31 @@ function cleanCrewIds(input:any,crewIds:Set<string>){
 
 export function saveOperatorSailing(state:TransportState,operator:OperatorRef,input:any,crewIds?:Set<string>):Sailing{
  const from=text(input?.from,60),to=text(input?.to,60),depart=String(input?.depart||''),arrive=String(input?.arrive||'');
- const fare=Number(input?.fare),localFare=input?.localFare===''||input?.localFare==null?undefined:Number(input.localFare),roomFare=input?.roomFare===''||input?.roomFare==null?undefined:Number(input.roomFare);
+ const optional=(v:any)=>v===''||v==null?undefined:Number(v);
+ // Older departures gave expats the local fare with a switch; keep that as an expat fare.
+ const expatFare=optional(input?.expatFare)??(input?.expatLocal===true?optional(input?.localFare):undefined);
+ const fare=Number(input?.fare),localFare=optional(input?.localFare),roomFare=input?.roomFare===''||input?.roomFare==null?undefined:Number(input.roomFare);
  const days=Array.isArray(input?.days)?[...new Set(input.days.map(Number))].filter((d:any)=>Number.isInteger(d)&&d>=0&&d<=6).sort() as number[]:[];
  if(!from||!to||from===to)throw Error('Choose where the boat leaves from and where it goes.');
  if(!TIME.test(depart)||!TIME.test(arrive)||arrive<=depart)throw Error('Enter same-day departure and arrival times (24-hour), arrival after departure.');
  if(!Number.isInteger(fare)||fare<0||fare>10000000)throw Error('Enter the adult fare in MVR.');
  if(localFare!==undefined&&(!Number.isInteger(localFare)||localFare<0||localFare>10000000))throw Error('Enter a valid local fare in MVR, or leave it empty if locals pay the same.');
+ if(expatFare!==undefined&&(!Number.isInteger(expatFare)||expatFare<0||expatFare>10000000))throw Error('Enter a valid expat fare in MVR, or leave it empty if expats pay the tourist fare.');
  if(roomFare!==undefined&&(!Number.isInteger(roomFare)||roomFare<0||roomFare>10000000))throw Error('Enter a valid USD fare for Nirili Villa guests, or leave it empty.');
  const id=text(input?.id,80),previous=id?state.sailings.find(s=>s.id===id&&s.operatorId===operator.id):undefined;
  if(id&&!previous)throw Error('Departure not found.');
  const boat=ownBoat(state,operator.id,text(input?.boatId,60));
  const next:Sailing={id:previous?.id||'OPS-'+crypto.randomUUID().slice(0,8).toUpperCase(),boat:operator.name,operatorId:operator.id,operatorName:operator.name,from,to,depart,arrive,
-  capacity:boatSeats(boat).length,fare,...(localFare!==undefined?{localFare,expatLocal:input?.expatLocal===true}:{}),...(roomFare!==undefined?{roomFare}:{}),days:days.length===7?[]:days,active:input?.active!==false,boatId:boat.id,
+  capacity:boatSeats(boat).length,fare,...(localFare!==undefined?{localFare}:{}),...(expatFare!==undefined?{expatFare}:{}),...(roomFare!==undefined?{roomFare}:{}),days:days.length===7?[]:days,active:input?.active!==false,boatId:boat.id,
   ...(previous?.boatOverrides?{boatOverrides:previous.boatOverrides}:{}),...(previous?.crewOverrides?{crewOverrides:previous.crewOverrides}:{})};
  const crew=Array.isArray(input?.crewIds)&&crewIds?cleanCrewIds(input.crewIds,new Set([...crewIds,...(previous?.crewIds||[])])):previous?.crewIds;
  if(crew?.length)next.crewIds=crew;
  // A boat cannot run two departures at the same time on the same day.
  const clash=state.sailings.find(s=>s.id!==next.id&&s.active&&next.active&&s.boatId===boat.id&&daysOverlap(s.days,next.days)&&timesOverlap(s,next));
  if(clash)throw Error(boat.name+' already runs the '+clash.depart+' '+clash.from+' → '+clash.to+' departure at that time.');
+ const charter=next.active&&(state.charters||[]).find(c=>c.status==='Confirmed'&&c.boatId===boat.id&&departs({date:c.date,depart:c.time})>Date.now()&&runsOn(next,c.date)&&!next.boatOverrides?.[c.date]
+  &&charterOnBoat(state,boat.id,c.date,{start:minutes(next.depart),end:minutes(next.arrive)}));
+ if(charter)throw Error(boat.name+' has a confirmed charter on '+charter.date+' at '+charter.time+'. Choose another boat or time.');
  if(previous){
   // Fares can change at any time: every ticket keeps the fare it was booked at.
   const futureDates=[...new Set(state.bookings.flatMap(b=>b.journeys.filter(j=>journeyLive(b,j)&&j.scheduleId===previous.id&&departs(j)>Date.now()).map(j=>j.date)))];
@@ -139,6 +148,8 @@ export function setTripBoat(state:TransportState,operator:OperatorRef,scheduleId
  if(lost.length)throw Error(boat.name+' has no seat '+lost.join(', ')+', which is already booked on this trip.');
  const busy=state.sailings.find(s=>s.id!==sailing.id&&s.active&&(s.boatOverrides?.[date]||s.boatId)===boat.id&&runsOn(s,date)&&timesOverlap(s,sailing));
  if(busy)throw Error(boat.name+' is already on the '+busy.depart+' trip that day.');
+ const charter=charterOnBoat(state,boat.id,date,{start:minutes(sailing.depart),end:minutes(sailing.arrive)});
+ if(charter)throw Error(boat.name+' has a '+charter.time+' charter that day.');
  const overrides={...(sailing.boatOverrides||{})};
  if(boat.id===sailing.boatId)delete overrides[date];else overrides[date]=boat.id;
  // Drop swaps for trips that have gone.
@@ -268,8 +279,12 @@ export function operatorStatement(state:TransportState,operator:{id:string;commi
  });
  const sum=(k:keyof typeof rows[number])=>rows.reduce((n,r)=>n+(Number(r[k])||0),0);
  const roomUsd=sum('roomUsd'),commissionUsd=sum('commissionUsd');
+ // Completed private charters: the guest paid the operator the charter price.
+ const charters=charterStatement(state,operator.id,month,rate);
+ const charterMvr=charters.reduce((n,c)=>n+c.priceMvr,0),charterCommission=charters.reduce((n,c)=>n+c.commissionMvr,0);
  return {month,rate:rate*100,rows,tickets:rows.length,passengers:sum('pax'),noShows:rows.filter(r=>r.noShow).length,upcoming:accepted.length-travelled.length,
-  fareMvr:sum('collectedMvr'),commissionMvr:sum('commissionMvr'),
+  charters,charterMvr,charterCommissionMvr:charterCommission,
+  fareMvr:sum('collectedMvr')+charterMvr,commissionMvr:sum('commissionMvr')+charterCommission,
   roomUsd,commissionUsd,payableToOperatorUsd:roomUsd-commissionUsd};
 }
 

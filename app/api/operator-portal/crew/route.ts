@@ -3,6 +3,7 @@ import {occupied,transportToday,type Journey,type TransferBooking} from '../../.
 import {loadTransport,updateTransport} from '../../../../lib/transport-store';
 import {closeDeparture,crewOnTrip,crewTrips,operatorDay,setBoarded,ticketPax} from '../../../../lib/transport-operator';
 import {crewFromRequest,type Crew} from '../../../../lib/operator-crew';
+import {completeCharter,operatorCharters} from '../../../../lib/transport-charter';
 
 // Crew boarding view: a crew member sees only the trips their operator assigned them to, and
 // can board guests and close those trips. Fares are shown so crew can collect them on board.
@@ -29,7 +30,10 @@ async function view(crew:Crew,date:string){
   const d=operatorDay(state,crew.operatorId,t.date).find(x=>x.scheduleId===t.scheduleId);
   return d?{scheduleId:t.scheduleId,date:t.date,depart:d.depart,from:d.from,to:d.to,boatName:d.boatName,sold:d.sold,seats:d.seats,closed:d.closed}:null;
  }).filter(Boolean);
- return {revision,today,date,day,upcoming};
+ // Confirmed private charters this crew member is on, from today for the next 7 days.
+ const charters=operatorCharters(state,crew.operatorId).filter(c=>c.crewIds?.includes(crew.id)&&['Confirmed','Completed'].includes(c.status)&&c.date>=today&&c.date<=addDays(today,6))
+  .map(c=>({id:c.id,date:c.date,time:c.time,from:c.from,to:c.to,pax:c.pax,name:c.name,phone:c.phone,notes:c.notes,price:c.price,boatName:c.boatName||'',status:c.status}));
+ return {revision,today,date,day,upcoming,charters};
 }
 
 export async function GET(r:Request){
@@ -59,6 +63,11 @@ export async function POST(r:Request){
      if(!crewOnTrip(state,crew.operatorId,crew.id,scheduleId,date))throw Error('This is not one of your trips.');
      if(date>transportToday())throw Error('You can close a trip on the day it leaves.');
      return closeDeparture(state,crew.operatorId,scheduleId,date,by);
+    }
+    case 'charter-complete':{
+     const c=(state.charters||[]).find(x=>x.id===String(body.id||''));
+     if(!c||c.operatorId!==crew.operatorId||!c.crewIds?.includes(crew.id))throw Error('This charter is not one of yours.');
+     return completeCharter(state,crew.operatorId,c.id,by,transportToday());
     }
     default:throw Error('Crew can board guests and close their trips only.');
    }

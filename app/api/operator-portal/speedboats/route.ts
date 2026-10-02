@@ -4,6 +4,7 @@ import {occupied,transportToday,tripBoat,type Journey,type TransferBooking} from
 import {loadTransport,updateTransport} from '../../../../lib/transport-store';
 import {closeDeparture,declineTicket,operatorBoats,operatorDay,operatorSailings,operatorStatement,operatorTickets,saveBoat,saveOperatorSailing,setBoarded,setTripBoat,setTripCrew,ticketPax,tripCrew} from '../../../../lib/transport-operator';
 import {offers,operatorFromRequest,publicOperator,type Operator} from '../../../../lib/travel-operators';
+import {completeCharter,confirmCharter,declineCharter,operatorCharterRates,operatorCharters,saveCharterRate,setCharterCrew} from '../../../../lib/transport-charter';
 import {createCrew,operatorCrew,publicCrew,updateCrew} from '../../../../lib/operator-crew';
 
 // Speedboat operator portal: fleet with seat maps, crew logins, published departures with their
@@ -11,6 +12,7 @@ import {createCrew,operatorCrew,publicCrew,updateCrew} from '../../../../lib/ope
 const headers={'Cache-Control':'private, no-store'};
 const denied=()=>Response.json({error:'Your session has ended. Please sign in again.'},{status:401,headers});
 const dateOk=(d:string)=>/^\d{4}-\d{2}-\d{2}$/.test(d);
+const addDays=(d:string,n:number)=>new Date(Date.parse(d+'T00:00:00Z')+n*86400000).toISOString().slice(0,10);
 
 function ticketView(booking:TransferBooking,journey:Journey,index:number){
  const roomBilled=!!booking.stayId&&Number.isInteger(booking.roomCents);
@@ -33,7 +35,9 @@ async function view(operator:Operator,date:string,month:string){
   if(!trips.has(key))trips.set(key,{crewIds:sailing?tripCrew(sailing,t.journey.date):[],scheduleId:t.journey.scheduleId,date:t.journey.date,depart:t.journey.depart,arrive:t.journey.arrive,from:t.journey.from,to:t.journey.to,boatId:boat?.id||'',boatName:boat?.name||t.journey.boatName||'',swapped:!!sailing?.boatOverrides?.[t.journey.date],sold:0,tickets:[]});
   const trip=trips.get(key);trip.sold+=t.journey.seats.length;trip.tickets.push(ticketView(t.booking,t.journey,t.index));
  }
- return {revision,today,date,month,operator:publicOperator(operator),boats:operatorBoats(state,operator.id),sailings:operatorSailings(state,operator.id),crew,day,bookings:[...trips.values()],statement:operatorStatement(state,operator,month,today)};
+ return {revision,today,date,month,operator:publicOperator(operator),boats:operatorBoats(state,operator.id),sailings:operatorSailings(state,operator.id),crew,day,
+  charterRates:operatorCharterRates(state,operator.id),
+  charters:operatorCharters(state,operator.id).filter(c=>c.date>=addDays(today,-7)).map(({token,owner,history,...c})=>({...c,phone:['Requested','Confirmed','Completed'].includes(c.status)?c.phone:''})),bookings:[...trips.values()],statement:operatorStatement(state,operator,month,today)};
 }
 
 async function speedboatOperator(r:Request){
@@ -71,6 +75,15 @@ export async function POST(r:Request){
    switch(body.action){
     case 'save-boat':return saveBoat(state,ref,body.boat);
     case 'save-sailing':return saveOperatorSailing(state,ref,body.sailing,activeCrew);
+    case 'save-charter-rate':return saveCharterRate(state,ref,body.rate);
+    case 'charter-confirm':return confirmCharter(state,operator.id,String(body.id||''),String(body.boatId||''),by);
+    case 'charter-crew':return setCharterCrew(state,operator.id,String(body.id||''),body.crewIds,activeCrew);
+    case 'charter-complete':return completeCharter(state,operator.id,String(body.id||''),by,transportToday());
+    case 'charter-decline':{
+     const c=declineCharter(state,operator.id,String(body.id||''),body.reason,by);
+     notice={id:'transport:charter:'+c.id+':'+c.status,type:'transport',title:c.status==='Declined'?'Charter request declined':'Charter cancelled by operator',detail:operator.name+' · '+c.id+' · '+c.name+' '+c.phone+' · '+c.date+' '+c.time+' '+c.from+' → '+c.to+' · '+c.reason,ref:c.id,url:'/home'};
+     return c;
+    }
     case 'trip-crew':return setTripCrew(state,ref,String(body.scheduleId||''),String(body.date||''),body.crewIds,activeCrew,body.regular===true);
     case 'trip-boat':return setTripBoat(state,ref,String(body.scheduleId||''),String(body.date||''),String(body.boatId||''),by);
     case 'decline':

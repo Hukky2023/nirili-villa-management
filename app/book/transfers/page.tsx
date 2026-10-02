@@ -9,8 +9,8 @@ import './style.css';
 export const dynamic='force-dynamic';
 
 export const metadata:Metadata={
- title:'Nirili Transfers | Speedboat & Airport Transfers · Dhiffushi',
- description:'Book speedboat transfers between Velana International Airport and Dhiffushi with Nirili Travels.',
+ title:'Nirili Transfers | Speedboats & Private Charters · Dhiffushi',
+ description:'Find and book speedboats and private charters around the Maldives, from Velana Airport to Dhiffushi and beyond, with local, expat and tourist fares.',
  alternates:{canonical:SITES.transfers+'/'},
 };
 
@@ -20,9 +20,9 @@ export default function TransferBookingPage(){
   <SiteHeader action={{label:'Book a transfer',href:'#book'}}/>
   <section className="nh-page-hero" style={{backgroundImage:`url("${img('1530809355496-bac53698afe3',2200)}")`}}>
    <div className="nh-page-hero-inner">
-    <p className="nh-kicker nh-kicker-light">Nirili Transfers · Velana Airport ↔ Dhiffushi</p>
-    <h1>From the airport <em>to the island.</em></h1>
-    <p>Pick your route and departure time, tell us who&rsquo;s travelling, and we&rsquo;ll hold your seats on the speedboat.</p>
+    <p className="nh-kicker nh-kicker-light">Nirili Transfers · Speedboats &amp; private charters</p>
+    <h1>Find your sea transport <em>in the Maldives.</em></h1>
+    <p>Choose where you&rsquo;re going and who&rsquo;s travelling, pick a speedboat and your seats, or charter a whole boat.</p>
    </div>
   </section>
   <TransferBookingSite/>

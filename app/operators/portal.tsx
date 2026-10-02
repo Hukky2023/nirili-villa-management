@@ -9,11 +9,11 @@ import {defaultLayout,type SeatLayout} from '../../lib/transport';
 type CrewMember={id:string;operatorId:string;operatorName?:string;name:string;phone:string;role:'Captain'|'Crew';username:string;active:boolean};
 type Operator={id:string;name:string;contactName:string;services:('boat'|'buggy')[];commissionPercent:number;buggyOnline?:boolean};
 type Boat={id:string;name:string;registration:string;capacity:number;active:boolean;layout?:SeatLayout};
-type Sailing={id:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;roomFare?:number;days?:number[];active:boolean;boatId?:string;crewIds?:string[];localFare?:number;expatLocal?:boolean};
+type Sailing={id:string;from:string;to:string;depart:string;arrive:string;capacity:number;fare:number;roomFare?:number;days?:number[];active:boolean;boatId?:string;crewIds?:string[];localFare?:number;expatFare?:number;expatLocal?:boolean};
 type Ticket={traveller?:string;localFare?:boolean;cancelledByOperator?:boolean;bookingId:string;index:number;name:string;phone:string;adults:number;children:number;infants:number;pax:number;notes:string;source:string;pickup:string;seats:number[];date:string;depart:string;arrive:string;from:string;to:string;scheduleId:string;status:'New'|'Accepted'|'Declined';boatId:string;boatName:string;boardedPax:number;departed:boolean;noShow:boolean;declineReason:string;roomBilled:boolean;fareMvr:number};
 type Departure={crewIds?:string[];crewChanged?:boolean;scheduleId:string;date:string;from:string;to:string;depart:string;arrive:string;boatId:string;boatName:string;swapped:boolean;layout:SeatLayout|null;seats:number;sold:number;boarded:number;closed:boolean;tickets:Ticket[]};
 type Ride={id:string;guest:string;phone:string;location:string;destination:string;quantity:number;notes:string;date:string;pickupTime:string;status:string;fareCents:number;roomBilled:boolean;buggyId:string};
-type Tab='boarding'|'bookings'|'crew'|'departures'|'boats'|'rides'|'buggies'|'statement';
+type Tab='boarding'|'bookings'|'charters'|'crew'|'departures'|'boats'|'rides'|'buggies'|'statement';
 
 const mvr=(c:number)=>'MVR '+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const usd=(c:number)=>'$'+(Math.max(0,Number(c)||0)/100).toFixed(2);
@@ -65,7 +65,7 @@ function Workspace({operator,onSignedOut}:{operator:Operator;onSignedOut:()=>voi
  const boats=operator.services.includes('boat'),buggies=operator.services.includes('buggy');
  const tabs:{id:Tab;label:string;icon:any;show:boolean}[]=[
   {id:'boarding',label:'Boarding',icon:Users,show:boats},{id:'bookings',label:'Bookings',icon:ClipboardList,show:boats},
-  {id:'departures',label:'Departures',icon:CalendarDays,show:boats},{id:'boats',label:'Boats',icon:Ship,show:boats},{id:'crew',label:'Crew',icon:UserRound,show:boats},
+  {id:'departures',label:'Departures',icon:CalendarDays,show:boats},{id:'charters',label:'Charters',icon:Anchor,show:boats},{id:'boats',label:'Boats',icon:Ship,show:boats},{id:'crew',label:'Crew',icon:UserRound,show:boats},
   {id:'rides',label:'Rides',icon:Car,show:buggies},{id:'buggies',label:'Buggies',icon:Car,show:buggies},
   {id:'statement',label:'Statement',icon:Wallet,show:true}];
  const [tab,setTab]=useState<Tab>(boats?'boarding':'rides');
@@ -94,6 +94,7 @@ function Workspace({operator,onSignedOut}:{operator:Operator;onSignedOut:()=>voi
  async function signOut(){await fetch('/api/operator-portal/session',{method:'DELETE'}).catch(()=>null);onSignedOut();}
 
  const open:Ride[]=land?.open||[];
+ const charterRequests=(sea?.charters||[]).filter((c:any)=>c.status==='Requested').length;
  return <div className="op-wrap">
   <header className="op-bar">
    <div><small>Nirili Travels operator</small><strong>{operator.name}</strong><span>{[boats&&'Speedboat transfers',buggies&&'Buggy rides'].filter(Boolean).join(' · ')} · Nirili commission {operator.commissionPercent}%</span></div>
@@ -104,12 +105,13 @@ function Workspace({operator,onSignedOut}:{operator:Operator;onSignedOut:()=>voi
   </header>
   <nav className="op-tabs" aria-label="Portal sections">
    {tabs.filter(t=>t.show).map(t=><button key={t.id} type="button" aria-pressed={tab===t.id} onClick={()=>{setTab(t.id);setMessage('');setError('');}}>
-    <t.icon/>{t.label}{t.id==='rides'&&open.length>0&&<b>{open.length}</b>}
+    <t.icon/>{t.label}{t.id==='rides'&&open.length>0&&<b>{open.length}</b>}{t.id==='charters'&&charterRequests>0&&<b>{charterRequests}</b>}
    </button>)}
   </nav>
   {message&&<p className="op-message" role="status"><CheckCircle2/>{message}</p>}
   {error&&<p className="op-error" role="alert">{error}</p>}
   {tab==='boarding'&&sea&&<Boarding data={sea} date={date} setDate={setDate} busy={!!busy} act={sea$}/>}
+  {tab==='charters'&&sea&&<Charters data={sea} busy={!!busy} act={sea$}/>}
   {tab==='crew'&&sea&&<CrewTab crew={sea.crew||[]} busy={!!busy} act={sea$}/>}
   {tab==='bookings'&&sea&&<Bookings trips={sea.bookings||[]} crew={sea.crew||[]} openDay={d=>{setDate(d);setTab('boarding');}} busy={!!busy} act={sea$}/>}
   {tab==='departures'&&sea&&<Departures sailings={sea.sailings} boats={sea.boats} crew={sea.crew||[]} busy={!!busy} act={sea$}/>}
@@ -181,14 +183,14 @@ function Boarding({data,date,setDate,busy,act,crewMode=false}:{data:any;date:str
  </section>;
 }
 
-const emptySailing={id:'',from:'Velana Airport',to:'Dhiffushi',depart:'',arrive:'',boatId:'',crewIds:[] as string[],fare:'',localFare:'',expatLocal:false,roomFare:'',days:[] as number[],active:true};
+const emptySailing={id:'',from:'Velana Airport',to:'Dhiffushi',depart:'',arrive:'',boatId:'',crewIds:[] as string[],fare:'',localFare:'',expatFare:'',roomFare:'',days:[] as number[],active:true};
 function Departures({sailings,boats,crew,busy,act}:{sailings:Sailing[];boats:Boat[];crew:CrewMember[];busy:boolean;act:(b:any,done?:string)=>Promise<boolean>}){
  const [draft,setDraft]=useState<any>(null);
  const sorted=useMemo(()=>sailings.slice().sort((a,b)=>(a.from+a.depart).localeCompare(b.from+b.depart)),[sailings]);
  const usable=boats.filter(b=>b.active),boatName=(id?:string)=>boats.find(b=>b.id===id)?.name;
  async function save(e:React.FormEvent){
   e.preventDefault();
-  const sailing={...draft,fare:Math.round(Number(draft.fare)*100),localFare:draft.localFare===''?'':Math.round(Number(draft.localFare)*100),roomFare:draft.roomFare===''?'':Math.round(Number(draft.roomFare)*100)};
+  const sailing={...draft,fare:Math.round(Number(draft.fare)*100),localFare:draft.localFare===''?'':Math.round(Number(draft.localFare)*100),expatFare:draft.expatFare===''?'':Math.round(Number(draft.expatFare)*100),roomFare:draft.roomFare===''?'':Math.round(Number(draft.roomFare)*100)};
   if(await act({action:'save-sailing',sailing},'Departure saved. Guests can book seats on it now.'))setDraft(null);
  }
  if(!usable.length&&!sailings.length)return <p className="op-empty">Add a boat and draw its seats under Boats first. Every departure runs on one of your boats.</p>;
@@ -202,14 +204,14 @@ function Departures({sailings,boats,crew,busy,act}:{sailings:Sailing[];boats:Boa
    <label>Boat<select required value={draft.boatId} onChange={e=>setDraft({...draft,boatId:e.target.value})}><option value="">Choose a boat…</option>{usable.map(b=><option key={b.id} value={b.id}>{b.name} · {b.capacity} seats</option>)}</select></label>
    <label>Tourist adult fare (MVR)<input required type="number" min={0} step="0.01" value={draft.fare} onChange={e=>setDraft({...draft,fare:e.target.value})}/></label>
    <label>Local adult fare (MVR, optional)<input type="number" min={0} step="0.01" value={draft.localFare} onChange={e=>setDraft({...draft,localFare:e.target.value})} placeholder="Leave empty if everyone pays the same"/></label>
+   <label>Expat adult fare (MVR, optional)<input type="number" min={0} step="0.01" value={draft.expatFare} onChange={e=>setDraft({...draft,expatFare:e.target.value})} placeholder="Leave empty if expats pay the tourist fare"/></label>
    <label>Fare for Nirili Villa guests (USD, optional)<input type="number" min={0} step="0.01" value={draft.roomFare} onChange={e=>setDraft({...draft,roomFare:e.target.value})} placeholder="Leave empty if not offered"/></label>
   </div>
   <datalist id="op-places">{PLACES.map(p=><option key={p} value={p}/>)}</datalist>
   {crew.some(c=>c.active)&&<fieldset className="op-days"><legend>Regular crew (change it for one day under Boarding)</legend>{crew.filter(c=>c.active||draft.crewIds.includes(c.id)).map(c=><label key={c.id}><input type="checkbox" checked={draft.crewIds.includes(c.id)} onChange={e=>setDraft({...draft,crewIds:e.target.checked?[...draft.crewIds,c.id]:draft.crewIds.filter((x:string)=>x!==c.id)})}/>{c.name} · {c.role}</label>)}</fieldset>}
   <fieldset className="op-days"><legend>Runs on (none ticked = every day)</legend>{DAYS.map((d,i)=><label key={d}><input type="checkbox" checked={draft.days.includes(i)} onChange={e=>setDraft({...draft,days:e.target.checked?[...draft.days,i]:draft.days.filter((x:number)=>x!==i)})}/>{d}</label>)}</fieldset>
-  {draft.localFare!==''&&<label className="op-check"><input type="checkbox" checked={!!draft.expatLocal} onChange={e=>setDraft({...draft,expatLocal:e.target.checked})}/>Expats living in the Maldives also pay the local fare</label>}
   <label className="op-check"><input type="checkbox" checked={draft.active} onChange={e=>setDraft({...draft,active:e.target.checked})}/>On sale</label>
-  <p className="op-muted">With a local fare, guests choose Tourist, Maldivian or Expat when booking; check their ID card or work permit at boarding. Changing a fare only affects new bookings. Guests choose their seats on this boat's seat map. To use a different boat on one day only, change it in Boarding for that date. Children pay half the adult fare; infants travel free on a lap.</p>
+  <p className="op-muted">Guests choose Local, Expat or Tourist when booking and pay that fare; check their ID card or work permit at boarding. Changing a fare only affects new bookings. Guests choose their seats on this boat's seat map. To use a different boat on one day only, change it in Boarding for that date. Children pay half the adult fare; infants travel free on a lap.</p>
   <div className="op-actions"><button className="op-primary" disabled={busy}>Save departure</button><button type="button" onClick={()=>setDraft(null)}>Cancel</button></div>
  </form>;
  return <section className="op-list">
@@ -217,10 +219,10 @@ function Departures({sailings,boats,crew,busy,act}:{sailings:Sailing[];boats:Boa
   {!sorted.length&&<p className="op-empty">Publish your first departure so guests can book seats.</p>}
   {sorted.map(s=><article key={s.id} className={'op-card'+(s.active?'':' is-off')}>
    <header><div><small>{s.days?.length?s.days.map(d=>DAYS[d]).join(' · '):'Every day'}</small><h3>{s.depart} {s.from} → {s.to}</h3></div><span className={'op-pill'+(s.active?' is-ok':'')}>{s.active?'On sale':'Off sale'}</span></header>
-   <p>Arrives {s.arrive} · {boatName(s.boatId)?boatName(s.boatId)+' · '+s.capacity+' seats':s.capacity+' seats'} · {mvr(s.fare)} adult{Number.isInteger(s.localFare)?' · Locals '+mvr(s.localFare!)+(s.expatLocal?' (and expats)':''):''}{Number.isInteger(s.roomFare)?' · Villa guests '+usd(s.roomFare!):''}</p>
+   <p>Arrives {s.arrive} · {boatName(s.boatId)?boatName(s.boatId)+' · '+s.capacity+' seats':s.capacity+' seats'} · {mvr(s.fare)} adult{Number.isInteger(s.localFare)?' · Locals '+mvr(s.localFare!):''}{Number.isInteger(s.expatFare)?' · Expats '+mvr(s.expatFare!):s.expatLocal&&Number.isInteger(s.localFare)?' · Expats '+mvr(s.localFare!):''}{Number.isInteger(s.roomFare)?' · Villa guests '+usd(s.roomFare!):''}</p>
    {crew.length>0&&<p className="op-muted">Crew: {crewNames(crew,s.crewIds)}</p>}
    {!s.boatId&&<p className="op-note">Choose the boat for this departure so guests see its seat map. Tap Edit.</p>}
-   <div className="op-actions"><button onClick={()=>setDraft({...s,boatId:s.boatId||'',crewIds:s.crewIds||[],fare:(s.fare/100).toFixed(2),localFare:Number.isInteger(s.localFare)?(s.localFare!/100).toFixed(2):'',expatLocal:!!s.expatLocal,roomFare:Number.isInteger(s.roomFare)?(s.roomFare!/100).toFixed(2):'',days:s.days||[]})}>Edit</button>
+   <div className="op-actions"><button onClick={()=>setDraft({...s,boatId:s.boatId||'',crewIds:s.crewIds||[],fare:(s.fare/100).toFixed(2),localFare:Number.isInteger(s.localFare)?(s.localFare!/100).toFixed(2):'',expatFare:Number.isInteger(s.expatFare)?(s.expatFare!/100).toFixed(2):s.expatLocal&&Number.isInteger(s.localFare)?(s.localFare!/100).toFixed(2):'',roomFare:Number.isInteger(s.roomFare)?(s.roomFare!/100).toFixed(2):'',days:s.days||[]})}>Edit</button>
     {s.boatId&&<button disabled={busy} onClick={()=>void act({action:'save-sailing',sailing:{...s,active:!s.active}},s.active?'Taken off sale.':'Back on sale.')}>{s.active?'Take off sale':'Put on sale'}</button>}</div>
   </article>)}
  </section>;
@@ -249,6 +251,69 @@ function Boats({boats,busy,act}:{boats:Boat[];busy:boolean;act:(b:any,done?:stri
    <p>{b.capacity} passenger seats{b.layout?'':' · seat map not drawn yet'}</p>
    <details className="op-seatmap"><summary>Seat map</summary><SeatMap layout={b.layout||defaultLayout(b.capacity)} legend={false} caption={'Seats on '+b.name}/></details>
    <div className="op-actions"><button onClick={()=>setDraft({...b,layout:b.layout||defaultLayout(b.capacity)})}>Edit boat and seats</button></div>
+  </article>)}
+ </section>;
+}
+
+// Private charters: requests to confirm with a boat, upcoming charters with crew, and the
+// charter routes and prices guests can book.
+function Charters({data,busy,act}:{data:any;busy:boolean;act:(b:any,done?:string)=>Promise<boolean>}){
+ const boats:Boat[]=(data.boats||[]).filter((b:Boat)=>b.active),crew:CrewMember[]=(data.crew||[]).filter((c:CrewMember)=>c.active);
+ const charters:any[]=data.charters||[],rates:any[]=data.charterRates||[];
+ const [pick,setPick]=useState<Record<string,string>>({}),[draft,setDraft]=useState<any>(null),[crewFor,setCrewFor]=useState<{id:string;ids:string[]}|null>(null);
+ const requests=charters.filter(c=>c.status==='Requested'),upcoming=charters.filter(c=>c.status==='Confirmed'),past=charters.filter(c=>!['Requested','Confirmed'].includes(c.status));
+ const fits=(c:any)=>boats.filter(b=>b.capacity>=c.pax);
+ async function saveRate(e:React.FormEvent){e.preventDefault();if(await act({action:'save-charter-rate',rate:{...draft,price:Math.round(Number(draft.price)*100),blockMin:Math.round(Number(draft.hours)*60)}},'Charter route saved. Guests can request it now.'))setDraft(null);}
+ const head=(c:any)=><header><div><small>{c.id} · {c.source}{c.traveller&&c.traveller!=='Tourist'?' · '+c.traveller:''}</small><h3>{niceDate(c.date)} · {c.time} · {c.from} → {c.to}</h3></div><span className={'op-pill'+(c.status==='Confirmed'||c.status==='Completed'?' is-ok':c.status==='Requested'?' is-new':'')}>{c.status}</span></header>;
+ const guest=(c:any)=><p><strong>{c.name}</strong> · {c.pax} people · {mvr(c.price)} to collect{c.phone&&<> · <a href={wa(c.phone)} target="_blank" rel="noopener noreferrer">{c.phone}</a></>}</p>;
+ const decline=(c:any,label:string)=><button className="op-danger" disabled={busy} onClick={()=>{const reason=window.prompt(label+' '+c.name+'’s charter? Tell the guest and Nirili why.');if(reason)void act({action:'charter-decline',id:c.id,reason},'Charter '+(c.status==='Requested'?'declined':'cancelled')+'. Nirili has been told.');}}><XCircle/>{label}</button>;
+ if(draft)return <form className="op-form" onSubmit={saveRate}>
+  <h3>{draft.id?'Edit charter route':'New charter route'}</h3>
+  <div className="op-grid">
+   <label>From<input list="op-places" required maxLength={60} value={draft.from} onChange={e=>setDraft({...draft,from:e.target.value})}/></label>
+   <label>To<input list="op-places" required maxLength={60} value={draft.to} onChange={e=>setDraft({...draft,to:e.target.value})}/></label>
+   <label>Price for the whole boat (MVR)<input required type="number" min={1} step="0.01" value={draft.price} onChange={e=>setDraft({...draft,price:e.target.value})}/></label>
+   <label>Boat is out for (hours)<input required type="number" min={0.25} max={12} step="0.25" value={draft.hours} onChange={e=>setDraft({...draft,hours:e.target.value})}/></label>
+  </div>
+  <datalist id="op-places">{PLACES.map(p=><option key={p} value={p}/>)}</datalist>
+  <fieldset className="op-days"><legend>Boats for this charter (none ticked = any boat big enough)</legend>{boats.map(b=><label key={b.id}><input type="checkbox" checked={draft.boatIds.includes(b.id)} onChange={e=>setDraft({...draft,boatIds:e.target.checked?[...draft.boatIds,b.id]:draft.boatIds.filter((x:string)=>x!==b.id)})}/>{b.name} · {b.capacity} seats</label>)}</fieldset>
+  <label>Note for guests (optional)<input maxLength={300} value={draft.note} onChange={e=>setDraft({...draft,note:e.target.value})} placeholder="e.g. Includes return the same day"/></label>
+  <label className="op-check"><input type="checkbox" checked={draft.active} onChange={e=>setDraft({...draft,active:e.target.checked})}/>On offer</label>
+  <p className="op-muted">Guests only see this charter when one of these boats is free at the time they ask for. You confirm each request with a boat.</p>
+  <div className="op-actions"><button className="op-primary" disabled={busy}>Save</button><button type="button" onClick={()=>setDraft(null)}>Cancel</button></div>
+ </form>;
+ return <section className="op-list">
+  <h3 className="op-h">Requests</h3>
+  {!requests.length&&<p className="op-muted">No charter requests waiting.</p>}
+  {requests.map(c=><article key={c.id} className="op-card op-new">{head(c)}{guest(c)}{c.notes&&<p className="op-note">{c.notes}</p>}
+   <div className="op-actions">
+    <select aria-label="Boat" value={pick[c.id]||fits(c)[0]?.id||''} onChange={e=>setPick(p=>({...p,[c.id]:e.target.value}))}>{fits(c).map(b=><option key={b.id} value={b.id}>{b.name} · {b.capacity} seats</option>)}</select>
+    <button className="op-primary" disabled={busy||!fits(c).length} onClick={()=>void act({action:'charter-confirm',id:c.id,boatId:pick[c.id]||fits(c)[0]?.id},'Charter confirmed. Message the guest on WhatsApp to let them know.')}>Confirm</button>
+    {decline(c,'Decline')}
+   </div>
+  </article>)}
+  <h3 className="op-h">Confirmed</h3>
+  {!upcoming.length&&<p className="op-muted">No confirmed charters.</p>}
+  {upcoming.map(c=><article key={c.id} className="op-card">{head(c)}{guest(c)}{c.notes&&<p className="op-note">{c.notes}</p>}
+   <p className="op-crew-line"><Ship/><span>{c.boatName}</span>
+    <select aria-label="Change boat" value="" disabled={busy} onChange={e=>e.target.value&&void act({action:'charter-confirm',id:c.id,boatId:e.target.value},'Boat changed.')}><option value="">Change boat…</option>{fits(c).filter(b=>b.id!==c.boatId).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></p>
+   {crewFor?.id===c.id?<div className="op-crew-pick"><div className="op-days">{crew.map(m=><label key={m.id}><input type="checkbox" checked={crewFor!.ids.includes(m.id)} onChange={e=>setCrewFor({id:c.id,ids:e.target.checked?[...crewFor!.ids,m.id]:crewFor!.ids.filter(x=>x!==m.id)})}/>{m.name} · {m.role}</label>)}</div>
+    <div className="op-actions"><button className="op-primary" disabled={busy} onClick={async()=>{if(await act({action:'charter-crew',id:c.id,crewIds:crewFor!.ids},'Crew updated.'))setCrewFor(null);}}>Save crew</button><button type="button" onClick={()=>setCrewFor(null)}>Cancel</button></div></div>
+   :crew.length>0&&<p className="op-crew-line"><UserRound/><span>Crew: {crewNames(data.crew||[],c.crewIds)}</span><button disabled={busy} onClick={()=>setCrewFor({id:c.id,ids:c.crewIds||[]})}>Change crew</button></p>}
+   <div className="op-actions">
+    <button className="op-primary" disabled={busy||c.date>data.today} onClick={()=>void act({action:'charter-complete',id:c.id},'Charter completed.')}><CheckCircle2/>Completed</button>
+    {decline(c,'Cancel')}
+   </div>
+  </article>)}
+  {past.length>0&&<details className="op-recent"><summary>Recent ({past.length})</summary><ul>{past.map(c=><li key={c.id}>{niceDate(c.date)} {c.time} · {c.from} → {c.to} · {c.name} · {c.status}{c.reason?' — '+c.reason:''}</li>)}</ul></details>}
+  <h3 className="op-h">Charter routes and prices</h3>
+  <button className="op-add" disabled={!boats.length} onClick={()=>setDraft({id:'',from:'Velana Airport',to:'Dhiffushi',price:'',hours:'2',boatIds:[],note:'',active:true})}><Plus/>New charter route</button>
+  {!boats.length&&<p className="op-muted">Add a boat under Boats first.</p>}
+  {rates.map(r=><article key={r.id} className={'op-card'+(r.active?'':' is-off')}>
+   <header><div><small>Boat out for {r.blockMin/60} h{r.boatIds.length?' · '+r.boatIds.map((id:string)=>(data.boats||[]).find((b:Boat)=>b.id===id)?.name).filter(Boolean).join(', '):' · any boat'}</small><h3>{r.from} → {r.to}</h3></div><span className={'op-pill'+(r.active?' is-ok':'')}>{r.active?'On offer':'Off'}</span></header>
+   <p>{mvr(r.price)} for the whole boat{r.note?' · '+r.note:''}</p>
+   <div className="op-actions"><button onClick={()=>setDraft({...r,price:(r.price/100).toFixed(2),hours:String(r.blockMin/60),note:r.note||''})}>Edit</button>
+    <button disabled={busy} onClick={()=>void act({action:'save-charter-rate',rate:{...r,active:!r.active}},r.active?'Charter taken off offer.':'Charter on offer again.')}>{r.active?'Stop offering':'Offer again'}</button></div>
   </article>)}
  </section>;
 }
@@ -336,6 +401,15 @@ function CrewWorkspace({crew,onSignedOut}:{crew:CrewMember;onSignedOut:()=>void}
      <b>{t.date===data.today?'Today':niceDate(t.date)} · {t.depart}</b><span>{t.from} → {t.to} · {t.boatName||'Boat to be confirmed'} · {t.sold}/{t.seats} seats{t.closed?' · departed':''}</span>
     </button></li>)}</ul>}
    </section>
+   {data.charters?.length>0&&<section className="op-departure">
+    <h3>Your private charters</h3>
+    <ul className="op-boat-list">{data.charters.map((c:any)=><li key={c.id} className="op-card">
+     <p><strong>{c.date===data.today?'Today':niceDate(c.date)} · {c.time} · {c.from} → {c.to}</strong></p>
+     <p>{c.name} · {c.pax} people · {c.boatName} · collect {mvr(c.price)}{c.phone&&<> · <a href={wa(c.phone)} target="_blank" rel="noopener noreferrer">{c.phone}</a></>}</p>
+     {c.notes&&<p className="op-note">{c.notes}</p>}
+     {c.status==='Completed'?<span className="op-pill is-ok">Completed</span>:<button className="op-primary" disabled={busy||c.date>data.today} onClick={()=>void act({action:'charter-complete',id:c.id},'Charter completed.')}><CheckCircle2/>Completed</button>}
+    </li>)}</ul>
+   </section>}
    <Boarding data={data} date={date} setDate={setDate} busy={busy} act={act} crewMode/>
   </>}
  </div>;
@@ -407,11 +481,13 @@ function Statement({month,setMonth,sea,land}:{month:string;setMonth:(m:string)=>
   {sea&&<article className="op-card">
    <h3>Speedboat trips travelled · {sea.tickets} tickets · {sea.passengers} passengers{sea.noShows?' · '+sea.noShows+' no-shows':''}</h3>{sea.upcoming>0&&<p className="op-muted">{sea.upcoming} accepted ticket(s) later this month are added once they travel.</p>}
    <dl className="op-sums">
-    <div><dt>Fares you collect</dt><dd>{mvr(sea.fareMvr)}</dd></div>
+    <div><dt>Fares you collect{sea.charters?.length?' (incl. '+sea.charters.length+' charter'+(sea.charters.length===1?'':'s')+')':''}</dt><dd>{mvr(sea.fareMvr)}</dd></div>
     <div><dt>Nirili commission ({sea.rate}%)</dt><dd>{mvr(sea.commissionMvr)}</dd></div>
     <div><dt>Villa guests, collected by Nirili</dt><dd>{usd(sea.roomUsd)}</dd></div>
     <div><dt>Nirili pays you (after commission)</dt><dd>{usd(sea.payableToOperatorUsd)}</dd></div>
    </dl>
+   {sea.charters?.length>0&&<div className="op-table"><table><thead><tr><th>Date</th><th>Charter</th><th>Guest</th><th>People</th><th>Boat</th><th>Price</th><th>Commission</th></tr></thead>
+    <tbody>{sea.charters.map((c:any)=><tr key={c.id}><td>{c.date}</td><td>{c.time} {c.route}</td><td>{c.guest}</td><td>{c.pax}</td><td>{c.boat}</td><td>{mvr(c.priceMvr)}</td><td>{mvr(c.commissionMvr)}</td></tr>)}</tbody></table></div>}
    {sea.rows.length>0&&<div className="op-table"><table><thead><tr><th>Date</th><th>Departure</th><th>Guest</th><th>Pax</th><th>Boat</th><th>Fare</th><th>Commission</th></tr></thead>
     <tbody>{sea.rows.map((r:any)=><tr key={r.bookingId+r.date+r.depart}><td>{r.date}</td><td>{r.depart} {r.route}</td><td>{r.guest}{r.noShow?' (no-show)':''}</td><td>{r.pax}</td><td>{r.boat}</td><td>{r.roomBilled?usd(r.roomUsd):r.noShow?'Not collected':mvr(r.fareMvr)}</td><td>{r.roomBilled?usd(r.commissionUsd):mvr(r.commissionMvr)}</td></tr>)}</tbody></table></div>}
   </article>}
