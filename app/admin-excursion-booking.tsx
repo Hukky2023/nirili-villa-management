@@ -158,7 +158,9 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
     ?'Excursion booking saved as Awaiting Scheduling. Admin can now assign the vessel, crew and trip time.'
     :'Excursion booking confirmed for '+formatDateDMY(bookingDate)+' at '+(selected?.time||d.booking?.time||'the scheduled time')+' Maldives time.');
    setOpen(false);reset();if(bookingDate===date)await onSaved();window.dispatchEvent(new Event('services-updated'));
-  }catch(e){onMessage((e as Error).message)}finally{setSaving(false)}
+  }catch(e){
+   fail((e as Error).message||'Could not save excursion booking.');
+  }finally{setSaving(false)}
  }
 
  const selectedPrice=selected?.priceCents
@@ -173,6 +175,7 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
   <button type="button" className="excursion-primary-btn admin-excursion-book-trigger" onClick={()=>{setOpen(true);setBookingDate(date);setDaySchedules(schedules);setDayGroups(sharedBoatGroups);setForm({...blankForm(),scheduleId:initialScheduleId||''});setFormError('')}}>{triggerLabel}</button>
   {open&&<div className="excursion-schedule-overlay"><form className="excursion-schedule-dialog admin-excursion-booking" onSubmit={submit} noValidate>
    <header><div><small>ADMIN BOOKING</small><h3>Book excursion on any day</h3><p>{formatDateDMY(bookingDate)} · Add every guest, then confirm a scheduled trip or send it to Awaiting Scheduling.</p></div><button type="button" className="excursion-dialog-close" aria-label="Close" onClick={close}><X/></button></header>
+   {formError&&<div className="admin-booking-top-error" role="alert" aria-live="assertive"><strong>BOOKING NOT CONFIRMED</strong><span>{formError}</span></div>}
    <div className="excursion-schedule-form-grid">
     <label>Date<input required type="date" min={maldivesToday()} value={bookingDate} onChange={e=>loadDay(e.target.value)}/><small>Change the date to load that day's excursion schedule.</small></label>
     <label>Available trip<select required disabled={loadingDay} value={form.scheduleId} onChange={e=>{const value=e.target.value;setForm({...form,scheduleId:value,menuItemId:value==='__other__'?form.menuItemId:'',vesselId:'',privateBoatRequested:false});if(value==='__other__')void loadExcursionMenu();}}><option value="">{loadingDay?'Loading trips…':'Choose available trip'}</option>{bookableSchedules.map((trip:any)=>{const tripGroup=trip.sharedBoatKey?dayGroups[trip.sharedBoatKey]:null;const tripBooked=Number(tripGroup?.bookedPax??trip.bookedPax??0);const tripCapacity=Number(tripGroup?.capacity??trip.capacity??0);const left=Math.max(0,tripCapacity-tripBooked);return <option key={trip.id} value={trip.id}>{trip.time} · {trip.name} · {left>0?left+' seat'+(left===1?'':'s')+' left':'FULL · extra vessel required'}</option>})}<option value="__other__">Other trip</option></select><small>{selected?selected.time+' Maldives time · '+remaining+' of '+capacity+' seats available':choosingOther?'Choose the excursion below. Admin will schedule the trip after booking.':'Choose a scheduled trip or Other trip.'}</small></label>
@@ -208,8 +211,6 @@ export default function AdminExcursionBooking({schedules,sharedBoatGroups,resour
     {privateBoatEligible&&<label className="full admin-private-boat"><span><input type="checkbox" checked={!!form.privateBoatRequested} onChange={e=>setForm({...form,privateBoatRequested:e.target.checked,vesselId:''})}/> Private boat for this group <strong>+{money(PRIVATE_BOAT_SURCHARGE_CENTS)}</strong></span><small>Available for 4+ guests. The booking will go to Awaiting Scheduling so Admin can assign a dedicated vessel and crew.</small></label>}
 
     {needsExtraVessel&&<label className="full admin-extra-vessel">Extra vessel<select required value={form.vesselId} onChange={e=>setForm({...form,vesselId:e.target.value})}><option value="">Choose extra vessel</option>{availableExtraVessels.map((v:any)=><option key={v.id} value={v.id}>{v.name}{Number.isSafeInteger(Number(v.capacity))?' · '+v.capacity+' pax':''}</option>)}</select><small>This trip only has {remaining} seat{remaining===1?'':'s'} left. The selected extra vessel will carry this booking at the same departure time.</small>{!availableExtraVessels.length&&<strong>No available vessel has enough recorded capacity. Update vessel capacity or choose Private boat to schedule it separately.</strong>}</label>}
-
-    {formError&&<div className="full admin-booking-form-error" role="alert"><strong>Booking needs attention</strong><span>{formError}</span></div>}
 
     {selected&&<div className="full admin-booking-capacity"><span>{form.privateBoatRequested?'Private boat request':needsExtraVessel?'Extra vessel booking':'Selected trip'}</span><strong>{selected.time} · {selected.name}</strong><small>{booked+' / '+capacity+' confirmed · '+remaining+' seat'+(remaining===1?'':'s')+' remaining · '}{estimatedTotal?money(estimatedTotal)+' estimated total · ':''}{form.privateBoatRequested?'Awaiting Scheduling after save.':needsExtraVessel?'Separate vessel will be recorded for this booking.':'Departure time is checked using Maldives time (UTC+5).'}</small></div>}
     {selectedOther&&<div className="full admin-booking-capacity"><span>Awaiting Scheduling</span><strong>{selectedOther.name}</strong><small>{estimatedTotal?money(estimatedTotal)+' estimated total · ':''}Admin will assign the departure time, vessel and crew after the booking is saved.</small></div>}
