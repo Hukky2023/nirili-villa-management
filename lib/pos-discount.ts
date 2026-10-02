@@ -19,6 +19,6 @@ export function discountPOSBill(state:any,o:any,b:any,username:string){
   delete s.paidBills?.['Restaurant:'+o.id];o.stayId=s.id;o.room=s.room;o.customer=s.guest;if(percent===100)o.method='Room';
   s.history.unshift({date,by:username,detail:'Restaurant bill '+o.id+' · '+detail});
  }else if(b.action==='free'){
-  o.stayId='';o.room='';o.method='';
+  o.stayId='';o.room='';o.method='Complimentary';o.paidAt=date;
  }
 }
