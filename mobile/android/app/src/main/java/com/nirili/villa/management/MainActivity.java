@@ -148,6 +148,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                hideWelcomeSignInButton();
                 if (notificationsAllowed()) {
                     refreshFcmToken();
                 } else {
@@ -204,6 +205,20 @@ public class MainActivity extends Activity {
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) ->
                 openExternal(Uri.parse(url))
         );
+    }
+
+    private void hideWelcomeSignInButton() {
+        if (webView == null) {
+            return;
+        }
+        String js = "(function(){"
+                + "var nodes=document.querySelectorAll('a,button');"
+                + "for(var i=0;i<nodes.length;i++){"
+                + "var t=(nodes[i].innerText||nodes[i].textContent||'').trim().toLowerCase();"
+                + "if(t==='sign in'){nodes[i].style.display='none';}"
+                + "}"
+                + "})();";
+        webView.evaluateJavascript(js, null);
     }
 
     private void ensureNotificationChannel() {
