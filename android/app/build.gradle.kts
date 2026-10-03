@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.nirili.villa.management"
+    namespace = "com.nirili.villamanagement"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.nirili.villa.management"
+        applicationId = "com.nirili.villamanagement"
         minSdk = 24
         targetSdk = 35
         versionCode = 2
