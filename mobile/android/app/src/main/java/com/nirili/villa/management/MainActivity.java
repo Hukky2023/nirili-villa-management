@@ -218,12 +218,26 @@ public class MainActivity extends Activity {
             return;
         }
         String js = "(function(){"
-                + "var nodes=document.querySelectorAll('a,button');"
+                + "function hideExtraSignIn(){"
+                + "var nodes=document.querySelectorAll('a,button,[role=button]');"
                 + "for(var i=0;i<nodes.length;i++){"
                 + "var n=nodes[i];"
                 + "var t=(n.innerText||n.textContent||'').trim().toLowerCase();"
-                + "if(t==='sign in'&&!n.closest('form')){n.style.display='none';}"
+                + "var realLogin=n.classList&&n.classList.contains('nv-submit');"
+                + "var inLoginForm=!!n.closest('.nv-login-form');"
+                + "if(t==='sign in'&&!realLogin&&!inLoginForm){"
+                + "n.style.setProperty('display','none','important');"
+                + "n.setAttribute('aria-hidden','true');"
                 + "}"
+                + "}"
+                + "}"
+                + "hideExtraSignIn();"
+                + "if(!window.__niriliSignInObserver){"
+                + "window.__niriliSignInObserver=new MutationObserver(function(){hideExtraSignIn();});"
+                + "window.__niriliSignInObserver.observe(document.documentElement,{childList:true,subtree:true,attributes:true});"
+                + "}"
+                + "setTimeout(hideExtraSignIn,250);"
+                + "setTimeout(hideExtraSignIn,1000);"
                 + "})();";
         webView.evaluateJavascript(js, null);
     }
