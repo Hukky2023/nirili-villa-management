@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "826099916768",
-    "project_id": "nirili-villa-management",
-    "storage_bucket": "nirili-villa-management.firebasestorage.app"
+    "project_number": "890894555633",
+    "project_id": "nirili-villa-management-510503",
+    "storage_bucket": "nirili-villa-management-510503.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:826099916768:android:5adae9b3d661951d449585",
+        "mobilesdk_app_id": "1:890894555633:android:9f8ed2b6b225fe626a4c50",
         "android_client_info": {
-          "package_name": "com.nirili.villa.management"
+          "package_name": "com.nirili.villamanagement"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCossyr9JoKhcWMIlOjNIVPOQXcavJJEac"
+          "current_key": "AIzaSyCrmQvgyYBNCpy-5uIZ5qKm7ZFUhJijnIY"
         }
       ],
       "services": {
