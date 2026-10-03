@@ -4,7 +4,7 @@ Native Android WebView wrapper for the Nirili Villa Management system with Fireb
 
 ## Firebase
 
-The Android package is `com.nirili.villa.management` and is registered with Firebase project `nirili-villa-management`.
+The Android package is `com.nirili.villamanagement` and is registered with Firebase project `nirili-villa-management-510503`.
 
 The Firebase Admin service-account private key must never be added to this repository. Server-side FCM credentials belong in protected deployment secrets.
 
