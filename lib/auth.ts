@@ -59,8 +59,8 @@ return row&&await roomLoginActive(row.id)?publicUser(row):null;}
 export function hasPermission(user:Actor|null,permission:Permission){return !!user&&(user.role==="admin"||(user.role==="staff"&&user.permissions.includes(permission)));}
 export function sameOrigin(r:Request){return r.headers.get("origin")===new URL(r.url).origin;}
 export async function issueSession(id:string,tab?:string){
-const token=randomToken();await authDb().prepare("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(await digest(token),id,Date.now()+12*60*60*1000).run();
-return (tab?cookieName+"_"+tab:await sessionCookieName())+"="+token+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200";}
+const maxAge=365*24*60*60;const token=randomToken();await authDb().prepare("INSERT INTO account_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(await digest(token),id,Date.now()+maxAge*1000).run();
+return (tab?cookieName+"_"+tab:await sessionCookieName())+"="+token+"; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age="+maxAge;}
 export async function bootstrap(){
 const value=(env as unknown as Record<string,string>).NIRILI_BOOTSTRAP;
 if(!value)throw new Error("Initial accounts have not been configured");
