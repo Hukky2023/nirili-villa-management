@@ -4,12 +4,19 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Button
+import android.widget.ProgressBar
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -23,6 +30,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var webView: WebView
+    private lateinit var progress: ProgressBar
+    private lateinit var statusText: TextView
     private var fcmToken: String? = null
     private var pageReady = false
 
@@ -37,19 +46,57 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
         webView = findViewById(R.id.webView)
+        progress = findViewById(R.id.pageProgress)
+        statusText = findViewById(R.id.statusText)
+
+        findViewById<Button>(R.id.navBack).setOnClickListener {
+            if (webView.canGoBack()) webView.goBack()
+        }
+        findViewById<Button>(R.id.navHome).setOnClickListener {
+            webView.loadUrl(BASE_URL)
+        }
+        findViewById<Button>(R.id.navRefresh).setOnClickListener {
+            webView.reload()
+        }
 
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
 
+        webView.setBackgroundColor(Color.WHITE)
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
+        webView.settings.loadsImagesAutomatically = true
+        webView.settings.mediaPlaybackRequiresUserGesture = false
         webView.settings.allowFileAccess = false
         webView.settings.allowContentAccess = false
-        webView.webChromeClient = WebChromeClient()
+        webView.settings.setSupportZoom(false)
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                progress.progress = newProgress
+                progress.visibility = if (newProgress in 1..99) View.VISIBLE else View.GONE
+                if (newProgress in 1..99) {
+                    statusText.text = getString(R.string.status_loading)
+                }
+            }
+        }
+
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView, url: String) {
                 pageReady = url.startsWith(BASE_URL)
+                statusText.text = getString(R.string.status_online)
+                progress.visibility = View.GONE
                 if (pageReady) registerTokenWithSignedInWebSession()
+            }
+
+            override fun onReceivedError(
+                view: WebView,
+                request: WebResourceRequest,
+                error: WebResourceError
+            ) {
+                if (request.isForMainFrame) {
+                    statusText.text = getString(R.string.status_offline)
+                }
             }
         }
 
