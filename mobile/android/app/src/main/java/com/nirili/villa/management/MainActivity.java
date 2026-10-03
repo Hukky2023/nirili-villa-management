@@ -50,6 +50,8 @@ public class MainActivity extends Activity {
     private static final String PUSH_PREFS = NiriliMessagingService.PREFS;
     private static final String PUSH_TOKEN_KEY = NiriliMessagingService.TOKEN_KEY;
     private static final String PUSH_PERMISSION_ASKED = "notification_permission_requested";
+    private static final String APP_PREFS = "nirili_app";
+    private static final String LAST_TAB_KEY = "last_tab";
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -104,7 +106,7 @@ public class MainActivity extends Activity {
         if (launchTarget != null) {
             webView.loadUrl(LIVE_URL + launchTarget);
         } else if (savedInstanceState == null) {
-            webView.loadUrl(LIVE_URL);
+            webView.loadUrl(dashboardLaunchUrl());
         } else {
             webView.restoreState(savedInstanceState);
         }
@@ -148,7 +150,11 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                rememberTab(url);
                 hideWelcomeSignInButton();
+                if (isDashboardUrl(url)) {
+                    view.clearHistory();
+                }
                 if (notificationsAllowed()) {
                     refreshFcmToken();
                 } else {
@@ -214,11 +220,51 @@ public class MainActivity extends Activity {
         String js = "(function(){"
                 + "var nodes=document.querySelectorAll('a,button');"
                 + "for(var i=0;i<nodes.length;i++){"
-                + "var t=(nodes[i].innerText||nodes[i].textContent||'').trim().toLowerCase();"
-                + "if(t==='sign in'){nodes[i].style.display='none';}"
+                + "var n=nodes[i];"
+                + "var t=(n.innerText||n.textContent||'').trim().toLowerCase();"
+                + "if(t==='sign in'&&!n.closest('form')){n.style.display='none';}"
                 + "}"
                 + "})();";
         webView.evaluateJavascript(js, null);
+    }
+
+    private void rememberTab(String url) {
+        try {
+            Uri uri = Uri.parse(url);
+            String tab = uri.getQueryParameter("tab");
+            if (tab != null && tab.matches("^[a-f0-9]{32}$")) {
+                getSharedPreferences(APP_PREFS, MODE_PRIVATE)
+                        .edit()
+                        .putString(LAST_TAB_KEY, tab)
+                        .apply();
+            }
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private String dashboardLaunchUrl() {
+        String tab = getSharedPreferences(APP_PREFS, MODE_PRIVATE)
+                .getString(LAST_TAB_KEY, "");
+        if (tab != null && tab.matches("^[a-f0-9]{32}$")) {
+            return LIVE_URL + "/home?tab=" + tab;
+        }
+        return LIVE_URL + "/home";
+    }
+
+    private boolean isDashboardUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return false;
+        }
+        try {
+            Uri uri = Uri.parse(url);
+            String path = uri.getPath();
+            String portal = uri.getQueryParameter("portal");
+            return "/home".equals(path)
+                    || (("/".equals(path) || path == null || path.isEmpty())
+                    && ("admin".equals(portal) || "staff".equals(portal)));
+        } catch (RuntimeException ignored) {
+            return false;
+        }
     }
 
     private void ensureNotificationChannel() {
@@ -546,11 +592,20 @@ public class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
+        if (webView == null) {
+            finish();
+            return;
         }
+        String currentUrl = webView.getUrl();
+        if (isDashboardUrl(currentUrl)) {
+            finish();
+            return;
+        }
+        if (webView.canGoBack()) {
+            webView.goBack();
+            return;
+        }
+        finish();
     }
 
     @Override
