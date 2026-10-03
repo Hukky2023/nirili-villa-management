@@ -6,6 +6,8 @@
     <application
         android:allowBackup="false"
         android:label="Nirili Villa Management"
+        android:icon="@drawable/ic_nirili_app"
+        android:roundIcon="@drawable/ic_nirili_app"
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.NiriliVilla">
         <activity
