@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Nirili Villa Management</string>
+    <string name="status_online">● Online</string>
+    <string name="status_loading">● Loading</string>
+    <string name="status_offline">● Connection issue</string>
 </resources>
