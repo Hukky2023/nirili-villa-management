@@ -16,8 +16,8 @@ android {
         applicationId 'com.nirili.villa.management'
         minSdk 24
         targetSdk 36
-        versionCode 5
-        versionName '1.2.2'
+        versionCode 6
+        versionName '1.2.3'
 
         buildConfigField 'String', 'FIREBASE_APP_ID', quoted(firebaseAppId)
         buildConfigField 'String', 'FIREBASE_API_KEY', quoted(firebaseApiKey)
