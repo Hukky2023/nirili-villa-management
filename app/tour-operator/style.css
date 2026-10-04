@@ -199,3 +199,13 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
  .to-discount-details>summary::after{position:absolute;right:18px;top:14px}
  .to-discount-details .to-discounts{grid-template-columns:1fr}
 }
+
+
+/* Guest mix + child policy */
+.to-guest-policy{display:grid;gap:4px;padding:12px 14px;border-radius:11px;background:#eef8fb;border:1px solid #cfe0e8}
+.to-guest-policy strong{font-size:13px;color:#087fa8}
+.to-guest-policy span{font-size:12px;line-height:1.5;color:#52707f}
+.to-guest-counts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.to-guest-counts label{display:grid;gap:6px;font-size:13px;font-weight:800;color:#29485a}
+.to-guest-counts select{padding:11px 12px;border:1px solid #cbd9e3;border-radius:10px;background:#fff;color:#153247;font:inherit}
+@media(max-width:520px){.to-guest-counts{grid-template-columns:1fr 1fr}}
