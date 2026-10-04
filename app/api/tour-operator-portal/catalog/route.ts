@@ -15,6 +15,17 @@ const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const cleanPhone=(v:any)=>String(v||'').replace(/[\s()-]/g,'');
 const text=(v:any,max:number)=>String(v??'').trim().replace(/\s+/g,' ').slice(0,max);
 const nights=(a:string,b:string)=>(Date.parse(b)-Date.parse(a))/86400000;
+const SPECIAL_PACKAGE_INCLUDED=[
+ 'Turtle Snorkeling',
+ 'Shark Snorkeling (Nurse Shark)',
+ 'Sandbank Trip',
+ 'Coral Garden Snorkeling',
+ 'Dolphin Watching',
+ 'Fishing with Dinner'
+];
+const specialIncluded=(item:any)=>String(item?.category||'').toLowerCase()==='special'||String(item?.group||'').toLowerCase().includes('special')||String(item?.name||'').toLowerCase().includes('special package')
+ ?SPECIAL_PACKAGE_INCLUDED.map((name,index)=>({id:'special-'+(index+1),name}))
+ :[];
 
 function availableRooms(state:any,checkIn:string,checkOut:string,pax:number,roomType:string){
  return (state.rooms||[]).filter((room:any)=>{
@@ -46,7 +57,7 @@ async function view(operator:any){
  return {
   operator:publicTourOperator(operator),revision,today:islandToday(),plans,
   roomTypes,roomRates:roomRates(state.roomRates),
-  excursions:excursions.filter((x:any)=>x.active!==false).map((x:any)=>({id:x.id,name:x.name,cents:Number(x.cents)||0,pricingUnit:x.pricingUnit==='couple'?'couple':'guest',group:x.group||''})),
+  excursions:excursions.filter((x:any)=>x.active!==false).map((x:any)=>({id:x.id,name:x.name,cents:Number(x.cents)||0,pricingUnit:x.pricingUnit==='couple'?'couple':'guest',group:x.group||'',category:x.category||'',includedExcursions:specialIncluded(x)})),
   airportTransferCents:AIRPORT_TRANSFER_CENTS,
   bookings:bookingRows(state,operator.id)
  };
@@ -107,7 +118,10 @@ export async function POST(r:Request){
    status:'Pending',source:'Tour operator · '+operator.name,createdAt,estimate:total,tourOperatorId:operator.id,tourOperatorName:operator.name,tourOperatorRoomType:roomType,
    packageId:'tour-package-'+operator.id+'-'+crypto.randomUUID().slice(0,8),packageName,packageQuotedCents:total,packageRatePerGuestCents:Math.round(total/pax),packageNights:stayNights,packageMealPlan:meal,
    packageIncludeTransfer:transfer!=='none',packageTransferLabel:transfer==='return'?'Return airport transfer':transfer==='arrival'?'Arrival airport transfer':'',
-   packageExcursions:selectedExcursions.map((x:any)=>({id:String(x.id),name:String(x.name||x.id)})),
+   packageExcursions:selectedExcursions.flatMap((x:any)=>{
+    const included=specialIncluded(x);
+    return included.length?included:[{id:String(x.id),name:String(x.name||x.id)}];
+   }),
    tourOperatorPricing:{publicRoomCents:publicRoom,roomCents:roomNet,roomDiscountPercent:operator.roomDiscountPercent,publicExcursionCents:publicExcursions,excursionCents:excursionNet,excursionDiscountPercent:operator.excursionDiscountPercent,publicTransferCents:publicTransfer,transferCents:transferNet,transferDiscountPercent:operator.transferDiscountPercent,totalCents:total}
   };
   state.requests.push(request);
