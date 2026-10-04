@@ -12,10 +12,20 @@ export default function TourOperatorSite(){
  const [availability,setAvailability]=useState<any>(null),[availabilityBusy,setAvailabilityBusy]=useState(false),[availabilityMessage,setAvailabilityMessage]=useState("");
  const [login,setLogin]=useState({username:"",password:""});
  const [form,setForm]=useState<any>({guest:"",phone:"",email:"",checkIn:"",checkOut:"",adults:2,children:0,roomType:"",meal:"",addExcursions:false,excursionIds:[],transfer:"none",packageName:"",notes:""});
+ const [editing,setEditing]=useState<any>(null),[manageMessage,setManageMessage]=useState("");
  async function load(){try{const s=await fetch("/api/tour-operator-portal/session",{cache:"no-store"}),sd=await s.json();if(!sd.operator){setOperator(null);setData(null);return}setOperator(sd.operator);const r=await fetch("/api/tour-operator-portal/catalog",{cache:"no-store"}),d=await r.json();if(!r.ok)throw Error(d.error);setData(d);}catch(e){setMessage((e as Error).message)}}
  useEffect(()=>{void load()},[]);
  async function signIn(e:React.FormEvent){e.preventDefault();setBusy(true);setMessage("");try{const r=await fetch("/api/tour-operator-portal/session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(login)}),d=await r.json();if(!r.ok)throw Error(d.error);setOperator(d.operator);await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}}
  async function signOut(){await fetch("/api/tour-operator-portal/session",{method:"DELETE"});setOperator(null);setData(null)}
+ function startEditBooking(b:any){setManageMessage("");setEditing({...b,excursionIds:[...(b.excursionIds||[])],addExcursions:(b.excursionIds||[]).length>0});}
+ async function saveBookingEdit(e:React.FormEvent){e.preventDefault();if(!editing||busy)return;setBusy(true);setManageMessage("");try{
+  const r=await fetch("/api/tour-operator-portal/manage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"modify",...editing})}),d=await r.json();
+  if(!r.ok)throw Error(d.error);setEditing(null);setManageMessage("Booking updated in the Tour Operator Portal and Nirili Management.");await load();
+ }catch(e){setManageMessage((e as Error).message)}finally{setBusy(false)}}
+ async function cancelBooking(b:any){if(busy||!window.confirm("Cancel booking "+b.id+" for "+b.guest+"?\n\nThis will also cancel/remove the linked booking from Nirili Management."))return;setBusy(true);setManageMessage("");try{
+  const r=await fetch("/api/tour-operator-portal/manage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"cancel",id:b.id})}),d=await r.json();
+  if(!r.ok)throw Error(d.error);setManageMessage("Booking cancelled. The linked Nirili Management booking was also cancelled.");await load();
+ }catch(e){setManageMessage((e as Error).message)}finally{setBusy(false)}}
  const pax=Number(form.adults)+Number(form.children),nights=form.checkIn&&form.checkOut?Math.max(0,(Date.parse(form.checkOut)-Date.parse(form.checkIn))/86400000):0;
  const availabilityKey=[form.checkIn,form.checkOut,form.adults,form.children].join("|"),checkedAvailabilityKey=availability?.key||"";
  const availabilityByType=new Map((availability?.availability||[]).map((x:any)=>[String(x.roomType),Number(x.availableCount)||0]));
@@ -57,6 +67,32 @@ export default function TourOperatorSite(){
    <aside className="to-quote"><h3>Total payable to Nirili Villa</h3><div><span>Room after {operator.roomDiscountPercent}% discount</span><b>{money(roomNet)}</b></div><div><span>Excursions after {operator.excursionDiscountPercent}% discount</span><b>{money(excNet)}</b></div><div><span>Airport transfer after {operator.transferDiscountPercent}% discount</span><b>{money(transferNet)}</b></div><strong><span>Total</span><b>{money(total)}</b></strong><small>Public value {money(roomPublic+excPublic+transferPublic)} · {nights||0} night{nights===1?"":"s"} · {pax} guest{pax===1?"":"s"}</small></aside>
    <button className="to-submit" disabled={busy||checkedAvailabilityKey!==availabilityKey||!form.roomType||!form.meal||pax>3||pax<1}>{busy?"Creating booking…":"Book room & create package"}</button>
   </form>
-  <section className="to-bookings"><h2>My bookings</h2>{!(data?.bookings||[]).length?<p>No bookings yet.</p>:(data.bookings||[]).map((b:any)=><article key={b.id}><div><b>{b.guest}</b><small>{b.id} · {b.checkIn} → {b.checkOut} · {b.meal}</small></div><div><strong>{money(b.estimate)}</strong><span>{b.stayStatus||b.status}{b.room?" · Room "+b.room:""}</span>{String(b.stayStatus||b.status)==="Confirmed"&&<BookingConfirmationButton booking={b}/>}</div></article>)}</section>
+  <section className="to-bookings">
+   <div className="to-bookings-head"><h2>My bookings</h2></div>
+   {manageMessage&&<p className="to-manager-message">{manageMessage}</p>}
+   {!(data?.bookings||[]).length?<p>No bookings yet.</p>:(data.bookings||[]).map((b:any)=><article className="to-booking-card" key={b.id}>
+    <div className="to-booking-main"><b>{b.guest}</b><small>{b.id}</small><span>{b.checkIn} → {b.checkOut} · {b.meal}{b.room?" · Room "+b.room:""}</span></div>
+    <div className="to-booking-side"><strong>{money(b.estimate)}</strong><span className={"to-booking-status "+String(b.stayStatus||b.status||"").toLowerCase().replace(/\s+/g,"-")}>{b.stayStatus||b.status}</span>
+     <div className="to-booking-actions">
+      {String(b.stayStatus||b.status)==="Confirmed"&&<BookingConfirmationButton booking={b}/>}
+      {b.canManage&&<button type="button" className="to-edit-booking" onClick={()=>startEditBooking(b)}>Edit</button>}
+      {b.canManage&&<button type="button" className="to-cancel-booking" disabled={busy} onClick={()=>void cancelBooking(b)}>Cancel</button>}
+     </div>
+    </div>
+   </article>)}
+  </section>
+  {editing&&<div className="to-manage-overlay" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setEditing(null)}}>
+   <form className="to-manage-dialog" onSubmit={saveBookingEdit}>
+    <header><div><small>EDIT BOOKING</small><h2>{editing.id}</h2><p>{editing.guest}</p></div><button type="button" disabled={busy} onClick={()=>setEditing(null)}>×</button></header>
+    <div className="to-editor-grid"><label>Guest name<input required value={editing.guest} onChange={e=>setEditing({...editing,guest:e.target.value})}/></label><label>WhatsApp<input required value={editing.phone||""} onChange={e=>setEditing({...editing,phone:e.target.value})}/></label><label>Email<input required type="email" value={editing.email||""} onChange={e=>setEditing({...editing,email:e.target.value})}/></label><label>Package name<input value={editing.packageName||""} onChange={e=>setEditing({...editing,packageName:e.target.value})}/></label></div>
+    <div className="to-editor-grid"><label>Check-in<input required type="date" min={data?.today} value={editing.checkIn} onChange={e=>setEditing({...editing,checkIn:e.target.value})}/></label><label>Check-out<input required type="date" min={editing.checkIn||data?.today} value={editing.checkOut} onChange={e=>setEditing({...editing,checkOut:e.target.value})}/></label><label>Adults<select value={editing.adults} onChange={e=>setEditing({...editing,adults:Number(e.target.value)})}>{[1,2,3].map(n=><option key={n}>{n}</option>)}</select></label><label>Children<select value={editing.children} onChange={e=>setEditing({...editing,children:Number(e.target.value)})}>{[0,1,2].map(n=><option key={n}>{n}</option>)}</select></label></div>
+    <section><h3>Room type</h3><div className="to-editor-choices">{(data?.roomTypes||[]).map((x:string)=><button type="button" key={x} className={editing.roomType===x?"active":""} onClick={()=>setEditing({...editing,roomType:x})}>{x}</button>)}</div></section>
+    <section><h3>Meal plan</h3><div className="to-editor-choices">{(data?.plans||[]).map((x:string)=><button type="button" key={x} className={editing.meal===x?"active":""} onClick={()=>setEditing({...editing,meal:x})}>{x}</button>)}</div></section>
+    <section><h3>Excursions</h3><div className="to-editor-excursions">{(data?.excursions||[]).map((x:any)=>{const on=(editing.excursionIds||[]).includes(x.id);return <button type="button" key={x.id} className={on?"active":""} onClick={()=>setEditing({...editing,excursionIds:on?editing.excursionIds.filter((id:string)=>id!==x.id):[...(editing.excursionIds||[]),x.id]})}><span>{on?"✓ ":""}{x.name}</span><b>{money(x.cents)}</b></button>})}</div></section>
+    <section><h3>Airport transfer</h3><div className="to-editor-choices">{[["none","No transfer"],["arrival","Arrival only"],["return","Return transfer"]].map(([v,l])=><button type="button" key={v} className={editing.transfer===v?"active":""} onClick={()=>setEditing({...editing,transfer:v})}>{l}</button>)}</div></section>
+    <label>Notes<textarea rows={3} value={editing.notes||""} onChange={e=>setEditing({...editing,notes:e.target.value})}/></label>
+    <footer><button type="button" disabled={busy} onClick={()=>setEditing(null)}>Cancel</button><button className="primary" disabled={busy}>{busy?"Saving…":"Save changes"}</button></footer>
+   </form>
+  </div>}
  </main>;
 }
