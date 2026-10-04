@@ -29,7 +29,7 @@ export function bookingClosures(state:any):BookingClosure[]{
 
 export function closureAppliesToRoom(closure:BookingClosure,roomNumber?:string){
  const rooms=cleanRooms(closure.rooms);
- return rooms.length===0||!roomNumber||rooms.includes(String(roomNumber));
+ return rooms.length===0||((!!roomNumber)&&rooms.includes(String(roomNumber)));
 }
 
 export function bookingClosureForStay(state:any,checkIn:string,checkOut:string,roomNumber?:string){
