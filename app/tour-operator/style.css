@@ -1086,3 +1086,170 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
   .to-counter-actions button{width:27px!important;height:30px!important}
   .to-counter-card>svg{width:19px!important;height:19px!important}
 }
+
+
+/* ===== Responsive whitespace redesign ===== */
+:root{
+  --to-page-max:1180px;
+  --to-card-max:980px;
+}
+.to-shell{
+  padding:0 clamp(14px,3vw,28px) 72px!important;
+  background:
+    radial-gradient(circle at 12% 0%,rgba(109,208,215,.12),transparent 24%),
+    linear-gradient(180deg,#f8fbfc 0%,#f5f8f9 48%,#f8fafb 100%)!important;
+}
+.to-shell>.to-discount-details,
+.to-shell>.to-message,
+.to-shell>.to-builder,
+.to-shell>.to-bookings{
+  width:min(100%,var(--to-card-max))!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+.to-top{
+  width:100vw!important;
+  min-height:clamp(300px,34vw,410px)!important;
+  margin-left:calc(50% - 50vw)!important;
+  margin-right:calc(50% - 50vw)!important;
+  padding:
+    clamp(30px,5vw,58px)
+    max(clamp(20px,5vw,72px),calc((100vw - var(--to-page-max))/2 + 28px))
+    clamp(28px,5vw,52px)!important;
+  background-position:68% center!important;
+}
+.to-hero-brand{max-width:520px!important}
+.to-top h1{font-size:clamp(44px,6vw,72px)!important}
+.to-top p{max-width:460px!important}
+.to-top button{
+  right:max(clamp(16px,4vw,56px),calc((100vw - var(--to-page-max))/2 + 28px))!important;
+}
+.to-hero-tagline{
+  right:max(18%,calc((100vw - var(--to-page-max))/2 + 180px))!important;
+  top:clamp(84px,10vw,116px)!important;
+}
+
+/* More breathing room */
+.to-discount-details{margin-top:22px!important;margin-bottom:26px!important}
+.to-builder{padding:clamp(20px,3vw,34px)!important;gap:22px!important}
+.to-builder-title{gap:18px!important;padding-bottom:4px}
+.to-builder-title p{max-width:650px;line-height:1.55}
+.to-availability-first,.to-guest-details{padding-top:18px!important}
+.to-stay-grid{gap:16px!important}
+.to-guest-counts{gap:14px!important}
+.to-package-stage{gap:16px!important}
+.to-package-stage .to-step{padding:20px!important}
+.to-bookings{margin-top:26px!important}
+
+/* Inputs and touch targets */
+.to-field-icon,
+.to-builder input,
+.to-builder select,
+.to-builder textarea,
+.to-guest-grid input{
+  min-height:56px!important;
+}
+.to-check-button,.to-continue-button,.to-submit{
+  min-height:60px!important;
+}
+.to-counter-actions button{
+  min-width:38px!important;
+  min-height:38px!important;
+}
+
+/* Tablet */
+@media (max-width:980px){
+  :root{--to-card-max:820px}
+  .to-top{
+    min-height:340px!important;
+    background-position:70% center!important;
+  }
+  .to-hero-tagline{right:16%!important}
+  .to-stay-grid{grid-template-columns:1fr 1fr!important}
+  .to-room-type-field{grid-column:1/-1!important}
+}
+
+/* Mobile */
+@media (max-width:720px){
+  .to-shell{padding:0 12px 48px!important}
+  .to-top{
+    min-height:330px!important;
+    padding:24px 18px 26px!important;
+    background:
+      linear-gradient(90deg,rgba(255,255,255,.98) 0%,rgba(255,255,255,.94) 44%,rgba(255,255,255,.38) 72%,rgba(255,255,255,.04) 100%),
+      url("https://images.unsplash.com/photo-1540202404-a2f29016b523?auto=format&fit=crop&w=1200&q=86") 72% center/cover no-repeat!important;
+  }
+  .to-hero-brand{max-width:74%!important}
+  .to-top h1{font-size:42px!important}
+  .to-top p{max-width:78%!important;font-size:14px!important}
+  .to-top button{
+    top:18px!important;right:12px!important;
+    min-height:44px!important;padding:0 14px!important;
+  }
+  .to-hero-tagline{
+    right:10%!important;top:100px!important;
+    transform:scale(.66) rotate(-2deg)!important;
+  }
+
+  .to-discount-details{margin-top:14px!important;margin-bottom:16px!important}
+  .to-discount-details>summary{
+    grid-template-columns:48px minmax(0,1fr) 28px!important;
+    min-height:88px!important;
+    padding:12px 14px!important;
+  }
+  .to-commission-icon{width:44px!important;height:44px!important}
+  .to-commission-copy b{font-size:19px!important}
+  .to-commission-copy small{font-size:11px!important}
+
+  .to-builder{
+    padding:16px!important;
+    gap:16px!important;
+    border-radius:18px!important;
+  }
+  .to-builder-title>span{width:46px!important;height:46px!important;flex-basis:46px!important}
+  .to-builder-title h2{font-size:23px!important}
+  .to-builder-title p{font-size:12px!important}
+
+  .to-stay-grid{grid-template-columns:1fr!important}
+  .to-room-type-field{grid-column:auto!important}
+  .to-field-icon{min-height:56px!important}
+  .to-field-icon input,.to-field-icon select{font-size:15px!important}
+  .to-check-button{min-height:56px!important}
+
+  .to-guest-heading{align-items:flex-start!important}
+  .to-guest-heading span{max-width:135px!important;text-align:right!important}
+  .to-guest-counts{grid-template-columns:1fr!important}
+  .to-counter-card{
+    min-height:76px!important;
+    grid-template-columns:30px minmax(0,1fr) auto!important;
+    padding:10px 12px!important;
+  }
+  .to-counter-actions{gap:6px!important}
+  .to-counter-actions button{width:34px!important;height:34px!important}
+  .to-guest-toggle,.to-continue-button{min-height:56px!important}
+
+  .to-package-stage-head{padding:14px!important}
+  .to-package-stage .to-step{padding:14px!important}
+  .to-choices,.to-excursions{grid-template-columns:1fr!important}
+  .to-booking-card{grid-template-columns:1fr!important}
+  .to-booking-side{justify-items:start!important;width:100%!important}
+}
+
+/* Small phones */
+@media (max-width:420px){
+  .to-top{min-height:315px!important}
+  .to-top h1{font-size:38px!important}
+  .to-top p{max-width:82%!important}
+  .to-hero-tagline{right:5%!important;transform:scale(.58) rotate(-2deg)!important}
+  .to-commission-copy b{font-size:18px!important}
+  .to-builder-title h2{font-size:21px!important}
+  .to-guest-heading{display:grid!important;gap:4px!important}
+  .to-guest-heading span{text-align:left!important;max-width:none!important}
+}
+
+/* Large screens */
+@media (min-width:1400px){
+  :root{--to-card-max:1040px;--to-page-max:1280px}
+  .to-builder,.to-bookings{padding:36px!important}
+  .to-top{min-height:430px!important}
+}
