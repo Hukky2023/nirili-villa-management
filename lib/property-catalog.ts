@@ -112,7 +112,7 @@ export function changePropertyCatalog(state:any,body:any,by:string){
   }
   state.propertyPackages=packages;
  }else if(body.action==='save-promotion'||body.action==='remove-promotion'){
-  const promotions=propertyPromotions(state).map((item:any)=>({...item,packageIds:Array.isArray(item.packageIds)?[...item.packageIds]:[],roomTypes:Array.isArray(item.roomTypes)?[...item.roomTypes]:[]}));
+  const promotions=propertyPromotions(state).map((item:any)=>({...item,packageIds:Array.isArray(item.packageIds)?[...item.packageIds]:[],roomTypes:Array.isArray(item.roomTypes)?[...item.roomTypes]:[],mealPlans:Array.isArray(item.mealPlans)?[...item.mealPlans]:[]}));
   const id=text(body.id,100),index=promotions.findIndex((item:any)=>item.id===id);
   if(id&&index<0)throw Error('Promotion not found. Refresh and try again.');
   if(body.action==='remove-promotion'){
@@ -126,14 +126,20 @@ export function changePropertyCatalog(state:any,body:any,by:string){
    const validFrom=text(raw.validFrom,10),validTo=text(raw.validTo,10);
    const packageIds=Array.isArray(raw.packageIds)?Array.from(new Set(raw.packageIds.map((value:any)=>text(value,100)).filter(Boolean))).slice(0,100):[];
    const roomTypes=Array.isArray(raw.roomTypes)?Array.from(new Set(raw.roomTypes.map((value:any)=>text(value,80)).filter(Boolean))).slice(0,50):[];
+   const mealPlans=Array.isArray(raw.mealPlans)?Array.from(new Set(raw.mealPlans.map((value:any)=>text(value,80)).filter(Boolean))).slice(0,10):[];
    const packageSet=new Set(propertyPackages(state).map((item:any)=>item.id));
    const roomTypeSet=new Set((state.rooms||[]).map((room:any)=>text(room.type,80)).filter(Boolean));
+   const allowedMeals=new Set(['Bed & Breakfast','Half Board','Full Board']);
    if(!name)throw Error('Enter a promotion name.');
    if(!validFrom||!/^\d{4}-\d{2}-\d{2}$/.test(validFrom))throw Error('Choose the promotion start date.');
    if(!validTo||!/^\d{4}-\d{2}-\d{2}$/.test(validTo))throw Error('Choose the promotion end date.');
    if(validTo<validFrom)throw Error('Promotion end date must be after the start date.');
-   if(!packageIds.length||packageIds.some(id=>!packageSet.has(id)))throw Error('Choose at least one valid package for this promotion.');
-   if(!roomTypes.length||roomTypes.some(type=>!roomTypeSet.has(type)))throw Error('Choose at least one valid room type for this promotion.');
+   if(packageIds.some(id=>!packageSet.has(id)))throw Error('Choose only valid packages for this promotion.');
+   if(roomTypes.some(type=>!roomTypeSet.has(type)))throw Error('Choose only valid room types for this promotion.');
+   if(mealPlans.some(plan=>!allowedMeals.has(plan)))throw Error('Choose only valid meal plans for this promotion.');
+   if(!packageIds.length&&!roomTypes.length)throw Error('Choose at least one package or room type for this promotion.');
+   if(roomTypes.length&&!mealPlans.length)throw Error('Choose at least one meal plan for the selected room type.');
+   if(!roomTypes.length&&mealPlans.length)throw Error('Choose a room type before selecting meal plans.');
    const item={
     id:id||'promotion-'+crypto.randomUUID(),
     kind:'promotion',
@@ -141,6 +147,7 @@ export function changePropertyCatalog(state:any,body:any,by:string){
     detail:detailText,
     packageIds,
     roomTypes,
+    mealPlans,
     validFrom,
     validTo,
     active:raw.active!==false,
