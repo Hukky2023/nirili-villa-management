@@ -1404,3 +1404,27 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
   .to-commission-copy b{font-size:17px!important}
   .to-commission-copy small{font-size:10px!important}
 }
+
+
+/* Explicit commission toggle; prevents pseudo-element layout conflicts */
+.to-discount-details>summary::after{content:none!important;display:none!important}
+.to-commission-toggle{
+  grid-area:arrow;
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#eef8f9;
+  color:#178799;
+  transition:transform .2s ease,background .2s ease;
+}
+.to-commission-toggle svg{width:18px;height:18px}
+.to-discount-details[open] .to-commission-toggle{transform:rotate(180deg);background:#e4f4f6}
+@media(max-width:600px){
+  .to-commission-toggle{width:28px;height:28px}
+  .to-commission-toggle svg{width:16px;height:16px}
+}
+@media(max-width:360px){
+  .to-commission-toggle{width:26px;height:26px}
+}
