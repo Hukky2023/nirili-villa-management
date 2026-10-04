@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
+import BookingConfirmationButton from "./booking-confirmation-button";
 
 const money=(c:number)=>"$"+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const discount=(c:number,p:number)=>Math.max(0,Math.round(c*(100-Math.max(0,Math.min(100,p||0)))/100));
@@ -29,7 +30,7 @@ export default function TourOperatorBookingManager(){
   {message&&<p className="to-manager-message">{message}</p>}
   <div className="to-manager-list">{!bookings.length?<p>No bookings yet.</p>:bookings.map((b:any)=><article key={b.id}>
    <div><b>{b.guest}</b><small>{b.id} · {b.checkIn} → {b.checkOut} · {b.meal}</small>{b.packageName&&<small>{b.packageName}</small>}</div>
-   <div className="to-manager-side"><strong>{money(b.estimate)}</strong><span>{b.stayStatus||b.status}{b.room?" · Room "+b.room:""}</span>{b.canManage&&<div className="to-manager-actions"><button type="button" onClick={()=>startEdit(b)}>Modify</button><button type="button" className="danger" onClick={()=>cancel(b)}>Cancel</button></div>}</div>
+   <div className="to-manager-side"><strong>{money(b.estimate)}</strong><span>{b.stayStatus||b.status}{b.room?" · Room "+b.room:""}</span>{String(b.stayStatus||b.status)==="Confirmed"&&<BookingConfirmationButton booking={b}/>} {b.canManage&&<div className="to-manager-actions"><button type="button" onClick={()=>startEdit(b)}>Modify</button><button type="button" className="danger" onClick={()=>cancel(b)}>Cancel</button></div>}</div>
   </article>)}</div>
   {edit&&<form className="to-manage-editor" onSubmit={save}>
    <div className="to-editor-head"><div><small>MODIFY BOOKING</small><h3>{edit.id}</h3></div><button type="button" onClick={()=>setEdit(null)}>Close</button></div>
