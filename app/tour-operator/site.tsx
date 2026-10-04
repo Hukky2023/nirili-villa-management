@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";
+import {useEffect,useState} from "react";
 import {ArrowRight,LockKeyhole,MapPin,UserRound,Waves} from "lucide-react";
 
 const money=(c:number)=>"$"+(Math.max(0,Number(c)||0)/100).toFixed(2);
@@ -8,6 +8,7 @@ const fallback:any={'Bed & Breakfast':[5000,6000,7000],'Half Board':[7000,8000,9
 
 export default function TourOperatorSite(){
  const [operator,setOperator]=useState<any>(null),[data,setData]=useState<any>(null),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
+ const [availability,setAvailability]=useState<any>(null),[availabilityBusy,setAvailabilityBusy]=useState(false),[availabilityMessage,setAvailabilityMessage]=useState("");
  const [login,setLogin]=useState({username:"",password:""});
  const [form,setForm]=useState<any>({guest:"",phone:"",email:"",checkIn:"",checkOut:"",adults:2,children:0,roomType:"",meal:"",addExcursions:false,excursionIds:[],transfer:"none",packageName:"",notes:""});
  async function load(){try{const s=await fetch("/api/tour-operator-portal/session",{cache:"no-store"}),sd=await s.json();if(!sd.operator){setOperator(null);setData(null);return}setOperator(sd.operator);const r=await fetch("/api/tour-operator-portal/catalog",{cache:"no-store"}),d=await r.json();if(!r.ok)throw Error(d.error);setData(d);}catch(e){setMessage((e as Error).message)}}
@@ -15,6 +16,18 @@ export default function TourOperatorSite(){
  async function signIn(e:React.FormEvent){e.preventDefault();setBusy(true);setMessage("");try{const r=await fetch("/api/tour-operator-portal/session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(login)}),d=await r.json();if(!r.ok)throw Error(d.error);setOperator(d.operator);await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}}
  async function signOut(){await fetch("/api/tour-operator-portal/session",{method:"DELETE"});setOperator(null);setData(null)}
  const pax=Number(form.adults)+Number(form.children),nights=form.checkIn&&form.checkOut?Math.max(0,(Date.parse(form.checkOut)-Date.parse(form.checkIn))/86400000):0;
+ const availabilityKey=[form.checkIn,form.checkOut,form.adults,form.children].join("|"),checkedAvailabilityKey=availability?.key||"";
+ const availabilityByType=new Map((availability?.availability||[]).map((x:any)=>[String(x.roomType),Number(x.availableCount)||0]));
+ function changeStayField(patch:any){setForm((x:any)=>({...x,...patch,roomType:"",meal:""}));setAvailability(null);setAvailabilityMessage("");}
+ async function checkAvailability(){
+  setAvailabilityBusy(true);setAvailabilityMessage("");setMessage("");
+  try{
+   const r=await fetch("/api/tour-operator-portal/catalog",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"check-availability",checkIn:form.checkIn,checkOut:form.checkOut,adults:form.adults,children:form.children})}),d=await r.json();
+   if(!r.ok)throw Error(d.error||"Could not check room availability.");
+   const result={...d,key:availabilityKey};setAvailability(result);
+   setAvailabilityMessage(d.totalAvailable>0?d.totalAvailable+" room"+(d.totalAvailable===1?" is":"s are")+" available for these dates.":"No rooms are available for these dates.");
+  }catch(e){setAvailability(null);setAvailabilityMessage((e as Error).message)}finally{setAvailabilityBusy(false)}
+ }
  const rates=data?.roomRates||fallback,planRates=rates[form.meal]||fallback[form.meal]||[];
  const roomPublic=nights*(Number(planRates[Math.max(0,Math.min(2,pax-1))])||0),roomNet=discount(roomPublic,operator?.roomDiscountPercent||0);
  const chosen=(data?.excursions||[]).filter((x:any)=>form.excursionIds.includes(x.id));
@@ -29,14 +42,19 @@ export default function TourOperatorSite(){
   <form className="to-builder" onSubmit={book}>
    <h2>Create guest package & room booking</h2>
    <div className="to-grid"><label>Guest name<input required value={form.guest} onChange={e=>setForm({...form,guest:e.target.value})}/></label><label>WhatsApp<input required placeholder="+960..." value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label><label>Email<input required type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Package name (optional)<input value={form.packageName} onChange={e=>setForm({...form,packageName:e.target.value})}/></label></div>
-   <div className="to-grid"><label>Check-in<input required type="date" min={data?.today} value={form.checkIn} onChange={e=>setForm({...form,checkIn:e.target.value})}/></label><label>Check-out<input required type="date" min={form.checkIn||data?.today} value={form.checkOut} onChange={e=>setForm({...form,checkOut:e.target.value})}/></label><label>Adults<select value={form.adults} onChange={e=>setForm({...form,adults:Number(e.target.value)})}>{[1,2,3].map(n=><option key={n}>{n}</option>)}</select></label><label>Children<select value={form.children} onChange={e=>setForm({...form,children:Number(e.target.value)})}>{[0,1,2].map(n=><option key={n}>{n}</option>)}</select></label></div>
-   <section className="to-step"><h3>1. Select room type</h3><div className="to-choices">{(data?.roomTypes||[]).map((x:string)=><button type="button" key={x} className={form.roomType===x?"active":""} onClick={()=>setForm({...form,roomType:x,meal:""})}>{x}</button>)}</div></section>
+   <div className="to-grid"><label>Check-in<input required type="date" min={data?.today} value={form.checkIn} onChange={e=>changeStayField({checkIn:e.target.value,checkOut:form.checkOut&&form.checkOut<=e.target.value?"":form.checkOut})}/></label><label>Check-out<input required type="date" min={form.checkIn||data?.today} value={form.checkOut} onChange={e=>changeStayField({checkOut:e.target.value})}/></label><label>Adults<select value={form.adults} onChange={e=>changeStayField({adults:Number(e.target.value)})}>{[1,2,3].map(n=><option key={n}>{n}</option>)}</select></label><label>Children<select value={form.children} onChange={e=>changeStayField({children:Number(e.target.value)})}>{[0,1,2].map(n=><option key={n}>{n}</option>)}</select></label></div>
+   <section className="to-availability">
+    <div><h3>Check room availability</h3><p>Choose the stay dates and guests, then check live availability from Nirili Villa.</p></div>
+    <button type="button" onClick={checkAvailability} disabled={availabilityBusy||!form.checkIn||!form.checkOut}>{availabilityBusy?"Checking…":"Check availability"}</button>
+   </section>
+   {availabilityMessage&&<div className={"to-availability-result "+(availability?.totalAvailable>0?"available":"unavailable")}><strong>{availability?.totalAvailable>0?"Available":"Availability"}</strong><span>{availabilityMessage}</span></div>}
+   <section className="to-step"><h3>1. Select room type</h3>{checkedAvailabilityKey!==availabilityKey?<p className="to-step-note">Check room availability first.</p>:<div className="to-choices">{(data?.roomTypes||[]).map((x:string)=>{const count=availabilityByType.get(x)||0;return <button type="button" key={x} disabled={count<1} className={form.roomType===x?"active":""} onClick={()=>setForm({...form,roomType:x,meal:""})}><span>{x}</span><small>{count>0?count+" available":"Not available"}</small></button>})}</div>}</section>
    {form.roomType&&<section className="to-step"><h3>2. Select meal plan</h3><div className="to-choices">{(data?.plans||[]).map((x:string)=><button type="button" key={x} className={form.meal===x?"active":""} onClick={()=>setForm({...form,meal:x})}>{x}</button>)}</div></section>}
    {form.meal&&<section className="to-step"><h3>3. Add excursions?</h3><div className="to-choices"><button type="button" className={form.addExcursions?"active":""} onClick={()=>setForm({...form,addExcursions:true})}>Yes, add excursions</button><button type="button" className={!form.addExcursions?"active":""} onClick={()=>setForm({...form,addExcursions:false,excursionIds:[]})}>No excursions</button></div>{form.addExcursions&&<div className="to-excursions">{(data?.excursions||[]).map((x:any)=>{const on=form.excursionIds.includes(x.id);return <button type="button" className={on?"active":""} key={x.id} onClick={()=>setForm({...form,excursionIds:on?form.excursionIds.filter((id:string)=>id!==x.id):[...form.excursionIds,x.id]})}><span>{on?"✓ ":""}{x.name}</span><b>{money(x.cents)} / {x.pricingUnit}</b></button>})}</div>}</section>}
    {form.meal&&<section className="to-step"><h3>4. Airport transfer</h3><div className="to-choices"><button type="button" className={form.transfer==="none"?"active":""} onClick={()=>setForm({...form,transfer:"none"})}>No transfer</button><button type="button" className={form.transfer==="arrival"?"active":""} onClick={()=>setForm({...form,transfer:"arrival"})}>Arrival only</button><button type="button" className={form.transfer==="return"?"active":""} onClick={()=>setForm({...form,transfer:"return"})}>Return transfer</button></div></section>}
    <label>Notes<textarea rows={3} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label>
    <aside className="to-quote"><h3>Total payable to Nirili Villa</h3><div><span>Room after {operator.roomDiscountPercent}% discount</span><b>{money(roomNet)}</b></div><div><span>Excursions after {operator.excursionDiscountPercent}% discount</span><b>{money(excNet)}</b></div><div><span>Airport transfer after {operator.transferDiscountPercent}% discount</span><b>{money(transferNet)}</b></div><strong><span>Total</span><b>{money(total)}</b></strong><small>Public value {money(roomPublic+excPublic+transferPublic)} · {nights||0} night{nights===1?"":"s"} · {pax} guest{pax===1?"":"s"}</small></aside>
-   <button className="to-submit" disabled={busy||!form.roomType||!form.meal||pax>3||pax<1}>{busy?"Creating booking…":"Book room & create package"}</button>
+   <button className="to-submit" disabled={busy||checkedAvailabilityKey!==availabilityKey||!form.roomType||!form.meal||pax>3||pax<1}>{busy?"Creating booking…":"Book room & create package"}</button>
   </form>
   <section className="to-bookings"><h2>My bookings</h2>{!(data?.bookings||[]).length?<p>No bookings yet.</p>:(data.bookings||[]).map((b:any)=><article key={b.id}><div><b>{b.guest}</b><small>{b.id} · {b.checkIn} → {b.checkOut} · {b.meal}</small></div><div><strong>{money(b.estimate)}</strong><span>{b.status}{b.room?" · Room "+b.room:""}</span></div></article>)}</section>
  </main>;
