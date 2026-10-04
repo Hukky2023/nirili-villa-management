@@ -51,7 +51,20 @@ export async function POST(r:Request){
  try{
   const operator=await tourOperatorFromRequest(r);if(!operator)return Response.json({error:'Sign in required.'},{status:401,headers});
   if(!await limit('tour-operator-book:'+operator.id,60,3600000))return Response.json({error:'Too many booking attempts. Please try again later.'},{status:429,headers});
-  const b=await r.json();if(b.action!=='book-package')throw Error('Unknown action.');
+  const b=await r.json();
+  if(b.action==='check-availability'){
+   const checkIn=String(b.checkIn||''),checkOut=String(b.checkOut||''),adults=Number(b.adults),children=Number(b.children),pax=adults+children,today=islandToday();
+   const stayNights=nights(checkIn,checkOut);
+   if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||!Number.isInteger(stayNights)||stayNights<1||stayNights>365)throw Error('Choose valid stay dates.');
+   if(!Number.isInteger(adults)||adults<1||adults>3||!Number.isInteger(children)||children<0||children>2||pax<1||pax>3)throw Error('A room can accommodate up to 3 guests.');
+   const {state}=await loadStays();state.stays??=[];state.rooms??=[];
+   assertBookingDatesOpen(state,checkIn,checkOut);
+   const roomTypes=Array.from(new Set((state.rooms||[]).map((room:any)=>String(room.type||'')).filter(Boolean))).sort();
+   const availability=roomTypes.map(roomType=>({roomType,availableCount:availableRooms(state,checkIn,checkOut,pax,roomType).length}));
+   const totalAvailable=availability.reduce((sum,item)=>sum+item.availableCount,0);
+   return Response.json({ok:true,checkIn,checkOut,pax,totalAvailable,availability},{headers});
+  }
+  if(b.action!=='book-package')throw Error('Unknown action.');
   const guest=text(b.guest,100),phone=cleanPhone(b.phone),email=text(b.email,254).toLowerCase();
   const checkIn=String(b.checkIn||''),checkOut=String(b.checkOut||''),meal=String(b.meal||''),roomType=text(b.roomType,80);
   const adults=Number(b.adults),children=Number(b.children),pax=adults+children,stayNights=nights(checkIn,checkOut),today=islandToday();
