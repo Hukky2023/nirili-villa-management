@@ -14,7 +14,7 @@ export default function TourOperatorsAdmin(){
  async function send(method:string,body:any,ok:string){if(busy)return false;setBusy(true);setMessage("");try{const r=await fetch("/api/tour-operators",{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}),d=await r.json();if(!r.ok)throw Error(d.error);setMessage(ok);await load();return true}catch(e){setMessage((e as Error).message);return false}finally{setBusy(false)}}
  const items=data?.operators||[];
  return <section className="ws-admin ag-admin">
-  <header className="ws-title"><span className="ws-title-icon"><BriefcaseBusiness/></span><div><h1>Tour operators</h1><p>Create tour operator logins for room, excursion and airport-transfer bookings. Portal: <b>{SITES.tourOperator.replace("https://","")}</b></p></div><button onClick={load}><RefreshCw/></button></header>
+  <header className="ws-title"><span className="ws-title-icon"><BriefcaseBusiness/></span><div><h1>Tour operators</h1><p>Create tour operator logins for room, excursion and airport-transfer bookings. Portal: <a href={SITES.tourOperator} target="_blank" rel="noreferrer"><b>{SITES.tourOperator.replace("https://","")}</b></a></p></div><button onClick={load}><RefreshCw/></button></header>
   {message&&<p className="ws-message">{message}</p>}
   <form className="ws-form" onSubmit={async e=>{e.preventDefault();if(await send("POST",{...draft,roomDiscountPercent:Number(draft.roomDiscountPercent),excursionDiscountPercent:Number(draft.excursionDiscountPercent),transferDiscountPercent:Number(draft.transferDiscountPercent)},draft.name+" login created."))setDraft(empty)}}>
    <h2>Create tour operator login</h2><Fields value={draft} onChange={setDraft}/>
