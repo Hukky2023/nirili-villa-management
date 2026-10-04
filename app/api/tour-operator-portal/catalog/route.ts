@@ -24,10 +24,16 @@ function availableRooms(state:any,checkIn:string,checkOut:string,pax:number,room
  });
 }
 function bookingRows(state:any,operatorId:string){
- return (state.requests||[]).filter((q:any)=>q.tourOperatorId===operatorId).slice().sort((a:any,b:any)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,100).map((q:any)=>({
-  id:q.id,guest:q.guest,checkIn:q.checkIn,checkOut:q.checkOut,pax:q.pax,meal:q.meal,status:q.status,estimate:q.estimate,
-  packageName:q.packageName,roomType:q.tourOperatorRoomType||'',createdAt:q.createdAt||'',stayId:q.stayId||'',room:q.room||''
- }));
+ return (state.requests||[]).filter((q:any)=>q.tourOperatorId===operatorId).slice().sort((a:any,b:any)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,100).map((q:any)=>{
+  const stay=q.stayId?(state.stays||[]).find((s:any)=>s.id===q.stayId):null;
+  return {
+   id:q.id,guest:q.guest,phone:q.whatsapp||'',email:q.email||'',checkIn:q.checkIn,checkOut:q.checkOut,pax:q.pax,adults:q.adults??q.pax,children:q.children??0,
+   meal:q.meal,status:q.status,stayStatus:stay?.status||'',estimate:q.estimate,notes:q.notes||'',
+   packageName:q.packageName,roomType:q.tourOperatorRoomType||stay?.type||'',createdAt:q.createdAt||'',stayId:q.stayId||'',room:q.room||stay?.room||'',
+   transfer:q.packageIncludeTransfer?(String(q.packageTransferLabel||'').toLowerCase().includes('return')?'return':'arrival'):'none',
+   excursions:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>({id:String(x.id||''),name:String(x.name||x.id||'')})):[]
+  };
+ });
 }
 async function view(operator:any){
  const [{state,revision},excursions]=await Promise.all([loadStays(),loadExcursionMenu()]);
