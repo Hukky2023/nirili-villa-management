@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
-import {BriefcaseBusiness,Pencil,Plus,RefreshCw} from "lucide-react";
+import {BriefcaseBusiness,Pencil,Plus,RefreshCw,Trash2} from "lucide-react";
 import {SITES} from "../lib/public-sites";
 import "./water-sports-admin.css";
 import "./excursion-agents-admin.css";
@@ -12,6 +12,7 @@ export default function TourOperatorsAdmin(){
  const load=useCallback(async()=>{try{const r=await fetch("/api/tour-operators",{cache:"no-store"}),d=await r.json();if(!r.ok)throw Error(d.error);setData(d);}catch(e){setMessage((e as Error).message)}},[]);
  useEffect(()=>{void load()},[load]);
  async function send(method:string,body:any,ok:string){if(busy)return false;setBusy(true);setMessage("");try{const r=await fetch("/api/tour-operators",{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}),d=await r.json();if(!r.ok)throw Error(d.error);setMessage(ok);await load();return true}catch(e){setMessage((e as Error).message);return false}finally{setBusy(false)}}
+ async function remove(operator:any){if(busy)return;const ok=window.confirm("Delete tour operator login "+operator.name+" ("+operator.username+")?\n\nThis removes the login immediately and signs out active sessions. Existing bookings remain in the system.");if(!ok)return;setBusy(true);setMessage("");try{const r=await fetch("/api/tour-operators",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:operator.id})}),d=await r.json();if(!r.ok)throw Error(d.error);if(editing?.id===operator.id)setEditing(null);setMessage(operator.name+" login deleted.");await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}}
  const items=data?.operators||[];
  return <section className="ws-admin ag-admin">
   <header className="ws-title"><span className="ws-title-icon"><BriefcaseBusiness/></span><div><h1>Tour operators</h1><p>Create tour operator logins for room, excursion and airport-transfer bookings. Portal: <a href={SITES.tourOperator} target="_blank" rel="noreferrer"><b>{SITES.tourOperator.replace("https://","")}</b></a></p></div><button onClick={load}><RefreshCw/></button></header>
@@ -25,7 +26,7 @@ export default function TourOperatorsAdmin(){
    <Fields value={editing} onChange={setEditing}/><label><span>New password (leave blank to keep)</span><input type="password" minLength={8} maxLength={128} value={editing.password||""} onChange={e=>setEditing({...editing,password:e.target.value})}/></label><label className="ws-check"><input type="checkbox" checked={editing.active} onChange={e=>setEditing({...editing,active:e.target.checked})}/> Account active</label><div className="ws-actions"><button className="primary" disabled={busy}>Save</button><button type="button" onClick={()=>setEditing(null)}>Cancel</button></div>
   </form>:<article className={"ws-booking "+(o.active?"is-confirmed":"is-cancelled")} key={o.id}><header><div><small>{o.id} · {o.username}</small><h3>{o.name}</h3></div><span className="ws-status">{o.active?"Active":"Paused"}</span></header><dl>
    <div><dt>Room discount</dt><dd>{o.roomDiscountPercent}%</dd></div><div><dt>Excursion discount</dt><dd>{o.excursionDiscountPercent}%</dd></div><div><dt>Airport transfer discount</dt><dd>{o.transferDiscountPercent}%</dd></div><div><dt>Contact</dt><dd>{o.contactName||"—"}{o.phone?<><br/>{o.phone}</>:null}</dd></div>
-  </dl><div className="ws-actions"><button onClick={()=>setEditing({...o,password:""})}><Pencil/> Edit</button></div></article>)}</div>
+  </dl><div className="ws-actions"><button onClick={()=>setEditing({...o,password:""})}><Pencil/> Edit</button><button type="button" className="danger" disabled={busy} onClick={()=>void remove(o)}><Trash2/> Delete</button></div></article>)}</div>
  </section>;
 }
 function Fields({value,onChange}:{value:any;onChange:(v:any)=>void}){const set=(p:any)=>onChange({...value,...p});return <>
