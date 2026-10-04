@@ -1,1 +1,90 @@
-*{box-sizing:border-box}.to-shell{min-height:100vh;background:#f4f8fb;color:#153247;padding:24px;font-family:Arial,sans-serif}.to-login,.to-builder,.to-bookings,.to-top,.to-discounts{max-width:1050px;margin:0 auto 18px}.to-login{max-width:460px;background:white;padding:28px;border-radius:18px;margin-top:8vh;box-shadow:0 16px 45px #1232}.to-login form,.to-builder{display:grid;gap:16px}.to-login label,.to-builder label{display:grid;gap:7px;font-weight:700}.to-login input,.to-builder input,.to-builder select,.to-builder textarea{padding:12px;border:1px solid #cbd9e3;border-radius:10px;background:white}.to-login button,.to-submit,.to-top button,.to-choices button,.to-excursions button{border:0;border-radius:10px;padding:11px 14px;cursor:pointer}.to-login button,.to-submit{background:#087fa8;color:white;font-weight:800}.to-top{display:flex;justify-content:space-between;gap:20px;align-items:center}.to-top h1{margin:4px 0}.to-discounts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.to-discounts article,.to-builder,.to-bookings{background:#fff;border:1px solid #d9e6ee;border-radius:16px;padding:18px}.to-discounts article b{display:block;font-size:26px;margin-top:6px}.to-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.to-step{border-top:1px solid #e6eef3;padding-top:14px}.to-choices{display:flex;gap:10px;flex-wrap:wrap}.to-choices button,.to-excursions button{background:#edf5f8;color:#17455c;border:1px solid #cfe0e8}.to-choices button.active,.to-excursions button.active{background:#087fa8;color:#fff;border-color:#087fa8}.to-excursions{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}.to-excursions button{display:flex;justify-content:space-between;text-align:left}.to-quote{background:#eef8fb;border-radius:14px;padding:16px}.to-quote div,.to-quote strong{display:flex;justify-content:space-between;padding:7px 0}.to-quote strong{border-top:1px solid #c7dce4;margin-top:8px;font-size:21px}.to-message{max-width:1050px;margin:10px auto;background:#e9f8ef;border:1px solid #bfe5ce;padding:12px;border-radius:10px}.to-bookings article{display:flex;justify-content:space-between;border-top:1px solid #edf1f4;padding:12px 0}.to-bookings small,.to-bookings span{display:block;color:#60798a;margin-top:4px}@media(max-width:760px){.to-shell{padding:14px}.to-grid{grid-template-columns:1fr 1fr}.to-discounts{grid-template-columns:1fr}.to-excursions{grid-template-columns:1fr}.to-top{align-items:flex-start}.to-bookings article{gap:10px}}@media(max-width:480px){.to-grid{grid-template-columns:1fr}}
+*{box-sizing:border-box}
+body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
+.to-login-shell{
+ --sand:#f7f2ea;--paper:#fffdf9;--ink:#0f2a2e;--ink-soft:#44585a;--muted:#6f7f80;
+ --lagoon:#12706f;--lagoon-deep:#0b4a4c;--sun:#e39a5b;--line:rgba(15,42,46,.12);
+ --serif:"Fraunces",Georgia,"Times New Roman",serif;--sans:"Manrope",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+ min-height:100svh;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(420px,.85fr);background:var(--sand);color:var(--ink);font-family:var(--sans)
+}
+.to-login-hero{position:relative;min-height:100svh;padding:48px clamp(32px,6vw,90px);display:flex;flex-direction:column;justify-content:space-between;color:#fff;background-image:url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=84");background-size:cover;background-position:center;isolation:isolate;overflow:hidden}
+.to-login-shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(6,24,28,.58) 0%,rgba(6,24,28,.08) 38%,rgba(6,24,28,.74) 100%),linear-gradient(90deg,rgba(6,24,28,.32),transparent 70%)}
+.to-login-brand{display:flex;align-items:center;gap:12px}
+.to-brand-mark{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.85);backdrop-filter:blur(8px)}
+.to-brand-mark svg{width:22px;height:22px}
+.to-login-brand>span:last-child{display:grid;line-height:1.05}
+.to-login-brand strong{font-family:var(--serif);font-size:28px;font-weight:500}
+.to-login-brand small{margin-top:4px;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;opacity:.82}
+.to-login-copy{max-width:700px;padding:80px 0 24px}
+.to-kicker{display:flex;align-items:center;gap:8px;margin:0 0 18px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.to-kicker svg{width:16px;height:16px}
+.to-login-copy h1{margin:0;font-family:var(--serif);font-size:clamp(48px,6.4vw,88px);font-weight:400;line-height:.98;letter-spacing:-.035em;text-shadow:0 2px 28px rgba(0,0,0,.15)}
+.to-login-copy h1 em{font-weight:300;color:#fbe4cc}
+.to-login-copy>p:not(.to-kicker){max-width:610px;margin:24px 0 0;font-size:17px;line-height:1.7;color:rgba(255,255,255,.9)}
+.to-login-pills{display:flex;flex-wrap:wrap;gap:9px;margin-top:28px}
+.to-login-pills span{padding:8px 13px;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(255,255,255,.09);backdrop-filter:blur(8px);font-size:12px;font-weight:600}
+.to-login-panel{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px clamp(24px,5vw,70px);background:var(--sand)}
+.to-login-card{width:min(100%,470px);padding:38px;border-radius:26px;background:var(--paper);border:1px solid var(--line);box-shadow:0 24px 70px rgba(15,42,46,.11)}
+.to-card-kicker{margin:0 0 12px;color:var(--lagoon);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+.to-login-card h2{margin:0;font-family:var(--serif);font-size:42px;font-weight:400;line-height:1.05;letter-spacing:-.02em}
+.to-card-intro{margin:14px 0 28px;color:var(--ink-soft);font-size:15px;line-height:1.65}
+.to-login-card form{display:grid;gap:18px}
+.to-login-card label{display:grid;gap:8px;font-size:13px;font-weight:700}
+.to-input{height:54px;display:flex;align-items:center;gap:10px;padding:0 14px;border:1px solid rgba(15,42,46,.18);border-radius:14px;background:#fff;transition:border-color .2s,box-shadow .2s}
+.to-input:focus-within{border-color:var(--lagoon);box-shadow:0 0 0 4px rgba(18,112,111,.11)}
+.to-input svg{width:18px;height:18px;color:var(--lagoon);stroke-width:1.8}
+.to-input input{width:100%;height:100%;border:0;outline:0;background:transparent;font:inherit;color:var(--ink)}
+.to-login-submit{height:56px;margin-top:2px;border:0;border-radius:999px;background:var(--ink);color:#fff;padding:0 22px;display:flex;align-items:center;justify-content:space-between;font:inherit;font-weight:700;cursor:pointer;transition:background .2s,transform .2s}
+.to-login-submit:hover{background:var(--lagoon-deep);transform:translateY(-1px)}
+.to-login-submit:disabled{opacity:.65;cursor:wait}
+.to-login-submit svg{width:18px;height:18px}
+.to-login-help{margin:22px 0 0;padding-top:20px;border-top:1px solid var(--line);font-size:12px;line-height:1.6;color:var(--muted)}
+.to-login-footer{margin:24px 0 0;font-size:11px;color:var(--muted)}
+.to-login-card .to-message{margin:0 0 18px;background:#fff2e8;border:1px solid #f0cfb2;color:#74451f;padding:11px 13px;border-radius:12px;font-size:13px}
+
+/* Signed-in tour operator portal */
+.to-shell{min-height:100vh;background:#f4f8fb;color:#153247;padding:24px;font-family:"Manrope",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.to-login,.to-builder,.to-bookings,.to-top,.to-discounts{max-width:1050px;margin:0 auto 18px}
+.to-login form,.to-builder{display:grid;gap:16px}
+.to-login label,.to-builder label{display:grid;gap:7px;font-weight:700}
+.to-login input,.to-builder input,.to-builder select,.to-builder textarea{padding:12px;border:1px solid #cbd9e3;border-radius:10px;background:white}
+.to-login button,.to-submit,.to-top button,.to-choices button,.to-excursions button{border:0;border-radius:10px;padding:11px 14px;cursor:pointer}
+.to-login button,.to-submit{background:#087fa8;color:white;font-weight:800}
+.to-top{display:flex;justify-content:space-between;gap:20px;align-items:center}
+.to-top h1{margin:4px 0}
+.to-discounts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.to-discounts article,.to-builder,.to-bookings{background:#fff;border:1px solid #d9e6ee;border-radius:16px;padding:18px}
+.to-discounts article b{display:block;font-size:26px;margin-top:6px}
+.to-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.to-step{border-top:1px solid #e6eef3;padding-top:14px}
+.to-choices{display:flex;gap:10px;flex-wrap:wrap}
+.to-choices button,.to-excursions button{background:#edf5f8;color:#17455c;border:1px solid #cfe0e8}
+.to-choices button.active,.to-excursions button.active{background:#087fa8;color:#fff;border-color:#087fa8}
+.to-excursions{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.to-excursions button{display:flex;justify-content:space-between;text-align:left}
+.to-quote{background:#eef8fb;border-radius:14px;padding:16px}
+.to-quote div,.to-quote strong{display:flex;justify-content:space-between;padding:7px 0}
+.to-quote strong{border-top:1px solid #c7dce4;margin-top:8px;font-size:21px}
+.to-message{max-width:1050px;margin:10px auto;background:#e9f8ef;border:1px solid #bfe5ce;padding:12px;border-radius:10px}
+.to-bookings article{display:flex;justify-content:space-between;border-top:1px solid #edf1f4;padding:12px 0}
+.to-bookings small,.to-bookings span{display:block;color:#60798a;margin-top:4px}
+
+@media(max-width:900px){
+ .to-login-shell{grid-template-columns:1fr}
+ .to-login-hero{min-height:44svh;padding:26px 24px}
+ .to-login-copy{padding:56px 0 10px}
+ .to-login-copy h1{font-size:clamp(42px,10vw,70px)}
+ .to-login-panel{min-height:auto;padding:28px 18px 40px}
+ .to-login-card{margin-top:-56px;position:relative;z-index:2;padding:28px;border-radius:22px}
+}
+@media(max-width:760px){
+ .to-shell{padding:14px}.to-grid{grid-template-columns:1fr 1fr}.to-discounts{grid-template-columns:1fr}.to-excursions{grid-template-columns:1fr}.to-top{align-items:flex-start}.to-bookings article{gap:10px}
+}
+@media(max-width:520px){
+ .to-login-hero{min-height:48svh;background-position:center}
+ .to-login-brand strong{font-size:24px}
+ .to-login-copy{padding-top:42px}
+ .to-login-copy>p:not(.to-kicker){font-size:15px;line-height:1.55}
+ .to-login-pills{display:none}
+ .to-login-card h2{font-size:36px}
+ .to-grid{grid-template-columns:1fr}
+}
