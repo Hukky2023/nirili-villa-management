@@ -86,7 +86,6 @@ export function createBookingConfirmationPdf(booking:any):File{
  ly=field('Property','Nirili Villa, Dhiffushi',leftX+24,ly,150,leftW-48);
  ly=field('Check-in',displayDate(booking.checkIn)+' · 14:00',leftX+24,ly+7,150,leftW-48);
  ly=field('Check-out',displayDate(booking.checkOut)+' · 12:00',leftX+24,ly+7,150,leftW-48);
- if(booking.room)ly=field('Room',booking.room,leftX+24,ly+7,150,leftW-48);
  if(booking.roomType)ly=field('Room type',booking.roomType,leftX+24,ly+7,150,leftW-48);
  ly=field('Guests',guestCount+(booking.adults!=null?' · '+booking.adults+' adult'+(Number(booking.adults)===1?'':'s'):'')+(Number(booking.children)>0?' · '+booking.children+' child'+(Number(booking.children)===1?'':'ren'):''),leftX+24,ly+7,150,leftW-48);
  field('Meal plan',booking.meal||'Not added',leftX+24,ly+7,150,leftW-48);
