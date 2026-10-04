@@ -13,7 +13,7 @@ export function createBookingConfirmationPdf(booking:any):File{
  const ctx=canvas.getContext('2d');if(!ctx)throw Error('Could not prepare booking confirmation PDF.');
  const excursions=Array.isArray(booking.excursions)?booking.excursions:Array.isArray(booking.packageExcursions)?booking.packageExcursions:[];
  const guestCount=Math.max(0,Number(booking.pax)||Number(booking.adults||0)+Number(booking.children||0));
- const guests=Array.isArray(booking.guests)&&booking.guests.length?booking.guests.map((g:any,i:number)=>({name:clean(g?.name)||('Guest '+(i+1)),passport:clean(g?.passport),kind:clean(g?.kind)})):[{name:clean(booking.guest)||'Guest',passport:'',kind:'adult'}];
+ const guests=Array.isArray(booking.guests)&&booking.guests.length?booking.guests.map((g:any,i:number)=>({name:clean(g?.name)||('Guest '+(i+1)),passport:clean(g?.passport),kind:clean(g?.kind),age:g?.age})):[{name:clean(booking.guest)||'Guest',passport:'',kind:'adult',age:null}];
  const dark='#063f58',teal='#0d829f',aqua='#dff4f7',sand='#f6f0e5',text='#263f4d',muted='#617985',line='#d8e3e7';
  const roundRect=(x:number,y:number,width:number,height:number,r:number,fill:string,stroke?:string)=>{
   ctx.beginPath();ctx.roundRect(x,y,width,height,r);ctx.fillStyle=fill;ctx.fill();
@@ -109,7 +109,7 @@ export function createBookingConfirmationPdf(booking:any):File{
  roundRect(leftX,gy,leftW,guestCardH,16,'#ffffff','#e5d9c6');cardHeader(leftX,gy,leftW,'GUEST DETAILS',sand);
  let gyy=gy+90;
  guests.forEach((g:any,index:number)=>{
-  textLine((g.kind==='child'?'Child ':'Guest ')+(index+1),leftX+24,gyy,18,false,muted,110);
+  textLine((g.kind==='child'?'Child ':'Guest ')+(index+1)+(g.kind==='child'&&Number.isInteger(Number(g.age))?' · Age '+Number(g.age):''),leftX+24,gyy,18,false,muted,160);
   gyy=wrap(g.name,leftX+134,gyy,leftW-158,19,true,text,26);
   if(g.passport){textLine('Passport',leftX+24,gyy,17,false,muted,110);gyy=wrap(g.passport,leftX+134,gyy,leftW-158,18,true,text,25);}
   gyy+=8;
