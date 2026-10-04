@@ -6,6 +6,8 @@ import {loadExcursionMenu} from '../../../../lib/excursion-menu';
 import {assertBookingDatesOpen,bookingClosureForStay} from '../../../../lib/booking-closures';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
 import {discountedCents,tourOperatorFromRequest} from '../../../../lib/tour-operators';
+import {deleteBooking} from '../../../../lib/booking-admin';
+import {cancelLinkedTransportBookings} from '../../../../lib/linked-transport-bookings';
 
 const headers={'Cache-Control':'private, no-store'};
 const AIRPORT_TRANSFER_CENTS=3000;
@@ -90,12 +92,18 @@ export async function POST(r:Request){
   if(['Cancelled','Declined','Checked Out','In House'].includes(String(status||''))||String(q.checkIn||'')<islandToday())throw Error('This booking can no longer be changed from the tour operator portal.');
 
   if(action==='cancel'){
-   const at=new Date().toISOString();
-   q.status='Cancelled';q.cancelledAt=at;q.cancelledBy='tour-operator:'+operator.id;
-   if(stay){stay.status='Cancelled';stay.cancelledAt=at;stay.cancelledBy='tour-operator:'+operator.id;stay.history??=[];stay.history.unshift({date:at,detail:'Cancelled by tour operator before check-in',by:operator.name});}
-   if(!await saveStayAccess(state,revision,'tour-operator:'+operator.id))return Response.json({error:'Booking changed. Refresh and try again.'},{status:409,headers});
-   try{await emitAdminNotification({id:'hotel:tour-cancel:'+q.id+':'+at,type:'hotel',title:'Tour operator cancelled booking',detail:operator.name+' · '+q.guest+' · '+q.checkIn+' → '+q.checkOut,ref:q.id,url:'/home'});}catch{}
-   return Response.json({ok:true,bookings:rows(state,operator.id)},{headers});
+   const at=new Date().toISOString(),actor='tour-operator:'+operator.id;
+   q.status='Cancelled';q.cancelledAt=at;q.cancelledBy=actor;
+   if(stay){
+    // Remove the confirmed stay and its linked room/service records from active hotel management,
+    // while keeping the original tour-operator request as Cancelled for history in the partner portal.
+    deleteBooking(state,stay,operator.name);
+    q.status='Cancelled';q.cancelledAt=at;q.cancelledBy=actor;q.stayId='';
+   }
+   if(!await saveStayAccess(state,revision,actor))return Response.json({error:'Booking changed. Refresh and try again.'},{status:409,headers});
+   if(stay)try{await cancelLinkedTransportBookings({stayId:stay.id,by:actor});}catch{}
+   try{await emitAdminNotification({id:'hotel:tour-cancel:'+q.id+':'+at,type:'hotel',title:'Tour operator cancelled booking',detail:operator.name+' · '+q.guest+' · '+q.checkIn+' → '+q.checkOut+' · Removed from active hotel bookings',ref:q.id,url:'/home'});}catch{}
+   return Response.json({ok:true,managementBookingRemoved:!!stay,bookings:rows(state,operator.id)},{headers});
   }
 
   const x=await quote(state,operator,b);
