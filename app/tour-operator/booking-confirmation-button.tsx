@@ -11,15 +11,15 @@ export default function BookingConfirmationButton({booking}:{booking:any}){
   try{
    const file=createBookingConfirmationPdf(booking);
    if(navigator.canShare?.({files:[file]})){
-    await navigator.share({files:[file],title:'Booking Confirmation'});
-    setMessage('Booking confirmation ready to share.');
+    await navigator.share({files:[file],title:'Booking Voucher'});
+    setMessage('Booking voucher ready to share.');
    }else{
     const url=URL.createObjectURL(file),a=document.createElement('a');
     a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),60000);
-    setMessage('PDF saved. You can send it to the guest.');
+    setMessage('Booking voucher saved. You can send it to the guest.');
    }
-  }catch(error){if((error as any)?.name!=='AbortError')setMessage(error instanceof Error?error.message:'Could not share booking confirmation.');}
+  }catch(error){if((error as any)?.name!=='AbortError')setMessage(error instanceof Error?error.message:'Could not share booking voucher.');}
   finally{setBusy(false);}
  }
  return <span className="to-confirmation-share">
