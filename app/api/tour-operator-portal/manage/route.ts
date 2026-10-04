@@ -19,9 +19,11 @@ const cleanGuests=(value:any,adults:number,children:number)=>{
  const pax=adults+children,rows=Array.isArray(value)?value.slice(0,pax):[];
  if(rows.length!==pax)throw Error('Enter every guest name and passport number.');
  return rows.map((g:any,i:number)=>{
-  const name=text(g?.name,100),passport=text(g?.passport,30).toUpperCase();
+  const name=text(g?.name,100),passport=text(g?.passport,30).toUpperCase(),kind=i<adults?'adult':'child';
+  const age=kind==='child'?Number(g?.age):null;
   if(!name||!passport)throw Error('Enter the full name and passport number for every guest.');
-  return {name,passport,kind:i<adults?'adult':'child'};
+  if(kind==='child'&&(!Number.isInteger(age)||age<0||age>17))throw Error('Enter a valid age for every child.');
+  return {name,passport,kind,...(kind==='child'?{age}: {})};
  });
 };
 const nights=(a:string,b:string)=>(Date.parse(b)-Date.parse(a))/86400000;
