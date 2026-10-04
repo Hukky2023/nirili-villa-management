@@ -5,7 +5,7 @@ import {ArrowRight,ArrowUpRight,BedDouble,Bike,Coffee,Compass,MapPin,MessageCirc
 
 const IMAGES={
  hero:img('1507525428034-b723cf961d3e',2400),
- stay:img('1582719478250-c89cae4dc85b',1400),
+ stay:'https://static.cupid.travel/hotels/ex_277154f6_z.jpg',
  evening:img('1643856555919-9787de563a5d',900),
  dining:img('1768322264423-4b0adf0cf31b',1400),
  transfer:img('1530809355496-bac53698afe3',1200),
