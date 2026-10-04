@@ -51,7 +51,7 @@ if(b.action==='close-booking-dates'||b.action==='reopen-booking-dates'){
  if(u.role!=='admin')return Response.json({error:'Only Admin can close or reopen booking dates.'},{status:403});
  if(b.revision!==revision)return Response.json({error:'Booking availability changed. Refresh and try again.'},{status:409});
  const closure=b.action==='close-booking-dates'
-  ?closeBookingDates(state,{from:String(b.from||''),through:String(b.through||''),reason:String(b.reason||''),by:u.username})
+  ?closeBookingDates(state,{from:String(b.from||''),through:String(b.through||''),reason:String(b.reason||''),rooms:Array.isArray(b.rooms)?b.rooms:[],by:u.username})
   :reopenBookingDates(state,String(b.id||''));
  if(!await saveStayAccess(state,revision,u.userId,null,[]))return Response.json({error:'Booking availability changed. Refresh and try again.'},{status:409});
  await autoPushBookingComAvailability();
