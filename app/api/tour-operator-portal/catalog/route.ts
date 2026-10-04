@@ -14,6 +14,15 @@ const phonePattern=/^\+[1-9]\d{7,14}$/;
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const cleanPhone=(v:any)=>String(v||'').replace(/[\s()-]/g,'');
 const text=(v:any,max:number)=>String(v??'').trim().replace(/\s+/g,' ').slice(0,max);
+const cleanGuests=(value:any,adults:number,children:number)=>{
+ const pax=adults+children,rows=Array.isArray(value)?value.slice(0,pax):[];
+ if(rows.length!==pax)throw Error('Enter every guest name and passport number.');
+ return rows.map((g:any,i:number)=>{
+  const name=text(g?.name,100),passport=text(g?.passport,30).toUpperCase();
+  if(!name||!passport)throw Error('Enter the full name and passport number for every guest.');
+  return {name,passport,kind:i<adults?'adult':'child'};
+ });
+};
 const nights=(a:string,b:string)=>(Date.parse(b)-Date.parse(a))/86400000;
 const SPECIAL_PACKAGE_INCLUDED=[
  'Turtle Snorkeling',
@@ -41,7 +50,7 @@ function bookingRows(state:any,operatorId:string){
   const stay=q.stayId?(state.stays||[]).find((s:any)=>s.id===q.stayId):null;
   const status=stay?.status||q.status;
   return {
-   id:q.id,guest:q.guest,phone:q.whatsapp||'',email:q.email||'',checkIn:q.checkIn,checkOut:q.checkOut,pax:q.pax,adults:q.adults??q.pax,children:q.children??0,
+   id:q.id,guest:q.guest,guests:Array.isArray(q.guests)?q.guests:[],phone:q.whatsapp||'',email:q.email||'',checkIn:q.checkIn,checkOut:q.checkOut,pax:q.pax,adults:q.adults??q.pax,children:q.children??0,
    meal:q.meal,status:q.status,stayStatus:stay?.status||'',estimate:q.estimate,notes:q.notes||'',
    packageName:q.packageName,roomType:q.tourOperatorRoomType||'',createdAt:q.createdAt||'',stayId:q.stayId||'',room:q.room||stay?.room||'',
    excursionIds:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>String(x.id||'')):[],
@@ -87,10 +96,11 @@ export async function POST(r:Request){
    return Response.json({ok:true,checkIn,checkOut,pax,totalAvailable,availability},{headers});
   }
   if(b.action!=='book-package')throw Error('Unknown action.');
-  const guest=text(b.guest,100),phone=cleanPhone(b.phone),email=text(b.email,254).toLowerCase();
+  const phone=cleanPhone(b.phone),email=text(b.email,254).toLowerCase();
   const checkIn=String(b.checkIn||''),checkOut=String(b.checkOut||''),meal=String(b.meal||''),roomType=text(b.roomType,80);
   const adults=Number(b.adults),children=Number(b.children),pax=adults+children,stayNights=nights(checkIn,checkOut),today=islandToday();
-  if(!guest||!phonePattern.test(phone)||!emailPattern.test(email))throw Error('Enter guest name, WhatsApp with country code and a valid email.');
+  const guests=cleanGuests(b.guests,adults,children),guest=guests[0]?.name||text(b.guest,100);
+  if(!guest||!phonePattern.test(phone)||!emailPattern.test(email))throw Error('Enter guest details, WhatsApp with country code and a valid email.');
   if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||!Number.isInteger(stayNights)||stayNights<1||stayNights>365)throw Error('Choose valid stay dates.');
   if(!Number.isInteger(adults)||adults<1||adults>3||!Number.isInteger(children)||children<0||children>2||pax<1||pax>3)throw Error('A room can accommodate up to 3 guests.');
   if(!plans.includes(meal))throw Error('Choose a valid meal plan.');
@@ -114,7 +124,7 @@ export async function POST(r:Request){
   const id='TOR-'+crypto.randomUUID().slice(0,8).toUpperCase(),createdAt=new Date().toISOString();
   const packageName=text(b.packageName,120)||('Custom '+stayNights+'N '+meal+' package');
   const request:any={
-   id,token:crypto.randomUUID(),guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes:text(b.notes,1000),
+   id,token:crypto.randomUUID(),guest,guests,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes:text(b.notes,1000),
    status:'Pending',source:'Tour operator · '+operator.name,createdAt,estimate:total,tourOperatorId:operator.id,tourOperatorName:operator.name,tourOperatorRoomType:roomType,
    packageId:'tour-package-'+operator.id+'-'+crypto.randomUUID().slice(0,8),packageName,packageQuotedCents:total,packageRatePerGuestCents:Math.round(total/pax),packageNights:stayNights,packageMealPlan:meal,
    packageIncludeTransfer:transfer!=='none',packageTransferLabel:transfer==='return'?'Return airport transfer':transfer==='arrival'?'Arrival airport transfer':'',
