@@ -100,3 +100,12 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
  .to-login-card h2{font-size:36px}
  .to-grid{grid-template-columns:1fr}
 }
+
+
+/* Confirmed booking guest share */
+.to-confirmation-share{display:flex;flex-direction:column;gap:5px;align-items:flex-end;margin-top:8px}
+.to-share-guest{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:10px;background:#0b88ad;color:#fff;padding:9px 13px;font-weight:700;cursor:pointer;min-height:40px}
+.to-share-guest svg{width:16px;height:16px}
+.to-share-guest:disabled{opacity:.65;cursor:default}
+.to-confirmation-share small{max-width:240px;color:#52707f;text-align:right;line-height:1.25}
+@media(max-width:720px){.to-confirmation-share{align-items:stretch}.to-share-guest{width:100%}.to-confirmation-share small{text-align:left;max-width:none}}
