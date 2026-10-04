@@ -24,6 +24,7 @@ export const ALIAS_HOSTS:Record<string,string>={
  'excursions.nirilihotels.com':'tours',
  'restaurant.nirilihotels.com':'dine',
  'travels.nirilihotels.com':'main',
+ 'tour-operator.nirilihotels.com':'tourOperator',
 };
 
 const origin=(host:string)=>'https://'+host;
