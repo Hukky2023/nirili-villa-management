@@ -25,14 +25,18 @@ function availableRooms(state:any,checkIn:string,checkOut:string,pax:number,room
  });
 }
 function bookingRows(state:any,operatorId:string){
+ const today=islandToday();
  return (state.requests||[]).filter((q:any)=>q.tourOperatorId===operatorId).slice().sort((a:any,b:any)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,100).map((q:any)=>{
   const stay=q.stayId?(state.stays||[]).find((s:any)=>s.id===q.stayId):null;
+  const status=stay?.status||q.status;
   return {
    id:q.id,guest:q.guest,phone:q.whatsapp||'',email:q.email||'',checkIn:q.checkIn,checkOut:q.checkOut,pax:q.pax,adults:q.adults??q.pax,children:q.children??0,
    meal:q.meal,status:q.status,stayStatus:stay?.status||'',estimate:q.estimate,notes:q.notes||'',
-   packageName:q.packageName,roomType:q.tourOperatorRoomType||stay?.type||'',createdAt:q.createdAt||'',stayId:q.stayId||'',room:q.room||stay?.room||'',
+   packageName:q.packageName,roomType:q.tourOperatorRoomType||'',createdAt:q.createdAt||'',stayId:q.stayId||'',room:q.room||stay?.room||'',
+   excursionIds:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>String(x.id||'')):[],
+   excursions:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>({id:String(x.id||''),name:String(x.name||x.id||'')})):[],
    transfer:q.packageIncludeTransfer?(String(q.packageTransferLabel||'').toLowerCase().includes('return')?'return':'arrival'):'none',
-   excursions:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>({id:String(x.id||''),name:String(x.name||x.id||'')})):[]
+   canManage:!['Cancelled','Declined','Deleted','Checked Out','In House'].includes(String(status||''))&&String(q.checkIn||'')>=today
   };
  });
 }
