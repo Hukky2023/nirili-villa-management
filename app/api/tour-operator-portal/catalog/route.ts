@@ -4,7 +4,7 @@ import {roomRates} from '../../../../lib/room-rates';
 import {loadStays} from '../../../../lib/stays';
 import {saveStayAccess} from '../../../../lib/stay-login';
 import {loadExcursionMenu} from '../../../../lib/excursion-menu';
-import {assertBookingDatesOpen} from '../../../../lib/booking-closures';
+import {assertBookingDatesOpen,bookingClosureForStay} from '../../../../lib/booking-closures';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
 import {discountedCents,publicTourOperator,tourOperatorFromRequest} from '../../../../lib/tour-operators';
 
@@ -20,6 +20,7 @@ function availableRooms(state:any,checkIn:string,checkOut:string,pax:number,room
  return (state.rooms||[]).filter((room:any)=>{
   if(room.status==='Maintenance'||Number(room.capacity||3)<pax)return false;
   if(roomType&&String(room.type)!==roomType)return false;
+  if(bookingClosureForStay(state,checkIn,checkOut,String(room.number)))return false;
   return !(state.stays||[]).some((stay:any)=>stay.room===room.number&&!['Checked Out','Cancelled'].includes(stay.status)&&stay.checkIn<checkOut&&stay.checkOut>checkIn);
  });
 }
