@@ -21,7 +21,7 @@ const cleanPhone=(v:any)=>String(v||'').replace(/[\s()-]/g,'');
 const PHONE=/^\+[1-9]\d{7,14}$/,EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const discount=(v:any,label:string)=>{
  const n=Math.round(Number(v??0)*10)/10;
- if(!Number.isFinite(n)||n<0||n>100)throw Error(label+' discount must be between 0% and 100%.');
+ if(!Number.isFinite(n)||n<0||n>100)throw Error(label+' commission must be between 0% and 100%.');
  return n;
 };
 
