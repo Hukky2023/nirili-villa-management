@@ -167,3 +167,18 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
 .to-excursions button>span,.to-editor-excursions button>span{display:block;min-width:0}
 .to-excursions button>span>strong,.to-editor-excursions button>span>strong{display:block}
 .to-excursions button:has(.to-special-includes),.to-editor-excursions button:has(.to-special-includes){align-items:flex-start}
+
+
+/* Availability first + per-guest passport details */
+.to-availability-first{display:grid;gap:12px;padding:16px;border:1px solid #d5e4eb;border-radius:14px;background:#fbfdfe}
+.to-availability-first h3{margin:0;color:#153247}
+.to-guest-details{display:grid;gap:12px;padding:16px;border:1px solid #d5e4eb;border-radius:14px;background:#fff}
+.to-guest-details h3{margin:0;color:#153247}
+.to-guest-details>p{margin:0;color:#60798a;font-size:13px}
+.to-guest-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.to-guest-grid article{display:grid;gap:9px;padding:13px;border:1px solid #d9e6ee;border-radius:12px;background:#f8fbfd}
+.to-guest-grid article>b{font-size:13px;color:#087fa8}
+.to-guest-grid label{display:grid;gap:5px;font-size:12px;font-weight:700;color:#29485a}
+.to-guest-grid input{width:100%;padding:10px 11px;border:1px solid #cbd9e3;border-radius:9px;background:#fff;color:#153247;font:inherit}
+.to-guest-grid input:focus{outline:2px solid rgba(8,127,168,.15);border-color:#087fa8}
+@media(max-width:640px){.to-guest-grid{grid-template-columns:1fr}}
