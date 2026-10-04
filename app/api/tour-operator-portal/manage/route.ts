@@ -16,6 +16,17 @@ const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const cleanPhone=(v:any)=>String(v||'').replace(/[\s()-]/g,'');
 const text=(v:any,max:number)=>String(v??'').trim().replace(/\s+/g,' ').slice(0,max);
 const nights=(a:string,b:string)=>(Date.parse(b)-Date.parse(a))/86400000;
+const SPECIAL_PACKAGE_INCLUDED=[
+ 'Turtle Snorkeling',
+ 'Shark Snorkeling (Nurse Shark)',
+ 'Sandbank Trip',
+ 'Coral Garden Snorkeling',
+ 'Dolphin Watching',
+ 'Fishing with Dinner'
+];
+const specialIncluded=(item:any)=>String(item?.category||'').toLowerCase()==='special'||String(item?.group||'').toLowerCase().includes('special')||String(item?.name||'').toLowerCase().includes('special package')
+ ?SPECIAL_PACKAGE_INCLUDED.map((name,index)=>({id:'special-'+(index+1),name}))
+ :[];
 
 function availableRooms(state:any,checkIn:string,checkOut:string,pax:number,roomType:string,excludeStayId=''){
  return (state.rooms||[]).filter((room:any)=>{
@@ -63,7 +74,7 @@ async function quote(state:any,operator:any,b:any){
  const transferLegs=transfer==='none'?0:transfer==='arrival'?1:2,publicTransfer=AIRPORT_TRANSFER_CENTS*pax*transferLegs,transferNet=discountedCents(publicTransfer,operator.transferDiscountPercent);
  const total=roomNet+excursionNet+transferNet,packageName=text(b.packageName,120)||('Custom '+stayNights+'N '+meal+' package');
  return {guest,phone,email,checkIn,checkOut,meal,roomType,adults,children,pax,stayNights,transfer,total,packageName,
-  packageFields:{packageName,packageQuotedCents:total,packageRatePerGuestCents:Math.round(total/pax),packageNights:stayNights,packageMealPlan:meal,packageIncludeTransfer:transfer!=='none',packageTransferLabel:transfer==='return'?'Return airport transfer':transfer==='arrival'?'Arrival airport transfer':'',packageExcursions:selectedExcursions.map((x:any)=>({id:String(x.id),name:String(x.name||x.id)}))},
+  packageFields:{packageName,packageQuotedCents:total,packageRatePerGuestCents:Math.round(total/pax),packageNights:stayNights,packageMealPlan:meal,packageIncludeTransfer:transfer!=='none',packageTransferLabel:transfer==='return'?'Return airport transfer':transfer==='arrival'?'Arrival airport transfer':'',packageExcursions:selectedExcursions.flatMap((x:any)=>{const included=specialIncluded(x);return included.length?included:[{id:String(x.id),name:String(x.name||x.id)}];})},
   pricing:{publicRoomCents:publicRoom,roomCents:roomNet,roomDiscountPercent:operator.roomDiscountPercent,publicExcursionCents:publicExcursions,excursionCents:excursionNet,excursionDiscountPercent:operator.excursionDiscountPercent,publicTransferCents:publicTransfer,transferCents:transferNet,transferDiscountPercent:operator.transferDiscountPercent,totalCents:total}
  };
 }
