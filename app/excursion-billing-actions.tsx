@@ -3,6 +3,7 @@
 import {useEffect, useId, useRef, useState} from 'react';
 import type {FormEvent} from 'react';
 import type {ExcursionPricing} from '../lib/excursion-billing';
+import BillPaidButton from './bill-paid-button';
 import './excursion-billing-actions.css';
 
 const money = (cents: number) => '$' + (cents / 100).toFixed(2);
@@ -11,7 +12,7 @@ type ExcursionBill = {
   id:string; items:any[]; date?:string; status?:string; revision?:number; totalCents?:number;
 };
 type Props = {
-  booking: {id: string; guest: string; excursion: string; totalCents: number;
+  booking: {id: string; guest: string; excursion: string; totalCents: number; paymentStatus?:string;
     pricing?: ExcursionPricing; billingHistory?: any[]; bill?:ExcursionBill};
   canAdjust: boolean; revision: number; onUpdated: () => Promise<void>;
 };
@@ -136,6 +137,7 @@ export default function ExcursionBillingActions({booking, canAdjust, revision, o
       <button type="button" className="excursion-secondary-btn" disabled={busy||billBusy||deleteBusy} onClick={openBill}>Edit Bill</button>
       <button type="button" className="excursion-secondary-btn" disabled={busy || billBusy || deleteBusy || p.complimentary} onClick={() => open('free')}>Make Free</button>
       <button type="button" className="excursion-secondary-btn" disabled={busy||billBusy||deleteBusy} onClick={() => open('discount')}>{p.adjusted && !p.complimentary ? 'Edit Discount' : 'Add Discount'}</button>
+      <BillPaidButton department="Excursions" billId={booking.id} paid={booking.paymentStatus==='Paid'||booking.bill?.status==='Paid'||p.complimentary} disabled={busy||billBusy||deleteBusy} className="excursion-secondary-btn" onPaid={onUpdated}/>
       <button type="button" className="excursion-secondary-btn excursion-delete-btn" disabled={busy||billBusy||deleteBusy} onClick={()=>void deleteBooking()}>{deleteBusy?'Deleting…':'Delete'}</button>
       {p.adjusted && <button type="button" className="excursion-secondary-btn" disabled={busy||billBusy||deleteBusy} onClick={() => open('restore')}>Remove adjustment</button>}
     </div>}
