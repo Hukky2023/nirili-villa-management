@@ -1,5 +1,6 @@
 import {sameOrigin,limit} from '../../../../lib/auth';
 import {islandToday,nightly,plans,validDate} from '../../../../lib/guest-catalog';
+import {roomRates} from '../../../../lib/room-rates';
 import {loadStays} from '../../../../lib/stays';
 import {saveStayAccess} from '../../../../lib/stay-login';
 import {loadExcursionMenu} from '../../../../lib/excursion-menu';
@@ -33,7 +34,7 @@ async function view(operator:any){
  const roomTypes=Array.from(new Set((state.rooms||[]).map((r:any)=>String(r.type||'')).filter(Boolean))).sort();
  return {
   operator:publicTourOperator(operator),revision,today:islandToday(),plans,
-  roomTypes,roomRates:state.roomRates||{},
+  roomTypes,roomRates:roomRates(state.roomRates),
   excursions:excursions.filter((x:any)=>x.active!==false).map((x:any)=>({id:x.id,name:x.name,cents:Number(x.cents)||0,pricingUnit:x.pricingUnit==='couple'?'couple':'guest',group:x.group||''})),
   airportTransferCents:AIRPORT_TRANSFER_CENTS,
   bookings:bookingRows(state,operator.id)
