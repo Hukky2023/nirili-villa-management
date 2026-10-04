@@ -1,5 +1,5 @@
 import {currentUser,sameOrigin} from '../../../lib/auth';
-import {createTourOperator,loadTourOperators,publicTourOperator,updateTourOperator} from '../../../lib/tour-operators';
+import {createTourOperator,deleteTourOperator,loadTourOperators,publicTourOperator,updateTourOperator} from '../../../lib/tour-operators';
 
 const headers={'Cache-Control':'no-store'};
 const actor=(u:any)=>u?.displayName||u?.username||'admin';
@@ -21,4 +21,15 @@ export async function PATCH(r:Request){
   if(result==='conflict')return Response.json({error:'This tour operator changed elsewhere. Refresh and try again.'},{status:409,headers});
   return Response.json({operator:{...publicTourOperator(result.operator),revision:result.revision}},{headers});
  }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not save tour operator.'},{status:400,headers});}
+}
+
+export async function DELETE(r:Request){
+ const user=await currentUser();if(user?.role!=='admin'||!sameOrigin(r))return Response.json({error:'Admin access required.'},{status:403,headers});
+ try{
+  const b=await r.json(),id=String(b.id||'');
+  if(!id)return Response.json({error:'Tour operator is required.'},{status:400,headers});
+  const deleted=await deleteTourOperator(id,actor(user));
+  if(!deleted)return Response.json({error:'Tour operator not found.'},{status:404,headers});
+  return Response.json({ok:true,deleted},{headers});
+ }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not delete tour operator.'},{status:400,headers});}
 }
