@@ -162,3 +162,8 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
  .to-editor-grid,.to-editor-excursions{grid-template-columns:1fr}
  .to-manage-dialog{padding:16px;border-radius:18px}
 }
+
+.to-special-includes{display:block;margin-top:5px;font-size:11px;line-height:1.4;font-weight:600;opacity:.82;max-width:520px}
+.to-excursions button>span,.to-editor-excursions button>span{display:block;min-width:0}
+.to-excursions button>span>strong,.to-editor-excursions button>span>strong{display:block}
+.to-excursions button:has(.to-special-includes),.to-editor-excursions button:has(.to-special-includes){align-items:flex-start}
