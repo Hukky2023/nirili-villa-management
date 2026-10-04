@@ -72,3 +72,41 @@ export async function GET(r:Request){
   return Response.json({bookings:rows(state,operator.id)},{headers});
  }catch{return Response.json({error:'Could not load bookings.'},{status:503,headers});}
 }
+
+export async function POST(r:Request){
+ if(!sameOrigin(r))return Response.json({error:'Invalid request.'},{status:403,headers});
+ try{
+  const operator=await tourOperatorFromRequest(r);
+  if(!operator)return Response.json({error:'Sign in required.'},{status:401,headers});
+  if(!await limit('tour-operator-manage:'+operator.id,60,3600000))return Response.json({error:'Too many requests. Please try again later.'},{status:429,headers});
+  const b=await r.json(),action=String(b.action||'');
+  if(!['modify','cancel'].includes(action))throw Error('Unknown action.');
+  const {state,revision}=await loadStays();state.requests??=[];state.stays??=[];state.rooms??=[];
+  const q=state.requests.find((x:any)=>x.id===String(b.id||'')&&x.tourOperatorId===operator.id);
+  if(!q)return Response.json({error:'Booking not found.'},{status:404,headers});
+  const stay=q.stayId?state.stays.find((s:any)=>s.id===q.stayId):null,status=stay?.status||q.status;
+  if(['Cancelled','Declined','Checked Out','In House'].includes(String(status||''))||String(q.checkIn||'')<islandToday())throw Error('This booking can no longer be changed from the tour operator portal.');
+
+  if(action==='cancel'){
+   const at=new Date().toISOString();
+   q.status='Cancelled';q.cancelledAt=at;q.cancelledBy='tour-operator:'+operator.id;
+   if(stay){stay.status='Cancelled';stay.cancelledAt=at;stay.cancelledBy='tour-operator:'+operator.id;stay.history??=[];stay.history.unshift({date:at,detail:'Cancelled by tour operator before check-in',by:operator.name});}
+   if(!await saveStayAccess(state,revision,'tour-operator:'+operator.id))return Response.json({error:'Booking changed. Refresh and try again.'},{status:409,headers});
+   try{await emitAdminNotification({id:'hotel:tour-cancel:'+q.id+':'+at,type:'hotel',title:'Tour operator cancelled booking',detail:operator.name+' · '+q.guest+' · '+q.checkIn+' → '+q.checkOut,ref:q.id,url:'/home'});}catch{}
+   return Response.json({ok:true,bookings:rows(state,operator.id)},{headers});
+  }
+
+  const x=await quote(state,operator,b);
+  const available=availableRooms(state,x.checkIn,x.checkOut,x.pax,x.roomType,stay?.id||'');
+  if(!available.length)return Response.json({error:'No '+x.roomType+' is available for these dates and guest count.'},{status:409,headers});
+  const selectedRoom=stay?(available.find((room:any)=>room.number===stay.room)||available[0]):null,at=new Date().toISOString();
+  Object.assign(q,{guest:x.guest,whatsapp:x.phone,email:x.email,checkIn:x.checkIn,checkOut:x.checkOut,pax:x.pax,adults:x.adults,children:x.children,meal:x.meal,notes:text(b.notes,1000),estimate:x.total,tourOperatorRoomType:x.roomType,...x.packageFields,tourOperatorPricing:x.pricing,modifiedAt:at,modifiedBy:'tour-operator:'+operator.id});
+  if(stay){
+   Object.assign(stay,{guest:x.guest,whatsapp:x.phone,email:x.email,checkIn:x.checkIn,checkOut:x.checkOut,pax:x.pax,adults:x.adults,children:x.children,meal:x.meal,notes:text(b.notes,1000),room:selectedRoom.number,base:x.total,...x.packageFields});
+   q.room=selectedRoom.number;stay.history??=[];stay.history.unshift({date:at,detail:'Booking modified by tour operator before check-in',by:operator.name});
+  }
+  if(!await saveStayAccess(state,revision,'tour-operator:'+operator.id))return Response.json({error:'Booking changed. Refresh and try again.'},{status:409,headers});
+  try{await emitAdminNotification({id:'hotel:tour-modify:'+q.id+':'+at,type:'hotel',title:'Tour operator modified booking',detail:operator.name+' · '+q.guest+' · '+x.checkIn+' → '+x.checkOut+' · $'+(x.total/100).toFixed(2),ref:q.id,url:'/home'});}catch{}
+  return Response.json({ok:true,totalCents:x.total,bookings:rows(state,operator.id)},{headers});
+ }catch(e){return Response.json({error:e instanceof Error?e.message:'Could not update booking.'},{status:400,headers});}
+}
