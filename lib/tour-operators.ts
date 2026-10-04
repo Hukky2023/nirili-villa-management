@@ -1,4 +1,6 @@
 import {readRecord,readRecords,saveRecord} from './operation-records';
+import {authDb} from './auth';
+import {deleteOperationalRecordPrimary} from './supabase-bridge';
 import {cleanUsername,partnerAuth} from './partner-auth';
 
 export const TOUR_OPERATOR_PREFIX='tour-operator:';
@@ -71,4 +73,24 @@ export async function updateTourOperator(id:string,revision:number,input:any,by:
  if(input?.password){Object.assign(operator,await auth.credentials(input.password));operator.passwordVersion=(operator.passwordVersion||1)+1;}
  const next=await saveRecord(TOUR_OPERATOR_PREFIX+id,operator,revision,by);
  return next?{operator,revision:next}:'conflict' as const;
+}
+
+
+async function deleteOperationKey(key:string){
+ try{await deleteOperationalRecordPrimary(key);}catch{}
+ try{await authDb().prepare('DELETE FROM operation_records WHERE key=?').bind(key).run();}catch{}
+}
+
+export async function deleteTourOperator(id:string,by:string){
+ const current=await loadTourOperator(id);
+ if(!current)return null;
+ const operator=current.operator;
+ const sessionRows=await readRecords<any>(TOUR_OPERATOR_SESSION_PREFIX);
+ const sessionKeys=sessionRows.filter(row=>String(row.value?.accountId||row.value?.agentId||'')===id).map(row=>row.key);
+ await Promise.all([
+  deleteOperationKey(TOUR_OPERATOR_PREFIX+id),
+  deleteOperationKey(TOUR_OPERATOR_USERNAME_PREFIX+operator.username),
+  ...sessionKeys.map(deleteOperationKey)
+ ]);
+ return {id,username:operator.username,name:operator.name,deletedBy:by,sessionsRemoved:sessionKeys.length};
 }
