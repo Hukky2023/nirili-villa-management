@@ -13,6 +13,7 @@ export function createBookingConfirmationPdf(booking:any):File{
  const ctx=canvas.getContext('2d');if(!ctx)throw Error('Could not prepare booking confirmation PDF.');
  const excursions=Array.isArray(booking.excursions)?booking.excursions:Array.isArray(booking.packageExcursions)?booking.packageExcursions:[];
  const guestCount=Math.max(0,Number(booking.pax)||Number(booking.adults||0)+Number(booking.children||0));
+ const guests=Array.isArray(booking.guests)&&booking.guests.length?booking.guests.map((g:any,i:number)=>({name:clean(g?.name)||('Guest '+(i+1)),passport:clean(g?.passport),kind:clean(g?.kind)})):[{name:clean(booking.guest)||'Guest',passport:'',kind:'adult'}];
  const dark='#063f58',teal='#0d829f',aqua='#dff4f7',sand='#f6f0e5',text='#263f4d',muted='#617985',line='#d8e3e7';
  const roundRect=(x:number,y:number,width:number,height:number,r:number,fill:string,stroke?:string)=>{
   ctx.beginPath();ctx.roundRect(x,y,width,height,r);ctx.fillStyle=fill;ctx.fill();
@@ -104,9 +105,15 @@ export function createBookingConfirmationPdf(booking:any):File{
  }else textLine('Not included',rightX+179,ry+9,20,true,text);
 
  // Guest details
- const gy=y+430;
- roundRect(leftX,gy,leftW,185,16,'#ffffff','#e5d9c6');cardHeader(leftX,gy,leftW,'GUEST DETAILS',sand);
- let gyy=gy+93;
+ const gy=y+430,guestCardH=205+Math.max(0,guests.length-1)*62;
+ roundRect(leftX,gy,leftW,guestCardH,16,'#ffffff','#e5d9c6');cardHeader(leftX,gy,leftW,'GUEST DETAILS',sand);
+ let gyy=gy+90;
+ guests.forEach((g:any,index:number)=>{
+  textLine((g.kind==='child'?'Child ':'Guest ')+(index+1),leftX+24,gyy,18,false,muted,110);
+  gyy=wrap(g.name,leftX+134,gyy,leftW-158,19,true,text,26);
+  if(g.passport){textLine('Passport',leftX+24,gyy,17,false,muted,110);gyy=wrap(g.passport,leftX+134,gyy,leftW-158,18,true,text,25);}
+  gyy+=8;
+ });
  if(booking.phone)gyy=field('WhatsApp',booking.phone,leftX+24,gyy,145,leftW-48);
  if(booking.email)field('Email',booking.email,leftX+24,gyy+8,145,leftW-48);
 
@@ -118,7 +125,7 @@ export function createBookingConfirmationPdf(booking:any):File{
  field('Property','Nirili Villa, Dhiffushi Island, Maldives',rightX+24,iy+8,155,rightW-48);
 
  // Notes / decorative band
- const ny=gy+245;
+ const ny=gy+Math.max(245,guestCardH+35);
  if(booking.notes){
   roundRect(margin,ny,w-margin*2,125,16,'#f8fbfc','#dce8eb');
   textLine('BOOKING NOTES',margin+24,ny+36,20,true,dark);
