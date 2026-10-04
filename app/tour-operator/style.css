@@ -182,3 +182,20 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
 .to-guest-grid input{width:100%;padding:10px 11px;border:1px solid #cbd9e3;border-radius:9px;background:#fff;color:#153247;font:inherit}
 .to-guest-grid input:focus{outline:2px solid rgba(8,127,168,.15);border-color:#087fa8}
 @media(max-width:640px){.to-guest-grid{grid-template-columns:1fr}}
+
+
+/* Collapsible contracted discount details */
+.to-discount-details{max-width:1050px;margin:0 auto 18px;border:1px solid #d9e6ee;border-radius:16px;background:#fff;overflow:hidden}
+.to-discount-details>summary{list-style:none;cursor:pointer;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;font-weight:800;color:#153247}
+.to-discount-details>summary::-webkit-details-marker{display:none}
+.to-discount-details>summary span{display:block}
+.to-discount-details>summary small{color:#60798a;font-size:12px;font-weight:600}
+.to-discount-details>summary::after{content:"+";font-size:24px;line-height:1;color:#087fa8}
+.to-discount-details[open]>summary::after{content:"−"}
+.to-discount-details[open]>summary{border-bottom:1px solid #e6eef3}
+.to-discount-details .to-discounts{margin:0;padding:14px}
+@media(max-width:760px){
+ .to-discount-details>summary{align-items:flex-start;flex-direction:column;position:relative;padding-right:48px}
+ .to-discount-details>summary::after{position:absolute;right:18px;top:14px}
+ .to-discount-details .to-discounts{grid-template-columns:1fr}
+}
