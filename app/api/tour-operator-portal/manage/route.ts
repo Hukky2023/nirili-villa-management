@@ -32,6 +32,7 @@ function rows(state:any,operatorId:string){
    id:q.id,guest:q.guest,phone:q.whatsapp||'',email:q.email||'',checkIn:q.checkIn,checkOut:q.checkOut,pax:q.pax,adults:q.adults??q.pax,children:q.children??0,
    meal:q.meal,status:q.status,stayStatus:stay?.status||'',estimate:q.estimate,notes:q.notes||'',packageName:q.packageName||'',roomType:q.tourOperatorRoomType||'',room:q.room||'',
    excursionIds:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>String(x.id)):[],
+   excursions:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>({id:String(x.id||''),name:String(x.name||x.id||'')})):[],
    transfer:q.packageIncludeTransfer?(String(q.packageTransferLabel||'').toLowerCase().includes('return')?'return':'arrival'):'none',
    canManage:!['Cancelled','Declined','Checked Out','In House'].includes(String(status||''))&&String(q.checkIn||'')>=today
   };
