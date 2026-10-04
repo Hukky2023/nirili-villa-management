@@ -11,7 +11,7 @@ function cache(response:NextResponse,value:string){
 }
 
 // Each public service has its own subdomain, which serves the service's page at "/".
-type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'watersports'|'agents'|'operators'|'my';
+type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'watersports'|'agents'|'operators'|'tourOperator'|'my';
 const SERVICE_HOME:Record<Exclude<Service,'stay'>,string>={
  tours:'/book/excursions',
  dine:'/book/restaurant',
@@ -20,6 +20,7 @@ const SERVICE_HOME:Record<Exclude<Service,'stay'>,string>={
  watersports:'/book/water-sports',
  agents:'/book/agents',
  operators:'/operators',
+ tourOperator:'/tour-operator',
  my:'/stay',
 };
 const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
@@ -30,6 +31,7 @@ const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
  [HOSTS.watersports]:'watersports',
  [HOSTS.agents]:'agents',
  [HOSTS.operators]:'operators',
+ [HOSTS.tourOperator]:'tourOperator',
  [HOSTS.my]:'my',
 };
 
@@ -84,13 +86,15 @@ function staySiteResponse(url:URL){
 const agentApi=new Set(['/api/agent-portal/session','/api/agent-portal/bookings','/api/agent-portal/travel']);
 // Operator portal APIs are served only on the operators host.
 const operatorApi=new Set(['/api/operator-portal/session','/api/operator-portal/speedboats','/api/operator-portal/buggy','/api/operator-portal/crew']);
+const tourOperatorApi=new Set(['/api/tour-operator-portal/session','/api/tour-operator-portal/catalog']);
 
 function serviceSiteResponse(url:URL,service:Exclude<Service,'stay'>){
  if(service==='agents'&&agentApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);
  if(service==='operators'&&operatorApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);
+ if(service==='tourOperator'&&tourOperatorApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);
  const api=guestApiResponse(url);
  if(api)return api;
- const home=SERVICE_HOME[service],pageCache=service==='my'||service==='agents'||service==='operators'?PRIVATE:PUBLIC;
+ const home=SERVICE_HOME[service],pageCache=service==='my'||service==='agents'||service==='operators'||service==='tourOperator'?PRIVATE:PUBLIC;
 
  if(url.pathname==='/'){
   url.pathname=home;
@@ -143,6 +147,7 @@ const SHORTCUTS:Record<string,string>={
  '/watersports':SITES.watersports,'/water-sports':SITES.watersports,
  '/agents':SITES.agents,'/partners':SITES.agents,
  '/operators':SITES.operators,
+ '/tour-operator':SITES.tourOperator,'/touroperator':SITES.tourOperator,
  '/my':SITES.my,'/guest':SITES.my,
 };
 
