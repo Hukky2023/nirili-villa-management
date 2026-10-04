@@ -13,6 +13,7 @@ export const HOSTS={
  agents:'agents.nirilihotels.com',
  // Speedboat operators and buggy owners run Nirili Travels trips from the operator portal.
  operators:'operators.nirilihotels.com',
+ tourOperator:'touroperator.nirilihotels.com',
  my:'my.nirilihotels.com',
  // Retired public address. Old links, emails and printed QR codes are forwarded from here.
  booking:'booking.nirilihotels.com',
@@ -37,6 +38,7 @@ export const SITES={
  watersports:origin(HOSTS.watersports),
  agents:origin(HOSTS.agents),
  operators:origin(HOSTS.operators),
+ tourOperator:origin(HOSTS.tourOperator),
  my:origin(HOSTS.my),
 } as const;
 
