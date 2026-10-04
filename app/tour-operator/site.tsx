@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 import {ArrowRight,LockKeyhole,MapPin,UserRound,Waves} from "lucide-react";
+import BookingConfirmationButton from "./booking-confirmation-button";
 
 const money=(c:number)=>"$"+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const discount=(c:number,p:number)=>Math.max(0,Math.round(c*(100-Math.max(0,Math.min(100,p||0)))/100));
@@ -56,6 +57,6 @@ export default function TourOperatorSite(){
    <aside className="to-quote"><h3>Total payable to Nirili Villa</h3><div><span>Room after {operator.roomDiscountPercent}% discount</span><b>{money(roomNet)}</b></div><div><span>Excursions after {operator.excursionDiscountPercent}% discount</span><b>{money(excNet)}</b></div><div><span>Airport transfer after {operator.transferDiscountPercent}% discount</span><b>{money(transferNet)}</b></div><strong><span>Total</span><b>{money(total)}</b></strong><small>Public value {money(roomPublic+excPublic+transferPublic)} · {nights||0} night{nights===1?"":"s"} · {pax} guest{pax===1?"":"s"}</small></aside>
    <button className="to-submit" disabled={busy||checkedAvailabilityKey!==availabilityKey||!form.roomType||!form.meal||pax>3||pax<1}>{busy?"Creating booking…":"Book room & create package"}</button>
   </form>
-  <section className="to-bookings"><h2>My bookings</h2>{!(data?.bookings||[]).length?<p>No bookings yet.</p>:(data.bookings||[]).map((b:any)=><article key={b.id}><div><b>{b.guest}</b><small>{b.id} · {b.checkIn} → {b.checkOut} · {b.meal}</small></div><div><strong>{money(b.estimate)}</strong><span>{b.status}{b.room?" · Room "+b.room:""}</span></div></article>)}</section>
+  <section className="to-bookings"><h2>My bookings</h2>{!(data?.bookings||[]).length?<p>No bookings yet.</p>:(data.bookings||[]).map((b:any)=><article key={b.id}><div><b>{b.guest}</b><small>{b.id} · {b.checkIn} → {b.checkOut} · {b.meal}</small></div><div><strong>{money(b.estimate)}</strong><span>{b.stayStatus||b.status}{b.room?" · Room "+b.room:""}</span>{String(b.stayStatus||b.status)==="Confirmed"&&<BookingConfirmationButton booking={b}/>}</div></article>)}</section>
  </main>;
 }
