@@ -15,6 +15,15 @@ const phonePattern=/^\+[1-9]\d{7,14}$/;
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const cleanPhone=(v:any)=>String(v||'').replace(/[\s()-]/g,'');
 const text=(v:any,max:number)=>String(v??'').trim().replace(/\s+/g,' ').slice(0,max);
+const cleanGuests=(value:any,adults:number,children:number)=>{
+ const pax=adults+children,rows=Array.isArray(value)?value.slice(0,pax):[];
+ if(rows.length!==pax)throw Error('Enter every guest name and passport number.');
+ return rows.map((g:any,i:number)=>{
+  const name=text(g?.name,100),passport=text(g?.passport,30).toUpperCase();
+  if(!name||!passport)throw Error('Enter the full name and passport number for every guest.');
+  return {name,passport,kind:i<adults?'adult':'child'};
+ });
+};
 const nights=(a:string,b:string)=>(Date.parse(b)-Date.parse(a))/86400000;
 const SPECIAL_PACKAGE_INCLUDED=[
  'Turtle Snorkeling',
@@ -43,7 +52,7 @@ function rows(state:any,operatorId:string){
   const stay=q.stayId?(state.stays||[]).find((s:any)=>s.id===q.stayId):null;
   const status=stay?.status||q.status;
   return {
-   id:q.id,guest:q.guest,phone:q.whatsapp||'',email:q.email||'',checkIn:q.checkIn,checkOut:q.checkOut,pax:q.pax,adults:q.adults??q.pax,children:q.children??0,
+   id:q.id,guest:q.guest,guests:Array.isArray(q.guests)?q.guests:[],phone:q.whatsapp||'',email:q.email||'',checkIn:q.checkIn,checkOut:q.checkOut,pax:q.pax,adults:q.adults??q.pax,children:q.children??0,
    meal:q.meal,status:q.status,stayStatus:stay?.status||'',estimate:q.estimate,notes:q.notes||'',packageName:q.packageName||'',roomType:q.tourOperatorRoomType||'',room:q.room||'',
    excursionIds:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>String(x.id)):[],
    excursions:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>({id:String(x.id||''),name:String(x.name||x.id||'')})):[],
@@ -54,10 +63,11 @@ function rows(state:any,operatorId:string){
 }
 
 async function quote(state:any,operator:any,b:any){
- const guest=text(b.guest,100),phone=cleanPhone(b.phone),email=text(b.email,254).toLowerCase();
+ const phone=cleanPhone(b.phone),email=text(b.email,254).toLowerCase();
  const checkIn=String(b.checkIn||''),checkOut=String(b.checkOut||''),meal=String(b.meal||''),roomType=text(b.roomType,80);
  const adults=Number(b.adults),children=Number(b.children),pax=adults+children,stayNights=nights(checkIn,checkOut),today=islandToday();
- if(!guest||!phonePattern.test(phone)||!emailPattern.test(email))throw Error('Enter guest name, WhatsApp with country code and a valid email.');
+ const guests=cleanGuests(b.guests,adults,children),guest=guests[0]?.name||text(b.guest,100);
+ if(!guest||!phonePattern.test(phone)||!emailPattern.test(email))throw Error('Enter guest details, WhatsApp with country code and a valid email.');
  if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||!Number.isInteger(stayNights)||stayNights<1||stayNights>365)throw Error('Choose valid stay dates.');
  if(!Number.isInteger(adults)||adults<1||adults>3||!Number.isInteger(children)||children<0||children>2||pax<1||pax>3)throw Error('A room can accommodate up to 3 guests.');
  if(!plans.includes(meal))throw Error('Choose a valid meal plan.');
@@ -73,7 +83,7 @@ async function quote(state:any,operator:any,b:any){
  const excursionNet=discountedCents(publicExcursions,operator.excursionDiscountPercent);
  const transferLegs=transfer==='none'?0:transfer==='arrival'?1:2,publicTransfer=AIRPORT_TRANSFER_CENTS*pax*transferLegs,transferNet=discountedCents(publicTransfer,operator.transferDiscountPercent);
  const total=roomNet+excursionNet+transferNet,packageName=text(b.packageName,120)||('Custom '+stayNights+'N '+meal+' package');
- return {guest,phone,email,checkIn,checkOut,meal,roomType,adults,children,pax,stayNights,transfer,total,packageName,
+ return {guest,guests,phone,email,checkIn,checkOut,meal,roomType,adults,children,pax,stayNights,transfer,total,packageName,
   packageFields:{packageName,packageQuotedCents:total,packageRatePerGuestCents:Math.round(total/pax),packageNights:stayNights,packageMealPlan:meal,packageIncludeTransfer:transfer!=='none',packageTransferLabel:transfer==='return'?'Return airport transfer':transfer==='arrival'?'Arrival airport transfer':'',packageExcursions:selectedExcursions.flatMap((x:any)=>{const included=specialIncluded(x);return included.length?included:[{id:String(x.id),name:String(x.name||x.id)}];})},
   pricing:{publicRoomCents:publicRoom,roomCents:roomNet,roomDiscountPercent:operator.roomDiscountPercent,publicExcursionCents:publicExcursions,excursionCents:excursionNet,excursionDiscountPercent:operator.excursionDiscountPercent,publicTransferCents:publicTransfer,transferCents:transferNet,transferDiscountPercent:operator.transferDiscountPercent,totalCents:total}
  };
@@ -121,9 +131,9 @@ export async function POST(r:Request){
   const available=availableRooms(state,x.checkIn,x.checkOut,x.pax,x.roomType,stay?.id||'');
   if(!available.length)return Response.json({error:'No '+x.roomType+' is available for these dates and guest count.'},{status:409,headers});
   const selectedRoom=stay?(available.find((room:any)=>room.number===stay.room)||available[0]):null,at=new Date().toISOString();
-  Object.assign(q,{guest:x.guest,whatsapp:x.phone,email:x.email,checkIn:x.checkIn,checkOut:x.checkOut,pax:x.pax,adults:x.adults,children:x.children,meal:x.meal,notes:text(b.notes,1000),estimate:x.total,tourOperatorRoomType:x.roomType,...x.packageFields,tourOperatorPricing:x.pricing,modifiedAt:at,modifiedBy:'tour-operator:'+operator.id});
+  Object.assign(q,{guest:x.guest,guests:x.guests,whatsapp:x.phone,email:x.email,checkIn:x.checkIn,checkOut:x.checkOut,pax:x.pax,adults:x.adults,children:x.children,meal:x.meal,notes:text(b.notes,1000),estimate:x.total,tourOperatorRoomType:x.roomType,...x.packageFields,tourOperatorPricing:x.pricing,modifiedAt:at,modifiedBy:'tour-operator:'+operator.id});
   if(stay){
-   Object.assign(stay,{guest:x.guest,whatsapp:x.phone,email:x.email,checkIn:x.checkIn,checkOut:x.checkOut,pax:x.pax,adults:x.adults,children:x.children,meal:x.meal,notes:text(b.notes,1000),room:selectedRoom.number,base:x.total,...x.packageFields});
+   Object.assign(stay,{guest:x.guest,guests:x.guests,whatsapp:x.phone,email:x.email,checkIn:x.checkIn,checkOut:x.checkOut,pax:x.pax,adults:x.adults,children:x.children,meal:x.meal,notes:text(b.notes,1000),room:selectedRoom.number,base:x.total,...x.packageFields});
    q.room=selectedRoom.number;stay.history??=[];stay.history.unshift({date:at,detail:'Booking modified by tour operator before check-in',by:operator.name});
   }
   if(!await saveStayAccess(state,revision,'tour-operator:'+operator.id))return Response.json({error:'Booking changed. Refresh and try again.'},{status:409,headers});
