@@ -56,8 +56,20 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
 .to-discounts article b{display:block;font-size:26px;margin-top:6px}
 .to-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .to-step{border-top:1px solid #e6eef3;padding-top:14px}
+.to-step-note{margin:6px 0 0;color:#60798a}
+.to-availability{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px;border:1px solid #cfe0e8;border-radius:14px;background:#f7fbfd}
+.to-availability h3{margin:0 0 4px}.to-availability p{margin:0;color:#60798a;font-size:14px}
+.to-availability button{border:0;border-radius:10px;padding:12px 18px;background:#087fa8;color:#fff;font-weight:800;cursor:pointer;white-space:nowrap}
+.to-availability button:disabled{opacity:.55;cursor:not-allowed}
+.to-availability-result{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;font-size:14px}
+.to-availability-result.available{background:#e9f8ef;border:1px solid #bfe5ce;color:#185b36}
+.to-availability-result.unavailable{background:#fff2e8;border:1px solid #f0cfb2;color:#74451f}
+.to-availability-result strong{font-size:12px;text-transform:uppercase;letter-spacing:.08em}
 .to-choices{display:flex;gap:10px;flex-wrap:wrap}
 .to-choices button,.to-excursions button{background:#edf5f8;color:#17455c;border:1px solid #cfe0e8}
+.to-choices button{display:grid;gap:3px;text-align:left}
+.to-choices button small{font-size:11px;font-weight:700;opacity:.72}
+.to-choices button:disabled{opacity:.48;cursor:not-allowed;background:#f3f5f6;color:#6f7d84}
 .to-choices button.active,.to-excursions button.active{background:#087fa8;color:#fff;border-color:#087fa8}
 .to-excursions{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
 .to-excursions button{display:flex;justify-content:space-between;text-align:left}
@@ -77,7 +89,7 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
  .to-login-card{margin-top:-56px;position:relative;z-index:2;padding:28px;border-radius:22px}
 }
 @media(max-width:760px){
- .to-shell{padding:14px}.to-grid{grid-template-columns:1fr 1fr}.to-discounts{grid-template-columns:1fr}.to-excursions{grid-template-columns:1fr}.to-top{align-items:flex-start}.to-bookings article{gap:10px}
+ .to-shell{padding:14px}.to-grid{grid-template-columns:1fr 1fr}.to-discounts{grid-template-columns:1fr}.to-excursions{grid-template-columns:1fr}.to-top{align-items:flex-start}.to-bookings article{gap:10px}.to-availability{align-items:flex-start;flex-direction:column}.to-availability button{width:100%}
 }
 @media(max-width:520px){
  .to-login-hero{min-height:48svh;background-position:center}
