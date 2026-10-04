@@ -10,7 +10,7 @@ const displayDate=(value:any)=>{
 export function createBookingConfirmationPdf(booking:any):File{
  const w=1240,h=1754,margin=58,images:Uint8Array[]=[];
  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
- const ctx=canvas.getContext('2d');if(!ctx)throw Error('Could not prepare booking voucher PDF.');
+ const ctx=canvas.getContext('2d');if(!ctx)throw Error('Could not prepare booking confirmation PDF.');
  const excursions=Array.isArray(booking.excursions)?booking.excursions:Array.isArray(booking.packageExcursions)?booking.packageExcursions:[];
  const guestCount=Math.max(0,Number(booking.pax)||Number(booking.adults||0)+Number(booking.children||0));
  const dark='#063f58',teal='#0d829f',aqua='#dff4f7',sand='#f6f0e5',text='#263f4d',muted='#617985',line='#d8e3e7';
@@ -50,7 +50,7 @@ export function createBookingConfirmationPdf(booking:any):File{
  // Header / brand
  textLine('NIRILI VILLA',margin,80,40,true,dark);
  textLine('Dhiffushi Island · Kaafu Atoll · Maldives',margin,116,20,false,muted);
- textLine('BOOKING VOUCHER',w-margin-410,80,31,true,dark,410);
+ textLine('BOOKING CONFIRMATION',w-margin-410,80,31,true,dark,410);
  textLine('Your island stay is confirmed',w-margin-410,115,18,false,teal,410);
 
  // Decorative tropical corner
@@ -136,8 +136,8 @@ export function createBookingConfirmationPdf(booking:any):File{
  // Privacy/payment note
  const noteY=tagY+88;
  roundRect(margin,noteY,w-margin*2,66,14,'#f8fbfc');
- textLine('Guest voucher',margin+22,noteY+27,17,true,teal);
- textLine('This voucher does not show prices, discounts, payments or balances.',margin+22,noteY+50,17,false,muted);
+ textLine('Guest confirmation',margin+22,noteY+27,17,true,teal);
+ textLine('This confirmation does not show prices, discounts, payments or balances.',margin+22,noteY+50,17,false,muted);
 
  // Footer
  textLine('Nirili Villa · Dhiffushi Island, Maldives',margin,h-85,18,false,muted);
@@ -146,5 +146,5 @@ export function createBookingConfirmationPdf(booking:any):File{
 
  const raw=atob(canvas.toDataURL('image/jpeg',.95).split(',')[1]);images.push(Uint8Array.from(raw,ch=>ch.charCodeAt(0)));
  const bytes=pdfFromPages(images,w,h);
- return new File([bytes as BlobPart],'Booking Voucher.pdf',{type:'application/pdf'});
+ return new File([bytes as BlobPart],'Booking Confirmation.pdf',{type:'application/pdf'});
 }
