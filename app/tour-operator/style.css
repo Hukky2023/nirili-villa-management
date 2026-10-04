@@ -1668,3 +1668,97 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
   .to-hero-copy p{font-size:17px!important;max-width:270px!important}
   .to-hero-tagline em{font-size:34px!important}
 }
+
+
+/* ===== Compact hero spacing + smaller sign-out button ===== */
+.to-top{
+  min-height:clamp(400px,48vw,560px)!important;
+  padding:
+    clamp(22px,3vw,34px)
+    max(clamp(16px,3vw,34px),calc((100vw - 1180px)/2 + 20px))
+    clamp(24px,3vw,34px)!important;
+}
+.to-hero-content{
+  grid-template-rows:auto auto auto!important;
+  align-content:center!important;
+  row-gap:clamp(14px,2vw,24px)!important;
+}
+.to-hero-copy{
+  align-self:start!important;
+  padding-top:clamp(12px,2vw,24px)!important;
+}
+.to-hero-copy p{
+  margin-top:16px!important;
+}
+.to-hero-accent{
+  margin-top:16px!important;
+}
+.to-hero-tagline{
+  margin:4px 0 0!important;
+  align-self:start!important;
+}
+.to-top>button{
+  min-height:38px!important;
+  height:38px!important;
+  padding:0 11px!important;
+  border-radius:13px!important;
+  gap:6px!important;
+  font-size:12px!important;
+}
+.to-top>button svg{
+  width:15px!important;
+  height:15px!important;
+}
+.to-top>button span{
+  font-size:12px!important;
+  line-height:1!important;
+}
+.to-top::after{
+  height:58px!important;
+  bottom:-22px!important;
+}
+
+@media(max-width:900px){
+  .to-top{
+    min-height:500px!important;
+  }
+}
+
+@media(max-width:640px){
+  .to-top{
+    min-height:500px!important;
+    padding:18px 14px 28px!important;
+  }
+  .to-hero-content{
+    row-gap:12px!important;
+  }
+  .to-hero-copy{
+    padding-top:18px!important;
+  }
+  .to-hero-copy p{
+    margin-top:14px!important;
+  }
+  .to-hero-accent{
+    margin-top:14px!important;
+  }
+  .to-hero-tagline{
+    margin-top:0!important;
+    margin-bottom:10px!important;
+  }
+  .to-top>button{
+    top:14px!important;
+    right:10px!important;
+    min-height:34px!important;
+    height:34px!important;
+    padding:0 9px!important;
+    border-radius:11px!important;
+  }
+  .to-top>button span{font-size:11px!important}
+  .to-top>button svg{width:14px!important;height:14px!important}
+}
+
+@media(max-width:390px){
+  .to-top{
+    min-height:470px!important;
+  }
+}
