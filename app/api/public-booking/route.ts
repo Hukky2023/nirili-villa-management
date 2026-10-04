@@ -23,12 +23,12 @@ async function hotelState(){
  return {state:row.payload,revision:Number(row.revision)||0};
 }
 function availability(state:any,checkIn:string,checkOut:string,pax:number){
- if(bookingClosureForStay(state,checkIn,checkOut))return [];
  const rooms=Array.isArray(state?.rooms)?state.rooms:[];
  const stays=Array.isArray(state?.stays)?state.stays:[];
  return rooms.filter((room:any)=>{
   const capacity=Number(room.capacity)||3;
   if(room.status==='Maintenance'||capacity<pax)return false;
+  if(bookingClosureForStay(state,checkIn,checkOut,String(room.number)))return false;
   return !stays.some((stay:any)=>stay.room===room.number&&stay.status!=='Checked Out'&&stay.status!=='Cancelled'&&stay.checkIn<checkOut&&stay.checkOut>checkIn);
  });
 }
@@ -70,8 +70,8 @@ export async function GET(request:Request){
   const base={today,plans:plans.map(plan=>({name:plan,nightlyCents:nightly(plan,Math.min(3,pax),state.roomRates)})),packages,promotions};
   if(!checkIn||!checkOut)return Response.json(base,{headers});
   if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||pax<1||pax>3)return Response.json({...base,error:'Choose valid stay dates and up to 3 guests per room.'},{status:400,headers});
-  const bookingClosed=!!bookingClosureForStay(state,checkIn,checkOut);
   const rooms=availability(state,checkIn,checkOut,pax);
+  const bookingClosed=rooms.length===0&&!!bookingClosureForStay(state,checkIn,checkOut);
   const nights=nightsBetween(checkIn,checkOut);
   return Response.json({...base,availableRooms:rooms.length,bookingClosed,nights,estimates:plans.map(plan=>({name:plan,totalCents:nightly(plan,pax,state.roomRates)*nights,nightlyCents:nightly(plan,pax,state.roomRates)}))},{headers});
  }catch{return Response.json({error:'Could not check room availability. Please try again.'},{status:503,headers});}
@@ -95,7 +95,6 @@ export async function POST(request:Request){
   const ip=request.headers.get('cf-connecting-ip')||'unknown';
   if(!await limit('public-booking-ip:'+ip,12,3600000)||!await limit('public-booking-phone:'+phone,5,3600000))throw Error('Too many booking requests. Please contact reception or try again later.');
   const {state}=await hotelState();
-  if(bookingClosureForStay(state,checkIn,checkOut))return Response.json({error:'Bookings are closed for one or more selected dates. Please choose different dates or contact reception.'},{status:409,headers});
   const rooms=availability(state,checkIn,checkOut,pax);
   if(!rooms.length)return Response.json({error:'No rooms are currently available for these dates and guest count. Try different dates or contact reception.'},{status:409,headers});
   const selectedPackage=packageId?(Array.isArray(state.propertyPackages)?state.propertyPackages:[]).find((item:any)=>String(item.id)===packageId&&item.active!==false):null;
