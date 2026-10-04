@@ -1,4 +1,5 @@
 import Site from './site';
+import TourOperatorBookingManager from './booking-manager';
 import {Fonts} from '../hotel/chrome';
 import './style.css';
 
@@ -8,5 +9,5 @@ export const metadata={
 };
 
 export default function Page(){
- return <><Fonts/><Site/></>;
+ return <><Fonts/><Site/><TourOperatorBookingManager/></>;
 }
