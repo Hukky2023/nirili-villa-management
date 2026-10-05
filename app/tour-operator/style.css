@@ -1762,3 +1762,42 @@ body:has(.to-login-shell),body:has(.to-shell){margin:0;padding:0}
     min-height:470px!important;
   }
 }
+
+
+/* Tour operator header controls: language selector beside sign out */
+.to-top .to-hero-actions{
+  position:absolute;
+  top:34px;
+  right:max(28px,calc((100vw - 900px)/2 + 18px));
+  display:flex;
+  align-items:center;
+  gap:8px;
+  z-index:6;
+}
+.to-top .to-hero-actions>button{
+  position:static!important;
+  top:auto!important;
+  right:auto!important;
+  margin:0!important;
+}
+.to-top .to-tour-language{
+  height:46px;
+  min-width:74px;
+  justify-content:center;
+  border-radius:16px;
+  border:1px solid rgba(20,58,75,.12);
+  background:rgba(255,255,255,.91);
+  color:#18394a;
+  box-shadow:0 8px 24px rgba(26,74,94,.10);
+}
+.to-top .to-tour-language:hover{background:#fff}
+@media(max-width:760px){
+  .to-top .to-hero-actions{top:22px;right:14px;gap:6px}
+  .to-top .to-tour-language{height:46px;min-width:64px;padding:0 10px;border-radius:16px}
+  .to-top .to-tour-language span{font-size:12px}
+}
+@media(max-width:420px){
+  .to-top .to-hero-actions{top:16px;right:10px;gap:5px}
+  .to-top .to-tour-language{min-width:58px;padding:0 8px}
+  .to-top .to-hero-actions>button{padding:0 11px!important}
+}
