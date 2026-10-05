@@ -106,6 +106,18 @@ function separateVesselConflict(orders:any[],vesselId:string,date:string,time:st
   return assignedVessel===vesselId&&assignedDate===date&&timeRangesOverlap(time,endTime,assignedTime,assignedEnd);
  })||null;
 }
+function crewConflict(schedules:any[],candidate:{date:string;time:string;endTime:string;crewIds:string[];excludeId?:string}){
+ const wanted=new Set((candidate.crewIds||[]).map(String).filter(Boolean));
+ if(!wanted.size)return null;
+ for(const schedule of schedules||[]){
+  if(!schedule||schedule.status==='Cancelled'||schedule.id===candidate.excludeId||schedule.date!==candidate.date)continue;
+  const assignedStart=String(schedule.time||''),assignedEnd=String(schedule.endTime||inferTripEndTime(schedule.name,assignedStart));
+  if(!validTime(assignedStart)||!validTime(assignedEnd)||!timeRangesOverlap(candidate.time,candidate.endTime,assignedStart,assignedEnd))continue;
+  const crewId=(schedule.crewIds||[]).map(String).find((id:string)=>wanted.has(id));
+  if(crewId)return {crewId,schedule,assignedEnd};
+ }
+ return null;
+}
 
 const requestScheduleCleanupMarker='excursion-request-created-schedules-cleared-2026-09-19';
 async function clearExistingRequestCreatedSchedulesOnce(){
@@ -206,6 +218,11 @@ export async function POST(r:Request){
   const input=await r.json(),{state}=await loadStays();
   const body=await clean(input,state),crew=excursionResources(state).crew;
   const daySchedules=await schedulesForDate(body.date);
+  const crewClash=crewConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,crewIds:body.crewIds});
+  if(crewClash){
+   const member=crew.find((item:any)=>item.id===crewClash.crewId);
+   throw Error((member?.name||'This crew member')+' is already assigned to '+crewClash.schedule.name+' from '+crewClash.schedule.time+' to '+crewClash.assignedEnd+'. Crew become available again at the trip end time.');
+  }
   const conflict=vesselConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,vesselId:body.vesselId,sharedGroup:body.sharedGroup});
   if(conflict)throw Error('This vessel is already in use for '+conflict.name+' from '+conflict.time+' to '+(conflict.endTime||inferTripEndTime(conflict.name,conflict.time))+'. Choose another vessel or a non-overlapping time.');
   const cameraConflict=goproConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,goproId:body.goproId,vesselId:body.vesselId,sharedGroup:body.sharedGroup});
@@ -254,6 +271,11 @@ export async function PUT(r:Request){
   const record={...old,...body,guideIds,id,updatedAt:new Date().toISOString()};
   if(crewChanged){delete record.crewReplacementNeeded;delete record.lastCrewUnavailability;}
   const daySchedules=await schedulesForDate(body.date);
+  const crewClash=crewConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,crewIds:body.crewIds,excludeId:id});
+  if(crewClash){
+   const member=crew.find((item:any)=>item.id===crewClash.crewId);
+   throw Error((member?.name||'This crew member')+' is already assigned to '+crewClash.schedule.name+' from '+crewClash.schedule.time+' to '+crewClash.assignedEnd+'. Crew become available again at the trip end time.');
+  }
   const conflict=vesselConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,vesselId:body.vesselId,excludeId:id,sharedGroup:body.sharedGroup});
   if(conflict)throw Error('This vessel is already in use for '+conflict.name+' from '+conflict.time+' to '+(conflict.endTime||inferTripEndTime(conflict.name,conflict.time))+'. A vessel becomes available only after its trip end time.');
   const cameraConflict=goproConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,goproId:body.goproId,vesselId:body.vesselId,excludeId:id,sharedGroup:body.sharedGroup});
