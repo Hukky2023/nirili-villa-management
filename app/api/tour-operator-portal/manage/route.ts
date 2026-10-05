@@ -56,7 +56,7 @@ function rows(state:any,operatorId:string){
   return {
    id:q.id,guest:q.guest,guests:Array.isArray(q.guests)?q.guests:[],phone:q.whatsapp||'',email:q.email||'',checkIn:q.checkIn,checkOut:q.checkOut,pax:q.pax,adults:q.adults??q.pax,children:q.children??0,
    meal:q.meal,status:q.status,stayStatus:stay?.status||'',estimate:q.estimate,notes:q.notes||'',packageName:q.packageName||'',roomType:q.tourOperatorRoomType||'',room:q.room||'',
-   excursionIds:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>String(x.id)):[],
+   excursionIds:Array.isArray(q.packageSelectedExcursionIds)?q.packageSelectedExcursionIds.map((x:any)=>String(x)):Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>String(x.id)):[],
    excursions:Array.isArray(q.packageExcursions)?q.packageExcursions.map((x:any)=>({id:String(x.id||''),name:String(x.name||x.id||'')})):[],
    transfer:q.packageIncludeTransfer?(String(q.packageTransferLabel||'').toLowerCase().includes('return')?'return':'arrival'):'none',
    canManage:!['Cancelled','Declined','Checked Out','In House'].includes(String(status||''))&&String(q.checkIn||'')>=today
@@ -86,7 +86,7 @@ async function quote(state:any,operator:any,b:any){
  const transferLegs=transfer==='none'?0:transfer==='arrival'?1:2,publicTransfer=AIRPORT_TRANSFER_CENTS*pax*transferLegs,transferNet=discountedCents(publicTransfer,operator.transferDiscountPercent);
  const total=roomNet+excursionNet+transferNet,packageName=text(b.packageName,120)||('Custom '+stayNights+'N '+meal+' package');
  return {guest,guests,phone,email,checkIn,checkOut,meal,roomType,adults,children,pax,stayNights,transfer,total,packageName,
-  packageFields:{packageName,packageQuotedCents:total,packageRatePerGuestCents:Math.round(total/pax),packageNights:stayNights,packageMealPlan:meal,packageIncludeTransfer:transfer!=='none',packageTransferLabel:transfer==='return'?'Return airport transfer':transfer==='arrival'?'Arrival airport transfer':'',packageExcursions:selectedExcursions.flatMap((x:any)=>{const included=specialIncluded(x);return included.length?included:[{id:String(x.id),name:String(x.name||x.id)}];})},
+  packageFields:{packageName,packageQuotedCents:total,packageRatePerGuestCents:Math.round(total/pax),packageNights:stayNights,packageMealPlan:meal,packageIncludeTransfer:transfer!=='none',packageTransferLabel:transfer==='return'?'Return airport transfer':transfer==='arrival'?'Arrival airport transfer':'',packageSelectedExcursionIds:selectedIds,packageExcursions:selectedExcursions.flatMap((x:any)=>{const included=specialIncluded(x);return included.length?included:[{id:String(x.id),name:String(x.name||x.id)}];})},
   pricing:{publicRoomCents:publicRoom,roomCents:roomNet,roomDiscountPercent:operator.roomDiscountPercent,publicExcursionCents:publicExcursions,excursionCents:excursionNet,excursionDiscountPercent:operator.excursionDiscountPercent,publicTransferCents:publicTransfer,transferCents:transferNet,transferDiscountPercent:operator.transferDiscountPercent,totalCents:total}
  };
 }
