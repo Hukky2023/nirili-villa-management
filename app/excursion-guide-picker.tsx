@@ -31,10 +31,12 @@ export default function ExcursionGuidePicker({crew, crewIds, confirmedPax, onCha
       {required === 0 && <small>At 5 or more confirmed passengers, at least 3 assigned crew members are required.</small>}
     </p>
     {crew.length ? <div className="excursion-guide-options">{crew.map(member => {
-      const unavailable = member.active === false || member.active === 0;
       const assigned = crewIds.includes(member.id);
+      const inactive = member.active === false || member.active === 0;
+      const busyUntil = String(member.busyUntil || '');
+      const unavailable = inactive || (!!busyUntil && !assigned);
       return <div key={member.id} className="excursion-guide-option">
-        <label><input type="checkbox" checked={assigned} disabled={unavailable&&!assigned} onChange={() => toggleCrew(member.id)}/><span>{member.name}{unavailable ? ' (inactive)' : ''}</span></label>
+        <label><input type="checkbox" checked={assigned} disabled={unavailable&&!assigned} onChange={() => toggleCrew(member.id)}/><span>{member.name}{inactive ? ' (inactive)' : busyUntil && !assigned ? ' — Busy until '+busyUntil : ''}</span></label>
         <label title="Assigned crew automatically count as guides"><input type="checkbox" checked={assigned} disabled readOnly/>Guide</label>
       </div>;
     })}</div> : <p>No crew members are available. Add crew members before assigning this trip.</p>}
