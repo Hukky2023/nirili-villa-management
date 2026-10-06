@@ -1,10 +1,23 @@
-/* watersports.nirilihotels.com. Reuses the excursion cards and the transfers form layout. */
-.nh-water .nh-ws-card{font:inherit;color:inherit;text-align:left;cursor:pointer;padding:0}
-.nh-water .nh-ws-card.is-selected{border-color:var(--lagoon);box-shadow:0 0 0 2px var(--lagoon)}
-.nh-water .nh-ws-card.is-selected b{color:var(--lagoon)}
-.nh-water .nh-ws-card b svg{width:17px;height:17px}
-.nh-ws-price{font-style:normal;font-weight:600;color:var(--ink);margin-top:4px}
-.nh-ws-book{padding-top:80px}
-.nh-water .nh-exc-none a{text-decoration:underline;text-underline-offset:3px}
-.nh-water .nh-transfer-done .nh-hero-actions{justify-content:center;margin-top:6px}
-.nh-water .nh-transfer-done .nh-btn{font:inherit;font-weight:600;cursor:pointer}
+/* watersports.nirilihotels.com — aligned with the public excursions booking experience. */
+.nh-water .external-excursion-list{padding-top:100px}
+.nh-water .external-excursion-grid article{overflow:hidden}
+.nh-water .external-price strong{font-size:24px}
+.nh-water .external-card-actions{align-items:stretch}
+.nh-water .external-card-actions .ws-detail-button{background:transparent;color:var(--ink);border:0;border-radius:0;padding:0;min-height:44px;text-decoration:underline;text-underline-offset:3px;justify-content:flex-start}
+.nh-water .external-card-actions .ws-detail-button:hover{background:transparent;color:var(--lagoon-deep)}
+.nh-water .ws-inline-details{display:grid;gap:8px;margin-top:14px;padding:14px 16px;border-radius:14px;background:var(--sand);font-size:13px;color:var(--ink-soft)}
+.nh-water .ws-inline-details span{display:flex;align-items:center;gap:8px}
+.nh-water .ws-inline-details svg{width:16px;height:16px;color:var(--lagoon);flex-shrink:0}
+.nh-water .external-load-error a{text-decoration:underline;text-underline-offset:3px}
+.nh-water .external-booking-zone{padding-bottom:110px}
+.nh-water .booking-form .time-field-24{width:100%}
+.nh-water .booking-form .time-field-24 input{width:100%}
+.nh-water .external-success{margin-bottom:110px}
+.nh-water .quick-strip{margin-top:-40px}
+
+@media(max-width:640px){
+ .nh-water .external-excursion-list{padding-top:72px}
+ .nh-water .external-card-actions{display:grid;grid-template-columns:1fr 1.35fr}
+ .nh-water .external-card-actions .ws-detail-button{justify-content:flex-start}
+ .nh-water .external-booking-zone{padding-bottom:72px}
+}
