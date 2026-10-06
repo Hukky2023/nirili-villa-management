@@ -70,11 +70,16 @@ const clean=async (x:any,state:any)=>{
  const sharedGroup=String(x.sharedGroup||'').trim().slice(0,80);
  const resources=excursionResources(state);
  const snorkeling=isSnorkelingTrip(name),needsDrone=isDroneRequiredTrip(name);
- let goproId=String(x.goproId||'').slice(0,100),droneId=String(x.droneId||'').slice(0,100);
+ let goproId=String(x.goproId||'').slice(0,100),goproId2=String(x.goproId2||'').slice(0,100),droneId=String(x.droneId||'').slice(0,100);
  if(snorkeling&&status!=='Closed'){
   const gopro=resources.gopros.find((item:any)=>item.id===goproId);
   if(!gopro||gopro.condition!=='Available')throw Error('Every snorkeling trip requires an available GoPro. Assign a GoPro to the vessel before saving.');
- }else if(!snorkeling)goproId='';
+  if(crewIds.length>=3){
+   const gopro2=resources.gopros.find((item:any)=>item.id===goproId2);
+   if(!gopro2||gopro2.condition!=='Available')throw Error('Trips with 3 or more crew require a second available GoPro.');
+   if(goproId2===goproId)throw Error('Choose two different GoPros when 3 or more crew are assigned.');
+  }else goproId2='';
+ }else if(!snorkeling){goproId='';goproId2='';}
  if(needsDrone&&status!=='Closed'){
   const drone=resources.drones.find((item:any)=>item.id===droneId);
   if(!drone||drone.condition!=='Available')throw Error('Shark snorkeling and Sandbank trips require an available drone. Assign a drone before saving.');
@@ -87,7 +92,7 @@ const clean=async (x:any,state:any)=>{
   const vesselCapacity=Number(vessel?.capacity);
   if(Number.isSafeInteger(vesselCapacity)&&vesselCapacity>capacity)capacity=vesselCapacity;
  }
- return {date:x.date,time:x.time,endTime,name,capacity,priceCents,vesselId,goproId,droneId,crewIds,status,notes,sharedGroup};
+ return {date:x.date,time:x.time,endTime,name,capacity,priceCents,vesselId,goproId,goproId2,droneId,crewIds,status,notes,sharedGroup};
 };
 function matches(o:any,s:any){
  if(o.kind!=='excursion'||o.status==='Cancelled'||o.approvalStatus==='Declined'||o.approvalStatus==='Cancelled')return false;
@@ -227,6 +232,8 @@ export async function POST(r:Request){
   if(conflict)throw Error('This vessel is already in use for '+conflict.name+' from '+conflict.time+' to '+(conflict.endTime||inferTripEndTime(conflict.name,conflict.time))+'. Choose another vessel or a non-overlapping time.');
   const cameraConflict=goproConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,goproId:body.goproId,vesselId:body.vesselId,sharedGroup:body.sharedGroup});
   if(cameraConflict)throw Error('This GoPro is already assigned to '+cameraConflict.name+' from '+cameraConflict.time+' to '+(cameraConflict.endTime||inferTripEndTime(cameraConflict.name,cameraConflict.time))+'. Choose another GoPro or a non-overlapping time.');
+  const cameraConflict2=goproConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,goproId:body.goproId2,vesselId:body.vesselId,sharedGroup:body.sharedGroup});
+  if(cameraConflict2)throw Error('The second GoPro is already assigned to '+cameraConflict2.name+' from '+cameraConflict2.time+' to '+(cameraConflict2.endTime||inferTripEndTime(cameraConflict2.name,cameraConflict2.time))+'. Choose another GoPro or a non-overlapping time.');
   const droneClash=droneConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,droneId:body.droneId,vesselId:body.vesselId,sharedGroup:body.sharedGroup});
   if(droneClash)throw Error('This drone is already assigned to '+droneClash.name+' from '+droneClash.time+' to '+(droneClash.endTime||inferTripEndTime(droneClash.name,droneClash.time))+'. Choose another drone or a non-overlapping time.');
   const guideIds=cleanGuideSelection(input.guideIds,body.crewIds,crew);
@@ -280,6 +287,8 @@ export async function PUT(r:Request){
   if(conflict)throw Error('This vessel is already in use for '+conflict.name+' from '+conflict.time+' to '+(conflict.endTime||inferTripEndTime(conflict.name,conflict.time))+'. A vessel becomes available only after its trip end time.');
   const cameraConflict=goproConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,goproId:body.goproId,vesselId:body.vesselId,excludeId:id,sharedGroup:body.sharedGroup});
   if(cameraConflict)throw Error('This GoPro is already assigned to '+cameraConflict.name+' from '+cameraConflict.time+' to '+(cameraConflict.endTime||inferTripEndTime(cameraConflict.name,cameraConflict.time))+'. Choose another GoPro or wait until that trip ends.');
+  const cameraConflict2=goproConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,goproId:body.goproId2,vesselId:body.vesselId,excludeId:id,sharedGroup:body.sharedGroup});
+  if(cameraConflict2)throw Error('The second GoPro is already assigned to '+cameraConflict2.name+' from '+cameraConflict2.time+' to '+(cameraConflict2.endTime||inferTripEndTime(cameraConflict2.name,cameraConflict2.time))+'. Choose another GoPro or wait until that trip ends.');
   const droneClash=droneConflict(daySchedules,{date:body.date,time:body.time,endTime:body.endTime,droneId:body.droneId,vesselId:body.vesselId,excludeId:id,sharedGroup:body.sharedGroup});
   if(droneClash)throw Error('This drone is already assigned to '+droneClash.name+' from '+droneClash.time+' to '+(droneClash.endTime||inferTripEndTime(droneClash.name,droneClash.time))+'. Choose another drone or wait until that trip ends.');
   // Closing an unsafe/understaffed trip must remain possible; departure is guarded separately.
