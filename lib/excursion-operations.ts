@@ -216,7 +216,9 @@ export function goproConflict(
 ){
  if(!input.goproId)return null;
  return schedules.find((other:any)=>{
-  if(!other||other.id===input.excludeId||other.status==='Cancelled'||other.date!==input.date||other.goproId!==input.goproId)return false;
+  if(!other||other.id===input.excludeId||other.status==='Cancelled'||other.date!==input.date)return false;
+  const otherGoPros=[String(other.goproId||''),String(other.goproId2||'')].filter(Boolean);
+  if(!otherGoPros.includes(input.goproId))return false;
   const otherEnd=other.endTime||inferTripEndTime(other.name,other.time);
   const sameShared=!!input.sharedGroup&&input.sharedGroup===other.sharedGroup&&input.time===other.time&&input.endTime===otherEnd;
   const sameVesselDeparture=!!input.vesselId&&other.vesselId===input.vesselId&&input.time===other.time&&input.endTime===otherEnd;
