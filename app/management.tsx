@@ -40,10 +40,13 @@ type Module="Dashboard"|"Bookings"|"Rooms"|"Guests"|"Transfers"|"Excursions"|"Ag
 const nav:any[]=[["Dashboard",Gauge],["Bookings",CalendarDays],["Rooms",BedDouble],["Guests",Users],["Transfers",Plane],["Excursions",ShipWheel],["Agents",Handshake],["WaterSports",Waves],["Buggy",CarFront],["Operators",Anchor],["TourOperators",Handshake],["POS",UtensilsCrossed],["Channels",Link2],["Reports",FileText],["Users",UserRound],["Settings",Settings]];
 const navGroups:{title:string;items:Module[]}[]=[
  {title:"Nirili Stay",items:["Dashboard","Bookings","Rooms","Guests"]},
- {title:"Nirili Excursions",items:["Excursions","Agents"]},
+ {title:"Nirili Excursions",items:["Excursions"]},
  {title:"Nirili Water Sports",items:["WaterSports"]},
  {title:"Nirili Restaurant",items:["POS"]},
- {title:"Nirili Travels",items:["Transfers","Buggy","Operators","TourOperators"]},
+ {title:"Nirili Travels",items:["Transfers","Buggy"]},
+ // Outside businesses Nirili works with: guest houses that send bookings, and the speedboat,
+ // buggy and tour operators who run trips.
+ {title:"Partners",items:["Agents","TourOperators","Operators"]},
  {title:"System",items:["Channels","Reports","Users","Settings"]}
 ];
 const moduleLabel=(module:Module)=>module==="Transfers"?"Nirili Transfers":module==="Buggy"?"Nirili Ride":module==="Excursions"?"Nirili Excursions":module==="WaterSports"?"Nirili Water Sports":module==="Agents"?"Partner agents":module==="Operators"?"Travel operators":module==="TourOperators"?"Tour operators":module==="POS"?"Nirili Restaurant":module;
