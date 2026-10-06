@@ -72,6 +72,24 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
  }
  function guidePax(item:any){const latest=schedules.find(s=>s.id===item.id)||item;return Number(latest.guideRule?.confirmedPax)||0;}
  function insufficientGuides(item:any,guideIds=item.guideIds||[],crewIds=item.crewIds||[]){return assignedGuideCount(guideIds,crewIds,crewPool)<requiredExcursionGuides(guidePax(item));}
+ function crewForTrip(item:any){
+  const targetDate=String(item?.date||date),targetStart=String(item?.time||''),targetEnd=String(item?.endTime||inferTripEndTime(item?.name||'',targetStart)||'');
+  if(!/^\d{2}:\d{2}$/.test(targetStart)||!/^\d{2}:\d{2}$/.test(targetEnd))return crewPool.map((member:any)=>({...member,busyUntil:''}));
+  const minutes=(value:string)=>{const [hour,minute]=value.split(':').map(Number);return hour*60+minute;};
+  const start=minutes(targetStart),end=minutes(targetEnd);
+  return crewPool.map((member:any)=>{
+   const conflicts=schedules.filter((trip:any)=>{
+    if(!trip||trip.id===item?.id||trip.status==='Cancelled'||String(trip.date||'')!==targetDate)return false;
+    if(!(trip.crewIds||[]).includes(member.id))return false;
+    const otherStart=String(trip.time||''),otherEnd=String(trip.endTime||inferTripEndTime(trip.name,trip.time)||'');
+    if(!/^\d{2}:\d{2}$/.test(otherStart)||!/^\d{2}:\d{2}$/.test(otherEnd))return false;
+    return start<minutes(otherEnd)&&end>minutes(otherStart);
+   });
+   if(!conflicts.length)return {...member,busyUntil:''};
+   const busyUntil=conflicts.map((trip:any)=>String(trip.endTime||inferTripEndTime(trip.name,trip.time)||'')).filter((value:string)=>/^\d{2}:\d{2}$/.test(value)).sort().at(-1)||'busy';
+   return {...member,busyUntil};
+  });
+ }
  async function loadCrewTripRequests(silent=false){try{const r=await fetch('/api/crew-trip-requests',{cache:'no-store'}),d:any=await r.json();if(!r.ok)throw Error(d.error||'Could not load crew requests');setCrewTripRequests((d.requests||[]).filter((request:any)=>request.status==='Pending'));}catch(e){if(!silent)setMessage((e as Error).message);}}
  async function load(selected=date,silent=false){if(!silent){setLoading(true);setMessage('');}try{const [scheduleResponse]=await Promise.all([fetch('/api/excursion-schedules?date='+encodeURIComponent(selected),{cache:'no-store'}),loadCrewTripRequests(true)]),d=await scheduleResponse.json();if(!scheduleResponse.ok)throw Error(d.error||'Could not load schedule');setSchedules(d.schedules||[]);setSharedBoatGroups(d.sharedBoatGroups||{});setUnscheduledRequests(d.unscheduledRequests||[]);}catch(e){if(!silent)setMessage((e as Error).message);}finally{if(!silent)setLoading(false);}}
  const [canRemoveMenu,setCanRemoveMenu]=useState(false);
