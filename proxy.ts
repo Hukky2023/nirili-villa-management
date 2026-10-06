@@ -11,16 +11,14 @@ function cache(response:NextResponse,value:string){
 }
 
 // Each public service has its own subdomain, which serves the service's page at "/".
-type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'watersports'|'agents'|'operators'|'tourOperator'|'my';
+type Service='stay'|'tours'|'dine'|'transfers'|'ride'|'watersports'|'partners'|'my';
 const SERVICE_HOME:Record<Exclude<Service,'stay'>,string>={
  tours:'/book/excursions',
  dine:'/book/restaurant',
  transfers:'/book/transfers',
  ride:'/book/ride',
  watersports:'/book/water-sports',
- agents:'/book/agents',
- operators:'/operators',
- tourOperator:'/tour-operator',
+ partners:'/partners',
  my:'/stay',
 };
 const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
@@ -29,9 +27,7 @@ const SERVICE_BY_HOST:Record<string,Exclude<Service,'stay'>>={
  [HOSTS.transfers]:'transfers',
  [HOSTS.ride]:'ride',
  [HOSTS.watersports]:'watersports',
- [HOSTS.agents]:'agents',
- [HOSTS.operators]:'operators',
- [HOSTS.tourOperator]:'tourOperator',
+ [HOSTS.partners]:'partners',
  [HOSTS.my]:'my',
 };
 
@@ -82,19 +78,17 @@ function staySiteResponse(url:URL){
  return NextResponse.redirect(url);
 }
 
-// The partner Agent Portal APIs are served only on the agents host.
-const agentApi=new Set(['/api/agent-portal/session','/api/agent-portal/bookings','/api/agent-portal/travel']);
-// Operator portal APIs are served only on the operators host.
-const operatorApi=new Set(['/api/operator-portal/session','/api/operator-portal/speedboats','/api/operator-portal/buggy','/api/operator-portal/crew']);
-const tourOperatorApi=new Set(['/api/tour-operator-portal/session','/api/tour-operator-portal/catalog','/api/tour-operator-portal/manage']);
+// Partner portal APIs are served only on the partners host: sign-in, bookings for guests
+// (excursions, speedboat seats, buggy rides, rooms and packages) and running trips.
+const partnerApi=new Set(['/api/partner-portal/session','/api/agent-portal/bookings','/api/agent-portal/travel',
+ '/api/tour-operator-portal/catalog','/api/tour-operator-portal/manage',
+ '/api/operator-portal/speedboats','/api/operator-portal/buggy','/api/operator-portal/crew']);
 
 function serviceSiteResponse(url:URL,service:Exclude<Service,'stay'>){
- if(service==='agents'&&agentApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);
- if(service==='operators'&&operatorApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);
- if(service==='tourOperator'&&tourOperatorApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);
+ if(service==='partners'&&partnerApi.has(url.pathname))return cache(NextResponse.next(),PRIVATE);
  const api=guestApiResponse(url);
  if(api)return api;
- const home=SERVICE_HOME[service],pageCache=service==='my'||service==='agents'||service==='operators'||service==='tourOperator'?PRIVATE:PUBLIC;
+ const home=SERVICE_HOME[service],pageCache=service==='my'||service==='partners'?PRIVATE:PUBLIC;
 
  if(url.pathname==='/'){
   url.pathname=home;
@@ -116,6 +110,8 @@ function serviceSiteResponse(url:URL,service:Exclude<Service,'stay'>){
 // same path, so e.g. excursions.nirilihotels.com/book/excursions/manage still reaches the right page.
 function aliasSiteResponse(url:URL,target:string){
  if(target==='main')return NextResponse.redirect(SITES.main+'/#travel',308);
+ // Old partner portals: their pages no longer exist, so every link opens the new sign-in.
+ if(target==='partners')return NextResponse.redirect(SITES.partners+'/',308);
  const next=new URL(SITES[target as keyof typeof SITES]);
  next.pathname=url.pathname;
  next.search=url.search;
@@ -145,9 +141,7 @@ const SHORTCUTS:Record<string,string>={
  '/transfers':SITES.transfers,'/speedboat':SITES.transfers,
  '/ride':SITES.ride,'/buggy':SITES.ride,
  '/watersports':SITES.watersports,'/water-sports':SITES.watersports,
- '/agents':SITES.agents,'/partners':SITES.agents,
- '/operators':SITES.operators,
- '/tour-operator':SITES.tourOperator,'/touroperator':SITES.tourOperator,
+ '/partners':SITES.partners,'/agents':SITES.partners,'/operators':SITES.partners,'/tour-operator':SITES.partners,'/touroperator':SITES.partners,
  '/my':SITES.my,'/guest':SITES.my,
 };
 

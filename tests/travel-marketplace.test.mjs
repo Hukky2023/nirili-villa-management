@@ -251,16 +251,18 @@ function apis(){
  };
  const cache=new Map();
  const ops=load('lib/travel-operators.ts',stubs,cache);
- const session=load('app/api/operator-portal/session/route.ts',stubs,cache);
+ const session=load('app/api/partner-portal/session/route.ts',stubs,cache);
  const boats=load('app/api/operator-portal/speedboats/route.ts',stubs,cache);
  const buggy=load('app/api/operator-portal/buggy/route.ts',stubs,cache);
- const admin=load('app/api/travel-operators/route.ts',stubs,cache);
+ const admin=load('app/api/partners/route.ts',stubs,cache);
  const walkin=load('app/api/walkin-transfers/route.ts',stubs,cache);
  const crewApi=load('app/api/operator-portal/crew/route.ts',stubs,cache);
  const ORIGIN='https://operators.nirilihotels.test';
  const req=(path,method,body,cookie='')=>new Request(ORIGIN+path,{method,headers:{origin:ORIGIN,'content-type':'application/json',...(cookie?{cookie}:{})},body:body&&JSON.stringify(body)});
- const create=async extra=>{const r=await admin.POST(req('/api/travel-operators','POST',{name:'Coral Speed',phone:'+960 777 1111',services:['boat'],commissionPercent:10,username:'coralspeed',password:'coral-pass-1',...extra}));assert.equal(r.status,201,JSON.stringify(await r.clone().json()));return (await r.json()).operator;};
- const signIn=async(username,password)=>{const r=await session.POST(req('/api/operator-portal/session','POST',{username,password}));return {status:r.status,cookie:(r.headers.get('set-cookie')||'').split(';')[0]};};
+ // Older tests describe operators by services; partner accounts use permissions.
+ const perms=x=>{const {services,...rest}=x||{};return services?{...rest,permissions:services.map(v=>v==='boat'?'boats':'buggies')}:rest;};
+ const create=async extra=>{const r=await admin.POST(req('/api/partners','POST',{name:'Coral Speed',phone:'+960 777 1111',permissions:['boats'],commissionPercent:10,username:'coralspeed',password:'coral-pass-1',...perms(extra)}));assert.equal(r.status,201,JSON.stringify(await r.clone().json()));return (await r.json()).partner;};
+ const signIn=async(username,password)=>{const r=await session.POST(req('/api/partner-portal/session','POST',{username,password}));return {status:r.status,cookie:(r.headers.get('set-cookie')||'').split(';')[0]};};
  return {sea,hotel,notices,who,admin,session,boats,buggy,walkin,crewApi,req,create,signIn,ops};
 }
 
@@ -268,18 +270,18 @@ test('admin creates operators; operators sign in to their own portal only',async
  const s=apis();
  const op=await s.create();
  assert.equal(op.passwordHash,undefined);
- assert.equal((await s.admin.POST(s.req('/api/travel-operators','POST',{name:'X',phone:'+9607771111',services:['boat'],username:'coralspeed',password:'whatever1'}))).status,400);
- assert.equal((await s.admin.POST(s.req('/api/travel-operators','POST',{name:'X',phone:'+9607771111',services:[],username:'other',password:'whatever1'}))).status,400);
+ assert.equal((await s.admin.POST(s.req('/api/partners','POST',{name:'X',phone:'+9607771111',permissions:['boats'],username:'coralspeed',password:'whatever1'}))).status,400);
+ assert.equal((await s.admin.POST(s.req('/api/partners','POST',{name:'X',phone:'+9607771111',permissions:[],username:'other',password:'whatever1'}))).status,400);
  assert.equal((await s.signIn('coralspeed','wrong-pass')).status,401);
  const {status,cookie}=await s.signIn('coralspeed','coral-pass-1');
  assert.equal(status,200);
- assert.match(cookie,/^nirili_operator_session=[a-f0-9]{64}$/);
+ assert.match(cookie,/^nirili_partner_session=[a-f0-9]{64}$/);
  assert.equal((await s.boats.GET(s.req('/api/operator-portal/speedboats','GET',null,cookie))).status,200);
  // A speedboat-only operator has no buggy portal; staff cannot use the operator API.
  assert.equal((await s.buggy.GET(s.req('/api/operator-portal/buggy','GET',null,cookie))).status,401);
  assert.equal((await s.boats.GET(s.req('/api/operator-portal/speedboats','GET'))).status,401);
  s.who.staff={role:'staff',userId:'S1',permissions:['guesthouse_reception']};
- assert.equal((await s.admin.GET(s.req('/api/travel-operators','GET'))).status,403);
+ assert.equal((await s.admin.GET(s.req('/api/partners','GET'))).status,403);
 });
 
 test('a decline notifies Nirili so the guest can be rebooked',async()=>{
@@ -362,14 +364,15 @@ test('through the API an operator draws a boat, publishes a departure, sees book
  assert.equal((await s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{action:'cancel',bookingId:b.id,index:0,reason:'x'},other))).status,400);
  assert.equal((await s.boats.POST(s.req('/api/operator-portal/speedboats','POST',{action:'trip-boat',scheduleId:sailing.id,date:FUTURE,boatId:spare},other))).status,400);
  // Staff see upcoming tickets per operator.
- const ops=await (await s.admin.GET(s.req('/api/travel-operators','GET'))).json();
- assert.equal(ops.operators.find(o=>o.username==='coralspeed').upcomingTickets,1);
+ const ops=await (await s.admin.GET(s.req('/api/partners','GET'))).json();
+ assert.equal(ops.partners.find(o=>o.username==='coralspeed').upcomingTickets,1);
 });
 
 test('the public site shows seat maps and books the seats the guest chose',async()=>{
  const s=apis();
- s.sea.state.boats.push({id:'B1',operatorId:'OP-A',name:'Altec 1',registration:'',capacity:4,active:true,layout:T.defaultLayout(4),createdAt:'',updatedAt:''});
- s.sea.state.sailings.push({id:'S1',boat:'Altec',operatorId:'OP-A',operatorName:'Altec',from:'Velana Airport',to:'Dhiffushi',depart:'16:30',arrive:'17:15',capacity:4,fare:46000,active:true,boatId:'B1'});
+ const op=await s.create();
+ s.sea.state.boats.push({id:'B1',operatorId:op.id,name:'Altec 1',registration:'',capacity:4,active:true,layout:T.defaultLayout(4),createdAt:'',updatedAt:''});
+ s.sea.state.sailings.push({id:'S1',boat:'Altec',operatorId:op.id,operatorName:'Altec',from:'Velana Airport',to:'Dhiffushi',depart:'16:30',arrive:'17:15',capacity:4,fare:46000,active:true,boatId:'B1'});
  const ask=(body)=>s.walkin.POST(new Request('https://transfers.nirilihotels.test/api/walkin-transfers',{method:'POST',headers:{origin:'https://transfers.nirilihotels.test','content-type':'application/json'},body:JSON.stringify({action:'book',payment:'later',traveller:'Tourist',children:0,infants:0,notes:'',...body})}));
  const view=await (await s.walkin.GET()).json();
  assert.deepEqual(view.boats.map(b=>[b.id,b.layout.cells.filter(n=>n>0).length]),[['B1',4]]);
@@ -459,12 +462,12 @@ test('operators create crew logins; crew see and board only their own trips',asy
  const b=T.createTransfer(s.sea.state,{token:'c1',name:'Guest',phone:'+447700900123',traveller:'Tourist',adults:2,children:0,infants:0,notes:'',expectedTotal:40000,journeys:[{scheduleId:sailingId,date:FUTURE,seats:[1,2]}]},'walk-transfer:x');
  s.sea.state.bookings.push(b);
  // Crew sign in on the same page and get a crew session, not an operator one.
- const login=await s.session.POST(s.req('/api/operator-portal/session','POST',{username:'ali.captain',password:'crew-pass-1'}));
+ const login=await s.session.POST(s.req('/api/partner-portal/session','POST',{username:'ali.captain',password:'crew-pass-1'}));
  assert.equal(login.status,200);
  assert.equal((await login.json()).crew.operatorName,'Coral Speed');
  const aliCookie=(login.headers.get('set-cookie')||'').split(';')[0];
  assert.match(aliCookie,/^nirili_crew_session=/);
- const hassanCookie=((await s.session.POST(s.req('/api/operator-portal/session','POST',{username:'hassan',password:'crew-pass-2'}))).headers.get('set-cookie')||'').split(';')[0];
+ const hassanCookie=((await s.session.POST(s.req('/api/partner-portal/session','POST',{username:'hassan',password:'crew-pass-2'}))).headers.get('set-cookie')||'').split(';')[0];
  const crewGet=c=>s.crewApi.GET(s.req('/api/operator-portal/crew?date='+FUTURE,'GET',null,c));
  const crewPost=(c,body)=>s.crewApi.POST(s.req('/api/operator-portal/crew','POST',{...body,viewDate:FUTURE},c));
  let view=await (await crewGet(aliCookie)).json();
@@ -488,13 +491,13 @@ test('operators create crew logins; crew see and board only their own trips',asy
  // Pausing a crew login ends their access at once.
  await post({action:'save-crew',crew:{...d.crew.find(c=>c.id===hassan),active:false}});
  assert.equal((await crewGet(hassanCookie)).status,401);
- assert.equal((await s.session.POST(s.req('/api/operator-portal/session','POST',{username:'hassan',password:'crew-pass-2'}))).status,401);
+ assert.equal((await s.session.POST(s.req('/api/partner-portal/session','POST',{username:'hassan',password:'crew-pass-2'}))).status,401);
  // Staff see the operator's crew.
- const ops=await (await s.admin.GET(s.req('/api/travel-operators','GET'))).json();
- assert.deepEqual(ops.operators[0].crew.map(c=>[c.name,c.active]),[['Ali',true],['Hassan',false]]);
+ const ops=await (await s.admin.GET(s.req('/api/partners','GET'))).json();
+ assert.deepEqual(ops.partners[0].crew.map(c=>[c.name,c.active]),[['Ali',true],['Hassan',false]]);
  // Pausing the operator locks out its crew too.
- const op=ops.operators[0];
- await s.admin.PATCH(s.req('/api/travel-operators','PATCH',{id:op.id,revision:op.revision,active:false}));
+ const op=ops.partners[0];
+ await s.admin.PATCH(s.req('/api/partners','PATCH',{id:op.id,revision:op.revision,active:false}));
  assert.equal((await crewGet(aliCookie)).status,401);
 });
 
@@ -630,8 +633,9 @@ test('routes with stops: guests book any stretch and a seat is sold again after 
 
 test('the public site books a stretch of a route with stops',async()=>{
  const s=apis();
- s.sea.state.boats.push({id:'B1',operatorId:'OP-A',name:'Altec 1',registration:'',capacity:4,active:true,layout:T.defaultLayout(4),createdAt:'',updatedAt:''});
- s.sea.state.sailings.push({id:'R1',boat:'Altec',operatorId:'OP-A',operatorName:'Altec',from:"Male'",to:'Dhiffushi',depart:'11:20',arrive:'12:00',capacity:4,fare:46000,active:true,boatId:'B1',
+ const op=await s.create();
+ s.sea.state.boats.push({id:'B1',operatorId:op.id,name:'Altec 1',registration:'',capacity:4,active:true,layout:T.defaultLayout(4),createdAt:'',updatedAt:''});
+ s.sea.state.sailings.push({id:'R1',boat:'Altec',operatorId:op.id,operatorName:'Altec',from:"Male'",to:'Dhiffushi',depart:'11:20',arrive:'12:00',capacity:4,fare:46000,active:true,boatId:'B1',
   stops:[{port:"Male'",depart:'11:20'},{port:'Velana Airport',arrive:'11:25',depart:'11:30'},{port:'Dhiffushi',arrive:'12:00'}],fares:[{from:0,to:2,fare:46000},{from:1,to:2,fare:40000},{from:0,to:1,fare:3000}]});
  const ask=(body)=>s.walkin.POST(new Request('https://transfers.nirilihotels.test/api/walkin-transfers',{method:'POST',headers:{origin:'https://transfers.nirilihotels.test','content-type':'application/json'},body:JSON.stringify({action:'book',payment:'later',traveller:'Tourist',children:0,infants:0,notes:'',name:'G',phone:'+447700900123',...body})}));
  const view=await (await s.walkin.GET()).json();

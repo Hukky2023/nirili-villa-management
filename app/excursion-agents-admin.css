@@ -19,3 +19,9 @@
 .ag-detail{padding:12px 14px;border-radius:12px;background:#fff;border:1px solid #e3e6ea}
 .ag-detail .ag-table{margin-top:10px}
 @media print{.ag-admin .ws-tabs,.ag-admin .ws-title>button,.ag-statement>.ws-actions{display:none}.ag-detail{break-inside:avoid}}
+
+/* Partners: what each partner may do */
+.ws-fieldset{margin:0;padding:12px 14px;border:1px solid rgba(15,42,46,.14);border-radius:12px;display:grid;gap:8px}
+.ws-fieldset legend{padding:0 6px;font-weight:700}
+.ws-fieldset .ws-check{align-items:flex-start}
+.ws-fieldset .ws-check small{display:block;opacity:.7;font-weight:400}

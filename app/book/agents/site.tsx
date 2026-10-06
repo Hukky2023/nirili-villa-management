@@ -1,9 +1,8 @@
 'use client';
 
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {ArrowRight,CalendarDays,Car,CheckCircle2,ClipboardList,LogOut,MapPin,MessageCircle,Plus,Ship,ShipWheel,Trash2,X} from 'lucide-react';
+import {ArrowRight,CalendarDays,Car,CheckCircle2,ClipboardList,MapPin,MessageCircle,Plus,Ship,ShipWheel,Trash2,X} from 'lucide-react';
 import {Rides,Transfers,useTravel} from './travel';
-import {WHATSAPP} from '../../hotel/chrome';
 
 type Agent={id:string;name:string;contactName:string;pickup:string;discountPercent:number;autoConfirm:boolean};
 type Item={id:string;name:string;detail:string;cents:number;netCents:number;pricingUnit:'guest'|'couple';group:string;needsFootSizes:boolean};
@@ -30,15 +29,18 @@ function voucher(b:{ref:string;excursion:string;date:string;time?:string;pickup?
   b.guests+' guest'+(b.guests===1?'':'s')+(b.pickup?' · pickup: '+b.pickup:''),'Reference: '+b.ref,'','Booked by '+agent.name+'. Please be ready 10 minutes before departure.'].join('\n');
 }
 // Transfers and buggy rides load their own data when opened.
-function Travel({kind,pickup}:{kind:'transfers'|'rides';pickup:string}){
+export function Travel({kind,pickup}:{kind:'transfers'|'rides';pickup:string}){
  const travel=useTravel();
  return <>{travel.error&&<p className="nh-error" role="alert">{travel.error}</p>}{!travel.data?<p className="nh-exc-none">Loading…</p>:kind==='transfers'?<Transfers travel={travel} pickup={pickup}/>:<Rides travel={travel} pickup={pickup}/>}</>;
 }
 const waLink=(phone:string,message:string)=>'https://wa.me/'+phone.replace(/\D/g,'')+'?text='+encodeURIComponent(message);
 
-export default function AgentPortal(){
+// Partner portal → Excursions: book trips for guests and follow them. The portal shell
+// (app/partners/portal.tsx) handles sign-in and only shows this to partners allowed to book
+// excursions.
+export function AgentExcursions(){
  const [agent,setAgent]=useState<Agent|null|undefined>(undefined);
- const [tab,setTab]=useState<'book'|'bookings'|'transfers'|'rides'>('book');
+ const [tab,setTab]=useState<'book'|'bookings'>('book');
  const [items,setItems]=useState<Item[]>([]),[today,setToday]=useState(''),[surcharge,setSurcharge]=useState(0),[bookings,setBookings]=useState<Booking[]>([]);
  const [loadError,setLoadError]=useState('');
 
@@ -54,54 +56,20 @@ export default function AgentPortal(){
  // Keep confirmations fresh while the portal is open.
  useEffect(()=>{if(!agent)return;const t=setInterval(()=>{if(document.visibilityState==='visible')void load();},60000);return ()=>clearInterval(t);},[agent,load]);
 
- async function signOut(){
-  await fetch('/api/agent-portal/session',{method:'DELETE'}).catch(()=>null);
-  setAgent(null);setBookings([]);
- }
-
- if(agent===undefined)return <section className="nh-agent-wrap" id="book"><p className="nh-exc-none">Loading the partner portal…</p></section>;
- if(!agent)return <section className="nh-agent-wrap" id="book"><Login onSignedIn={()=>void load()}/></section>;
-
+ if(agent===undefined)return <p className="nh-exc-none">Loading…</p>;
+ if(!agent)return <p className="nh-error" role="alert">{loadError||'Excursion bookings are not enabled for your account.'}</p>;
  const open=bookings.filter(b=>b.status==='Pending'||b.cancelRequested).length;
- return <section className="nh-agent-wrap" id="book">
-  <div className="nh-agent-bar">
-   <div><small>Partner</small><strong>{agent.name}</strong><span>{agent.discountPercent?`Your partner rate: ${agent.discountPercent}% off public prices`:'Public prices apply'} · {agent.autoConfirm?'Trips with free seats confirm instantly':'Every booking is confirmed by our team'}</span></div>
-   <button type="button" onClick={()=>void signOut()}><LogOut/>Sign out</button>
-  </div>
-  <div className="nh-agent-tabs" role="group" aria-label="Portal section">
+ return <div className="nh-agent-wrap">
+  <p className="nh-agent-terms">{agent.discountPercent?`Your partner rate: ${agent.discountPercent}% off public prices`:'Public prices apply'} · {agent.autoConfirm?'Trips with free seats confirm instantly':'Every booking is confirmed by Nirili'}</p>
+  <div className="nh-agent-tabs" role="group" aria-label="Excursions">
    <button type="button" aria-pressed={tab==='book'} onClick={()=>setTab('book')}><Plus size={16}/>New booking</button>
    <button type="button" aria-pressed={tab==='bookings'} onClick={()=>{setTab('bookings');void load();}}><ClipboardList size={16}/>My bookings{open>0&&<b>{open}</b>}</button>
-   <button type="button" aria-pressed={tab==='transfers'} onClick={()=>setTab('transfers')}><ShipWheel size={16}/>Transfers</button>
-   <button type="button" aria-pressed={tab==='rides'} onClick={()=>setTab('rides')}><Car size={16}/>Buggy</button>
   </div>
   {loadError&&<p className="nh-error" role="alert">{loadError}</p>}
   {tab==='book'
    ?<BookingForm agent={agent} items={items} today={today} surcharge={surcharge} onBooked={()=>void load()} onViewBookings={()=>setTab('bookings')}/>
-   :tab==='bookings'?<Bookings agent={agent} bookings={bookings} today={today} onChanged={list=>setBookings(list)}/>
-   :<Travel kind={tab} pickup={agent.pickup}/>}
- </section>;
-}
-
-function Login({onSignedIn}:{onSignedIn:()=>void}){
- const [username,setUsername]=useState(''),[password,setPassword]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
- async function submit(e:React.FormEvent){
-  e.preventDefault();if(busy)return;setBusy(true);setError('');
-  try{
-   const r=await fetch('/api/agent-portal/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
-   const d:any=await r.json();if(!r.ok)throw Error(d.error||'Could not sign in.');
-   setPassword('');onSignedIn();
-  }catch(err){setError((err as Error).message);}finally{setBusy(false);}
- }
- return <form className="nh-agent-login" onSubmit={submit}>
-  <p className="nh-kicker">Partner sign in</p>
-  <h2>Welcome back</h2>
-  <p>Sign in with the partner login Nirili Tours gave your guest house.</p>
-  <label>Username<input required autoComplete="username" autoCapitalize="none" maxLength={40} value={username} onChange={e=>setUsername(e.target.value)}/></label>
-  <label>Password<input required type="password" autoComplete="current-password" maxLength={128} value={password} onChange={e=>setPassword(e.target.value)}/></label>
-  {error&&<p className="nh-error" role="alert">{error}</p>}
-  <button className="nh-btn nh-btn-primary nh-transfer-submit" disabled={busy}>{busy?'Signing in…':'Sign in'} <ArrowRight/></button>
-  <small>Not a partner yet? <a href={WHATSAPP} target="_blank" rel="noopener noreferrer">Message Nirili Tours on WhatsApp</a> to set up an account for your guest house.</small>
- </form>;
+   :<Bookings agent={agent} bookings={bookings} today={today} onChanged={list=>setBookings(list)}/>}
+ </div>;
 }
 
 function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agent:Agent;items:Item[];today:string;surcharge:number;onBooked:()=>void;onViewBookings:()=>void}){

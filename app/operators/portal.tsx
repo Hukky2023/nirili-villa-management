@@ -32,36 +32,11 @@ async function call(url:string,body?:any){
  return d;
 }
 
-export default function OperatorPortal(){
- const [who,setWho]=useState<{operator:Operator|null;crew:CrewMember|null}|null|undefined>(undefined);
- useEffect(()=>{call('/api/operator-portal/session').then(d=>setWho(d.operator||d.crew?d:null)).catch(()=>setWho(null));},[]);
- if(who===undefined)return <div className="op-wrap"><p className="op-muted">Loading…</p></div>;
- if(!who)return <div className="op-wrap"><Login onSignedIn={setWho}/></div>;
- if(who.crew)return <CrewWorkspace crew={who.crew} onSignedOut={()=>setWho(null)}/>;
- return <Workspace operator={who.operator!} onSignedOut={()=>setWho(null)}/>;
-}
-
-function Login({onSignedIn}:{onSignedIn:(who:{operator:Operator|null;crew:CrewMember|null})=>void}){
- const [username,setUsername]=useState(''),[password,setPassword]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
- async function submit(e:React.FormEvent){
-  e.preventDefault();if(busy)return;setBusy(true);setError('');
-  try{const d=await call('/api/operator-portal/session',{username,password});setPassword('');onSignedIn(d);}
-  catch(err){setError((err as Error).message)}finally{setBusy(false)}
- }
- return <form className="op-login" onSubmit={submit}>
-  <span className="op-logo"><Anchor/></span>
-  <p className="op-kicker">Nirili Travels</p>
-  <h1>Operator portal</h1>
-  <p className="op-muted">For speedboat companies, their boat crew and buggy owners working with Nirili. Sign in with the login you were given.</p>
-  <label>Username<input required autoComplete="username" autoCapitalize="none" maxLength={40} value={username} onChange={e=>setUsername(e.target.value)}/></label>
-  <label>Password<input required type="password" autoComplete="current-password" maxLength={128} value={password} onChange={e=>setPassword(e.target.value)}/></label>
-  {error&&<p className="op-error" role="alert">{error}</p>}
-  <button className="op-primary" disabled={busy}>{busy?'Signing in…':'Sign in'}</button>
-  <small className="op-muted">Want to join? <a href="https://wa.me/9609413977" target="_blank" rel="noopener noreferrer">Message Nirili on WhatsApp</a>.</small>
- </form>;
-}
-
-function Workspace({operator,onSignedOut}:{operator:Operator;onSignedOut:()=>void}){
+// Partner portal → Operations: the working tool for partners who run speedboat trips or buggy
+// rides, built for a phone at the jetty. The portal shell (app/partners/portal.tsx) handles
+// sign-in. English only, like the management system.
+export type {Operator,CrewMember};
+export function Workspace({operator,onSignedOut}:{operator:Operator;onSignedOut:()=>void}){
  const boats=operator.services.includes('boat'),buggies=operator.services.includes('buggy');
  const tabs:{id:Tab;label:string;icon:any;show:boolean}[]=[
   {id:'boarding',label:'Boarding',icon:Users,show:boats},{id:'bookings',label:'Bookings',icon:ClipboardList,show:boats},
@@ -91,7 +66,7 @@ function Workspace({operator,onSignedOut}:{operator:Operator;onSignedOut:()=>voi
   try{setLand(await call('/api/operator-portal/buggy',{...body,viewMonth:month}));if(done)setMessage(done);return true;}
   catch(e){handle(e);return false}finally{setBusy('')}
  }
- async function signOut(){await fetch('/api/operator-portal/session',{method:'DELETE'}).catch(()=>null);onSignedOut();}
+ async function signOut(){await fetch('/api/partner-portal/session',{method:'DELETE'}).catch(()=>null);onSignedOut();}
 
  const open:Ride[]=land?.open||[];
  const charterRequests=(sea?.charters||[]).filter((c:any)=>c.status==='Requested').length;
@@ -423,7 +398,7 @@ function CrewTab({crew,busy,act}:{crew:CrewMember[];busy:boolean;act:(b:any,done
 }
 
 // What a crew member sees: their trips for the next 7 days and boarding for the chosen day.
-function CrewWorkspace({crew,onSignedOut}:{crew:CrewMember;onSignedOut:()=>void}){
+export function CrewWorkspace({crew,onSignedOut}:{crew:CrewMember;onSignedOut:()=>void}){
  const [date,setDate]=useState(''),[data,setData]=useState<any>(null);
  const [message,setMessage]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const handle=useCallback((e:any)=>{if(e?.status===401){onSignedOut();return;}setError(e?.message||'Something went wrong.');},[onSignedOut]);
@@ -435,7 +410,7 @@ function CrewWorkspace({crew,onSignedOut}:{crew:CrewMember;onSignedOut:()=>void}
   try{setData(await call('/api/operator-portal/crew',{...body,viewDate:date}));if(done)setMessage(done);return true;}
   catch(e){handle(e);return false}finally{setBusy(false)}
  }
- async function signOut(){await fetch('/api/operator-portal/session',{method:'DELETE'}).catch(()=>null);onSignedOut();}
+ async function signOut(){await fetch('/api/partner-portal/session',{method:'DELETE'}).catch(()=>null);onSignedOut();}
  return <div className="op-wrap">
   <header className="op-bar">
    <div><small>{crew.operatorName} · {crew.role}</small><strong>{crew.name}</strong><span>Board guests on your trips</span></div>

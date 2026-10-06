@@ -1,15 +1,10 @@
-import {readRecord,readRecords,saveRecord} from './operation-records';
-import {cleanUsername,partnerAuth} from './partner-auth';
+import {loadPartners,partnerWith,type Partner,type Permission} from './partners';
 import {walkInExcursionPaidCents} from './walkin-excursion-access';
 
-// Partner Agent Portal. Guest houses on Dhiffushi that do not run excursions send their guests'
-// bookings to Nirili through agents.nirilihotels.com. Agents are kept completely apart from staff
-// and guest accounts: their logins, sessions and profiles live in their own operation records,
-// so an agent login can never open the management app or the in-house guest portal.
-export const AGENT_PREFIX='excursion-agent:';
-export const USERNAME_PREFIX='excursion-agent-username:';
-export const SESSION_PREFIX='excursion-agent-session:';
-export const AGENT_COOKIE='nirili_agent_session';
+// Partner bookings for guests (excursions, speedboat seats, buggy rides). Guest houses on
+// Dhiffushi that do not run excursions send their guests' bookings to Nirili through the partner
+// portal (partners.nirilihotels.com). Partner logins are kept apart from staff and guest
+// accounts, so a partner can never open the management app or the in-house guest portal.
 export const AGENT_SOURCE='Agent portal';
 export const MAX_DISCOUNT_PERCENT=50;
 
@@ -38,61 +33,20 @@ export function netPriceCents(publicCents:number,discountPercent:number){
  return Math.max(0,Math.round((Math.max(0,Number(publicCents)||0)*(100-discount))/100));
 }
 
-// Validates the editable partner details. Username and password are handled separately.
-export function cleanAgentDetails(input:any){
- const name=text(input?.name,100),contactName=text(input?.contactName,100),phone=cleanPhone(input?.phone),email=text(input?.email,254).toLowerCase();
- const pickup=text(input?.pickup,150)||name;
- const discountPercent=Math.round(Number(input?.discountPercent??0)*10)/10;
- if(!name)throw Error('Enter the guest house name.');
- if(phone&&!PHONE.test(phone))throw Error('Enter the WhatsApp number with country code, e.g. +960 7XX XXXX.');
- if(email&&!EMAIL.test(email))throw Error('Enter a valid email address.');
- if(!Number.isFinite(discountPercent)||discountPercent<0||discountPercent>MAX_DISCOUNT_PERCENT)throw Error('Agent discount must be between 0% and '+MAX_DISCOUNT_PERCENT+'%.');
- return {name,contactName,phone,email,pickup,discountPercent,autoConfirm:input?.autoConfirm!==false,active:input?.active!==false};
+// Agents are partner accounts (lib/partners.ts) allowed to book for their guests. This view of a
+// partner keeps the booking engine and statements unchanged: discountPercent is the partner's
+// excursion discount.
+export function asAgent(partner:Partner):Agent{
+ return {...partner,discountPercent:partner.excursionDiscountPercent,pickup:partner.pickup||partner.name,autoConfirm:partner.autoConfirm!==false};
 }
-
+// The signed-in partner as an agent, only with the permission the request needs.
+export async function agentFromRequest(request:Request,permission:Permission|Permission[]='excursions'){
+ const partner=await partnerWith(request,permission);
+ return partner?asAgent(partner):null;
+}
 export async function loadAgents():Promise<{agent:Agent;revision:number}[]>{
- return (await readRecords<Agent>(AGENT_PREFIX)).map(row=>({agent:row.value,revision:row.revision}))
-  .sort((a,b)=>a.agent.name.localeCompare(b.agent.name));
+ return (await loadPartners()).filter(r=>r.partner.permissions?.includes('excursions')).map(r=>({agent:asAgent(r.partner),revision:r.revision}));
 }
-export async function loadAgent(id:string){
- const row=await readRecord<Agent>(AGENT_PREFIX+id);
- return row?{agent:row.value,revision:row.revision}:null;
-}
-
-export async function createAgent(input:any,by:string):Promise<Agent>{
- const details=cleanAgentDetails(input);
- const username=cleanUsername(input?.username);
- const id='AG-'+crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase(),now=new Date().toISOString();
- const secret=await auth.credentials(input?.password);
- if(!await auth.reserveUsername(username,id,by))throw Error('That username is already in use.');
- const agent:Agent={id,...details,username,...secret,passwordVersion:1,createdAt:now,updatedAt:now,createdBy:by};
- if(!await saveRecord(AGENT_PREFIX+id,agent,0,by))throw Error('Could not save the agent. Please try again.');
- return agent;
-}
-
-// Updates partner details; a new password signs the agent out everywhere.
-export async function updateAgent(id:string,revision:number,input:any,by:string):Promise<{agent:Agent;revision:number}|'conflict'|null>{
- const current=await loadAgent(id);
- if(!current)return null;
- if(current.revision!==revision)return 'conflict';
- const agent:Agent={...current.agent,...cleanAgentDetails({...current.agent,...input}),updatedAt:new Date().toISOString()};
- if(input?.password!==undefined&&input.password!==''){
-  Object.assign(agent,await auth.credentials(input.password));agent.passwordVersion=(Number(agent.passwordVersion)||1)+1;
- }
- const next=await saveRecord(AGENT_PREFIX+id,agent,revision,by);
- return next?{agent,revision:next}:'conflict';
-}
-
-// ---- Sessions: shared partner login system (lib/partner-auth.ts) with the agent records.
-const auth=partnerAuth<Agent>({accountPrefix:AGENT_PREFIX,usernamePrefix:USERNAME_PREFIX,sessionPrefix:SESSION_PREFIX,cookie:AGENT_COOKIE});
-export const sessionCookie=auth.sessionCookie;
-export const clearedSessionCookie=auth.clearedCookie;
-export async function signIn(username:string,password:string):Promise<{agent:Agent;cookie:string}|null>{
- const result=await auth.signIn(username,password);
- return result?{agent:result.account,cookie:result.cookie}:null;
-}
-export const agentFromRequest=auth.fromRequest;
-export const signOut=auth.signOut;
 
 // ---- Bookings
 const cancelled=(order:any)=>order.status==='Cancelled'||order.approvalStatus==='Cancelled'||order.approvalStatus==='Declined';

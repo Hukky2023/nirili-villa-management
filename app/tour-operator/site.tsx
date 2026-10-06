@@ -2,23 +2,25 @@
 import {useEffect,useState} from "react";
 import {ArrowRight,Baby,BedDouble,BriefcaseBusiness,CalendarDays,ChevronDown,ClipboardList,LockKeyhole,LogOut,MapPin,Percent,Search,UserRound,UsersRound,Waves} from "lucide-react";
 import BookingConfirmationButton from "./booking-confirmation-button";
-import {LanguagePicker} from "../ui-language";
 
 const money=(c:number)=>"$"+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const discount=(c:number,p:number)=>Math.max(0,Math.round(c*(100-Math.max(0,Math.min(100,p||0)))/100));
 const fallback:any={'Bed & Breakfast':[5000,6000,7000],'Half Board':[7000,8000,9000],'Full Board':[8000,10000,12000]};
 
-export default function TourOperatorSite(){
+// Partner portal → Rooms & packages: room bookings with meal plan, excursions and airport
+// transfer at the partner's discounts. The portal shell handles sign-in and only shows this to
+// partners allowed to book rooms and packages.
+export default function RoomPackages(){
  const [operator,setOperator]=useState<any>(null),[data,setData]=useState<any>(null),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
  const [availability,setAvailability]=useState<any>(null),[availabilityBusy,setAvailabilityBusy]=useState(false),[availabilityMessage,setAvailabilityMessage]=useState("");
- const [login,setLogin]=useState({username:"",password:""});
+
  const [form,setForm]=useState<any>({guest:"",phone:"",email:"",checkIn:"",checkOut:"",adults:2,children:0,guests:[{name:"",passport:"",age:"",kind:"adult"},{name:"",passport:"",age:"",kind:"adult"}],roomType:"",meal:"",addExcursions:false,excursionIds:[],transfer:"none",packageName:"",notes:""});
  const [editing,setEditing]=useState<any>(null),[manageMessage,setManageMessage]=useState("");
  const [guestDetailsOpen,setGuestDetailsOpen]=useState(false),[packageOpen,setPackageOpen]=useState(false);
- async function load(){try{const s=await fetch("/api/tour-operator-portal/session",{cache:"no-store"}),sd=await s.json();if(!sd.operator){setOperator(null);setData(null);return}setOperator(sd.operator);const r=await fetch("/api/tour-operator-portal/catalog",{cache:"no-store"}),d=await r.json();if(!r.ok)throw Error(d.error);setData(d);}catch(e){setMessage((e as Error).message)}}
+ async function load(){try{const r=await fetch("/api/tour-operator-portal/catalog",{cache:"no-store"}),d=await r.json();if(r.status===401){setOperator(null);setData(null);return}if(!r.ok)throw Error(d.error);setOperator(d.operator);setData(d);}catch(e){setMessage((e as Error).message)}}
  useEffect(()=>{void load()},[]);
- async function signIn(e:React.FormEvent){e.preventDefault();setBusy(true);setMessage("");try{const r=await fetch("/api/tour-operator-portal/session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(login)}),d=await r.json();if(!r.ok)throw Error(d.error);setOperator(d.operator);await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}}
- async function signOut(){await fetch("/api/tour-operator-portal/session",{method:"DELETE"});setOperator(null);setData(null)}
+
+
  function startEditBooking(b:any){
   const adults=Number(b.adults||b.pax||1),children=Number(b.children||0),total=adults+children;
   const guests=Array.from({length:total},(_,i)=>b.guests?.[i]||{name:i===0?b.guest||"":"",passport:"",age:"",kind:i<adults?"adult":"child"}).map((g:any,i:number)=>({...g,kind:i<adults?"adult":"child"}));
@@ -54,8 +56,8 @@ export default function TourOperatorSite(){
  const legs=form.transfer==="return"?2:form.transfer==="arrival"?1:0,transferPublic=(data?.airportTransferCents||3000)*pax*legs,transferNet=discount(transferPublic,operator?.transferDiscountPercent||0);
  const total=roomNet+excNet+transferNet;
  async function book(e:React.FormEvent){e.preventDefault();setBusy(true);setMessage("");try{const r=await fetch("/api/tour-operator-portal/catalog",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"book-package",...form})}),d=await r.json();if(!r.ok)throw Error(d.error);setMessage("Booking "+d.id+" sent to Nirili Villa. Total payable to hotel: "+money(d.totalCents));setForm((x:any)=>({...x,guest:"",phone:"",email:"",packageName:"",notes:"",excursionIds:[],guests:Array.from({length:Number(x.adults)+Number(x.children)},(_,i)=>({name:"",passport:"",age:"",kind:i<Number(x.adults)?"adult":"child"}))}));await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}}
- if(!operator)return <main className="to-login-shell"><section className="to-login-hero"><div className="to-login-shade"/><div className="to-login-brand"><span className="to-brand-mark"><Waves/></span><span><strong>Nirili</strong><small>Dhiffushi · Maldives</small></span></div><div className="to-login-copy"><p className="to-kicker"><MapPin/> Dhiffushi, Kaafu Atoll</p><h1>Partner with Nirili.<br/><em>Create stays your way.</em></h1><p>Build complete Maldives packages with rooms, meal plans, excursions and airport transfers using your contracted commission rates.</p><div className="to-login-pills"><span>Rooms & meal plans</span><span>Excursions</span><span>Airport transfers</span></div></div></section><section className="to-login-panel"><div className="to-login-card"><p className="to-card-kicker">Tour Operator Portal</p><h2>Welcome back</h2><p className="to-card-intro">Sign in with the account created for your company by Nirili Villa.</p>{message&&<p className="to-message">{message}</p>}<form onSubmit={signIn}><label><span>Username</span><div className="to-input"><UserRound/><input required autoComplete="username" value={login.username} onChange={e=>setLogin({...login,username:e.target.value.toLowerCase()})}/></div></label><label><span>Password</span><div className="to-input"><LockKeyhole/><input required autoComplete="current-password" type="password" value={login.password} onChange={e=>setLogin({...login,password:e.target.value})}/></div></label><button className="to-login-submit" disabled={busy}><span>{busy?"Signing in…":"Sign in to portal"}</span><ArrowRight/></button></form><p className="to-login-help">Need access? Contact Nirili Villa to create or update your tour operator account.</p></div><p className="to-login-footer">© {new Date().getFullYear()} Nirili Hotel · Dhiffushi, Maldives</p></section></main>;
- return <main className="to-shell"><header className="to-top"><div className="to-hero-content"><div className="to-hero-brand"><span className="to-hero-wave"><Waves/></span><div><strong>NIRILI VILLA</strong><small>· TOUR OPERATOR ·</small></div></div><div className="to-hero-copy"><h1>{operator.name}</h1><p>Your commission rates are applied automatically.</p><span className="to-hero-accent"/></div><div className="to-hero-tagline"><em>More<br/>than a stay</em><span>A BRIGHTER<br/>MALDIVES</span></div></div><div className="to-hero-actions" style={{position:"absolute",top:14,right:10,display:"flex",alignItems:"center",gap:6,zIndex:20}}><LanguagePicker tone="dark" className="to-tour-language"/><button style={{position:"static"}} onClick={signOut}><LogOut/> <span>Sign out</span></button></div></header>
+ if(!operator)return <p className="to-message">{message||"Room and package bookings are not enabled for your account."}</p>;
+ return <div className="to-shell">
   <details className="to-discount-details">
    <summary><span className="to-commission-icon"><Percent/></span><span className="to-commission-copy"><b>Commission Details</b><small>Your commission rates are applied automatically for all confirmed bookings.</small></span><span className="to-commission-toggle" aria-hidden="true"><ChevronDown/></span></summary>
    <section className="to-discounts"><article><small>Room commission</small><b>{operator.roomDiscountPercent}%</b></article><article><small>Excursion commission</small><b>{operator.excursionDiscountPercent}%</b></article><article><small>Airport transfer commission</small><b>{operator.transferDiscountPercent}%</b></article></section>
@@ -122,5 +124,5 @@ export default function TourOperatorSite(){
     <footer><button type="button" disabled={busy} onClick={()=>setEditing(null)}>Cancel</button><button className="primary" disabled={busy}>{busy?"Saving…":"Save changes"}</button></footer>
    </form>
   </div>}
- </main>;
+ </div>;
 }

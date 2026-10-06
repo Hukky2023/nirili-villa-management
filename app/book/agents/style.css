@@ -102,3 +102,4 @@
 .nh-agent-travel .nh-agent-travel-list{grid-column:1/-1}
 .nh-agent-travel .nh-agent-tabs{margin-bottom:4px}
 @media(max-width:1000px){.nh-agent-travel{grid-template-columns:1fr}.nh-agent-travel .nh-fare{position:static}}
+.nh-agent-terms{margin:0;font-size:14px;color:var(--ink-soft)}

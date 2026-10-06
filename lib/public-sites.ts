@@ -9,11 +9,9 @@ export const HOSTS={
  transfers:'transfers.nirilihotels.com',
  ride:'ride.nirilihotels.com',
  watersports:'watersports.nirilihotels.com',
- // Partner guest houses send excursion bookings through the Agent Portal.
- agents:'agents.nirilihotels.com',
- // Speedboat operators and buggy owners run Nirili Travels trips from the operator portal.
- operators:'operators.nirilihotels.com',
- tourOperator:'touroperator.nirilihotels.com',
+ // Every partner (guest houses, travel agencies, speedboat and buggy operators and their crew)
+ // signs in here and sees what Nirili allows them to do.
+ partners:'partners.nirilihotels.com',
  my:'my.nirilihotels.com',
  // Retired public address. Old links, emails and printed QR codes are forwarded from here.
  booking:'booking.nirilihotels.com',
@@ -24,7 +22,11 @@ export const ALIAS_HOSTS:Record<string,string>={
  'excursions.nirilihotels.com':'tours',
  'restaurant.nirilihotels.com':'dine',
  'travels.nirilihotels.com':'main',
- 'tour-operator.nirilihotels.com':'tourOperator',
+ // The separate partner portals were combined into partners.nirilihotels.com.
+ 'agents.nirilihotels.com':'partners',
+ 'operators.nirilihotels.com':'partners',
+ 'touroperator.nirilihotels.com':'partners',
+ 'tour-operator.nirilihotels.com':'partners',
 };
 
 const origin=(host:string)=>'https://'+host;
@@ -37,9 +39,7 @@ export const SITES={
  transfers:origin(HOSTS.transfers),
  ride:origin(HOSTS.ride),
  watersports:origin(HOSTS.watersports),
- agents:origin(HOSTS.agents),
- operators:origin(HOSTS.operators),
- tourOperator:origin(HOSTS.tourOperator),
+ partners:origin(HOSTS.partners),
  my:origin(HOSTS.my),
 } as const;
 

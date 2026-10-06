@@ -108,16 +108,26 @@ test('the main domain offers short links to every service',()=>{
  assert.equal(visit('nirilihotels.com','/api/dashboard').status,404);
 });
 
-test('agents serves the partner portal; its APIs stay on that host only',()=>{
- assert.equal(rewrite(visit('agents.nirilihotels.com','/')),'/book/agents');
- assert.ok(passes(visit('agents.nirilihotels.com','/api/agent-portal/session','POST')));
- assert.ok(passes(visit('agents.nirilihotels.com','/api/agent-portal/bookings')));
+test('partners serves the one partner portal; its APIs stay on that host only',()=>{
+ assert.equal(rewrite(visit('partners.nirilihotels.com','/')),'/partners');
+ for(const api of ['/api/partner-portal/session','/api/agent-portal/bookings','/api/agent-portal/travel','/api/tour-operator-portal/catalog','/api/tour-operator-portal/manage','/api/operator-portal/speedboats','/api/operator-portal/buggy','/api/operator-portal/crew'])
+  assert.ok(passes(visit('partners.nirilihotels.com',api,'POST')),api);
  assert.equal(visit('tours.nirilihotels.com','/api/agent-portal/bookings').status,404);
- assert.equal(visit('agents.nirilihotels.com','/api/excursion-agents').status,404);
- assert.equal(visit('agents.nirilihotels.com','/api/dashboard').status,404);
- assert.equal(location(visit('agents.nirilihotels.com','/book/agents')),'https://agents.nirilihotels.com/');
- assert.equal(location(visit('nirilihotels.com','/partners')),'https://agents.nirilihotels.com/');
- assert.equal(visit('agents.nirilihotels.com','/').headers.get('cache-control'),'private, no-store, max-age=0');
+ assert.equal(visit('transfers.nirilihotels.com','/api/operator-portal/speedboats').status,404);
+ assert.equal(visit('partners.nirilihotels.com','/api/partners').status,404);
+ assert.equal(visit('partners.nirilihotels.com','/api/dashboard').status,404);
+ assert.equal(location(visit('partners.nirilihotels.com','/partners')),'https://partners.nirilihotels.com/');
+ assert.equal(visit('partners.nirilihotels.com','/').headers.get('cache-control'),'private, no-store, max-age=0');
+ assert.ok(passes(visit('partners.nirilihotels.com','/api/translate','POST')));
+});
+
+test('the old partner portals and shortcuts forward to the partner portal',()=>{
+ for(const host of ['agents.nirilihotels.com','operators.nirilihotels.com','touroperator.nirilihotels.com','tour-operator.nirilihotels.com']){
+  assert.equal(location(visit(host,'/')),'https://partners.nirilihotels.com/',host);
+  assert.equal(location(visit(host,'/book/agents')),'https://partners.nirilihotels.com/',host);
+  assert.notEqual(visit(host,'/api/agent-portal/bookings').status,200);
+ }
+ for(const path of ['/partners','/agents','/operators','/tour-operator'])assert.equal(location(visit('nirilihotels.com',path)),'https://partners.nirilihotels.com/',path);
 });
 
 test('find-my-booking is served on the guest sites, not the main hotel domain',()=>{
@@ -133,14 +143,3 @@ test('guest websites can ask for translations; the API stays closed elsewhere',(
  assert.equal(visit('nirilihotels.com','/api/translate').status,404);
 });
 
-test('operators serves the operator portal; its APIs stay on that host only',()=>{
- assert.equal(rewrite(visit('operators.nirilihotels.com','/')),'/operators');
- assert.ok(passes(visit('operators.nirilihotels.com','/api/operator-portal/session','POST')));
- assert.ok(passes(visit('operators.nirilihotels.com','/api/operator-portal/speedboats')));
- assert.ok(passes(visit('operators.nirilihotels.com','/api/operator-portal/buggy')));
- assert.equal(visit('tours.nirilihotels.com','/api/operator-portal/speedboats').status,404);
- assert.equal(visit('agents.nirilihotels.com','/api/operator-portal/buggy').status,404);
- assert.equal(visit('operators.nirilihotels.com','/api/travel-operators').status,404);
- assert.ok(passes(visit('agents.nirilihotels.com','/api/agent-portal/travel','POST')));
- assert.equal(location(visit('nirilihotels.com','/operators')),'https://operators.nirilihotels.com/');
-});

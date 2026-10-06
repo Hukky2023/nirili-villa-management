@@ -29,6 +29,7 @@ function fakeD1(){
  const run=(sql,args)=>{
   if(sql.startsWith('INSERT OR IGNORE')){const [key,payload,by]=args;if(rows.has(key))return {meta:{changes:0}};rows.set(key,{key,payload,revision:1,updated_by:by});return {meta:{changes:1}};}
   if(sql.startsWith('UPDATE')){const [payload,by,key,rev]=args,row=rows.get(key);if(!row||row.revision!==rev)return {meta:{changes:0}};rows.set(key,{key,payload,revision:rev+1,updated_by:by});return {meta:{changes:1}};}
+  if(sql.startsWith('DELETE FROM operation_records WHERE key=?')){rows.delete(args[0]);return {meta:{changes:1}};}
   throw Error('unexpected SQL '+sql);
  };
  const db={prepare:sql=>({bind:(...args)=>({
@@ -39,7 +40,7 @@ function fakeD1(){
  return {db,rows};
 }
 
-const TODAY='2026-10-01',TRIP='2026-10-03',ORIGIN='https://agents.nirilihotels.test';
+const TODAY='2026-10-01',TRIP='2026-10-03',ORIGIN='https://partners.nirilihotels.test';
 const MENU=[
  {id:'sandbank',kind:'excursion',name:'Sandbank Trip',cents:2500,pricingUnit:'guest',active:true},
 ];
@@ -67,21 +68,24 @@ function setup({staff={role:'admin',userId:'U1',displayName:'Admin',username:'ad
   'excursion-email':{sendExternalExcursionBookedEmail:async m=>{emails.push(m);return {sent:true};}},
   'admin-notifications':{emitAdminNotification:async n=>{notices.push(n);}},
   'excursion-workflow':{excursionResources:()=>({vessels:[{id:'V1',name:'Nirili One'}],crew:[]})},
+  'transport-store':{loadTransport:async()=>({state:{sailings:[],bookings:[],boats:[],charterRates:[],charters:[]},revision:1}),updateTransport:async(by,change)=>{const state={sailings:[],bookings:[],boats:[],charterRates:[],charters:[]};return {result:await change(state),state,revision:2};}},
  };
  const cache=new Map();
  const lib=load('lib/excursion-agents.ts',stubs,cache);
  const portal=load('app/api/agent-portal/bookings/route.ts',stubs,cache);
- const session=load('app/api/agent-portal/session/route.ts',stubs,cache);
- const admin=load('app/api/excursion-agents/route.ts',stubs,cache);
+ const session=load('app/api/partner-portal/session/route.ts',stubs,cache);
+ const admin=load('app/api/partners/route.ts',stubs,cache);
  const pub=load('app/api/public-excursions/route.ts',stubs,cache);
  const req=(path,method,body,cookie='')=>new Request(ORIGIN+path,{method,headers:{origin:ORIGIN,'content-type':'application/json',...(cookie?{cookie}:{})},body:body&&JSON.stringify(body)});
  const createAgent=async(extra={})=>{
-  const r=await admin.POST(req('/api/excursion-agents','POST',{name:'Island Breeze',contactName:'Ali',phone:'+960 777 1111',pickup:'Island Breeze GH',discountPercent:10,username:'islandbreeze',password:'breeze-pass-1',...extra}));
+  // Partner accounts take excursionDiscountPercent; older tests say discountPercent.
+  const {discountPercent=10,...rest}=extra;
+  const r=await admin.POST(req('/api/partners','POST',{name:'Island Breeze',contactName:'Ali',phone:'+960 777 1111',pickup:'Island Breeze GH',permissions:['excursions'],excursionDiscountPercent:discountPercent,username:'islandbreeze',password:'breeze-pass-1',...rest}));
   assert.equal(r.status,201,JSON.stringify(await r.clone().json()));
-  return (await r.json()).agent;
+  return (await r.json()).partner;
  };
  const signIn=async(username='islandbreeze',password='breeze-pass-1')=>{
-  const r=await session.POST(req('/api/agent-portal/session','POST',{username,password}));
+  const r=await session.POST(req('/api/partner-portal/session','POST',{username,password}));
   return {status:r.status,cookie:(r.headers.get('set-cookie')||'').split(';')[0]};
  };
  const book=(cookie,extra={})=>portal.POST(req('/api/agent-portal/bookings','POST',{token:crypto.randomUUID(),menuItemId:'sandbank',date:TRIP,guestNames:['Anna Lee','Ben Lee'],guestCategories:['adult','adult'],agentReference:'IB-204',...extra},cookie));
@@ -91,25 +95,25 @@ function setup({staff={role:'admin',userId:'U1',displayName:'Admin',username:'ad
 test('admin creates a partner; usernames are unique and passwords never leave the server',async()=>{
  const s=setup();
  const agent=await s.createAgent();
- assert.match(agent.id,/^AG-[A-Z0-9]{8}$/);
+ assert.match(agent.id,/^PT-[A-Z0-9]{8}$/);
  assert.equal(agent.passwordHash,undefined);
- const dup=await s.admin.POST(s.req('/api/excursion-agents','POST',{name:'Other GH',username:'islandbreeze',password:'another-pass'}));
+ const dup=await s.admin.POST(s.req('/api/partners','POST',{name:'Other GH',permissions:['excursions'],username:'islandbreeze',password:'another-pass'}));
  assert.equal(dup.status,400);
  assert.match((await dup.json()).error,/already in use/);
- const list=await (await s.admin.GET(s.req('/api/excursion-agents','GET'))).json();
- assert.equal(list.agents.length,1);
+ const list=await (await s.admin.GET(s.req('/api/partners','GET'))).json();
+ assert.equal(list.partners.length,1);
  assert.ok(!JSON.stringify(list).includes('passwordHash')&&!JSON.stringify(list).includes('"salt"'));
 });
 
 test('only Admin creates partners; reception and agents cannot reach the admin API',async()=>{
  const s=setup({staff:{role:'staff',userId:'S1',permissions:['guesthouse_reception']}});
- assert.equal((await s.admin.GET(s.req('/api/excursion-agents','GET'))).status,403);
- assert.equal((await s.admin.POST(s.req('/api/excursion-agents','POST',{name:'X',username:'xxx',password:'xxxxxxxx'}))).status,403);
+ assert.equal((await s.admin.GET(s.req('/api/partners','GET'))).status,403);
+ assert.equal((await s.admin.POST(s.req('/api/partners','POST',{name:'X',username:'xxx',password:'xxxxxxxx'}))).status,403);
  s.who.staff={role:'staff',userId:'S2',permissions:['excursions_manager']};
- assert.equal((await s.admin.GET(s.req('/api/excursion-agents','GET'))).status,200);
- assert.equal((await s.admin.POST(s.req('/api/excursion-agents','POST',{name:'X',username:'xxx',password:'xxxxxxxx'}))).status,403);
+ assert.equal((await s.admin.GET(s.req('/api/partners','GET'))).status,200);
+ assert.equal((await s.admin.POST(s.req('/api/partners','POST',{name:'X',username:'xxx',password:'xxxxxxxx'}))).status,403);
  s.who.staff=null;
- assert.equal((await s.admin.GET(s.req('/api/excursion-agents','GET'))).status,403);
+ assert.equal((await s.admin.GET(s.req('/api/partners','GET'))).status,403);
 });
 
 test('agents sign in with their own login; wrong passwords and signed-out requests are refused',async()=>{
@@ -118,9 +122,9 @@ test('agents sign in with their own login; wrong passwords and signed-out reques
  assert.equal((await s.signIn('nobody','breeze-pass-1')).status,401);
  const {status,cookie}=await s.signIn();
  assert.equal(status,200);
- assert.match(cookie,/^nirili_agent_session=[a-f0-9]{64}$/);
- const me=await (await s.session.GET(s.req('/api/agent-portal/session','GET',null,cookie))).json();
- assert.equal(me.agent.name,'Island Breeze');
+ assert.match(cookie,/^nirili_partner_session=[a-f0-9]{64}$/);
+ const me=await (await s.session.GET(s.req('/api/partner-portal/session','GET',null,cookie))).json();
+ assert.equal(me.partner.name,'Island Breeze');
  assert.equal((await s.portal.GET(s.req('/api/agent-portal/bookings','GET'))).status,401);
  assert.equal((await s.book('')).status,401);
 });
@@ -203,9 +207,9 @@ test('pending bookings cancel at once; confirmed ones become a request staff dec
  assert.equal(order().approvalStatus,'Approved');
  assert.equal((await s.portal.PATCH(s.req('/api/agent-portal/bookings','PATCH',{action:'cancel',ref:confirmed},cookie))).status,400);
 
- const list=await (await s.admin.GET(s.req('/api/excursion-agents','GET'))).json();
- assert.deepEqual(list.agents[0].statement.cancelRequests,[confirmed]);
- assert.equal((await s.admin.PATCH(s.req('/api/excursion-agents','PATCH',{action:'resolve-cancel',ref:confirmed,approve:true}))).status,200);
+ const list=await (await s.admin.GET(s.req('/api/partners','GET'))).json();
+ assert.deepEqual(list.partners[0].excursionStatement.cancelRequests,[confirmed]);
+ assert.equal((await s.admin.PATCH(s.req('/api/partners','PATCH',{action:'resolve-cancel',ref:confirmed,approve:true}))).status,200);
  assert.equal(order().status,'Cancelled');
  assert.equal(order().cents,0);
  assert.equal(order().agentCancelRequest,undefined);
@@ -214,23 +218,23 @@ test('pending bookings cancel at once; confirmed ones become a request staff dec
 test('pausing a partner or changing the password ends their sessions immediately',async()=>{
  const s=setup();const agent=await s.createAgent();
  let {cookie}=await s.signIn();
- const rev=async()=>(await (await s.admin.GET(s.req('/api/excursion-agents','GET'))).json()).agents[0].revision;
- assert.equal((await s.admin.PATCH(s.req('/api/excursion-agents','PATCH',{id:agent.id,revision:await rev(),password:'new-pass-123'}))).status,200);
+ const rev=async()=>(await (await s.admin.GET(s.req('/api/partners','GET'))).json()).partners[0].revision;
+ assert.equal((await s.admin.PATCH(s.req('/api/partners','PATCH',{id:agent.id,revision:await rev(),password:'new-pass-123'}))).status,200);
  assert.equal((await s.portal.GET(s.req('/api/agent-portal/bookings','GET',null,cookie))).status,401);
  assert.equal((await s.signIn()).status,401);
  cookie=(await s.signIn('islandbreeze','new-pass-123')).cookie;
  assert.equal((await s.portal.GET(s.req('/api/agent-portal/bookings','GET',null,cookie))).status,200);
- assert.equal((await s.admin.PATCH(s.req('/api/excursion-agents','PATCH',{id:agent.id,revision:await rev(),active:false}))).status,200);
+ assert.equal((await s.admin.PATCH(s.req('/api/partners','PATCH',{id:agent.id,revision:await rev(),active:false}))).status,200);
  assert.equal((await s.portal.GET(s.req('/api/agent-portal/bookings','GET',null,cookie))).status,401);
  assert.equal((await s.signIn('islandbreeze','new-pass-123')).status,401);
  // A stale screen cannot overwrite a newer change.
- assert.equal((await s.admin.PATCH(s.req('/api/excursion-agents','PATCH',{id:agent.id,revision:1,active:true}))).status,409);
+ assert.equal((await s.admin.PATCH(s.req('/api/partners','PATCH',{id:agent.id,revision:1,active:true}))).status,409);
 });
 
 test('signing out revokes the session',async()=>{
  const s=setup();await s.createAgent();
  const {cookie}=await s.signIn();
- await s.session.DELETE(s.req('/api/agent-portal/session','DELETE',null,cookie));
+ await s.session.DELETE(s.req('/api/partner-portal/session','DELETE',null,cookie));
  assert.equal((await s.portal.GET(s.req('/api/agent-portal/bookings','GET',null,cookie))).status,401);
 });
 
@@ -241,14 +245,14 @@ test('the monthly statement totals what each partner owes and has paid for confi
  await s.book(cookie,{guestNames:['Cara','Dan','Eve'],guestCategories:['adult','adult','child']});
  s.hotel.state.orders[0].excursionPayments=[{cents:4500}];
  const d=await (await s.admin.GET(s.req('/api/excursion-agents?month=2026-10','GET'))).json();
- const st=d.agents[0].statement;
+ const st=d.partners[0].excursionStatement;
  assert.equal(st.bookings,2);
  assert.equal(st.guests,5);
  assert.equal(st.owedCents,4500+5625);
  assert.equal(st.paidCents,4500);
  assert.equal(st.balanceCents,5625);
  const other=await (await s.admin.GET(s.req('/api/excursion-agents?month=2026-11','GET'))).json();
- assert.equal(other.agents[0].statement.owedCents,0);
+ assert.equal(other.partners[0].excursionStatement.owedCents,0);
 });
 
 test('agent bookings validate input; guest contact is optional but must be valid',async()=>{
@@ -278,4 +282,47 @@ test('the public tours website books exactly as before',async()=>{
  assert.equal(s.notices[0].title,'New excursion booking');
  // The public site still requires guest email and WhatsApp.
  assert.equal((await s.pub.POST(s.req('/api/public-excursions','POST',{token:crypto.randomUUID(),menuItemId:'sandbank',date:TRIP,guest:'G',hotel:'H',guestNames:['G'],guestCategories:['adult']}))).status,400);
+});
+
+test('a partner only reaches the parts of the portal Nirili enabled for them',async()=>{
+ const s=setup();s.addTrip(TRIP);
+ await s.createAgent({username:'boatsonly',name:'Coral Speed',permissions:['boats'],password:'boats-pass-1'});
+ const boats=(await s.signIn('boatsonly','boats-pass-1')).cookie;
+ assert.match(boats,/^nirili_partner_session=/);
+ // Running trips does not allow booking excursions for guests.
+ assert.equal((await s.portal.GET(s.req('/api/agent-portal/bookings','GET',null,boats))).status,401);
+ assert.equal((await s.book(boats)).status,401);
+ const me=await (await s.session.GET(s.req('/api/partner-portal/session','GET',null,boats))).json();
+ assert.deepEqual(me.partner.permissions,['boats']);
+ await s.createAgent();
+ const ok=(await s.signIn()).cookie;
+ assert.equal((await s.portal.GET(s.req('/api/agent-portal/bookings','GET',null,ok))).status,200);
+ assert.equal((await s.book(ok)).status,201);
+});
+
+test('partner details are validated: something to do, and a WhatsApp number for operators',async()=>{
+ const s=setup();
+ const post=body=>s.admin.POST(s.req('/api/partners','POST',{name:'X',username:'xpartner',password:'x-pass-123',...body}));
+ assert.match((await (await post({permissions:[]})).json()).error,/Tick at least one/);
+ assert.match((await (await post({permissions:['boats'],phone:''})).json()).error,/WhatsApp number for a partner who runs trips/);
+ assert.match((await (await post({permissions:['excursions'],excursionDiscountPercent:80})).json()).error,/between 0% and 50%/);
+ assert.equal((await post({permissions:['rooms','excursions'],roomDiscountPercent:15})).status,201);
+});
+
+test('the clean-up removes the old separate test logins and keeps the new partners',async()=>{
+ const s=setup();
+ const partner=await s.createAgent();
+ for(const key of ['excursion-agent:AG-1','excursion-agent-username:old','travel-operator:OP-1','travel-operator-session:abc','tour-operator:TO-1'])s.d1.rows.set(key,{key,payload:'{}',revision:1});
+ s.d1.rows.set('travel-crew:CREW-OLD',{key:'travel-crew:CREW-OLD',payload:JSON.stringify({id:'CREW-OLD',operatorId:'OP-1'}),revision:1});
+ s.d1.rows.set('travel-crew:CREW-NEW',{key:'travel-crew:CREW-NEW',payload:JSON.stringify({id:'CREW-NEW',operatorId:partner.id}),revision:1});
+ // Staff other than Admin cannot run it.
+ s.who.staff={role:'staff',userId:'S2',permissions:['excursions_manager']};
+ assert.equal((await s.admin.POST(s.req('/api/partners','POST',{action:'purge-legacy'}))).status,403);
+ s.who.staff={role:'admin',userId:'U1',permissions:[]};
+ const r=await s.admin.POST(s.req('/api/partners','POST',{action:'purge-legacy'}));
+ assert.equal(r.status,200,JSON.stringify(await r.clone().json()));
+ assert.equal((await r.json()).accounts,6);
+ assert.deepEqual([...s.d1.rows.keys()].filter(k=>/^(excursion-agent|travel-operator|tour-operator|travel-crew)/.test(k)),['travel-crew:CREW-NEW']);
+ assert.ok(s.d1.rows.has('partner:'+partner.id));
+ assert.equal((await s.signIn()).status,200);
 });

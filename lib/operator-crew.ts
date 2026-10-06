@@ -1,11 +1,12 @@
 import {readRecords,saveRecord} from './operation-records';
 import {cleanUsername,partnerAuth,type PartnerCredentials} from './partner-auth';
 import {loadOperator,offers} from './travel-operators';
+import {PARTNER_USERNAME_PREFIX} from './partners';
 
 // Crew members of a speedboat operator (captains and deckhands). The operator creates their
 // logins in the operator portal and assigns them to trips; crew sign in on the same page as
 // operators but only see the trips they are assigned to, where they board guests and close the
-// trip. Usernames share one index with operator logins, so a username is unique across both.
+// trip. Usernames share one index with partner logins, so a username is unique across both.
 export const CREW_PREFIX='travel-crew:';
 export const CREW_COOKIE='nirili_crew_session';
 export const CREW_ROLES=['Captain','Crew'] as const;
@@ -18,7 +19,7 @@ const text=(value:any,max:number)=>String(value??'').trim().replace(/\s+/g,' ').
 const cleanPhone=(value:any)=>String(value||'').replace(/[\s()-]/g,'');
 const PHONE=/^\+[1-9]\d{7,14}$/;
 
-const auth=partnerAuth<Crew>({accountPrefix:CREW_PREFIX,usernamePrefix:'travel-operator-username:',sessionPrefix:'travel-crew-session:',cookie:CREW_COOKIE});
+const auth=partnerAuth<Crew>({accountPrefix:CREW_PREFIX,usernamePrefix:PARTNER_USERNAME_PREFIX,sessionPrefix:'travel-crew-session:',cookie:CREW_COOKIE});
 export const signOutCrew=auth.signOut;
 export const clearedCrewCookie=auth.clearedCookie;
 

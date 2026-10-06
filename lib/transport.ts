@@ -218,3 +218,17 @@ export function seatAvailability(state:TransportState){
  return state.bookings.flatMap(b=>b.journeys.filter(j=>journeyLive(b,j)).map(j=>({scheduleId:j.scheduleId,date:j.date,seats:j.seats,pax:b.adults+b.children+b.infants,...span(j)})));
 }
 export const seatTaken=(e:unknown)=>e instanceof Error&&/was just booked by someone else/.test(e.message);
+
+// What guests and partners may book: Nirili's own departures and those of operators whose
+// partner account is active and allowed to run speedboats. A paused or deleted operator's
+// departures, boats and charter routes disappear from sale; their sold tickets stay.
+export function bookableState(state:TransportState,liveOperators:Set<string>):TransportState{
+ const live=(id?:string)=>!id||liveOperators.has(id);
+ return {...state,sailings:state.sailings.filter(s=>live(s.operatorId)),charterRates:(state.charterRates||[]).filter(r=>live(r.operatorId)),boats:(state.boats||[]).filter(b=>live(b.operatorId))};
+}
+export function assertBookable(state:TransportState,journeys:any[],liveOperators:Set<string>){
+ for(const j of Array.isArray(journeys)?journeys:[]){
+  const s=state.sailings.find(x=>x.id===j?.scheduleId);
+  if(s?.operatorId&&!liveOperators.has(s.operatorId))throw Error('This departure is unavailable. Search again.');
+ }
+}
