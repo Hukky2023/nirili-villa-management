@@ -1,4 +1,4 @@
-import {authDb} from './auth';
+import {authDb,verifyPassword} from './auth';
 import {readRecord,readRecords,saveRecord} from './operation-records';
 import {deleteOperationalRecordPrimary} from './supabase-bridge';
 import {cleanUsername,partnerAuth,type PartnerCredentials} from './partner-auth';
@@ -71,8 +71,69 @@ const auth=partnerAuth<Partner>({accountPrefix:PARTNER_PREFIX,usernamePrefix:PAR
 export const partnerFromRequest=auth.fromRequest;
 export const signOutPartner=auth.signOut;
 export const clearedPartnerCookie=auth.clearedCookie;
+type LegacyKind='agent'|'tour'|'operator';
+const LEGACY_LOGINS:{kind:LegacyKind;account:string;username:string}[]=[
+ {kind:'tour',account:'tour-operator:',username:'tour-operator-username:'},
+ {kind:'agent',account:'excursion-agent:',username:'excursion-agent-username:'},
+ {kind:'operator',account:'travel-operator:',username:'travel-operator-username:'},
+];
+
+function legacyAsPartner(kind:LegacyKind,old:any):Partner{
+ const permissions:Permission[]=kind==='tour'?['rooms']:kind==='agent'?['excursions','transfers','rides']:
+  [...((old.services||[]).includes('boat')?['boats' as const]:[]),...((old.services||[]).includes('buggy')?['buggies' as const]:[])];
+ return {
+  id:String(old.id),name:String(old.name||'Partner'),contactName:String(old.contactName||''),phone:String(old.phone||''),email:String(old.email||''),
+  pickup:String(old.pickup||old.name||'Partner'),permissions,
+  excursionDiscountPercent:Number(old.excursionDiscountPercent??old.discountPercent??0)||0,
+  roomDiscountPercent:Number(old.roomDiscountPercent??0)||0,
+  transferDiscountPercent:Number(old.transferDiscountPercent??0)||0,
+  autoConfirm:old.autoConfirm!==false,commissionPercent:Number(old.commissionPercent??0)||0,
+  ...(old.buggyOnline!==undefined?{buggyOnline:!!old.buggyOnline}:{}),...(old.buggyOnlineAt?{buggyOnlineAt:String(old.buggyOnlineAt)}:{}),
+  username:cleanUsername(old.username),passwordHash:String(old.passwordHash||''),salt:String(old.salt||''),passwordVersion:Number(old.passwordVersion)||1,
+  active:old.active!==false,createdAt:String(old.createdAt||new Date().toISOString()),updatedAt:new Date().toISOString(),createdBy:String(old.createdBy||'legacy-migration'),
+ };
+}
+
+// Accounts created before the unified Partners page keep working. On the first successful sign-in,
+// copy the legacy profile into the unified partner store while preserving its original id, so its
+// existing bookings, boats, crew and statements remain linked to the same business.
+async function migrateLegacyLogin(username:string,password:string){
+ const login=cleanUsername(username);
+ for(const source of LEGACY_LOGINS){
+  const index=await readRecord<{accountId?:string;agentId?:string}>(source.username+login);
+  const id=String(index?.value.accountId||index?.value.agentId||'');
+  const row=id?await readRecord<any>(source.account+id):null,old=row?.value;
+  if(!old||old.active===false||cleanUsername(old.username)!==login)continue;
+  const match=await verifyPassword(password,String(old.salt||''),String(old.passwordHash||''));
+  if(!match)continue;
+
+  const existingIndex=await readRecord<{accountId?:string}>(PARTNER_USERNAME_PREFIX+login);
+  if(existingIndex?.value.accountId){
+   const linked=await readRecord<Partner>(PARTNER_PREFIX+existingIndex.value.accountId);
+   // Never let a legacy account shadow a real current partner with the same username.
+   if(linked)return false;
+  }
+
+  let partnerRow=await readRecord<Partner>(PARTNER_PREFIX+id);
+  if(!partnerRow){
+   const partner=legacyAsPartner(source.kind,old);
+   if(!partner.permissions.length)return false;
+   if(!await saveRecord(PARTNER_PREFIX+id,partner,0,'legacy-login-migration'))partnerRow=await readRecord<Partner>(PARTNER_PREFIX+id);
+  }
+  if(!partnerRow)partnerRow=await readRecord<Partner>(PARTNER_PREFIX+id);
+  if(!partnerRow)return false;
+
+  if(existingIndex){
+   if(!await saveRecord(PARTNER_USERNAME_PREFIX+login,{accountId:id},existingIndex.revision,'legacy-login-migration'))return false;
+  }else if(!await saveRecord(PARTNER_USERNAME_PREFIX+login,{accountId:id},0,'legacy-login-migration'))return false;
+  return true;
+ }
+ return false;
+}
+
 export async function signInPartner(username:string,password:string){
- const result=await auth.signIn(username,password);
+ let result=await auth.signIn(username,password);
+ if(!result&&await migrateLegacyLogin(username,password))result=await auth.signIn(username,password);
  return result?{partner:result.account,cookie:result.cookie}:null;
 }
 // The signed-in partner, only if they hold this permission.
@@ -137,8 +198,8 @@ export async function deletePartner(id:string){
  await Promise.all([deleteKey(PARTNER_PREFIX+id),deleteKey(PARTNER_USERNAME_PREFIX+current.partner.username),...sessions.map(deleteKey)]);
  return {id,name:current.partner.name,sessionsRemoved:sessions.length};
 }
-// The separate logins used before partners were combined (all test accounts): agents, travel
-// operators, tour operators and their crew, with their usernames and sessions.
+// The separate logins used before partners were combined. Successful legacy sign-ins migrate
+// automatically; this list is only for deliberate cleanup after every real account has migrated.
 export const LEGACY_PREFIXES=['excursion-agent:','excursion-agent-username:','excursion-agent-session:','travel-operator:','travel-operator-username:','travel-operator-session:',
  'tour-operator:','tour-operator-username:','tour-operator-session:'];
 export async function purgeLegacyAccounts(){
@@ -148,7 +209,8 @@ export async function purgeLegacyAccounts(){
   // readRecords matches by prefix, so 'travel-operator:' must not catch 'travel-operator-…'.
   for(const row of rows)if(row.key.startsWith(prefix)){await deleteKey(row.key);removed++;}
  }
- // Crew logins of those old operators (new crew belong to PT- partners).
- for(const row of await readRecords<any>('travel-crew:'))if(row.key.startsWith('travel-crew:')&&!String(row.value?.operatorId||'').startsWith('PT-')){await deleteKey(row.key);removed++;}
+ // Remove crew only when their operator was not preserved as a migrated unified partner.
+ const current=new Set((await loadPartners()).map(r=>r.partner.id));
+ for(const row of await readRecords<any>('travel-crew:'))if(row.key.startsWith('travel-crew:')&&!current.has(String(row.value?.operatorId||''))){await deleteKey(row.key);removed++;}
  return removed;
 }
