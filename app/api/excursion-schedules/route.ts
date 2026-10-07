@@ -74,11 +74,11 @@ const clean=async (x:any,state:any)=>{
  if(snorkeling&&status!=='Closed'){
   const gopro=resources.gopros.find((item:any)=>item.id===goproId);
   if(!gopro||gopro.condition!=='Available')throw Error('Every snorkeling trip requires an available GoPro. Assign a GoPro to the vessel before saving.');
-  if(crewIds.length>=3){
+  if(crewIds.length>=3&&goproId2){
    const gopro2=resources.gopros.find((item:any)=>item.id===goproId2);
-   if(!gopro2||gopro2.condition!=='Available')throw Error('Trips with 3 or more crew require a second available GoPro.');
-   if(goproId2===goproId)throw Error('Choose two different GoPros when 3 or more crew are assigned.');
-  }else goproId2='';
+   if(!gopro2||gopro2.condition!=='Available')throw Error('Choose an available extra GoPro.');
+   if(goproId2===goproId)throw Error('Choose a different GoPro for the optional extra GoPro.');
+  }else if(crewIds.length<3)goproId2='';
  }else if(!snorkeling){goproId='';goproId2='';}
  if(needsDrone&&status!=='Closed'){
   const drone=resources.drones.find((item:any)=>item.id===droneId);
