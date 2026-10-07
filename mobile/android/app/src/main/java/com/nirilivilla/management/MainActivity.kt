@@ -14,10 +14,10 @@ import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.webkit.WebSettings
-import android.webkit.WebResourceRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -46,12 +46,18 @@ class MainActivity : AppCompatActivity() {
         webView = WebView(this)
         setContentView(webView)
 
-        CookieManager.getInstance().setAcceptCookie(true)
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.setAcceptThirdPartyCookies(webView, true)
+        }
+
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
-        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
+        webView.settings.databaseEnabled = true
+        webView.settings.cacheMode = WebSettings.LOAD_DEFAULT
         webView.settings.setSupportZoom(false)
-        webView.clearCache(true)
+
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val target = request?.url?.toString().orEmpty()
@@ -70,41 +76,75 @@ class MainActivity : AppCompatActivity() {
                 if (!url.isNullOrBlank() && url.startsWith(BuildConfig.MANAGEMENT_URL)) {
                     when {
                         isAuthenticatedUrl(url) -> {
-                            getSharedPreferences(PREFS, MODE_PRIVATE)
-                                .edit()
-                                .putString(KEY_LAST_URL, url)
-                                .apply()
+                            saveAuthenticatedState(url)
                             // Once login succeeds, never let Android Back navigate
-                            // into the old sign-in page that was behind the dashboard.
+                            // into the sign-in page that was behind the dashboard.
                             view?.clearHistory()
                             injectTabPersistence(view, url)
                         }
                         isLoginUrl(url) -> {
-                            // Reaching the login screen normally means the user
-                            // explicitly signed out or the server ended the session.
+                            // Reaching login means the user explicitly signed out
+                            // or the server session expired. Clear remembered portal
+                            // details but keep WebView cookies under server control.
                             getSharedPreferences(PREFS, MODE_PRIVATE)
                                 .edit()
-                                .putString(KEY_LAST_URL, BuildConfig.MANAGEMENT_URL)
+                                .remove(KEY_PORTAL)
                                 .apply()
                             view?.clearHistory()
                         }
                     }
-                    CookieManager.getInstance().flush()
+                    cookieManager.flush()
                 }
                 dispatchNativePushStatus(notificationStatus(), currentPushToken())
             }
         }
+
         webView.webChromeClient = WebChromeClient()
         webView.addJavascriptInterface(NativeBridge(), "NiriliNative")
 
-        val lastUrl = getSharedPreferences(PREFS, MODE_PRIVATE)
-            .getString(KEY_LAST_URL, BuildConfig.MANAGEMENT_URL)
-            .orEmpty()
-            .takeIf { it.startsWith(BuildConfig.MANAGEMENT_URL) }
-            ?: BuildConfig.MANAGEMENT_URL
-        webView.loadUrl(lastUrl)
+        // Always start at the management dashboard when we know the last
+        // authenticated portal. The persisted tab id is preserved so the
+        // server can continue the same signed-in session.
+        webView.loadUrl(buildStartupUrl())
+
         requestNotificationPermissionIfNeeded()
         refreshFcmToken()
+    }
+
+    private fun saveAuthenticatedState(url: String) {
+        val uri = try { Uri.parse(url) } catch (_: Exception) { return }
+        val portal = uri.getQueryParameter("portal").orEmpty()
+            .takeIf { it in setOf("admin", "staff") }
+            ?: getSharedPreferences(PREFS, MODE_PRIVATE)
+                .getString(KEY_PORTAL, "")
+                .orEmpty()
+
+        val editor = getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+        if (portal.isNotBlank()) editor.putString(KEY_PORTAL, portal)
+        editor.apply()
+    }
+
+    private fun buildStartupUrl(): String {
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        val portal = prefs.getString(KEY_PORTAL, "").orEmpty()
+        val tab = prefs.getString(KEY_TAB_ID, "").orEmpty()
+
+        if (portal !in setOf("admin", "staff")) {
+            return BuildConfig.MANAGEMENT_URL
+        }
+
+        return try {
+            val builder = Uri.parse(BuildConfig.MANAGEMENT_URL)
+                .buildUpon()
+                .appendQueryParameter("portal", portal)
+
+            if (tab.matches(Regex("^[a-f0-9]{32}$"))) {
+                builder.appendQueryParameter("tab", tab)
+            }
+            builder.build().toString()
+        } catch (_: Exception) {
+            BuildConfig.MANAGEMENT_URL
+        }
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -375,6 +415,11 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
     }
 
+    override fun onStop() {
+        CookieManager.getInstance().flush()
+        super.onStop()
+    }
+
     override fun onBackPressed() {
         if (!::webView.isInitialized) {
             super.onBackPressed()
@@ -383,8 +428,8 @@ class MainActivity : AppCompatActivity() {
 
         val current = webView.url
         if (isAuthenticatedHome(current)) {
-            // On the logged-in dashboard, Back exits the Android app.
-            // It must never expose the sign-in page underneath.
+            // On the logged-in dashboard, Back exits/minimizes the app.
+            // The authenticated session remains saved.
             moveTaskToBack(true)
             return
         }
@@ -410,7 +455,7 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "NiriliPush"
         private const val PREFS = "nirili_push"
         private const val KEY_FCM_TOKEN = "fcm_token"
-        private const val KEY_LAST_URL = "last_url"
         private const val KEY_TAB_ID = "tab_id"
+        private const val KEY_PORTAL = "portal"
     }
 }
