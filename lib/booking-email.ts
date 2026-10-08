@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:workers';
-import {bookingManageUrl} from './booking-manage';
+import {bookingManageUrl,bookingConfirmationUrl} from './booking-manage';
 
 type MailResult={sent:boolean;id?:string;error?:string};
 export type BookingMail={
@@ -108,14 +108,17 @@ export async function sendBookingReceivedEmail(booking:BookingMail):Promise<Mail
 }
 
 export async function sendBookingConfirmationEmail(booking:BookingMail):Promise<MailResult>{
+ const confirmationUrl=booking.manageToken?bookingConfirmationUrl(booking.manageToken):'';
+ const guestBooking={...booking,room:undefined};
  const html=shell('Your stay is confirmed',`
   <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(booking.guest)},</p>
   <p style="font-size:15px;line-height:1.7">Your Nirili Villa booking is confirmed. We look forward to welcoming you to Dhiffushi.</p>
-  ${bookingTable(booking)}
+  ${bookingTable(guestBooking)}
+  ${confirmationUrl?`<p style="margin:26px 0"><a href="${escapeHtml(confirmationUrl)}" style="display:inline-block;background:#0b79c8;color:#ffffff;text-decoration:none;font-weight:700;padding:14px 20px;border-radius:10px">Download Booking Confirmation</a></p>`:''}
   <p style="font-size:14px;line-height:1.7">Please keep your booking number for check-in and future communication with reception.</p>
   ${manageButton(booking.manageToken)}
  `);
- const plain=`Nirili Villa - booking confirmed\n\nDear ${booking.guest},\nYour booking is confirmed.\nBooking number: ${booking.reference}\nRoom: ${booking.room||'Assigned'}\nCheck-in: ${booking.checkIn}\nCheck-out: ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\n${booking.packageId?'Total package price':'Accommodation total'}: ${money(booking.totalCents)}\n\nPlease keep your booking number for check-in.\n${managePlain(booking.manageToken)}`;
+ const plain=`Nirili Villa - booking confirmed\n\nDear ${booking.guest},\nYour booking is confirmed.\nBooking number: ${booking.reference}\nCheck-in: ${booking.checkIn}\nCheck-out: ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\n${booking.packageId?'Total package price':'Accommodation total'}: ${money(booking.totalCents)}\n${confirmationUrl?'\nDownload Booking Confirmation: '+confirmationUrl+'\n':''}\nPlease keep your booking number for check-in.\n${managePlain(booking.manageToken)}`;
  return sendEmail({to:booking.email,subject:'Booking confirmed · '+booking.reference+' · Nirili Villa',html,text:plain,idempotencyKey:'room-booking-confirmed/'+booking.reference});
 }
 
