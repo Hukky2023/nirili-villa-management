@@ -116,15 +116,10 @@ export function DashboardReport({initialView='overview'}:{initialView?:'overview
   a.href=url;a.download='Nirili Villa - Guest Details Report.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
  }
  return <section className="page nv-live-dashboard nv-reports-page">
-  <header className="title"><FileText/><div><h1><UiText>Reports</UiText></h1><p><UiText>Revenue, occupancy and detailed guest reports.</UiText></p></div></header>
+  <header className="title"><FileText/><div><h1><UiText>{reportView==='guest-details'?'Guest Details Report':'Reports'}</UiText></h1><p><UiText>{reportView==='guest-details'?'Search and download detailed guest stay information.':'Revenue, occupancy and operational reports.'}</UiText></p></div></header>
   <LiveStatus {...live}/>
-  <div className="nv-report-tabs">
-   <button type="button" className={reportView==='overview'?'active':''} onClick={()=>setReportView('overview')}><CircleDollarSign size={18}/><UiText>Report Overview</UiText></button>
-   <button type="button" className={reportView==='guest-details'?'active':''} onClick={()=>setReportView('guest-details')}><Users size={18}/><UiText>Guest Details Report</UiText></button>
-  </div>
   {reportView==='overview'?<>
    <div className="reports nv-live-report-cards"><article><small><UiText>Payments today · USD</UiText></small><b>{data?.revenue?money(data.revenue.today.usdCents):'—'}</b></article>{data?.access.transfers&&<article><small><UiText>Transfer payments today · MVR</UiText></small><b>{data?.revenue?money(data.revenue.today.mvrCents,'MVR'):'—'}</b></article>}<article><small><UiText>Current room occupancy</UiText></small><b>{data?data.occupancy.percent+'%':'—'}</b></article><article><small><UiText>Available rooms</UiText></small><b>{data?data.occupancy.available:'—'}</b></article></div>
-   <section className="nv-report-link-card" onClick={()=>setReportView('guest-details')} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setReportView('guest-details')}}><Users/><div><b><UiText>Guest Details Report</UiText></b><small><UiText>Search guest stays by date and download detailed guest information.</UiText></small></div><span>›</span></section>
    <Panel title="Revenue Overview" icon={CircleDollarSign}><Revenue data={data} table/></Panel>
   </>:<>
    <section className="panel nv-guest-stay-report"><header><Users/><div><b><UiText>Guest Details Report</UiText></b><small><UiText>Select dates and search. Guest details stay hidden until you search.</UiText></small></div></header>
