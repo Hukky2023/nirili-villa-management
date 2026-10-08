@@ -1,4 +1,4 @@
-import {roomRates,type RoomRates} from './room-rates.ts';
+import {roomRates,roomRatesForDate,type RoomRates,type RoomRatePeriod} from './room-rates.ts';
 export const catalog=[
 {id:'airport-arrival',kind:'transfer',name:'Airport → Dhiffushi',cents:3500,detail:'Shared speedboat arrival transfer, per person. Add your flight details and preferred time. Reception confirms the available departure.'},
 {id:'airport-departure',kind:'transfer',name:'Dhiffushi → Airport',cents:3500,detail:'Shared speedboat departure transfer, per person. Include your flight time so reception can help arrange a suitable boat.'},
@@ -36,7 +36,7 @@ export const catalog=[
 {"id": "special-package", "kind": "excursion", "name": "Special Package", "cents": 22000, "group": "Special package", "minGuests": 1, "detail": "Turtle Snorkeling + Shark Snorkeling + Sandbank + Coral Garden + Dolphin Watching + Fishing with Dinner."}
 ];
 export const plans=['Bed & Breakfast','Half Board','Full Board'];
-export function nightly(plan:string,pax:number,rates?:RoomRates){return roomRates(rates)[plan]?.[pax-1]??0;}
+export function nightly(plan:string,pax:number,rates?:RoomRates,date?:string,ratePeriods?:RoomRatePeriod[]){return roomRatesForDate(rates,ratePeriods,date)[plan]?.[pax-1]??0;}
 export const islandToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 export const validDate=(x:any)=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x;
 
