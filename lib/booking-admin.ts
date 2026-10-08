@@ -3,7 +3,7 @@ import {createDirectBooking} from './direct-booking';
 import {mergeTransportPlanInternal,syncTransportBuggy} from './transport-plan';
 import {staleTransportBookingIds} from './linked-transport-bookings';
 import {cancelTransportPlanBills} from './transport-plan-billing';
-function moveLinkedRoomReferences(state:any,stayId:string,fromRoom:string,toRoom:string){
+export function moveLinkedRoomReferences(state:any,stayId:string,fromRoom:string,toRoom:string){
  if(!stayId||!toRoom||fromRoom===toRoom)return;
  const collections=['orders','posOrders','buggyBookings'];
  for(const name of collections){
