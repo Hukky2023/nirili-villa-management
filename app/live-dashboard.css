@@ -49,3 +49,7 @@
 .nv-report-link-card small{display:block;color:#607781;margin-top:4px;line-height:1.4}
 .nv-report-link-card>span{font-size:28px;color:#7b939c}
 @media(max-width:600px){.nv-report-tabs button{flex:1}.nv-report-link-card{align-items:flex-start}}
+
+
+.nv-report-download-bottom{display:flex;justify-content:flex-end;padding:14px 18px 18px;border-top:1px solid #e7eff2;background:#fbfdfe}
+@media(max-width:600px){.nv-report-download-bottom{justify-content:stretch}.nv-report-download-bottom .nv-download-report{width:100%}}
