@@ -16,10 +16,16 @@ export function validateRoomRates(value:any):RoomRates{
 }
 
 
-export type RoomRatePeriod={id?:string;validFrom:string;validTo:string;rates:RoomRates};
+export type RoomRatePeriod={id?:string;validFrom:string;validTo:string;rates?:RoomRates;adjustmentPercent?:number};
+export function adjustedRoomRates(base:RoomRates|undefined,percent:number):RoomRates{
+ const normal=roomRates(base),factor=Math.max(0,1+percent/100);
+ return Object.fromEntries(Object.entries(normal).map(([plan,amounts])=>[plan,amounts.map(amount=>Math.max(0,Math.round(amount*factor)))]));
+}
 export function roomRatesForDate(base?:RoomRates,periods?:RoomRatePeriod[],date?:string):RoomRates{
  const fallback=roomRates(base);
  if(!date||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Array.isArray(periods))return fallback;
  const period=periods.find(item=>item&&item.validFrom<=date&&item.validTo>=date);
- return period?roomRates(period.rates):fallback;
+ if(!period)return fallback;
+ if(Number.isFinite(Number(period.adjustmentPercent)))return adjustedRoomRates(fallback,Number(period.adjustmentPercent));
+ return period.rates?roomRates(period.rates):fallback;
 }
