@@ -66,7 +66,7 @@ export default function DirectBookingForm({close,onSaved,booking}:{close:()=>voi
 }catch(e){setError((e as Error).message);}finally{setUploading(false);}}
  async function refresh(){const r=await fetch('/api/stays',{cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error||'Could not load room availability.');setData(d);return d;}
  useEffect(()=>{token.current=crypto.randomUUID();refresh().catch(e=>setError(e.message));},[]);
- useEffect(()=>{if(!booking&&data)setRate((nightly(meal,pax+children,data.roomRates)/100).toFixed(2));},[meal,pax,children,data?.roomRates,!!data,booking]);
+ useEffect(()=>{if(!booking&&data)setRate((nightly(meal,pax+children,data.roomRates,checkIn,data.roomRatePeriods||[])/100).toFixed(2));},[meal,pax,children,checkIn,data?.roomRates,data?.roomRatePeriods,!!data,booking]);
  const closed=(data?.bookingClosures||[]).some((c:any)=>c.start<checkOut&&c.endExclusive>checkIn)&&!(booking&&checkIn===booking.checkIn&&checkOut===booking.checkOut);
  const available=closed?[]:(data?.rooms||[]).filter((r:any)=>r.status!=='Maintenance'&&pax+children<=r.capacity&&!data.stays.some((s:any)=>s.id!==booking?.id&&s.room===r.number&&s.status!=='Checked Out'&&s.checkIn<checkOut&&s.checkOut>checkIn));
  const nights=Math.max(0,(Date.parse(checkOut)-Date.parse(checkIn))/86400000)||0;
