@@ -14,3 +14,12 @@ export function validateRoomRates(value:any):RoomRates{
  if(!value||Object.keys(defaultRoomRates).some(plan=>!Array.isArray(value[plan])||value[plan].length!==3||value[plan].some((amount:any)=>!Number.isInteger(amount)||amount<0||amount>1000000)))throw Error('Enter each nightly rate between $0 and $10,000.');
  return roomRates(value);
 }
+
+
+export type RoomRatePeriod={id?:string;validFrom:string;validTo:string;rates:RoomRates};
+export function roomRatesForDate(base?:RoomRates,periods?:RoomRatePeriod[],date?:string):RoomRates{
+ const fallback=roomRates(base);
+ if(!date||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Array.isArray(periods))return fallback;
+ const period=periods.find(item=>item&&item.validFrom<=date&&item.validTo>=date);
+ return period?roomRates(period.rates):fallback;
+}
