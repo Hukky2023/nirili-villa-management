@@ -35,3 +35,17 @@
  .catalog-rate-period-list article{flex-direction:column}
  .catalog-rate-period-list article>button{width:100%;justify-content:center}
 }
+
+
+.catalog-seasonal-adjustment{display:grid;grid-template-columns:repeat(2,minmax(0,220px));gap:12px;margin-bottom:16px}
+.catalog-seasonal-adjustment label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#55717b;position:relative}
+.catalog-seasonal-adjustment select,.catalog-seasonal-adjustment input{min-height:44px;border:1px solid #cfdde2;border-radius:10px;padding:9px 11px;background:#fff;color:#173d50}
+.catalog-seasonal-adjustment label:last-child span{position:absolute;right:12px;bottom:12px;color:#67808b;font-weight:800}
+.catalog-seasonal-adjustment label:last-child input{padding-right:34px}
+.catalog-seasonal-preview{margin:16px 0;padding:14px;border:1px dashed #b9d6de;border-radius:14px;background:#fff}
+.catalog-seasonal-preview>strong{display:block;margin-bottom:12px;color:#173d50}
+.catalog-calculated-price{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:42px;border:1px solid #e2ecef;border-radius:9px;padding:8px 10px;background:#f9fcfd}
+.catalog-calculated-price small{color:#71858e;text-decoration:line-through}
+.catalog-calculated-price b{color:#087f92}
+.catalog-seasonal-percent{margin:7px 0 0;color:#426878;font-size:13px}
+@media(max-width:700px){.catalog-seasonal-adjustment{grid-template-columns:1fr}}
