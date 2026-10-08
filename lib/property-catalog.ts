@@ -63,7 +63,8 @@ export function changePropertyCatalog(state:any,body:any,by:string){
   if(existing&&original!==number)throw Error('Existing room numbers cannot be changed. Add a new room instead.');
   const liveStays=(state.stays||[]).filter((stay:any)=>stay.room===number&&!['Checked Out','Cancelled'].includes(stay.status));
   if(liveStays.some((stay:any)=>Number(stay.pax)>raw.capacity))throw Error('Move the booking with more guests before reducing this room’s capacity.');
-  const next={...existing,number,type:text(raw.type,80),bed:text(raw.bed,120),extraBed:text(raw.extraBed,120),capacity:raw.capacity,occupancy:text(raw.occupancy,200)||'Up to '+raw.capacity+' guests',room360Photo:text(raw.room360Photo,1000),toilet360Photo:text(raw.toilet360Photo,1000),status:existing?.status||'Available',note:existing?.note||''};
+  const amenities=Array.isArray(raw.amenities)?Array.from(new Set(raw.amenities.map((value:any)=>text(value,80)).filter(Boolean))).slice(0,50):[];
+  const next={...existing,number,type:text(raw.type,80),bed:text(raw.bed,120),extraBed:text(raw.extraBed,120),capacity:raw.capacity,occupancy:text(raw.occupancy,200)||'Up to '+raw.capacity+' guests',amenities,room360Photo:text(raw.room360Photo,1000),toilet360Photo:text(raw.toilet360Photo,1000),status:existing?.status||'Available',note:existing?.note||''};
   state.rooms=existing?state.rooms.map((room:any)=>room.number===number?next:room):[...state.rooms,next];
   state.roomCatalogManaged=true;
   detail=(existing?'Updated room ':'Added room ')+number;
