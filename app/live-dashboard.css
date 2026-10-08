@@ -53,3 +53,154 @@
 
 .nv-report-download-bottom{display:flex;justify-content:flex-end;padding:14px 18px 18px;border-top:1px solid #e7eff2;background:#fbfdfe}
 @media(max-width:600px){.nv-report-download-bottom{justify-content:stretch}.nv-report-download-bottom .nv-download-report{width:100%}}
+
+
+/* Final responsive controls for Reports / Guest Details Report */
+.nv-report-tabs{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+  padding:0;
+  background:transparent;
+  border:0;
+}
+.nv-report-tabs button{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:44px;
+  padding:10px 16px;
+  border:1px solid #d4e1e6;
+  border-radius:12px;
+  background:#eaf4f7;
+  color:#355766;
+  font-weight:700;
+  font-size:14px;
+  cursor:pointer;
+  transition:background .2s ease,transform .2s ease,box-shadow .2s ease;
+}
+.nv-report-tabs button:hover{background:#d9edf3}
+.nv-report-tabs button:active{transform:translateY(1px)}
+.nv-report-tabs button.active{
+  background:#0b8ea0;
+  color:#fff;
+  border-color:#0b8ea0;
+  box-shadow:0 6px 18px rgba(11,142,160,.18);
+}
+
+.nv-guest-stay-search{
+  display:grid;
+  grid-template-columns:minmax(170px,1fr) minmax(170px,1fr) auto auto;
+  gap:12px;
+  padding:16px 18px;
+  align-items:end;
+}
+.nv-guest-stay-search label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:0;
+}
+.nv-guest-stay-search label span{
+  font-size:11px;
+  font-weight:700;
+  color:#607781;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.nv-guest-stay-search input{
+  width:100%;
+  min-height:44px;
+  padding:10px 12px;
+  border:1px solid #d4e1e6;
+  border-radius:10px;
+  background:#fff;
+  color:#173d50;
+  font-size:14px;
+  box-sizing:border-box;
+}
+.nv-guest-stay-search button,
+.nv-download-report{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:44px;
+  padding:10px 16px;
+  border-radius:12px;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  transition:background .2s ease,transform .2s ease,box-shadow .2s ease;
+  white-space:nowrap;
+}
+.nv-guest-stay-search button.primary,
+.nv-download-report{
+  background:#0b8ea0!important;
+  color:#fff!important;
+  border:1px solid #0b8ea0!important;
+  box-shadow:0 6px 18px rgba(11,142,160,.18);
+}
+.nv-guest-stay-search button.primary:hover,
+.nv-download-report:hover{background:#087f92!important}
+.nv-guest-stay-search button:not(.primary){
+  background:#f3f7f9;
+  color:#42616d;
+  border:1px solid #d4e1e6;
+}
+.nv-guest-stay-search button:not(.primary):hover{background:#eaf1f4}
+.nv-guest-stay-search button:active,
+.nv-download-report:active{transform:translateY(1px)}
+.nv-report-tabs button:disabled,
+.nv-guest-stay-search button:disabled,
+.nv-download-report:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+
+.nv-report-download-bottom{
+  display:flex;
+  justify-content:flex-end;
+  padding:16px 18px 18px;
+  border-top:1px solid #e7eff2;
+  background:#fbfdfe;
+}
+
+@media(max-width:900px){
+  .nv-guest-stay-search{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .nv-guest-stay-search button{
+    width:100%;
+  }
+}
+@media(max-width:600px){
+  .nv-report-tabs{
+    display:grid;
+    grid-template-columns:1fr;
+  }
+  .nv-report-tabs button{
+    width:100%;
+  }
+  .nv-guest-stay-search{
+    grid-template-columns:1fr;
+    padding:14px;
+  }
+  .nv-guest-stay-search label{
+    min-width:0;
+    width:100%;
+  }
+  .nv-guest-stay-search button{
+    width:100%;
+  }
+  .nv-report-download-bottom{
+    justify-content:stretch;
+    padding:14px;
+  }
+  .nv-report-download-bottom .nv-download-report{
+    width:100%;
+  }
+}
