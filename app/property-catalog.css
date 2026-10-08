@@ -64,3 +64,49 @@
 @media(max-width:700px){
   .room-360-grid{grid-template-columns:1fr}
 }
+
+
+.room-amenities-picker{
+  grid-column:1 / -1;
+  display:grid;
+  gap:10px;
+  margin-top:4px;
+  padding:14px;
+  border:1px solid #dfeaec;
+  border-radius:14px;
+  background:#f8fbfc;
+}
+.room-amenities-picker>strong{color:#173d50}
+.room-amenities-picker .catalog-help{margin:0}
+.room-amenities-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:8px;
+}
+.room-amenities-grid button{
+  min-height:42px;
+  border:1px solid #cfdde2;
+  border-radius:10px;
+  background:#fff;
+  color:#42616d;
+  padding:9px 11px;
+  font-weight:700;
+  text-align:left;
+  cursor:pointer;
+}
+.room-amenities-grid button[aria-pressed="true"]{
+  background:#e4f6f5;
+  border-color:#0b8ea0;
+  color:#076f7d;
+  box-shadow:inset 0 0 0 1px #0b8ea0;
+}
+.catalog-room-amenities{
+  margin:8px 0 0;
+  color:#5c7681;
+  font-size:12px;
+  line-height:1.5;
+}
+@media(max-width:600px){
+  .room-amenities-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .room-amenities-grid button{font-size:12px;padding:8px}
+}
