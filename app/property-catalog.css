@@ -11,3 +11,27 @@
 
 
 .package-view-dialog{width:min(760px,100%)}.package-view-dialog>header small{display:block;color:#6d8795;font-size:10px;font-weight:850;letter-spacing:.14em}.package-view-media{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}.package-view-media figure{margin:0;overflow:hidden;border-radius:12px;border:1px solid #dce5ed;background:#f2f7f9}.package-view-media img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.package-view-media figcaption{padding:7px 9px;font-size:12px;color:#58717f}.package-view-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.package-view-grid p{display:grid;gap:4px;margin:0;padding:12px;border:1px solid #e0e9ee;border-radius:10px;background:#f9fcfd}.package-view-grid span{color:#56717f}.package-view-section{margin-top:16px;padding-top:14px;border-top:1px solid #e1eaee}.package-view-section ul{margin:8px 0 0;padding-left:20px;color:#536d7a}.package-view-youtube{display:inline-flex;margin-top:16px;padding:10px 14px;border-radius:9px;border:1px solid #d7e4e8;color:#136381;font-weight:750;text-decoration:none}@media(max-width:700px){.package-view-media,.package-view-grid{grid-template-columns:1fr}.catalog-actions{flex-wrap:wrap}}
+
+
+/* Selected-period room pricing */
+.catalog-room-prices{display:grid;gap:22px}
+.catalog-room-prices>form,.catalog-rate-period-list{border:1px solid #dfeaec;border-radius:16px;background:#fff;padding:18px}
+.catalog-period-pricing{background:#f8fcfd!important}
+.catalog-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.catalog-section-heading strong{display:block;font-size:16px;color:#173d50}
+.catalog-section-heading .catalog-help{margin:4px 0 0}
+.catalog-period-dates{display:grid;grid-template-columns:repeat(2,minmax(0,220px));gap:12px;margin-bottom:16px}
+.catalog-period-dates label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#55717b}
+.catalog-period-dates input{min-height:44px;border:1px solid #cfdde2;border-radius:10px;padding:9px 11px;background:#fff;color:#173d50}
+.catalog-rate-period-list{display:grid;gap:10px}
+.catalog-rate-period-list article{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border:1px solid #e1ecef;border-radius:12px;padding:14px;background:#fbfdfe}
+.catalog-rate-period-list article>div{min-width:0;flex:1}
+.catalog-rate-period-list article>button{display:inline-flex;align-items:center;gap:6px;min-height:40px;border:1px solid #efc7c3;border-radius:9px;background:#fff4f3;color:#a42e27;padding:8px 12px;font-weight:700}
+.catalog-rate-period-summary{display:grid;gap:5px;margin-top:8px;color:#5f7883;font-size:12px}
+.catalog-rate-period-summary span{display:block;overflow-wrap:anywhere}
+@media(max-width:700px){
+ .catalog-room-prices>form,.catalog-rate-period-list{padding:14px}
+ .catalog-period-dates{grid-template-columns:1fr}
+ .catalog-rate-period-list article{flex-direction:column}
+ .catalog-rate-period-list article>button{width:100%;justify-content:center}
+}
