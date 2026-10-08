@@ -180,7 +180,7 @@ export default function PropertyCatalog({expanded=false}:{expanded?:boolean}){
 }
 +(cents/100).toFixed(2);
 const roomAmenityOptions=[
- 'Air conditioning','Free Wi-Fi','Smart TV','Mini fridge','Electric kettle','Safe',
+ 'Air conditioning','Free Wi-Fi','Smart TV','Mini fridge','Electric kettle','Safe','Beach towels',
  'Hair dryer','Hot water','Towels','Toiletries','Wardrobe','Desk','Balcony',
  'Sea view','Iron','Extra bed','Daily housekeeping','Snorkeling equipment'
 ];
