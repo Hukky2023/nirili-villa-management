@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import {startLiveRefresh,REFRESH_INTERVALS} from '../../../lib/live-refresh';
 
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {ArrowLeft,CalendarDays,CheckCircle2,Download,Mail,ShieldCheck,Users,XCircle} from 'lucide-react';
 import TimeField24 from '../../time-field-24';
 import FindBooking from '../find-booking';
@@ -11,7 +11,7 @@ import {createBookingConfirmationPdf} from '../../../lib/booking-confirmation-pd
 const money=(cents:number)=>'$'+(Math.max(0,Number(cents)||0)/100).toFixed(2);
 
 export default function ManageBookingSite(){
- const [token,setToken]=useState(''),[booking,setBooking]=useState<any>(null),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[ready,setReady]=useState(false);
+ const [token,setToken]=useState(''),[booking,setBooking]=useState<any>(null),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[ready,setReady]=useState(false);const autoDownloaded=useRef(false);
  const [form,setForm]=useState<any>({guest:'',email:'',whatsapp:'',checkIn:'',checkOut:'',adults:2,children:0,meal:'Bed & Breakfast',notes:'',transportPlan:null});
 
  function emptyTransport(value:any){return value||{arrival:{needTransfer:'later',from:'Velana International Airport',flightNumber:'',flightTime:'',ownTransport:'',dhiffushiArrivalTime:'',buggyRequired:true},departure:{needTransfer:'later',destination:'Velana International Airport',flightNumber:'',flightTime:'',ownDepartureTime:'',buggyRequired:true}};}
@@ -35,6 +35,13 @@ export default function ManageBookingSite(){
    }catch(e){setError((e as Error).message)}finally{setReady(true)}
   }
  },[]);
+
+ useEffect(()=>{
+  if(autoDownloaded.current||!booking||booking.status!=='Confirmed')return;
+  if(new URLSearchParams(window.location.search).get('confirmation')!=='1')return;
+  autoDownloaded.current=true;
+  void downloadConfirmation();
+ },[booking]);
 
  useEffect(()=>{
   if(!token||!ready||busy)return;
