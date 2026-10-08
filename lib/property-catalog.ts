@@ -23,6 +23,7 @@ export function propertyCatalog(state:any,revision:number){
   services:transferServices(state),
   packages:propertyPackages(state),
   promotions:propertyPromotions(state),
+  ratePeriods:Array.isArray(state.roomRatePeriods)?state.roomRatePeriods.filter((item:any)=>item&&item.removed!==true).sort((a:any,b:any)=>String(a.validFrom||'').localeCompare(String(b.validFrom||''))):[],
   revision
  };
 }
@@ -34,6 +35,23 @@ export function changePropertyCatalog(state:any,body:any,by:string){
  if(body.action==='save-rates'){
   state.roomRates=validateRoomRates(body.rates);
   detail='Room nightly rates updated';
+ }else if(body.action==='save-rate-period'||body.action==='remove-rate-period'){
+  state.roomRatePeriods=Array.isArray(state.roomRatePeriods)?state.roomRatePeriods.filter((item:any)=>item&&item.removed!==true):[];
+  if(body.action==='remove-rate-period'){
+   const id=text(body.id,100),item=state.roomRatePeriods.find((x:any)=>x.id===id);
+   if(!item)throw Error('Price period not found. Refresh and try again.');
+   state.roomRatePeriods=state.roomRatePeriods.filter((x:any)=>x.id!==id);
+   detail='Removed room price period '+item.validFrom+' to '+item.validTo;
+  }else{
+   const validFrom=text(body.validFrom,10),validTo=text(body.validTo,10);
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(validFrom)||!/^\d{4}-\d{2}-\d{2}$/.test(validTo))throw Error('Choose From date and To date.');
+   if(validTo<validFrom)throw Error('To date must be on or after From date.');
+   const rates=validateRoomRates(body.rates);
+   const overlapping=state.roomRatePeriods.some((item:any)=>item.validFrom<=validTo&&item.validTo>=validFrom);
+   if(overlapping)throw Error('This price period overlaps an existing period. Edit the dates or remove the existing period first.');
+   state.roomRatePeriods.push({id:'rate-period-'+crypto.randomUUID(),validFrom,validTo,rates,createdAt:at,createdBy:by});
+   detail='Added room price period '+validFrom+' to '+validTo;
+  }
  }else if(body.action==='save-room'){
   const raw=body.room||{},number=text(raw.number,12),original=text(body.originalNumber,12);
   if(!/^[A-Za-z0-9-]{1,12}$/.test(number)||!text(raw.type,80)||!text(raw.bed,120)||!Number.isInteger(raw.capacity)||raw.capacity<1||raw.capacity>3)throw Error('Enter a room number, type, bed and capacity from 1 to 3 guests.');
