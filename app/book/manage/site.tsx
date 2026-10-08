@@ -3,9 +3,10 @@ import Link from 'next/link';
 import {startLiveRefresh,REFRESH_INTERVALS} from '../../../lib/live-refresh';
 
 import {useEffect,useState} from 'react';
-import {ArrowLeft,CalendarDays,CheckCircle2,Mail,ShieldCheck,Users,XCircle} from 'lucide-react';
+import {ArrowLeft,CalendarDays,CheckCircle2,Download,Mail,ShieldCheck,Users,XCircle} from 'lucide-react';
 import TimeField24 from '../../time-field-24';
 import FindBooking from '../find-booking';
+import {createBookingConfirmationPdf} from '../../../lib/booking-confirmation-pdf';
 
 const money=(cents:number)=>'$'+(Math.max(0,Number(cents)||0)/100).toFixed(2);
 
@@ -53,6 +54,24 @@ export default function ManageBookingSite(){
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
 
+ async function downloadConfirmation(){
+  if(!booking||booking.status!=='Confirmed')return;
+  setError('');setMessage('');
+  try{
+   const file=createBookingConfirmationPdf({
+    ...booking,
+    id:booking.reference,
+    stayStatus:booking.status,
+    phone:booking.whatsapp,
+    room:undefined
+   });
+   const url=URL.createObjectURL(file),a=document.createElement('a');
+   a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),60000);
+   setMessage('Booking confirmation downloaded.');
+  }catch(e){setError(e instanceof Error?e.message:'Could not download booking confirmation.');}
+ }
+
  async function cancel(){
   if(busy||!booking?.canCancel)return;
   const instant=booking.kind==='request'||!booking.cancelRequiresApproval;
@@ -81,6 +100,11 @@ export default function ManageBookingSite(){
   </section>
 
   {(message||error)&&<p className={'manage-message '+(error?'error':'success')} role="status">{error||message}</p>}
+
+  {booking?.status==='Confirmed'&&<section className="confirmation-download-card">
+   <div><CheckCircle2/><span><strong>Booking confirmed</strong><small>Download your Nirili Villa booking confirmation PDF.</small></span></div>
+   <button type="button" className="primary" onClick={downloadConfirmation}><Download/> Download Booking Confirmation</button>
+  </section>}
 
   {pending&&<section className="pending-banner">
    <CheckCircle2/><div><strong>{pending.type==='cancel'?'Cancellation requested':'Change requested'}</strong><p>Reception is reviewing this request. Your current confirmed booking remains active until a decision is made.</p><small>Request {pending.id} · {new Date(pending.requestedAt).toLocaleString('en-GB',{timeZone:'Indian/Maldives',hour12:false})}</small></div>
