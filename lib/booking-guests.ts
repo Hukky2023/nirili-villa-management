@@ -15,7 +15,9 @@ export async function bookingGuests(input:any,pax:number,existing:any[]=[],adult
  const payload=await sealCredential(secret,'passport:'+passportId,'passport-v1',g.photo);
  documents.push({id:passportId,payload});
  }
- return {name:g.name.trim(),phone,passportId,kind:index<adults?'adult':'child'};
+ const passportNumber=typeof g.passportNumber==='string'?g.passportNumber.trim().replace(/\s+/g,' ').slice(0,40):'';
+ const country=typeof g.country==='string'?g.country.trim().replace(/\s+/g,' ').slice(0,80):'';
+ return {name:g.name.trim(),phone,passportId,passportNumber,country,kind:index<adults?'adult':'child'};
  }));
  const removed=existing.map(g=>g.passportId).filter(id=>id&&!guests.some(g=>g.passportId===id));
  return {guests,documents,removed,adults,children};
