@@ -97,6 +97,7 @@ export default function LiveDashboard({open}:{open:(module:Module)=>void}){
 }
 export function DashboardReport(){
  const live=useDashboard(REFRESH_INTERVALS.reports),data=live.data;
+ const [reportView,setReportView]=useState<'overview'|'guest-details'>('overview');
  const guestRows=(data as any)?.guestStays||[];
  const [fromDate,setFromDate]=useState(''),[toDate,setToDate]=useState(''),[searched,setSearched]=useState(false);
  const filteredGuestRows=searched?guestRows.filter((row:any)=>{
@@ -112,17 +113,29 @@ export function DashboardReport(){
   const rows=filteredGuestRows.map((row:any)=>[row.guestName,row.checkIn,row.checkOut,row.passportNumber||'Not added',row.country||'Not added',row.roomNumber,row.roomType,row.bookingId,row.status]);
   const csv='\uFEFF'+[header,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download='Nirili Villa - Guest Stay Report.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  a.href=url;a.download='Nirili Villa - Guest Details Report.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
  }
- return <section className="page nv-live-dashboard nv-reports-page"><header className="title"><FileText/><div><h1><UiText>Reports</UiText></h1><p><UiText>Revenue, occupancy and complete guest stay records.</UiText></p></div></header><LiveStatus {...live}/><div className="reports nv-live-report-cards"><article><small><UiText>Payments today · USD</UiText></small><b>{data?.revenue?money(data.revenue.today.usdCents):'—'}</b></article>{data?.access.transfers&&<article><small><UiText>Transfer payments today · MVR</UiText></small><b>{data?.revenue?money(data.revenue.today.mvrCents,'MVR'):'—'}</b></article>}<article><small><UiText>Current room occupancy</UiText></small><b>{data?data.occupancy.percent+'%':'—'}</b></article><article><small><UiText>Guest stay records</UiText></small><b>{searched?filteredGuestRows.length:'—'}</b></article></div>
- <section className="panel nv-guest-stay-report"><header><Users/><div><b><UiText>Guest Stay Report</UiText></b><small><UiText>Select dates and search. Guest details stay hidden until you search.</UiText></small></div><button type="button" className="nv-download-report" disabled={!filteredGuestRows.length} onClick={downloadGuestStayReport}><Download size={17}/><UiText>Download Guest Stay Report</UiText></button></header>
-  <div className="nv-guest-stay-search">
-   <label><span><UiText>From date</UiText></span><input type="date" value={fromDate} onChange={e=>{setFromDate(e.target.value);setSearched(false)}}/></label>
-   <label><span><UiText>To date</UiText></span><input type="date" min={fromDate||undefined} value={toDate} onChange={e=>{setToDate(e.target.value);setSearched(false)}}/></label>
-   <button type="button" className="primary" disabled={!fromDate&&!toDate} onClick={searchGuestStays}><UiText>Search</UiText></button>
-   <button type="button" onClick={clearGuestStaySearch}><UiText>Clear</UiText></button>
+ return <section className="page nv-live-dashboard nv-reports-page">
+  <header className="title"><FileText/><div><h1><UiText>Reports</UiText></h1><p><UiText>Revenue, occupancy and detailed guest reports.</UiText></p></div></header>
+  <LiveStatus {...live}/>
+  <div className="nv-report-tabs">
+   <button type="button" className={reportView==='overview'?'active':''} onClick={()=>setReportView('overview')}><CircleDollarSign size={18}/><UiText>Report Overview</UiText></button>
+   <button type="button" className={reportView==='guest-details'?'active':''} onClick={()=>setReportView('guest-details')}><Users size={18}/><UiText>Guest Details Report</UiText></button>
   </div>
-  {!searched?<p className="nv-live-empty"><UiText>Select a From date and/or To date, then tap Search to view guest stay details.</UiText></p>:!data?<p className="nv-live-empty"><UiText>Loading guest stay records…</UiText></p>:!filteredGuestRows.length?<p className="nv-live-empty"><UiText>No guest stays found for the selected dates.</UiText></p>:<div className="nv-guest-stay-table-wrap"><table className="nv-guest-stay-table"><thead><tr><th><UiText>Guest</UiText></th><th><UiText>Check-in</UiText></th><th><UiText>Check-out</UiText></th><th><UiText>Passport number</UiText></th><th><UiText>Country</UiText></th><th><UiText>Room number</UiText></th><th><UiText>Room type</UiText></th></tr></thead><tbody>{filteredGuestRows.map((row:any,index:number)=><tr key={row.bookingId+'-'+index}><td><b>{row.guestName}</b><small>{row.bookingId}</small></td><td>{row.checkIn}</td><td>{row.checkOut}</td><td>{row.passportNumber||<span className="nv-missing">Not added</span>}</td><td>{row.country||<span className="nv-missing">Not added</span>}</td><td>{row.roomNumber}</td><td>{row.roomType}</td></tr>)}</tbody></table></div>}
- </section>
- <Panel title="Revenue Overview" icon={CircleDollarSign}><Revenue data={data} table/></Panel></section>;
+  {reportView==='overview'?<>
+   <div className="reports nv-live-report-cards"><article><small><UiText>Payments today · USD</UiText></small><b>{data?.revenue?money(data.revenue.today.usdCents):'—'}</b></article>{data?.access.transfers&&<article><small><UiText>Transfer payments today · MVR</UiText></small><b>{data?.revenue?money(data.revenue.today.mvrCents,'MVR'):'—'}</b></article>}<article><small><UiText>Current room occupancy</UiText></small><b>{data?data.occupancy.percent+'%':'—'}</b></article><article><small><UiText>Available rooms</UiText></small><b>{data?data.occupancy.available:'—'}</b></article></div>
+   <section className="nv-report-link-card" onClick={()=>setReportView('guest-details')} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setReportView('guest-details')}}><Users/><div><b><UiText>Guest Details Report</UiText></b><small><UiText>Search guest stays by date and download detailed guest information.</UiText></small></div><span>›</span></section>
+   <Panel title="Revenue Overview" icon={CircleDollarSign}><Revenue data={data} table/></Panel>
+  </>:<>
+   <section className="panel nv-guest-stay-report"><header><Users/><div><b><UiText>Guest Details Report</UiText></b><small><UiText>Select dates and search. Guest details stay hidden until you search.</UiText></small></div><button type="button" className="nv-download-report" disabled={!filteredGuestRows.length} onClick={downloadGuestStayReport}><Download size={17}/><UiText>Download Guest Details Report</UiText></button></header>
+    <div className="nv-guest-stay-search">
+     <label><span><UiText>From date</UiText></span><input type="date" value={fromDate} onChange={e=>{setFromDate(e.target.value);setSearched(false)}}/></label>
+     <label><span><UiText>To date</UiText></span><input type="date" min={fromDate||undefined} value={toDate} onChange={e=>{setToDate(e.target.value);setSearched(false)}}/></label>
+     <button type="button" className="primary" disabled={!fromDate&&!toDate} onClick={searchGuestStays}><UiText>Search</UiText></button>
+     <button type="button" onClick={clearGuestStaySearch}><UiText>Clear</UiText></button>
+    </div>
+    {!searched?<p className="nv-live-empty"><UiText>Select a From date and/or To date, then tap Search to view guest details.</UiText></p>:!data?<p className="nv-live-empty"><UiText>Loading guest details…</UiText></p>:!filteredGuestRows.length?<p className="nv-live-empty"><UiText>No guest stays found for the selected dates.</UiText></p>:<div className="nv-guest-stay-table-wrap"><table className="nv-guest-stay-table"><thead><tr><th><UiText>Guest</UiText></th><th><UiText>Check-in</UiText></th><th><UiText>Check-out</UiText></th><th><UiText>Passport number</UiText></th><th><UiText>Country</UiText></th><th><UiText>Room number</UiText></th><th><UiText>Room type</UiText></th></tr></thead><tbody>{filteredGuestRows.map((row:any,index:number)=><tr key={row.bookingId+'-'+index}><td><b>{row.guestName}</b><small>{row.bookingId}</small></td><td>{row.checkIn}</td><td>{row.checkOut}</td><td>{row.passportNumber||<span className="nv-missing">Not added</span>}</td><td>{row.country||<span className="nv-missing">Not added</span>}</td><td>{row.roomNumber}</td><td>{row.roomType}</td></tr>)}</tbody></table></div>}
+   </section>
+  </>}
+ </section>;
 }
