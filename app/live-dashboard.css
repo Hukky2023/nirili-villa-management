@@ -23,3 +23,16 @@
  .nv-download-report{width:100%}
  .nv-guest-stay-table{min-width:820px}
 }
+
+
+.nv-guest-stay-search{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid #e7eff2;background:#fbfdfe}
+.nv-guest-stay-search label{display:grid;gap:6px;min-width:170px}
+.nv-guest-stay-search label span{font-size:11px;font-weight:700;color:#55717b;text-transform:uppercase;letter-spacing:.03em}
+.nv-guest-stay-search input{min-height:42px;border:1px solid #cfdde2;border-radius:9px;background:#fff;padding:8px 10px;color:#173d50}
+.nv-guest-stay-search button{min-height:42px;border:1px solid #cfdde2;border-radius:9px;background:#fff;padding:9px 16px;font-weight:700;color:#365866}
+.nv-guest-stay-search button.primary{background:#087f92;color:#fff;border-color:#087f92}
+@media(max-width:600px){
+ .nv-guest-stay-search{align-items:stretch}
+ .nv-guest-stay-search label{min-width:calc(50% - 5px);flex:1}
+ .nv-guest-stay-search button{flex:1}
+}
