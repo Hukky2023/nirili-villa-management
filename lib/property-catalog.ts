@@ -46,11 +46,12 @@ export function changePropertyCatalog(state:any,body:any,by:string){
    const validFrom=text(body.validFrom,10),validTo=text(body.validTo,10);
    if(!/^\d{4}-\d{2}-\d{2}$/.test(validFrom)||!/^\d{4}-\d{2}-\d{2}$/.test(validTo))throw Error('Choose From date and To date.');
    if(validTo<validFrom)throw Error('To date must be on or after From date.');
-   const rates=validateRoomRates(body.rates);
+   const percent=Number(body.adjustmentPercent);
+   if(!Number.isFinite(percent)||percent<-100||percent>1000)throw Error('Enter a seasonal percentage between -100% and +1000%.');
    const overlapping=state.roomRatePeriods.some((item:any)=>item.validFrom<=validTo&&item.validTo>=validFrom);
    if(overlapping)throw Error('This price period overlaps an existing period. Edit the dates or remove the existing period first.');
-   state.roomRatePeriods.push({id:'rate-period-'+crypto.randomUUID(),validFrom,validTo,rates,createdAt:at,createdBy:by});
-   detail='Added room price period '+validFrom+' to '+validTo;
+   state.roomRatePeriods.push({id:'rate-period-'+crypto.randomUUID(),validFrom,validTo,adjustmentPercent:percent,createdAt:at,createdBy:by});
+   detail='Added room price period '+validFrom+' to '+validTo+' · '+(percent>=0?'+':'')+percent+'%';
   }
  }else if(body.action==='save-room'){
   const raw=body.room||{},number=text(raw.number,12),original=text(body.originalNumber,12);
