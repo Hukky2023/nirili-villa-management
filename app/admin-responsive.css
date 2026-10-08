@@ -430,3 +430,36 @@
     justify-self: start;
   }
 }
+
+
+/* Nested Reports menu item */
+.admin aside nav .report-child,
+.admin .phone-navigation .report-child{
+  position:relative;
+  margin-left:22px;
+  width:calc(100% - 22px);
+  background:#f7fbfc;
+  color:#426878;
+  font-size:14px;
+}
+.admin aside nav .report-child::before,
+.admin .phone-navigation .report-child::before{
+  content:"↳";
+  position:absolute;
+  left:10px;
+  color:#79a3b3;
+  font-weight:700;
+}
+.admin aside nav .report-child{
+  padding-left:34px;
+}
+.admin .phone-navigation .report-child{
+  padding-left:34px !important;
+  min-height:44px !important;
+}
+.admin aside nav .report-child.active,
+.admin .phone-navigation .report-child[aria-current="page"]{
+  background:#e5f3ff;
+  color:#0869b3;
+  font-weight:700;
+}
