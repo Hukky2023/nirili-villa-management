@@ -16,6 +16,10 @@ export function bookingManageUrl(token:string){
  return bookingManageHost+'/book/manage#'+encodeURIComponent(token);
 }
 
+export function bookingConfirmationUrl(token:string){
+ return bookingManageHost+'/book/manage?confirmation=1#'+encodeURIComponent(token);
+}
+
 export function bookingCancellationNeedsApproval(checkIn:string,today=new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())){
  // Guests may cancel directly through the day before arrival. Once the
  // check-in date begins in Maldives, reception approval is required.
