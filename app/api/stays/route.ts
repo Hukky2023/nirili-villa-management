@@ -15,7 +15,7 @@ import {appendAccountHistory} from '../../../lib/account-history';
 import {autoPushBookingComAvailability} from '../../../lib/channels';
 import {syncTransportBuggy} from '../../../lib/transport-plan';
 import {closeBookingDates,reopenBookingDates} from '../../../lib/booking-closures';
-import {cancelLinkedTransportBookings,staleTransportBookingIds} from '../../../lib/linked-transport-bookings';
+import {cancelLinkedTransportBookings,moveLinkedTransportRoom,staleTransportBookingIds} from '../../../lib/linked-transport-bookings';
 function canViewHotel(u:any){
  if(!u)return false;
  if(u.role==='admin')return true;
@@ -71,22 +71,30 @@ if(b.action==='create'){
  return Response.json(staffData(u,{booking}),{status:201});
 }
 if(b.action==='editbooking'||b.action==='deletebooking'){
- if(u.role!=='admin')return Response.json({error:'Only Admin can edit or delete bookings.'},{status:403});
+ if(b.action==='deletebooking'&&u.role!=='admin')return Response.json({error:'Only Admin can delete bookings.'},{status:403});
+ if(b.action==='editbooking'&&!canManageStay)return Response.json({error:'Reception or bill editing permission is required to edit bookings.'},{status:403});
  if(b.revision!==revision)return Response.json({error:'Booking changed. Reopen the booking and try again.'},{status:409});
  const booking=state.stays.find((x:any)=>x.id===b.id);if(!booking)return Response.json({error:'Booking not found.'},{status:404});
- let plan:any=null;let revoke:string[]=[];let details:any=null;
+ let plan:any=null;let revoke:string[]=[];let details:any=null;let previousRoom='';
  if(b.action==='deletebooking'){
   if(b.confirmId!==booking.id)throw Error('Confirm the booking reference to delete it.');
   deleteBooking(state,booking,u.username);
   if(booking.accountId&&!state.stays.some((x:any)=>x.accountId===booking.accountId&&['Confirmed','In House'].includes(x.status)))revoke.push(booking.accountId);
  }else{
+  previousRoom=String(booking.room||'');
   details=b.guests===undefined?null:await bookingGuests(b.guests,b.pax,booking.guests||[],b.adults??booking.adults??b.pax,b.children??booking.children??0);
   const previous=editBooking(state,booking,{...b,guest:details?.guests[0].name??b.guest},u.username);
   if(details)Object.assign(booking,{guests:details.guests,adults:details.adults,children:details.children,whatsapp:details.guests[0].phone});
   if(booking.status==='In House'&&previous.room!==booking.room)plan=await prepareStayLogin(state,booking);
  }
  if(!await saveStayAccess(state,revision,u.userId,plan,revoke,details?.documents||[],details?.removed||[]))return Response.json({error:'Booking changed. Reopen it and try again.'},{status:409});
- try{if(b.action==='deletebooking')await cancelLinkedTransportBookings({stayId:booking.id,by:u.userId});else{const stale=staleTransportBookingIds(booking.transportPlan);if(stale.length)await cancelLinkedTransportBookings({ids:stale,by:u.userId});}}catch{}
+ try{
+  if(b.action==='deletebooking')await cancelLinkedTransportBookings({stayId:booking.id,by:u.userId});
+  else{
+   if(previousRoom&&previousRoom!==String(booking.room||''))await moveLinkedTransportRoom({stayId:booking.id,fromRoom:previousRoom,toRoom:String(booking.room||''),by:u.userId});
+   const stale=staleTransportBookingIds(booking.transportPlan);if(stale.length)await cancelLinkedTransportBookings({ids:stale,by:u.userId});
+  }
+ }catch{}
  await autoPushBookingComAvailability();
  return Response.json({booking:b.action==='editbooking'?booking:null,deleted:b.action==='deletebooking'});
 }
