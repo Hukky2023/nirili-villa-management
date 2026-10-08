@@ -102,7 +102,8 @@ export function DashboardReport({initialView='overview'}:{initialView?:'overview
  const [fromDate,setFromDate]=useState(''),[toDate,setToDate]=useState(''),[searched,setSearched]=useState(false);
  const filteredGuestRows=searched?guestRows.filter((row:any)=>{
   const from=fromDate||'0000-01-01',to=toDate||'9999-12-31';
-  return String(row.checkIn||'')<=to&&String(row.checkOut||'')>=from;
+  const checkIn=String(row.checkIn||'');
+  return checkIn>=from&&checkIn<=to;
  }):[];
  const csvCell=(value:any)=>'"'+String(value??'').replace(/"/g,'""')+'"';
  function searchGuestStays(){setSearched(true);}
