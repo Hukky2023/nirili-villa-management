@@ -3,6 +3,22 @@ import {createDirectBooking} from './direct-booking';
 import {mergeTransportPlanInternal,syncTransportBuggy} from './transport-plan';
 import {staleTransportBookingIds} from './linked-transport-bookings';
 import {cancelTransportPlanBills} from './transport-plan-billing';
+function moveLinkedRoomReferences(state:any,stayId:string,fromRoom:string,toRoom:string){
+ if(!stayId||!toRoom||fromRoom===toRoom)return;
+ const collections=['orders','posOrders','buggyBookings'];
+ for(const name of collections){
+  for(const row of Array.isArray(state?.[name])?state[name]:[]){
+   if(String(row?.stayId||'')!==String(stayId))continue;
+   row.room=toRoom;
+   if(row.billRoom!==undefined&&String(row.billRoom)===String(fromRoom))row.billRoom=toRoom;
+   if(row.hotelRoom!==undefined&&String(row.hotelRoom)===String(fromRoom))row.hotelRoom=toRoom;
+  }
+ }
+ for(const request of Array.isArray(state?.requests)?state.requests:[]){
+  if(String(request?.stayId||'')===String(stayId))request.room=toRoom;
+ }
+}
+
 export function editBooking(state:any,s:any,b:any,by:string){
  if(s.status==='Checked Out')throw Error('This stay is checked out. Its booking details are closed.');
  if(s.extensions?.length&&(b.checkIn!==s.checkIn||b.checkOut!==s.checkOut||b.rateCents!==(s.rateCents??Math.round(s.base/((Date.parse(s.checkOut)-Date.parse(s.checkIn))/86400000)))))throw Error('This booking has stay extensions. Use Extend Stay to change its dates; other details can still be edited.');
@@ -14,8 +30,9 @@ export function editBooking(state:any,s:any,b:any,by:string){
  if(s.status==='In House'&&b.room!==s.room){state.rooms.find((r:any)=>r.number===s.room).status='Cleaning';state.rooms.find((r:any)=>r.number===b.room).status='Occupied';}
  const transportPlan=b.transportPlan?mergeTransportPlanInternal(s.transportPlan,validated.transportPlan):s.transportPlan;
  Object.assign(s,{guest:validated.guest,room:validated.room,checkIn:validated.checkIn,checkOut:validated.checkOut,pax:validated.pax,meal:validated.meal,source:validated.source,transportPlan,rateCents:validated.rateCents,base:s.packageId||s.extensions?.length?s.base:validated.base});
+ if(previous.room!==s.room)moveLinkedRoomReferences(state,String(s.id||''),String(previous.room||''),String(s.room||''));
  if(b.transportPlan){cancelTransportPlanBills(state,staleTransportBookingIds(transportPlan),by);syncTransportBuggy(state,s,'arrival',transportPlan?.arrival?.launch);syncTransportBuggy(state,s,'departure',transportPlan?.departure?.launch);}
- s.history.unshift({date:new Date().toISOString(),by,detail:'Booking details edited',previous});
+ s.history.unshift({date:new Date().toISOString(),by,detail:previous.room!==s.room?'Booking details edited · Room '+previous.room+' → '+s.room+' · Linked bills moved':'Booking details edited',previous});
  return previous;
 }
 export function deleteBooking(state:any,s:any,by:string){
