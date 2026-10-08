@@ -136,10 +136,26 @@ export function buildDashboard(state:Row,transport:Row,schedules:Row[],now:Date,
  const recent=reservations.map(s=>({id:text(s.id),guest:text(s.guest||s.name)||'Guest',checkIn:text(s.checkIn),checkOut:text(s.checkOut),room:text(s.room),pax:pax(s),status:text(s.status)||'Pending',createdAt:createdAt(s)})).sort((a,b)=>(b.createdAt||b.checkIn).localeCompare(a.createdAt||a.checkIn)||b.id.localeCompare(a.id)).slice(0,5);
  const transfers=access.transfers?transferRows(state,transport,today):null;
  const excursions=access.excursions?excursionRows(state,schedules,today):null;
+ const roomByNumber=new Map(rooms.map((room:any)=>[String(room.number),room]));
+ const guestStays=access.reports?active.flatMap((stay:any)=>{
+  const storedGuests=list(stay.guests);
+  const people=storedGuests.length?storedGuests:[{name:stay.guest||'Guest',passportNumber:stay.passportNumber||stay.passportNo||stay.passport||'',country:stay.country||stay.nationality||'',kind:'adult'}];
+  return people.map((guest:any,index:number)=>({
+   bookingId:text(stay.id),
+   guestName:text(guest.name)||(index===0?text(stay.guest)||'Guest':'Guest '+(index+1)),
+   checkIn:text(stay.checkIn),
+   checkOut:text(stay.checkOut),
+   passportNumber:text(guest.passportNumber||guest.passportNo||guest.passport||guest.documentNumber),
+   country:text(guest.country||guest.nationality),
+   roomNumber:text(stay.room),
+   roomType:text(roomByNumber.get(String(stay.room))?.type||stay.roomType||'Room'),
+   status:text(stay.status)||'Confirmed'
+  }));
+ }).sort((a:any,b:any)=>b.checkIn.localeCompare(a.checkIn)||a.roomNumber.localeCompare(b.roomNumber)||a.guestName.localeCompare(b.guestName)):null;
  const hour=new Date(now.getTime()+5*3600000).getUTCHours();
  return {updatedAt:now.toISOString(),date:today,timeZone:'Indian/Maldives',greeting:hour<12?'Good morning from Dhiffushi':hour<18?'Good afternoon from Dhiffushi':'Good evening from Dhiffushi',access,
   stats:{checkIns:active.filter(s=>!pending(s)&&s.checkIn===today).length,checkOuts:active.filter(s=>!pending(s)&&s.checkOut===today).length,inHouseGuests:inHouse.reduce((n,s)=>n+pax(s),0),newBookings:reservations.filter(s=>maldivesDate(createdAt(s))===today).length,pendingBookings:requests.length},
   occupancy:{total:rooms.length,occupied:occupiedCount,available,cleaning,maintenance,other,percent:rooms.length?Math.round(occupiedCount/rooms.length*100):0},
-  recent,transfers,excursions,revenue:access.revenue?receipts(state,transport,today,access.transfers):null};
+  recent,transfers,excursions,revenue:access.revenue?receipts(state,transport,today,access.transfers):null,guestStays};
 }
 export type DashboardData=ReturnType<typeof buildDashboard>;
