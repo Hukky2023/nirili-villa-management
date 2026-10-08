@@ -36,3 +36,16 @@
  .nv-guest-stay-search label{min-width:calc(50% - 5px);flex:1}
  .nv-guest-stay-search button{flex:1}
 }
+
+
+.nv-report-tabs{display:flex;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid #dfeaec;border-radius:12px;padding:8px}
+.nv-report-tabs button{display:inline-flex;align-items:center;gap:7px;border:0;border-radius:9px;background:#eef5f7;color:#476775;padding:10px 14px;font-weight:750;min-height:42px}
+.nv-report-tabs button.active{background:#087f92;color:#fff}
+.nv-report-link-card{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #dfeaec;border-radius:14px;padding:16px 18px;cursor:pointer}
+.nv-report-link-card:hover{background:#f8fbfc}
+.nv-report-link-card>svg{width:22px;height:22px;color:#087f92;flex-shrink:0}
+.nv-report-link-card>div{flex:1;min-width:0}
+.nv-report-link-card b{display:block;color:#173d50}
+.nv-report-link-card small{display:block;color:#607781;margin-top:4px;line-height:1.4}
+.nv-report-link-card>span{font-size:28px;color:#7b939c}
+@media(max-width:600px){.nv-report-tabs button{flex:1}.nv-report-link-card{align-items:flex-start}}
