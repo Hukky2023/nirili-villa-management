@@ -3,6 +3,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,MapPin,ShieldCheck,ShipWheel,Sparkles,Users,ScanEye,X} from 'lucide-react';
 import TimeField24 from '../time-field-24';
+import {createPortal} from 'react-dom';
 
 type Plan={name:string;nightlyCents:number};
 type Package={id:string;name:string;nights:number;days:number;mealPlan:string;excursions:string[];excursionNames?:string[];includeTransfer:boolean;transferLabel:string;singleCents:number;doubleCents:number;tripleCents:number;childPolicy:string;roomPhoto?:string;excursionPhoto?:string;youtubeUrl?:string};
@@ -91,7 +92,7 @@ export default function GuestBookingSite(){
     <p>A 14-room island guesthouse a short walk from the beach. Pick your dates, choose a meal plan or package, and tell us how you&rsquo;re arriving.</p>
     <div className="nh-hero-actions"><a className="nh-btn nh-btn-light" href="#book">Check your dates <ArrowRight/></a><a className="nh-btn nh-btn-ghost" href="#rates">View room rates <ChevronDown/></a><button type="button" className="nh-btn nh-btn-ghost nh-360-trigger" onClick={()=>setShow360(true)}><ScanEye/> 360° View <ArrowRight/></button></div>
    </div>
-   {show360&&<div className="nh-360-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)setShow360(false);}}>
+   {show360&&createPortal(<div className="nh nh-360-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)setShow360(false);}}>
     <section className="nh-360-dialog" role="dialog" aria-modal="true" aria-label="Nirili Villa 360 room tour">
      <header><div><small>NIRILI VILLA · VIRTUAL TOUR</small><h2>Explore our rooms in 360°</h2></div><button type="button" aria-label="Close 360 view" onClick={()=>setShow360(false)}><X/></button></header>
      {rooms360.length?<>
@@ -101,7 +102,7 @@ export default function GuestBookingSite(){
       <p className="nh-360-note">Photos are loaded from the room records in Nirili Villa Management. Select another room to see its uploaded photos.</p>
      </>:<div className="nh-360-empty">360° room photos are not available yet. Please check back after they are uploaded.</div>}
     </section>
-   </div>}
+   </div>,document.body)}
    <p className="nh-photo-credit">Dhiffushi · Photo: <a href="https://commons.wikimedia.org/wiki/File:Dhiffushi-Maldives-Andres_Larin.jpg" target="_blank" rel="noopener noreferrer">Andres Larin / Saaremees</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p>
   </section>
 
