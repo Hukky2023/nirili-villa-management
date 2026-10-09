@@ -283,3 +283,42 @@
     grid-template-columns:1fr;
   }
 }
+
+
+/* Edit Room: scroll the dialog itself so all amenities and both 360 photo
+   fields remain reachable, including browsers with fieldset flex quirks. */
+.catalog-overlay .catalog-dialog:has(.room-amenities-picker){
+  display:block;
+  box-sizing:border-box;
+  height:min(840px,calc(100dvh - 24px));
+  max-height:calc(100dvh - 24px);
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  -webkit-overflow-scrolling:touch;
+  scroll-padding-bottom:90px;
+}
+.catalog-overlay .catalog-dialog:has(.room-amenities-picker)>fieldset{
+  display:block;
+  min-height:auto;
+  overflow:visible;
+  padding-bottom:24px;
+}
+.catalog-overlay .catalog-dialog:has(.room-amenities-picker)>header{
+  position:sticky;
+  top:0;
+  z-index:5;
+}
+.catalog-overlay .catalog-dialog:has(.room-amenities-picker)>footer{
+  position:sticky;
+  bottom:0;
+  z-index:5;
+}
+@media(max-width:700px){
+  .catalog-overlay .catalog-dialog:has(.room-amenities-picker){
+    height:calc(100dvh - 16px);
+    max-height:calc(100dvh - 16px);
+    scrollbar-gutter:auto;
+  }
+}
