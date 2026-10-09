@@ -165,3 +165,121 @@
     grid-template-columns:1fr 1fr;
   }
 }
+
+
+/* Responsive Edit Room modal */
+.catalog-dialog:has(.room-amenities-picker){
+  width:min(920px,calc(100vw - 32px));
+  max-height:calc(100dvh - 32px);
+  margin:auto;
+  padding:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.catalog-dialog:has(.room-amenities-picker)>header{
+  position:sticky;
+  top:0;
+  z-index:3;
+  padding:18px 22px;
+  background:#fff;
+  border-bottom:1px solid #e4ecef;
+}
+.catalog-dialog:has(.room-amenities-picker)>fieldset{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  padding:18px 22px 22px;
+}
+.catalog-dialog:has(.room-amenities-picker)>footer{
+  position:sticky;
+  bottom:0;
+  z-index:3;
+  margin:0;
+  padding:14px 22px;
+  background:#fff;
+  border-top:1px solid #e4ecef;
+  box-shadow:0 -8px 24px rgba(19,63,83,.08);
+}
+.catalog-dialog:has(.room-amenities-picker) .room-amenities-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+.catalog-dialog:has(.room-amenities-picker) .room-amenities-grid button{
+  width:100%;
+  min-width:0;
+  white-space:normal;
+  line-height:1.25;
+  text-align:center;
+}
+.catalog-dialog:has(.room-amenities-picker) .room-360-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.catalog-dialog:has(.room-amenities-picker) .catalog-photo-field{
+  min-width:0;
+}
+@media(max-width:900px){
+  .catalog-dialog:has(.room-amenities-picker){
+    width:min(760px,calc(100vw - 24px));
+    max-height:calc(100dvh - 24px);
+  }
+  .catalog-dialog:has(.room-amenities-picker) .room-amenities-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+@media(max-width:700px){
+  .catalog-overlay{
+    padding:8px;
+    align-items:center;
+  }
+  .catalog-dialog:has(.room-amenities-picker){
+    width:100%;
+    max-width:none;
+    max-height:calc(100dvh - 16px);
+    border-radius:14px;
+  }
+  .catalog-dialog:has(.room-amenities-picker)>header,
+  .catalog-dialog:has(.room-amenities-picker)>fieldset,
+  .catalog-dialog:has(.room-amenities-picker)>footer{
+    padding-left:14px;
+    padding-right:14px;
+  }
+  .catalog-dialog:has(.room-amenities-picker) .room-amenities-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .catalog-dialog:has(.room-amenities-picker) .room-360-grid{
+    grid-template-columns:1fr;
+  }
+  .catalog-dialog:has(.room-amenities-picker)>footer{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .catalog-dialog:has(.room-amenities-picker)>footer button{
+    width:100%;
+  }
+}
+@media(max-width:430px){
+  .catalog-dialog:has(.room-amenities-picker){
+    max-height:calc(100dvh - 8px);
+    border-radius:12px;
+  }
+  .catalog-dialog:has(.room-amenities-picker)>header{
+    padding-top:12px;
+    padding-bottom:12px;
+  }
+  .catalog-dialog:has(.room-amenities-picker)>fieldset{
+    padding-top:12px;
+  }
+  .catalog-dialog:has(.room-amenities-picker) .room-amenities-grid{
+    grid-template-columns:1fr 1fr;
+    gap:7px;
+  }
+  .catalog-dialog:has(.room-amenities-picker) .room-amenities-grid button{
+    min-height:44px;
+    padding:8px 6px;
+    font-size:12px;
+  }
+  .catalog-dialog:has(.room-amenities-picker)>footer{
+    grid-template-columns:1fr;
+  }
+}
