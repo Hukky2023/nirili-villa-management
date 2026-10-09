@@ -44,7 +44,7 @@ export default function Panorama360({src,onError}:{src:string;onError:()=>void})
   const img=new Image();img.crossOrigin='anonymous';
   const draw=()=>{
    if(disposed)return;
-   const w=Math.max(1,Math.round(canvas.clientWidth*Math.min(window.devicePixelRatio||1,2)));
+   const w=Math.max(1,Math.round(canvas.clientWidth*Math.min(window.devicePixelRatio||1,3)));
    const h=Math.max(1,Math.round(canvas.clientHeight*Math.min(window.devicePixelRatio||1,2)));
    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
    gl.viewport(0,0,w,h);gl.uniform2f(rotation,yaw,pitch);gl.uniform1f(field,fov);gl.uniform1f(aspect,w/h);
@@ -55,7 +55,8 @@ export default function Panorama360({src,onError}:{src:string;onError:()=>void})
    try{
     gl.bindTexture(gl.TEXTURE_2D,texture);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
-    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
+    const maxTexture=gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
+    if(img.naturalWidth>maxTexture||img.naturalHeight>maxTexture){const scaled=document.createElement('canvas');const scale=Math.min(maxTexture/img.naturalWidth,maxTexture/img.naturalHeight);scaled.width=Math.floor(img.naturalWidth*scale);scaled.height=Math.floor(img.naturalHeight*scale);scaled.getContext('2d')?.drawImage(img,0,0,scaled.width,scaled.height);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,scaled);}else gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
     setStatus('ready');draw();
    }catch{setStatus('error');errorCallback.current();}
   };
