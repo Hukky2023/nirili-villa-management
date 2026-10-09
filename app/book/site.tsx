@@ -4,6 +4,7 @@ import {useEffect,useRef,useState} from 'react';
 import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,MapPin,ShieldCheck,ShipWheel,Sparkles,Users,ScanEye,X} from 'lucide-react';
 import TimeField24 from '../time-field-24';
 import {createPortal} from 'react-dom';
+import Panorama360 from './panorama-360';
 
 type Plan={name:string;nightlyCents:number};
 type Package={id:string;name:string;nights:number;days:number;mealPlan:string;excursions:string[];excursionNames?:string[];includeTransfer:boolean;transferLabel:string;singleCents:number;doubleCents:number;tripleCents:number;childPolicy:string;roomPhoto?:string;excursionPhoto?:string;youtubeUrl?:string};
@@ -101,7 +102,7 @@ export default function GuestBookingSite(){
      {rooms360.length?<>
       <div className="nh-360-controls"><label htmlFor="nh-360-room">Choose room number</label><select id="nh-360-room" value={current360?.number||''} onChange={event=>switch360Room(event.target.value)}>{rooms360.map(room=><option key={room.number} value={room.number}>Room {room.number} · {room.type}</option>)}</select>
       <div className="nh-360-tabs"><button type="button" aria-pressed={photo360==='room360Photo'} onClick={()=>{setPhoto360('room360Photo');setAngle360(50)}}>Room 360°</button><button type="button" aria-pressed={photo360==='toilet360Photo'} onClick={()=>{setPhoto360('toilet360Photo');setAngle360(50)}}>Bathroom 360°</button></div></div>
-      {current360Url?<div className="nh-360-stage">{!photoLoadError?<img src={photoUrl360} onError={()=>{if(!photoUseManagementHost&&current360Url.startsWith('/api/menu-images/'))setPhotoUseManagementHost(true);else setPhotoLoadError(true);}} alt={`360° ${photo360==='room360Photo'?'room':'bathroom'} photo of room ${current360?.number}`} style={{objectPosition:`${angle360}% center`}}/>:<div className="nh-360-photo-error" role="status">360° room photos are not available yet. Please check back after they are uploaded.</div>}<div className="nh-360-pan"><span>Look around</span><input type="range" min="0" max="100" value={angle360} aria-label="Pan panoramic image" onChange={event=>setAngle360(Number(event.target.value))}/></div></div>:<div className="nh-360-empty">No {photo360==='room360Photo'?'room':'bathroom'} 360° photo uploaded for Room {current360?.number} yet.</div>}
+      {current360Url?<div className="nh-360-stage">{!photoLoadError?<Panorama360 key={photoUrl360} src={photoUrl360} onError={()=>{if(!photoUseManagementHost&&current360Url.startsWith('/api/menu-images/'))setPhotoUseManagementHost(true);else setPhotoLoadError(true);}}/>:<div className="nh-360-photo-error" role="status">360° room photos are not available yet. Please check back after they are uploaded.</div>}<div className="nh-360-help">Drag to look around · Swipe left, right, up or down</div></div></div>:<div className="nh-360-empty">No {photo360==='room360Photo'?'room':'bathroom'} 360° photo uploaded for Room {current360?.number} yet.</div>}
       <p className="nh-360-note">Photos are loaded from the room records in Nirili Villa Management. Select another room to see its uploaded photos.</p>
      </>:<div className="nh-360-empty">360° room photos are not available yet. Please check back after they are uploaded.</div>}
     </section>
