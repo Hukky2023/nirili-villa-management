@@ -322,3 +322,56 @@
     scrollbar-gutter:auto;
   }
 }
+
+
+/* Room editor: header and actions are fixed rows, only the central content scrolls.
+   Explicit wrapper avoids browser-specific fieldset scrolling and :has() dependency. */
+.catalog-overlay .catalog-dialog.catalog-editor-room{
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  width:min(920px,calc(100vw - 24px));
+  height:min(850px,calc(100dvh - 24px));
+  max-height:calc(100dvh - 24px);
+  overflow:hidden;
+  padding:0;
+}
+.catalog-dialog.catalog-editor-room>.catalog-editor-scroll{
+  min-height:0;
+  min-width:0;
+  overflow-y:scroll;
+  overflow-x:hidden;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:16px 22px 28px;
+}
+.catalog-dialog.catalog-editor-room>.catalog-editor-scroll>fieldset{
+  display:block;
+  min-width:0;
+  min-height:0;
+  height:auto;
+  overflow:visible;
+  margin:0;
+  padding:0;
+  border:0;
+}
+.catalog-dialog.catalog-editor-room>header,
+.catalog-dialog.catalog-editor-room>footer{
+  position:relative;
+  top:auto;
+  bottom:auto;
+  z-index:2;
+  margin:0;
+  background:#fff;
+}
+.catalog-dialog.catalog-editor-room>header{padding:16px 22px;border-bottom:1px solid #e3ecef}
+.catalog-dialog.catalog-editor-room>footer{padding:12px 22px;border-top:1px solid #e3ecef}
+@media(max-width:700px){
+  .catalog-overlay .catalog-dialog.catalog-editor-room{
+    height:calc(100dvh - 16px);
+    max-height:calc(100dvh - 16px);
+    width:100%;
+  }
+  .catalog-dialog.catalog-editor-room>.catalog-editor-scroll{padding:14px 14px 26px}
+  .catalog-dialog.catalog-editor-room>header,
+  .catalog-dialog.catalog-editor-room>footer{padding-left:14px;padding-right:14px}
+}
