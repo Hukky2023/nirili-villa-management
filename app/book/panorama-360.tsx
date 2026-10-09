@@ -70,7 +70,7 @@ export default function Panorama360({src,onError}:{src:string;onError:()=>void})
   return()=>{disposed=true;cancelAnimationFrame(frame);img.onload=null;img.onerror=null;resize.disconnect();canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('keydown',key);if(texture)gl.deleteTexture(texture);if(buffer)gl.deleteBuffer(buffer);if(program)gl.deleteProgram(program);};
  },[src,onError]);
  return <div className="nh-panorama-wrap">
-  <canvas ref={canvasRef} className="nh-panorama-canvas" tabIndex={0} aria-label="Interactive 360 degree panorama. Drag to look around or use arrow keys."/>
-  {status==='loading'&&<div className="nh-panorama-message">Loading 360° view…</div>}
+  <canvas ref={canvasRef} className="nh-panorama-canvas" tabIndex={0} aria-label="Pan panoramic image"/>
+  {status==='loading'&&<div className="nh-panorama-message">Look around</div>}
  </div>;
 }
