@@ -31,7 +31,7 @@ export default function GuestBookingSite(){
  const rooms360=quote.room360||[];
  const current360=rooms360.find(room=>room.number===selected360)||rooms360[0];
  const current360Url=current360?.[photo360]||'';
- const photoUrl360=photoUseManagementHost&&current360Url.startsWith('/api/menu-images/')?'https://nirili-villa.nirili-management.workers.dev'+current360Url:current360Url;
+ const photoUrl360=photoUseManagementHost&&/^\\/api\\/(menu-images|room-panorama)\\//.test(current360Url)?'https://nirili-villa.nirili-management.workers.dev'+current360Url:current360Url;
  useEffect(()=>{setPhotoLoadError(false);setPhotoUseManagementHost(false);},[current360Url]);
  const switch360Room=(number:string)=>{setSelected360(number);setPhoto360('room360Photo');setAngle360(50);};
  useEffect(()=>{if(show360&&rooms360.length&&!rooms360.some(room=>room.number===selected360))setSelected360(rooms360[0].number);},[show360,rooms360,selected360]);
@@ -102,7 +102,7 @@ export default function GuestBookingSite(){
      {rooms360.length?<>
       <div className="nh-360-controls"><label htmlFor="nh-360-room">Choose room number</label><select id="nh-360-room" value={current360?.number||''} onChange={event=>switch360Room(event.target.value)}>{rooms360.map(room=><option key={room.number} value={room.number}>Room {room.number} · {room.type}</option>)}</select>
       <div className="nh-360-tabs"><button type="button" aria-pressed={photo360==='room360Photo'} onClick={()=>{setPhoto360('room360Photo');setAngle360(50)}}>Room 360°</button><button type="button" aria-pressed={photo360==='toilet360Photo'} onClick={()=>{setPhoto360('toilet360Photo');setAngle360(50)}}>Bathroom 360°</button></div></div>
-      {current360Url?<div className="nh-360-stage">{!photoLoadError?<Panorama360 key={photoUrl360} src={photoUrl360} onError={()=>{if(!photoUseManagementHost&&current360Url.startsWith('/api/menu-images/'))setPhotoUseManagementHost(true);else setPhotoLoadError(true);}}/>:<div className="nh-360-photo-error" role="status">360° room photos are not available yet. Please check back after they are uploaded.</div>}<div className="nh-360-help">Look around</div></div>:<div className="nh-360-empty">No {photo360==='room360Photo'?'room':'bathroom'} 360° photo uploaded for Room {current360?.number} yet.</div>}
+      {current360Url?<div className="nh-360-stage">{!photoLoadError?<Panorama360 key={photoUrl360} src={photoUrl360} onError={()=>{if(!photoUseManagementHost&&/^\\/api\\/(menu-images|room-panorama)\\//.test(current360Url))setPhotoUseManagementHost(true);else setPhotoLoadError(true);}}/>:<div className="nh-360-photo-error" role="status">360° room photos are not available yet. Please check back after they are uploaded.</div>}<div className="nh-360-help">Look around</div></div>:<div className="nh-360-empty">No {photo360==='room360Photo'?'room':'bathroom'} 360° photo uploaded for Room {current360?.number} yet.</div>}
       <p className="nh-360-note">Photos are loaded from the room records in Nirili Villa Management. Select another room to see its uploaded photos.</p>
      </>:<div className="nh-360-empty">360° room photos are not available yet. Please check back after they are uploaded.</div>}
     </section>
