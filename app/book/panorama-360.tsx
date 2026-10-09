@@ -17,7 +17,7 @@ export default function Panorama360({src,onError}:{src:string;onError:()=>void})
   varying vec2 v;uniform sampler2D tex;uniform vec2 rot;uniform float fov;uniform float aspect;
   const float PI=3.141592653589793;
   void main(){
-   vec3 d=normalize(vec3(v.x*aspect*tan(fov*.5),-v.y*tan(fov*.5),-1.));
+   vec3 d=normalize(vec3(v.x*aspect*tan(fov*.5),v.y*tan(fov*.5),-1.));
    float cp=cos(rot.y),sp=sin(rot.y);
    d=vec3(d.x,cp*d.y-sp*d.z,sp*d.y+cp*d.z);
    float cy=cos(rot.x),sy=sin(rot.x);
