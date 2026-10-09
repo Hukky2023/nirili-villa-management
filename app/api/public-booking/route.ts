@@ -67,7 +67,12 @@ export async function GET(request:Request){
   const promotions=(Array.isArray(state.propertyPromotions)?state.propertyPromotions:[])
    .filter((item:any)=>item&&item.active!==false)
    .map((item:any)=>({id:String(item.id||''),name:String(item.name||'Promotion'),detail:String(item.detail||''),packageIds:Array.isArray(item.packageIds)?item.packageIds:[],roomTypes:Array.isArray(item.roomTypes)?item.roomTypes:[],validFrom:String(item.validFrom||''),validTo:String(item.validTo||'')}));
-  const base={today,plans:plans.map(plan=>({name:plan,nightlyCents:nightly(plan,Math.min(3,pax),state.roomRates,checkIn||today,state.roomRatePeriods||[])})),packages,promotions};
+  const room360=(Array.isArray(state.rooms)?state.rooms:[])
+   .filter((room:any)=>room&&room.number!=null)
+   .map((room:any)=>({number:String(room.number),type:String(room.type||'Room'),room360Photo:String(room.room360Photo||''),toilet360Photo:String(room.toilet360Photo||'')}))
+   .filter((room:any)=>room.room360Photo||room.toilet360Photo)
+   .sort((a:any,b:any)=>a.number.localeCompare(b.number,undefined,{numeric:true}));
+  const base={room360,today,plans:plans.map(plan=>({name:plan,nightlyCents:nightly(plan,Math.min(3,pax),state.roomRates,checkIn||today,state.roomRatePeriods||[])})),packages,promotions};
   if(!checkIn||!checkOut)return Response.json(base,{headers});
   if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||pax<1||pax>3)return Response.json({...base,error:'Choose valid stay dates and up to 3 guests per room.'},{status:400,headers});
   const rooms=availability(state,checkIn,checkOut,pax);
