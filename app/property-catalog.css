@@ -110,3 +110,58 @@
   .room-amenities-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .room-amenities-grid button{font-size:12px;padding:8px}
 }
+
+
+/* Edit room: keep 360 photos and amenities accessible in the same popup */
+.catalog-dialog:has(.room-amenities-picker){
+  width:min(820px,100%);
+  max-height:calc(100dvh - 28px);
+  padding:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.catalog-dialog:has(.room-amenities-picker)>header{
+  flex:0 0 auto;
+  padding:20px 22px;
+  border-bottom:1px solid #e3ecef;
+  background:#fff;
+}
+.catalog-dialog:has(.room-amenities-picker)>fieldset{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:18px 22px 22px;
+}
+.catalog-dialog:has(.room-amenities-picker)>footer{
+  flex:0 0 auto;
+  margin:0;
+  padding:14px 22px;
+  border-top:1px solid #e3ecef;
+  background:#fff;
+  box-shadow:0 -8px 20px rgba(18,54,74,.06);
+}
+.catalog-dialog:has(.room-amenities-picker) .room-amenities-picker{
+  margin-top:16px;
+}
+.catalog-dialog:has(.room-amenities-picker) .room-360-grid{
+  margin-top:16px;
+  margin-bottom:4px;
+}
+@media(max-width:700px){
+  .catalog-dialog:has(.room-amenities-picker){
+    width:100%;
+    max-height:calc(100dvh - 16px);
+  }
+  .catalog-dialog:has(.room-amenities-picker)>header,
+  .catalog-dialog:has(.room-amenities-picker)>fieldset,
+  .catalog-dialog:has(.room-amenities-picker)>footer{
+    padding-left:14px;
+    padding-right:14px;
+  }
+  .catalog-dialog:has(.room-amenities-picker)>footer{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+}
