@@ -25,12 +25,12 @@ export default function Panorama360({src,onError}:{src:string;onError:()=>void})
    vec2 uv=vec2(atan(d.x,-d.z)/(2.*PI)+.5,asin(clamp(d.y,-1.,1.))/PI+.5);
    gl_FragColor=texture2D(tex,vec2(uv.x,1.-uv.y));
   }`;
-  const compile=(type:number,source:string)=>{const shader=gl.createShader(type);if(!shader)throw Error('Shader unavailable');gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader)||'Shader compilation failed');return shader;};
+  const compile=(type:number,source:string)=>{const shader=gl.createShader(type);if(!shader)throw Error();gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader)||'Shader compilation failed');return shader;};
   let program:WebGLProgram|null=null,texture:WebGLTexture|null=null,buffer:WebGLBuffer|null=null;
   try{
-   program=gl.createProgram();if(!program)throw Error('WebGL unavailable');
+   program=gl.createProgram();if(!program)throw Error();
    gl.attachShader(program,compile(gl.VERTEX_SHADER,vert));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,frag));gl.linkProgram(program);
-   if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error('Shader linking failed');
+   if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error();
    gl.useProgram(program);buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
    const loc=gl.getAttribLocation(program,'a');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
