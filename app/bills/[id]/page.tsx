@@ -1,10 +1,74 @@
-
-import {UiText,UiField,UiOption} from '../../ui-language';
+import {UiText} from '../../ui-language';
 import {restaurantOnly} from '../../../lib/pos-access';
 import {currentUser} from '../../../lib/auth';
 import {stayView,money} from '../../../lib/stays';
 import {stayInclusiveTaxBreakdown,SERVICE_CHARGE_RATE,TOURISM_GST_RATE,GREEN_TAX_USD_PER_PERSON_DAY} from '../../../lib/tax-inclusive';
 import PrintBill from './print';
 import './print.css';
+
 export const dynamic='force-dynamic';
-export default async function BillPage({params}:{params:Promise<{id:string}>}){const u=await currentUser();if(!u||restaurantOnly(u)||u.role==='guest')return <main><UiText>Staff login is required to view this bill. </UiText><a href="/"><UiText>Return to login</UiText></a></main>;const {id}=await params;try{const d=await stayView(),s=d.stays.find((s:any)=>s.id===id);if(!s)return <main><UiText>Bill not found.</UiText></main>;const tax=stayInclusiveTaxBreakdown(s.folio.totalCents,s);return <main className="print-bill"><nav className="print-control"><a href={'/?portal='+u.role+'&room='+s.room}><UiText>← Back to room</UiText></a><PrintBill/></nav><header><h1><UiText>NIRILI VILLA</UiText></h1><p><UiText>Dhiffushi Island, Kaafu Atoll, Maldives</UiText></p><h2><UiText>Guest Bill · </UiText><UiText>{s.id}</UiText></h2></header><section className="bill-meta"><p><b><UiText>Guest:</UiText></b> {s.guest}</p><p><b><UiText>Room:</UiText></b> <UiText>{s.room}</UiText> · <UiText>{s.pax}</UiText> <UiText>adults</UiText></p><p><b><UiText>Stay:</UiText></b> <UiText>{s.checkIn}</UiText> <UiText>to </UiText><UiText>{s.checkOut}</UiText></p><p><b><UiText>Meal plan:</UiText></b> <UiText>{s.meal}</UiText></p><p><b><UiText>Status:</UiText></b> <UiText>{s.status}</UiText></p></section><table><thead><tr><th><UiText>Bill / Item</UiText></th><th><UiText>Qty</UiText></th><th><UiText>Amount</UiText></th><th><UiText>Discount</UiText></th><th><UiText>Total</UiText></th></tr></thead><tbody><UiText>{s.folio.bills.map((b:any)=><tr key={b.department+b.id}><td colSpan={5}><div className="bill-heading"><b><UiText>{b.department}</UiText> · <UiText>{b.id}</UiText></b><span><UiText>{b.status}</UiText></span></div><table><tbody><UiText>{b.items.map((i:any,n:number)=><tr key={n}><td><UiText>{i[0]}</UiText></td><td><UiText>{i[1]}</UiText></td><td><UiText>{money(Math.round(i[2]*100))}</UiText></td><td><UiText>{i[3]||0}</UiText>%</td><td><UiText>{money(b.status==='Cancelled'?0:Math.round(i[2]*100*(1-(i[3]||0)/100)))}</UiText></td></tr>)}</UiText></tbody></table><p className="bill-subtotal"><UiText>Bill total: </UiText><UiText>{money(b.totalCents)}</UiText></p></td></tr>)}</UiText></tbody></table><section className="bill-totals"><p><UiText>Total charges </UiText><b><UiText>{money(s.folio.totalCents)}</UiText></b></p><div className="bill-tax-breakdown"><p><UiText>Price before tax/service </UiText><b><UiText>{money(tax.baseCents)}</UiText></b></p><p><UiText>Service charge </UiText><UiText>{Math.round(SERVICE_CHARGE_RATE*100)}</UiText>% <b><UiText>{money(tax.serviceChargeCents)}</UiText></b></p><p><UiText>Tourism GST </UiText><UiText>{Math.round(TOURISM_GST_RATE*100)}</UiText>% <b><UiText>{money(tax.tourismGstCents)}</UiText></b></p><p><UiText>Green Tax </UiText><b><UiText>{money(tax.greenTaxCents)}</UiText></b></p><small><UiText>Green Tax: USD </UiText><UiText>{GREEN_TAX_USD_PER_PERSON_DAY}</UiText> <UiText>per taxable guest per day. Children under 2 are exempt when age data is recorded.</UiText></small><strong><UiText>All taxes and service charge are already included in the total above. The guest price does not increase.</UiText></strong></div><p><UiText>Payments received </UiText><b><UiText>{money(s.folio.paidCents)}</UiText></b></p><h2><UiText>Balance due </UiText><b><UiText>{money(s.folio.balanceCents)}</UiText></b></h2></section><h3><UiText>Payments</UiText></h3><p><UiText>Opening payments: </UiText><UiText>{money(s.initialPaid)}</UiText></p><UiText>{s.payments.map((p:any)=><p key={p.id}><UiText>{p.date.slice(0,10)}</UiText> · <UiText>{p.method}</UiText> · <UiText>{p.reference}</UiText> · <UiText>{money(p.cents)}</UiText></p>)}</UiText><footer><UiText>Thank you for choosing Nirili Villa.</UiText><br/><UiText>Arrive as a guest, leave as a friend.</UiText></footer></main>}catch{return <main><UiText>Could not load your bill. Please reload to retry.</UiText></main>}}
+
+const statusClass=(status:string)=>'invoice-status '+String(status||'').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+
+export default async function BillPage({params}:{params:Promise<{id:string}>}){
+ const u=await currentUser();
+ if(!u||restaurantOnly(u)||u.role==='guest')return <main><UiText>Staff login is required to view this bill. </UiText><a href="/"><UiText>Return to login</UiText></a></main>;
+ const {id}=await params;
+ try{
+  const d=await stayView(),s=d.stays.find((x:any)=>x.id===id);
+  if(!s)return <main><UiText>Bill not found.</UiText></main>;
+  const tax=stayInclusiveTaxBreakdown(s.folio.totalCents,s);
+  const invoiceStatus=s.folio.balanceCents<=0?'Paid':s.folio.paidCents>0?'Partially Paid':'Unpaid';
+  return <main className="print-bill">
+   <nav className="print-control"><a href={'/?portal='+u.role+'&room='+s.room}><UiText>← Back to room</UiText></a><PrintBill/></nav>
+
+   <header className="invoice-hero">
+    <div className="invoice-brand"><div className="invoice-brand-mark">☀〰</div><div><h1>NIRILI <span>VILLA</span></h1><p>Dhiffushi Island · Kaafu Atoll · Maldives</p><small>Arrive as a Guest, Leave as a Friend.</small></div></div>
+    <div className="invoice-heading"><b>INVOICE</b><span>Invoice No · {s.id}</span><span>Booking Ref · {s.id}</span><i className={statusClass(invoiceStatus)}>{invoiceStatus}</i></div>
+   </header>
+
+   <section className="invoice-guest-card">
+    <div><small>GUEST</small><strong>{s.guest}</strong></div>
+    <div><small>ROOM</small><strong>{s.room}</strong></div>
+    <div><small>CHECK-IN</small><strong>{s.checkIn}</strong></div>
+    <div><small>CHECK-OUT</small><strong>{s.checkOut}</strong></div>
+    <div><small>MEAL PLAN</small><strong>{s.meal}</strong></div>
+    <div><small>STAY STATUS</small><strong>{s.status}</strong></div>
+   </section>
+
+   <section className="invoice-charges">
+    <div className="invoice-section-title"><div><small>CHARGES</small><h2>Stay & services</h2></div><span>{s.folio.bills.length} bill{s.folio.bills.length===1?'':'s'}</span></div>
+    {s.folio.bills.map((b:any)=><article className="invoice-bill-card" key={b.department+b.id}>
+     <header><div><small>{b.department}</small><strong>{b.id}</strong></div><i className={statusClass(b.status)}>{b.status}</i></header>
+     <div className="invoice-table-wrap"><table><thead><tr><th>Item</th><th>Qty</th><th>Amount</th><th>Discount</th><th>Net</th></tr></thead><tbody>
+      {b.items.map((item:any,n:number)=><tr key={n}><td>{item[0]}</td><td>{item[1]}</td><td>{money(Math.round(item[2]*100))}</td><td>{item[3]||0}%</td><td><b>{money(b.status==='Cancelled'?0:Math.round(item[2]*100*(1-(item[3]||0)/100)))}</b></td></tr>)}
+     </tbody></table></div>
+     <p className="bill-subtotal"><span>Bill total</span><b>{money(b.totalCents)}</b></p>
+    </article>)}
+   </section>
+
+   <section className="invoice-bottom-grid">
+    <div className="invoice-payments">
+     <div className="invoice-section-title"><div><small>PAYMENTS</small><h2>Payments received</h2></div></div>
+     <div className="payment-row"><span>Opening payments</span><b>{money(s.initialPaid)}</b></div>
+     {s.payments.length?s.payments.map((p:any)=><div className="payment-row" key={p.id}><span><b>{p.date.slice(0,10)}</b><small>{p.method}{p.reference?' · '+p.reference:''}</small></span><b>{money(p.cents)}</b></div>):<p className="invoice-empty">No additional payments recorded.</p>}
+    </div>
+
+    <aside className="invoice-summary">
+     <small>INVOICE SUMMARY</small>
+     <div><span>Price before tax/service</span><b>{money(tax.baseCents)}</b></div>
+     <div><span>Service charge {Math.round(SERVICE_CHARGE_RATE*100)}%</span><b>{money(tax.serviceChargeCents)}</b></div>
+     <div><span>Tourism GST {Math.round(TOURISM_GST_RATE*100)}%</span><b>{money(tax.tourismGstCents)}</b></div>
+     <div><span>Green Tax</span><b>{money(tax.greenTaxCents)}</b></div>
+     <small className="invoice-tax-note">USD {GREEN_TAX_USD_PER_PERSON_DAY} per taxable guest/day</small>
+     <div className="summary-total"><span>Total charges</span><b>{money(s.folio.totalCents)}</b></div>
+     <div className="summary-paid"><span>Payments received</span><b>{money(s.folio.paidCents)}</b></div>
+     <div className={'summary-balance '+(s.folio.balanceCents<=0?'settled':'due')}><span>Balance due</span><b>{money(s.folio.balanceCents)}</b></div>
+    </aside>
+   </section>
+
+   <section className="invoice-note"><b>All taxes and service charge are included in the total.</b><span>Guest price is unchanged.</span></section>
+   <footer><strong>Thank you for staying with us!</strong><span>Arrive as a Guest, Leave as a Friend.</span><small>Nirili Villa · Dhiffushi Island, Maldives</small></footer>
+  </main>
+ }catch{return <main><UiText>Could not load your bill. Please reload to retry.</UiText></main>}
+}
