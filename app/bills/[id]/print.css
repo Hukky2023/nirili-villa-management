@@ -1,1 +1,92 @@
-.print-bill{max-width:850px;margin:30px auto;padding:30px;background:white;color:#173c4e;font-size:15px}.print-bill nav{display:flex;justify-content:space-between;margin-bottom:25px}.print-bill nav button{background:#08789a;color:white;border:0;padding:12px;border-radius:8px;cursor:pointer}.print-bill header{border-bottom:2px solid #08789a;padding-bottom:20px}.print-bill h1{font-size:29px}.print-bill h2{font-size:20px}.print-bill p{margin:8px 0}.print-bill table{width:100%;border-collapse:collapse;table-layout:fixed}.print-bill th,.print-bill td{text-align:right;padding:8px;overflow-wrap:anywhere}.print-bill th:first-child,.print-bill td:first-child{text-align:left;width:48%}.print-bill th{background:#edf5f8}.print-bill>table>tbody>tr>td{padding:0;border-bottom:1px solid #cddfe7}.bill-heading{display:flex;justify-content:space-between;background:#f1f7f9;padding:10px}.bill-subtotal{text-align:right}.bill-meta{margin:20px 0}.bill-totals{margin:25px 0 25px auto;max-width:330px}.bill-totals p,.bill-totals h2{display:flex;justify-content:space-between;gap:20px}.print-bill footer{text-align:center;border-top:1px solid #cddfe7;padding-top:24px;margin-top:30px}.print-bill tr{break-inside:avoid}@media print{body{background:white!important}.print-control{display:none!important}.print-bill{margin:0;padding:0;max-width:none;font-size:11pt}@page{size:A4;margin:15mm}}
+.print-bill{max-width:980px;margin:28px auto;padding:0;background:#fff;color:#173c4e;font-size:15px;border:1px solid #dbe8ed;border-radius:22px;overflow:hidden;box-shadow:0 22px 65px rgba(18,58,77,.12)}
+.print-bill .print-control{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:#f7fbfc;border-bottom:1px solid #e2ecef}
+.print-bill .print-control a,.print-bill .print-control button{border:0;border-radius:10px;padding:10px 14px;font-weight:800;text-decoration:none;cursor:pointer}
+.print-bill .print-control a{color:#0b6983;background:#eaf6f8}
+.print-bill .print-control button{background:#0b7897;color:#fff}
+.invoice-hero{display:flex;justify-content:space-between;gap:24px;padding:30px 34px;background:linear-gradient(135deg,#fafdfe 0%,#e8f7fa 55%,#d7f2f5 100%);border-bottom:1px solid #d9e8ec}
+.invoice-brand{display:flex;align-items:flex-start;gap:14px}
+.invoice-brand-mark{font-size:38px;line-height:1;color:#0a7795}
+.invoice-brand h1{margin:0;font-size:30px;letter-spacing:.04em;color:#0a415d}
+.invoice-brand h1 span{color:#13a8c8}
+.invoice-brand p{margin:6px 0 2px;color:#5c7582}
+.invoice-brand small{font-style:italic;color:#0b7897}
+.invoice-heading{display:grid;align-content:start;justify-items:end;gap:5px;min-width:240px}
+.invoice-heading>b{font-size:34px;color:#0a415d;letter-spacing:.04em}
+.invoice-heading>span{font-size:13px;color:#5a7380}
+.invoice-status{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;font-style:normal;font-weight:850;font-size:12px;border:1px solid transparent}
+.invoice-status.paid{background:#e3f7e8;color:#18793b;border-color:#bfe7c9}
+.invoice-status.partially-paid,.invoice-status.posted{background:#e6f3ff;color:#12679c;border-color:#c7e1f4}
+.invoice-status.unpaid{background:#fff0e3;color:#a8580f;border-color:#f4d1ad}
+.invoice-status.cancelled{background:#f5f5f5;color:#68747a;border-color:#dde3e6}
+.invoice-guest-card{margin:24px 28px 0;padding:18px 20px;border-radius:16px;background:#f6fafb;border:1px solid #dce9ed;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.invoice-guest-card div{display:grid;gap:4px;padding-right:10px}
+.invoice-guest-card small,.invoice-section-title small,.invoice-summary>small{font-size:10px;letter-spacing:.14em;font-weight:900;color:#1384a0}
+.invoice-guest-card strong{font-size:16px;color:#133f54;overflow-wrap:anywhere}
+.invoice-charges{padding:26px 28px 0}
+.invoice-section-title{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:12px}
+.invoice-section-title h2{margin:3px 0 0;font-size:22px;color:#0b425e}
+.invoice-section-title>span{font-size:12px;color:#607985}
+.invoice-bill-card{border:1px solid #dbe8ed;border-radius:15px;overflow:hidden;margin-bottom:14px;background:#fff;break-inside:avoid}
+.invoice-bill-card>header{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;background:#f3f9fb;border-bottom:1px solid #dfecef}
+.invoice-bill-card>header div{display:grid;gap:2px}
+.invoice-bill-card>header small{color:#647d88;font-size:10px;letter-spacing:.12em;font-weight:850;text-transform:uppercase}
+.invoice-bill-card>header strong{color:#0b425e}
+.invoice-table-wrap{overflow-x:auto}
+.print-bill table{width:100%;border-collapse:collapse;table-layout:fixed}
+.print-bill th,.print-bill td{text-align:right;padding:10px 12px;border-bottom:1px solid #edf2f4;overflow-wrap:anywhere}
+.print-bill th:first-child,.print-bill td:first-child{text-align:left;width:46%}
+.print-bill th{background:#fbfdfe;color:#607985;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.bill-subtotal{display:flex;justify-content:flex-end;gap:18px;margin:0;padding:12px 15px;background:#fcfefe}
+.bill-subtotal span{color:#607985}
+.bill-subtotal b{color:#0b425e}
+.invoice-bottom-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.8fr);gap:18px;padding:24px 28px}
+.invoice-payments,.invoice-summary{border:1px solid #dbe8ed;border-radius:16px;padding:18px;background:#fff}
+.payment-row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #edf2f4}
+.payment-row:last-child{border-bottom:0}
+.payment-row span{display:grid;gap:2px}
+.payment-row small{color:#6c808a}
+.invoice-empty{color:#738892}
+.invoice-summary{background:linear-gradient(180deg,#f7fbfc,#fff)}
+.invoice-summary>div{display:flex;justify-content:space-between;gap:18px;padding:6px 0}
+.invoice-tax-note{display:block;margin:2px 0 10px!important;color:#72858e!important;letter-spacing:0!important;font-weight:500!important}
+.invoice-summary .summary-total,.invoice-summary .summary-paid,.invoice-summary .summary-balance{margin-top:7px;padding:10px 12px;border-radius:10px;font-size:16px}
+.summary-total{background:#e8f4fb;color:#0b4e70}
+.summary-paid{background:#e8f8ed;color:#18783b}
+.summary-balance.due{background:#fff0f0;color:#bd2727}
+.summary-balance.settled{background:#edf9f0;color:#18783b}
+.invoice-note{margin:0 28px 22px;padding:14px 16px;border-radius:13px;background:#edf7fb;display:grid;gap:2px;color:#315b6e}
+.print-bill footer{display:grid;gap:4px;text-align:center;padding:24px 28px 34px;border-top:1px solid #e1ebef;background:linear-gradient(180deg,#fff,#edf9fb)}
+.print-bill footer strong{font-size:22px;color:#0a425e}
+.print-bill footer span{font-style:italic;color:#0c7a96}
+.print-bill footer small{margin-top:8px;color:#71848d}
+.print-bill tr{break-inside:avoid}
+@media(max-width:700px){
+ .print-bill{margin:0;border-radius:0;border-left:0;border-right:0}
+ .invoice-hero{flex-direction:column;padding:22px 18px}
+ .invoice-heading{justify-items:start;min-width:0}
+ .invoice-heading>b{font-size:28px}
+ .invoice-guest-card{margin:16px 14px 0;grid-template-columns:repeat(2,minmax(0,1fr));padding:15px}
+ .invoice-charges{padding:20px 14px 0}
+ .invoice-bottom-grid{grid-template-columns:1fr;padding:18px 14px}
+ .invoice-note{margin:0 14px 18px}
+ .print-bill th,.print-bill td{padding:8px;font-size:12px}
+ .invoice-brand h1{font-size:25px}
+}
+@media(max-width:430px){
+ .invoice-guest-card{grid-template-columns:1fr 1fr}
+ .invoice-brand-mark{display:none}
+ .print-bill .print-control{gap:8px}
+ .print-bill .print-control a,.print-bill .print-control button{font-size:12px;padding:9px 10px}
+}
+@media print{
+ body{background:#fff!important}
+ .print-control{display:none!important}
+ .print-bill{margin:0;padding:0;max-width:none;border:0;border-radius:0;box-shadow:none;font-size:10pt}
+ .invoice-hero{padding:18px 22px}
+ .invoice-guest-card{margin:16px 20px 0}
+ .invoice-charges{padding:18px 20px 0}
+ .invoice-bottom-grid{padding:18px 20px}
+ .invoice-note{margin:0 20px 16px}
+ .invoice-bill-card,.invoice-payments,.invoice-summary,.invoice-guest-card{break-inside:avoid}
+ @page{size:A4;margin:10mm}
+}
