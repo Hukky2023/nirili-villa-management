@@ -42,9 +42,9 @@ function CatalogPhotoField({label,value,onChange,onBusy,panorama=false}:{label:s
   finally{setUploading(false);onBusy(false);}
  }
  return <div className="catalog-photo-field">
-  <div className="catalog-photo-label"><strong>{label}</strong><small>JPG, PNG or WebP. {panorama?'Recommended 4096 × 2048 equirectangular (2:1) photo.':'Recommended 1200 × 1200 px.'}</small></div>
+  <div className="catalog-photo-label"><strong>{label}</strong><small>JPG, PNG or WebP. {panorama?'High quality 360° photo · Recommended 4096 × 2048 (2:1) · Up to 2.5 MB after optimization.':'Recommended 1200 × 1200 px.'}</small></div>
   {value&&<div className="catalog-photo-preview"><img src={value} alt={label}/><button type="button" onClick={()=>onChange('')}>Remove</button></div>}
-  <label className="catalog-photo-upload"><ImagePlus size={18}/><span>{uploading?'Uploading…':value?'Replace photo':'Upload photo'}</span><input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={e=>{void choose(e.target.files);e.target.value='';}}/></label>
+  <label className="catalog-photo-upload"><ImagePlus size={18}/><span>{uploading?'Uploading…':value?(panorama?'Update 360° photo':'Replace photo'):(panorama?'Upload high-quality 360° photo':'Upload photo')}</span><input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={e=>{void choose(e.target.files);e.target.value='';}}/></label>
   {error&&<small className="catalog-photo-error">{error}</small>}
  </div>;
 }
