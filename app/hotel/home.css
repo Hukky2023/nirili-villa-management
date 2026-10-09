@@ -255,3 +255,25 @@ body:has(main.nh) .nv-session-floating{display:none}
 @media(prefers-reduced-motion:reduce){
  .nh *{transition:none!important}
 }
+
+/* Nirili Stay virtual room tour */
+.nh .nh-hero-actions .nh-360-trigger{font:inherit;cursor:pointer}
+.nh .nh-360-overlay{position:fixed;inset:0;z-index:1000;background:rgba(8,30,35,.78);display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(8px)}
+.nh .nh-360-dialog{width:min(960px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;background:#fffdf9;color:#12383d;border-radius:22px;box-shadow:0 20px 80px #0006}
+.nh .nh-360-dialog>header{position:sticky;top:0;z-index:2;background:#fffdf9;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 24px;border-bottom:1px solid #dce9e7}
+.nh .nh-360-dialog>header small{font:700 11px var(--sans);letter-spacing:.14em;color:#467478}
+.nh .nh-360-dialog h2{font-size:clamp(23px,4vw,34px)}
+.nh .nh-360-dialog>header button{border:1px solid #d3e2df;border-radius:100%;background:#fff;min-width:42px;min-height:42px;display:grid;place-items:center;cursor:pointer}
+.nh .nh-360-controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:18px 24px}
+.nh .nh-360-controls label{font-weight:700}
+.nh .nh-360-controls select{min-height:46px;min-width:180px;max-width:100%;padding:8px 12px;border:1px solid #b7d1d0;border-radius:10px;background:#fff;color:#12383d}
+.nh .nh-360-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.nh .nh-360-tabs button{padding:10px 16px;border:1px solid #a8c5c5;border-radius:50px;background:white;color:#174e53;cursor:pointer;font:700 13px var(--sans)}
+.nh .nh-360-tabs button[aria-pressed="true"]{background:#126b70;color:white}
+.nh .nh-360-stage{position:relative;overflow:hidden;background:#0b2830;margin:0 24px;border-radius:14px}
+.nh .nh-360-stage img{display:block;width:100%;height:min(52vh,480px);object-fit:cover;transition:object-position .12s}
+.nh .nh-360-pan{display:flex;align-items:center;gap:14px;padding:12px 18px;color:white}
+.nh .nh-360-pan input{flex:1;accent-color:#69d7ce}
+.nh .nh-360-empty{padding:70px 24px;text-align:center;background:#f0f7f5;margin:0 24px;border-radius:14px}
+.nh .nh-360-note{padding:16px 24px 24px;color:#5d7779;font-size:13px}
+@media(max-width:700px){.nh .nh-hero-actions .nh-360-trigger{width:100%;justify-content:center}.nh .nh-360-dialog>header{padding:15px}.nh .nh-360-controls{padding:14px;display:grid}.nh .nh-360-controls select{width:100%}.nh .nh-360-tabs{margin:0}.nh .nh-360-tabs button{flex:1}.nh .nh-360-stage,.nh .nh-360-empty{margin:0 12px}.nh .nh-360-stage img{height:42vh}}
