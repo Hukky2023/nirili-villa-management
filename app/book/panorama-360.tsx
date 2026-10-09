@@ -25,7 +25,7 @@ export default function Panorama360({src,onError}:{src:string;onError:()=>void})
    vec2 uv=vec2(atan(d.x,-d.z)/(2.*PI)+.5,asin(clamp(d.y,-1.,1.))/PI+.5);
    gl_FragColor=texture2D(tex,vec2(uv.x,1.-uv.y));
   }`;
-  const compile=(type:number,source:string)=>{const shader=gl.createShader(type);if(!shader)throw Error();gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader)||'Shader compilation failed');return shader;};
+  const compile=(type:number,source:string)=>{const shader=gl.createShader(type);if(!shader)throw Error();gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader)||'');return shader;};
   let program:WebGLProgram|null=null,texture:WebGLTexture|null=null,buffer:WebGLBuffer|null=null;
   try{
    program=gl.createProgram();if(!program)throw Error();
