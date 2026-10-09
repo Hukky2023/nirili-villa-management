@@ -304,3 +304,12 @@ body:has(main.nh) .nv-session-floating{display:none}
  .nh.nh-360-overlay .nh-360-controls{min-width:0}
  .nh.nh-360-overlay .nh-360-controls select{min-width:0}
 }
+
+/* Interactive WebGL panorama replaces the flat-image slider. */
+.nh .nh-360-stage .nh-panorama-wrap{position:relative;width:100%;height:min(58vh,520px);background:#0b2830}
+.nh .nh-360-stage .nh-panorama-canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab;outline-offset:-4px}
+.nh .nh-360-stage .nh-panorama-canvas:active{cursor:grabbing}
+.nh .nh-panorama-message{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:700;background:#0b2830}
+.nh .nh-360-help{color:#fff;text-align:center;padding:11px 15px;font-size:13px;background:#0b2830}
+.nh .nh-360-photo-error{padding:55px 18px;color:#fff;text-align:center;min-height:220px}
+@media(max-width:700px){.nh .nh-360-stage .nh-panorama-wrap{height:min(49vh,440px)}}
