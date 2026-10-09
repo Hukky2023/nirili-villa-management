@@ -10,39 +10,39 @@ const roomAmenityOptions=[
  'Sea view','Iron','Extra bed','Daily housekeeping','Snorkeling equipment'
 ];
 
-async function uploadCatalogPhoto(file:File){
+async function uploadCatalogPhoto(file:File,panorama=false){
  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>15000000)throw Error('Choose a JPG, PNG or WebP photo under 15 MB.');
  const local=URL.createObjectURL(file);
  try{
   const img=new Image();
   await new Promise<void>((resolve,reject)=>{img.onload=()=>resolve();img.onerror=()=>reject(Error('Cannot read this photo.'));img.src=local;});
-  const maxSide=1200,scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
+  const maxSide=panorama?4096:1200,scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
   const canvas=document.createElement('canvas');
   canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
   canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
   const ctx=canvas.getContext('2d');
   if(!ctx)throw Error('Cannot prepare this photo.');
   ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
-  let quality=.82,blob:Blob|null=null;
-  for(let attempt=0;attempt<6;attempt++){blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));if(blob&&blob.size<=500000)break;quality-=.1;}
-  if(!blob)throw Error('Photo upload failed.');
-  const response=await fetch('/api/menu-images',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob});
+  let quality=panorama?.94:.82,blob:Blob|null=null;
+  for(let attempt=0;attempt<8;attempt++){blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));if(blob&&blob.size<=(panorama?2500000:200000))break;quality-=.08;}
+  if(!blob||blob.size>(panorama?2500000:200000))throw Error('Photo upload exceeds the allowed size.');
+  const response=await fetch(panorama?'/api/room-panorama':'/api/menu-images',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob});
   const result=await response.json();
   if(!response.ok||!result.url)throw Error(result.error||'Photo upload failed.');
   return String(result.url);
  }finally{URL.revokeObjectURL(local);}
 }
 
-function CatalogPhotoField({label,value,onChange,onBusy}:{label:string;value:string;onChange:(value:string)=>void;onBusy:(busy:boolean)=>void}){
+function CatalogPhotoField({label,value,onChange,onBusy,panorama=false}:{label:string;value:string;onChange:(value:string)=>void;onBusy:(busy:boolean)=>void;panorama?:boolean}){
  const [error,setError]=useState(''),[uploading,setUploading]=useState(false);
  async function choose(files:FileList|null){
   const file=files?.[0];if(!file)return;
   setError('');setUploading(true);onBusy(true);
-  try{onChange(await uploadCatalogPhoto(file));}catch(e){setError(e instanceof Error?e.message:'Photo upload failed.');}
+  try{onChange(await uploadCatalogPhoto(file,panorama));}catch(e){setError(e instanceof Error?e.message:'Photo upload failed.');}
   finally{setUploading(false);onBusy(false);}
  }
  return <div className="catalog-photo-field">
-  <div className="catalog-photo-label"><strong>{label}</strong><small>JPG, PNG or WebP. Recommended 1200 × 1200 px.</small></div>
+  <div className="catalog-photo-label"><strong>{label}</strong><small>JPG, PNG or WebP. {panorama?'Recommended 4096 × 2048 equirectangular (2:1) photo.':'Recommended 1200 × 1200 px.'}</small></div>
   {value&&<div className="catalog-photo-preview"><img src={value} alt={label}/><button type="button" onClick={()=>onChange('')}>Remove</button></div>}
   <label className="catalog-photo-upload"><ImagePlus size={18}/><span>{uploading?'Uploading…':value?'Replace photo':'Upload photo'}</span><input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={e=>{void choose(e.target.files);e.target.value='';}}/></label>
   {error&&<small className="catalog-photo-error">{error}</small>}
@@ -127,7 +127,7 @@ export default function PropertyCatalog({expanded=false}:{expanded?:boolean}){
    editor.kind==='package'?{action:'save-package',id:editor.id,package:{...editor,singleCents:Math.round(Number(editor.singlePrice)*100),doubleCents:Math.round(Number(editor.doublePrice)*100),tripleCents:Math.round(Number(editor.triplePrice)*100)}}:
    editor.kind==='promotion'?{action:'save-promotion',id:editor.id,promotion:editor}:{}
   );}}><header><h3 id="catalog-editor-title">{editor.kind==='room'?(editor.originalNumber?'Edit room':'Add room'):editor.kind==='package'?(editor.id?'Edit package':'Create package'):(editor.id?'Edit promotion':'Create promotion')}</h3><button type="button" disabled={busy} onClick={()=>setEditor(null)}><X/></button></header><div className="catalog-editor-scroll"><fieldset disabled={busy}>
-   {editor.kind==='room'?<><label>Room number<input required maxLength={12} pattern="[A-Za-z0-9-]+" readOnly={!!editor.originalNumber} value={editor.number} onChange={event=>field('number',event.target.value)}/></label><label>Room type<input required maxLength={80} value={editor.type} onChange={event=>field('type',event.target.value)}/></label><label>Bed<input required maxLength={120} value={editor.bed} onChange={event=>field('bed',event.target.value)}/></label><label>Extra bed<input maxLength={120} value={editor.extraBed} onChange={event=>field('extraBed',event.target.value)}/></label><label>Maximum guests<input required type="number" min={1} max={3} value={editor.capacity} onChange={event=>field('capacity',Number(event.target.value))}/></label><label>Occupancy description<input maxLength={200} value={editor.occupancy} onChange={event=>field('occupancy',event.target.value)}/></label><section className="room-amenities-picker"><strong>Room amenities</strong><p className="catalog-help">Tap every item that is available in this room.</p><div className="room-amenities-grid">{roomAmenityOptions.map(item=>{const selected=Array.isArray(editor.amenities)&&editor.amenities.includes(item);return <button key={item} type="button" aria-pressed={selected} onClick={()=>field('amenities',selected?editor.amenities.filter((value:string)=>value!==item):[...(editor.amenities||[]),item])}>{selected?'✓ ':''}{item}</button>})}</div></section><div className="room-360-grid"><CatalogPhotoField label="Room 360 photo" value={editor.room360Photo} onChange={value=>field('room360Photo',value)} onBusy={setBusy}/><CatalogPhotoField label="Toilet 360 photo" value={editor.toilet360Photo} onChange={value=>field('toilet360Photo',value)} onBusy={setBusy}/></div></>
+   {editor.kind==='room'?<><label>Room number<input required maxLength={12} pattern="[A-Za-z0-9-]+" readOnly={!!editor.originalNumber} value={editor.number} onChange={event=>field('number',event.target.value)}/></label><label>Room type<input required maxLength={80} value={editor.type} onChange={event=>field('type',event.target.value)}/></label><label>Bed<input required maxLength={120} value={editor.bed} onChange={event=>field('bed',event.target.value)}/></label><label>Extra bed<input maxLength={120} value={editor.extraBed} onChange={event=>field('extraBed',event.target.value)}/></label><label>Maximum guests<input required type="number" min={1} max={3} value={editor.capacity} onChange={event=>field('capacity',Number(event.target.value))}/></label><label>Occupancy description<input maxLength={200} value={editor.occupancy} onChange={event=>field('occupancy',event.target.value)}/></label><section className="room-amenities-picker"><strong>Room amenities</strong><p className="catalog-help">Tap every item that is available in this room.</p><div className="room-amenities-grid">{roomAmenityOptions.map(item=>{const selected=Array.isArray(editor.amenities)&&editor.amenities.includes(item);return <button key={item} type="button" aria-pressed={selected} onClick={()=>field('amenities',selected?editor.amenities.filter((value:string)=>value!==item):[...(editor.amenities||[]),item])}>{selected?'✓ ':''}{item}</button>})}</div></section><div className="room-360-grid"><CatalogPhotoField panorama label="Room 360 photo" value={editor.room360Photo} onChange={value=>field('room360Photo',value)} onBusy={setBusy}/><CatalogPhotoField panorama label="Toilet 360 photo" value={editor.toilet360Photo} onChange={value=>field('toilet360Photo',value)} onBusy={setBusy}/></div></>
    :editor.kind==='package'?<div className="package-builder">
     <label>Package name<input required maxLength={160} value={editor.name} onChange={event=>field('name',event.target.value)}/></label>
     <section><strong>Duration</strong><div className="choice-grid duration-grid">{Array.from({length:14},(_,i)=>i+1).map(n=><button key={n} type="button" aria-pressed={editor.nights===n} onClick={()=>field('nights',n)}>{n}N / {n+1}D</button>)}</div></section>
