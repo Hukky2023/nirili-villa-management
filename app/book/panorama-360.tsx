@@ -4,12 +4,14 @@ import {useEffect,useRef,useState} from 'react';
 /** True equirectangular 360° panorama rendered onto a virtual sphere. */
 export default function Panorama360({src,onError}:{src:string;onError:()=>void}){
  const canvasRef=useRef<HTMLCanvasElement>(null);
+ const errorCallback=useRef(onError);
+ errorCallback.current=onError;
  const [status,setStatus]=useState<'loading'|'ready'|'error'>('loading');
  useEffect(()=>{
   const canvas=canvasRef.current;if(!canvas)return;
   let disposed=false,frame=0,yaw=0,pitch=0,fov=1.25;
   const gl=canvas.getContext('webgl',{alpha:false,antialias:true});
-  if(!gl){setStatus('error');onError();return;}
+  if(!gl){setStatus('error');errorCallback.current();return;}
   const vert='attribute vec2 a; varying vec2 v; void main(){v=a;gl_Position=vec4(a,0.,1.);}';
   const frag=`precision highp float;
   varying vec2 v;uniform sampler2D tex;uniform vec2 rot;uniform float fov;uniform float aspect;
@@ -37,7 +39,7 @@ export default function Panorama360({src,onError}:{src:string;onError:()=>void})
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
-  }catch{setStatus('error');onError();return;}
+  }catch{setStatus('error');errorCallback.current();return;}
   const rotation=gl.getUniformLocation(program,'rot'),field=gl.getUniformLocation(program,'fov'),aspect=gl.getUniformLocation(program,'aspect');
   const img=new Image();img.crossOrigin='anonymous';
   const draw=()=>{
@@ -55,9 +57,9 @@ export default function Panorama360({src,onError}:{src:string;onError:()=>void})
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
     setStatus('ready');draw();
-   }catch{setStatus('error');onError();}
+   }catch{setStatus('error');errorCallback.current();}
   };
-  img.onerror=()=>{if(!disposed){setStatus('error');onError();}};
+  img.onerror=()=>{if(!disposed){setStatus('error');errorCallback.current();}};
   img.src=src;
   let startX=0,startY=0,oldYaw=0,oldPitch=0,dragging=false;
   const down=(e:PointerEvent)=>{dragging=true;startX=e.clientX;startY=e.clientY;oldYaw=yaw;oldPitch=pitch;canvas.setPointerCapture(e.pointerId);};
@@ -68,7 +70,7 @@ export default function Panorama360({src,onError}:{src:string;onError:()=>void})
   const resize=new ResizeObserver(draw);resize.observe(canvas);
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);canvas.addEventListener('wheel',wheel,{passive:false});canvas.addEventListener('keydown',key);
   return()=>{disposed=true;cancelAnimationFrame(frame);img.onload=null;img.onerror=null;resize.disconnect();canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('keydown',key);if(texture)gl.deleteTexture(texture);if(buffer)gl.deleteBuffer(buffer);if(program)gl.deleteProgram(program);};
- },[src,onError]);
+ },[src]);
  return <div className="nh-panorama-wrap">
   <canvas ref={canvasRef} className="nh-panorama-canvas" tabIndex={0} aria-label="Pan panoramic image"/>
   {status==='loading'&&<div className="nh-panorama-message">Look around</div>}
