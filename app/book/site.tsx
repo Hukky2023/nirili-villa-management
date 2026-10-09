@@ -1,13 +1,14 @@
 'use client';
 
 import {useEffect,useRef,useState} from 'react';
-import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,MapPin,ShieldCheck,ShipWheel,Sparkles,Users} from 'lucide-react';
+import {ArrowRight,CalendarDays,CheckCircle2,ChevronDown,Globe2,MapPin,ShieldCheck,ShipWheel,Sparkles,Users,ScanEye,X} from 'lucide-react';
 import TimeField24 from '../time-field-24';
 
 type Plan={name:string;nightlyCents:number};
 type Package={id:string;name:string;nights:number;days:number;mealPlan:string;excursions:string[];excursionNames?:string[];includeTransfer:boolean;transferLabel:string;singleCents:number;doubleCents:number;tripleCents:number;childPolicy:string;roomPhoto?:string;excursionPhoto?:string;youtubeUrl?:string};
 type Promotion={id:string;name:string;detail:string;packageIds:string[];roomTypes:string[];validFrom:string;validTo:string};
-type Quote={today?:string;plans?:Plan[];packages?:Package[];promotions?:Promotion[];availableRooms?:number;bookingClosed?:boolean;nights?:number;estimates?:{name:string;nightlyCents:number;totalCents:number}[];error?:string};
+type Room360={number:string;type:string;room360Photo:string;toilet360Photo:string};
+type Quote={room360?:Room360[];today?:string;plans?:Plan[];packages?:Package[];promotions?:Promotion[];availableRooms?:number;bookingClosed?:boolean;nights?:number;estimates?:{name:string;nightlyCents:number;totalCents:number}[];error?:string};
 
 const money=(cents:number)=>'$'+(Math.max(0,Number(cents)||0)/100).toFixed(0);
 const tomorrow=(date:string,days=1)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
@@ -23,6 +24,12 @@ export default function GuestBookingSite(){
  function setTransport(leg:'arrival'|'departure',changes:any){setTransportPlan((old:any)=>({...old,[leg]:{...old[leg],...changes}}));}
  const [quote,setQuote]=useState<Quote>({}),[checking,setChecking]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [success,setSuccess]=useState<any>(null);
+ const [show360,setShow360]=useState(false),[selected360,setSelected360]=useState(''),[photo360,setPhoto360]=useState<'room360Photo'|'toilet360Photo'>('room360Photo'),[angle360,setAngle360]=useState(50);
+ const rooms360=quote.room360||[];
+ const current360=rooms360.find(room=>room.number===selected360)||rooms360[0];
+ const current360Url=current360?.[photo360]||'';
+ const switch360Room=(number:string)=>{setSelected360(number);setPhoto360('room360Photo');setAngle360(50);};
+ useEffect(()=>{if(show360&&rooms360.length&&!rooms360.some(room=>room.number===selected360))setSelected360(rooms360[0].number);},[show360,rooms360,selected360]);
  const token=useRef('');
  useEffect(()=>{token.current=crypto.randomUUID();fetch('/api/public-booking',{cache:'no-store'}).then(r=>r.json()).then((d:Quote)=>{setToday(d.today||'');const start=d.today||new Date().toISOString().slice(0,10);setCheckIn(start);setCheckOut(tomorrow(start,3));setQuote(d)}).catch(()=>{})},[]);
 
@@ -82,8 +89,19 @@ export default function GuestBookingSite(){
     <p className="nh-kicker nh-kicker-light"><MapPin/> Nirili Stay · Dhiffushi</p>
     <h1>Island days. <em>Easy stays.</em></h1>
     <p>A 14-room island guesthouse a short walk from the beach. Pick your dates, choose a meal plan or package, and tell us how you&rsquo;re arriving.</p>
-    <div className="nh-hero-actions"><a className="nh-btn nh-btn-light" href="#book">Check your dates <ArrowRight/></a><a className="nh-btn nh-btn-ghost" href="#rates">View room rates <ChevronDown/></a></div>
+    <div className="nh-hero-actions"><a className="nh-btn nh-btn-light" href="#book">Check your dates <ArrowRight/></a><a className="nh-btn nh-btn-ghost" href="#rates">View room rates <ChevronDown/></a><button type="button" className="nh-btn nh-btn-ghost nh-360-trigger" onClick={()=>setShow360(true)}><ScanEye/> 360° View <ArrowRight/></button></div>
    </div>
+   {show360&&<div className="nh-360-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)setShow360(false);}}>
+    <section className="nh-360-dialog" role="dialog" aria-modal="true" aria-label="Nirili Villa 360 room tour">
+     <header><div><small>NIRILI VILLA · VIRTUAL TOUR</small><h2>Explore our rooms in 360°</h2></div><button type="button" aria-label="Close 360 view" onClick={()=>setShow360(false)}><X/></button></header>
+     {rooms360.length?<>
+      <div className="nh-360-controls"><label htmlFor="nh-360-room">Choose room number</label><select id="nh-360-room" value={current360?.number||''} onChange={event=>switch360Room(event.target.value)}>{rooms360.map(room=><option key={room.number} value={room.number}>Room {room.number} · {room.type}</option>)}</select>
+      <div className="nh-360-tabs"><button type="button" aria-pressed={photo360==='room360Photo'} onClick={()=>{setPhoto360('room360Photo');setAngle360(50)}}>Room 360°</button><button type="button" aria-pressed={photo360==='toilet360Photo'} onClick={()=>{setPhoto360('toilet360Photo');setAngle360(50)}}>Bathroom 360°</button></div></div>
+      {current360Url?<div className="nh-360-stage"><img src={current360Url} alt={`360° ${photo360==='room360Photo'?'room':'bathroom'} photo of room ${current360?.number}`} style={{objectPosition:`${angle360}% center`}}/><div className="nh-360-pan"><span>Look around</span><input type="range" min="0" max="100" value={angle360} aria-label="Pan panoramic image" onChange={event=>setAngle360(Number(event.target.value))}/></div></div>:<div className="nh-360-empty">No {photo360==='room360Photo'?'room':'bathroom'} 360° photo uploaded for Room {current360?.number} yet.</div>}
+      <p className="nh-360-note">Photos are loaded from the room records in Nirili Villa Management. Select another room to see its uploaded photos.</p>
+     </>:<div className="nh-360-empty">360° room photos are not available yet. Please check back after they are uploaded.</div>}
+    </section>
+   </div>}
    <p className="nh-photo-credit">Dhiffushi · Photo: <a href="https://commons.wikimedia.org/wiki/File:Dhiffushi-Maldives-Andres_Larin.jpg" target="_blank" rel="noopener noreferrer">Andres Larin / Saaremees</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p>
   </section>
 
