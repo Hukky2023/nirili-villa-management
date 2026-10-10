@@ -22,15 +22,22 @@ export function createBillPdf(stay:any):File{
   if(row)ctx.fillText(row,x,yy);return yy+lineHeight;
  };
  let page=0,y=0;
- const footer=()=>{write('Nirili Villa · Dhiffushi Island, Maldives',margin,h-52,17,false,muted);write('Page '+page,w-margin,h-52,17,false,muted,'right');};
+ const footer=()=>{write('nirilivilla@gmail.com · www.nirilihotels.com · Dhiffushi Island, Maldives',margin,h-70,15,false,muted);write('Arrive as a guest, leave as a friend.',w/2,h-42,18,true,teal,'center');write('Page '+page,w-margin,h-42,14,false,muted,'right');};
  const finish=()=>{footer();const raw=atob(canvas.toDataURL('image/jpeg',.95).split(',')[1]);images.push(Uint8Array.from(raw,ch=>ch.charCodeAt(0)));};
  const startPage=()=>{
-  page++;ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.fillStyle=teal;ctx.fillRect(0,0,w,12);
-  write('NIRILI',margin,78,38,true,dark);write('VILLA',margin+145,78,38,true,'#14a9c9');
-  write('Dhiffushi Island · Kaafu Atoll · Maldives',margin,112,19,false,muted);
-  write('INVOICE',w-margin,78,34,true,dark,'right');
-  write('Invoice No · '+stay.id,w-margin,111,18,false,muted,'right');
-  y=155;
+  page++;ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+  const grad=ctx.createLinearGradient(0,0,w,0);grad.addColorStop(0,'#f8fdff');grad.addColorStop(.55,'#e7f8fb');grad.addColorStop(1,'#d9f2f7');ctx.fillStyle=grad;ctx.fillRect(0,0,w,150);
+  ctx.fillStyle='#ffb33b';ctx.beginPath();ctx.arc(margin+24,48,24,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#1ba4cd';ctx.beginPath();ctx.arc(margin+26,82,34,Math.PI,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#0a6f9e';ctx.beginPath();ctx.arc(margin+36,90,38,Math.PI,Math.PI*2);ctx.fill();
+  write('NIRILI',margin+76,67,38,true,dark);write('VILLA',margin+221,67,38,true,'#14a9c9');
+  write('Dhiffushi Island, Maldives',margin+76,101,19,false,muted);
+  write('Arrive as a guest, leave as a friend.',margin+76,128,17,false,teal);
+  write('Island Life Lasts Longer',w-margin,45,20,true,teal,'right');
+  write('INVOICE',w-margin,80,34,true,dark,'right');
+  write('Invoice No: '+stay.id,w-margin,106,17,false,muted,'right');
+  write('Invoice Date: '+new Date().toISOString().slice(0,10),w-margin,130,16,false,muted,'right');
+  y=168;
  };
  const ensure=(need:number)=>{if(y+need>h-105){finish();startPage();}};
  const chip=(label:string,status:string,x:number,yy:number)=>{
@@ -43,12 +50,13 @@ export function createBillPdf(stay:any):File{
  // Guest/stay summary
  round(margin,y,w-margin*2,132,18,aqua,line);
  const summary=[
-  ['GUEST',stay.guest||'Guest'],['ROOM',stay.room||'—'],['CHECK-IN',stay.checkIn||'—'],
-  ['CHECK-OUT',stay.checkOut||'—'],['MEAL PLAN',stay.meal||'—'],['STAY STATUS',stay.status||'—']
+  ['GUEST',stay.guest||'Guest'],['ROOM',stay.room||'—'],['GUESTS',Number(stay.pax||stay.guests?.length||0)||'—'],
+  ['CHECK-IN',stay.checkIn||'—'],['CHECK-OUT',stay.checkOut||'—'],['MEAL PLAN',stay.meal||'—'],
+  ['STAY STATUS',stay.status||'—'],['BOOKING SOURCE',stay.source||stay.bookingSource||stay.channel||'Direct Booking'],['BOOKING REF',stay.id||'—']
  ];
  const colW=(w-margin*2)/3;
- summary.forEach((item,i)=>{const row=Math.floor(i/3),col=i%3,x=margin+22+col*colW,yy=y+37+row*58;write(item[0],x,yy,13,true,teal);write(item[1],x,yy+25,20,true,dark);});
- y+=164;
+ summary.forEach((item,i)=>{const row=Math.floor(i/3),col=i%3,x=margin+22+col*colW,yy=y+37+row*54;write(item[0],x,yy,12,true,teal);write(item[1],x,yy+23,18,true,dark,col===2?'left':'left',colW-34);});
+ y+=205;
 
  write('STAY & SERVICES',margin,y,15,true,teal);write('Charges',margin,y+31,29,true,dark);y+=50;
  for(const bill of stay.folio.bills){
@@ -93,8 +101,8 @@ export function createBillPdf(stay:any):File{
  round(rightX+14,sy,rightW-28,44,10,'#e7f7eb');write('Payments received',rightX+28,sy+29,17,true,green);write(usd(stay.folio.paidCents),rightX+rightW-28,sy+29,19,true,green,'right');sy+=53;
  const due=Number(stay.folio.balanceCents||0)>0;round(rightX+14,sy,rightW-28,48,10,due?'#fff0f0':'#eaf8ee');write('Balance due',rightX+28,sy+31,18,true,due?red:green);write(usd(stay.folio.balanceCents),rightX+rightW-28,sy+31,22,true,due?red:green,'right');
 
- y=sectionTop+355;round(margin,y,w-margin*2,68,14,'#eef8fb');write('All taxes and service charge are included in the total.',margin+20,y+28,17,true,dark);write('Guest price is unchanged.',margin+20,y+50,16,false,muted);y+=112;
- write('Thank you for staying with us!',w/2,y,28,true,dark,'center');write('Arrive as a Guest, Leave as a Friend.',w/2,y+36,21,false,teal,'center');
+ y=sectionTop+355;round(margin,y,w-margin*2,78,14,'#eef8fb');write('NOTES',margin+20,y+23,13,true,teal);write('All taxes and service charge are included in the total.',margin+20,y+48,17,true,dark);write('Guest price is unchanged.',margin+20,y+68,15,false,muted);y+=118;
+ write('Arrive as a guest, leave as a friend. ♡',w/2,y,25,true,teal,'center');write('Good People · Good Places · Great Memories',w/2,y+31,16,false,muted,'center');
 
  finish();
  const bytes=pdfFromPages(images,w,h);
