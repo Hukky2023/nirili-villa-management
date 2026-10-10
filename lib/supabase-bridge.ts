@@ -667,6 +667,19 @@ export async function readExcursionSchedulesPrimary(date:string){
   return rows.map((row:any)=>({...row.payload,revision:Number(row.revision)||0,__key:row.key}));
 }
 
+export async function deleteFutureExcursionSchedulesPrimary(afterDate:string){
+  if(!supabaseBridgeConfigured())return 0;
+  const rows=await restSelect('operational_records','select=key,payload&key=like.'+encodeURIComponent('excursion-schedule:*')+'&order=key.asc');
+  const future=(rows||[]).filter((row:any)=>String(row?.payload?.date||'')>afterDate&&String(row?.key||'').startsWith('excursion-schedule:'));
+  for(const row of future){
+    const key=String(row.key||'');
+    if(!key)continue;
+    await sb('/rest/v1/operational_records?key=eq.'+encodeURIComponent(key),{method:'DELETE',headers:{Prefer:'return=minimal'}},'secret');
+    await sb('/rest/v1/excursion_schedules?source_key=eq.'+encodeURIComponent(key),{method:'DELETE',headers:{Prefer:'return=minimal'}},'secret');
+  }
+  return future.length;
+}
+
 
 export async function saveOperationalPairPrimary(
   keyA:string,payloadA:any,expectedRevisionA:number,
