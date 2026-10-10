@@ -19,32 +19,39 @@ export default async function BillPage({params}:{params:Promise<{id:string}>}){
   if(!s)return <main><UiText>Bill not found.</UiText></main>;
   const tax=stayInclusiveTaxBreakdown(s.folio.totalCents,s);
   const invoiceStatus=s.folio.balanceCents<=0?'Paid':s.folio.paidCents>0?'Partially Paid':'Unpaid';
+  const invoiceDate=new Date().toISOString().slice(0,10);
+  const guestCount=Number(s.pax||s.guests?.length||0);
+  const bookingSource=String(s.source||s.bookingSource||s.channel||'Direct Booking');
   return <main className="print-bill">
    <nav className="print-control"><a href={'/?portal='+u.role+'&room='+s.room}><UiText>← Back to room</UiText></a><PrintBill/></nav>
 
    <header className="invoice-hero">
-    <div className="invoice-brand"><div className="invoice-brand-mark">☀〰</div><div><h1>NIRILI <span>VILLA</span></h1><p>Dhiffushi Island · Kaafu Atoll · Maldives</p><small>Arrive as a Guest, Leave as a Friend.</small></div></div>
-    <div className="invoice-heading"><b>INVOICE</b><span>Invoice No · {s.id}</span><span>Booking Ref · {s.id}</span><i className={statusClass(invoiceStatus)}>{invoiceStatus}</i></div>
+    <div className="invoice-island-art" aria-hidden="true"><span className="invoice-sun"/><span className="invoice-palm">🌴</span><span className="invoice-wave invoice-wave-one"/><span className="invoice-wave invoice-wave-two"/></div>
+    <div className="invoice-brand"><div className="invoice-brand-mark"><span>☀</span><b>≋</b></div><div><h1>NIRILI <span>VILLA</span></h1><p>Dhiffushi Island, Maldives</p><small>Arrive as a guest, leave as a friend.</small></div></div>
+    <div className="invoice-heading"><em>Island Life<br/>Lasts Longer</em><b>INVOICE</b><span>Invoice No: <strong>{s.id}</strong></span><span>Booking Ref: <strong>{s.id}</strong></span><span>Invoice Date: <strong>{invoiceDate}</strong></span><i className={statusClass(invoiceStatus)}>✓ {invoiceStatus}</i></div>
    </header>
 
    <section className="invoice-guest-card">
-    <div><small>GUEST</small><strong>{s.guest}</strong></div>
-    <div><small>ROOM</small><strong>{s.room}</strong></div>
+    <div className="invoice-card-title"><span>👤</span><div><small>GUEST & STAY INFORMATION</small><strong>{s.guest}</strong></div></div>
+    <div><small>BOOKING REF</small><strong>{s.id}</strong></div>
+    <div><small>ROOM NUMBER</small><strong>{s.room}</strong></div>
+    <div><small>NUMBER OF GUESTS</small><strong>{guestCount||'—'}</strong></div>
+    <div><small>STAY STATUS</small><strong>{s.status}</strong></div>
     <div><small>CHECK-IN</small><strong>{s.checkIn}</strong></div>
     <div><small>CHECK-OUT</small><strong>{s.checkOut}</strong></div>
     <div><small>MEAL PLAN</small><strong>{s.meal}</strong></div>
-    <div><small>STAY STATUS</small><strong>{s.status}</strong></div>
+    <div><small>BOOKING SOURCE</small><strong>{bookingSource}</strong></div>
    </section>
 
    <section className="invoice-charges">
     <div className="invoice-section-title"><div><small>CHARGES</small><h2>Stay & services</h2></div><span>{s.folio.bills.length} bill{s.folio.bills.length===1?'':'s'}</span></div>
-    {s.folio.bills.map((b:any)=><article className="invoice-bill-card" key={b.department+b.id}>
+    {s.folio.bills.map((b:any)=>{const dept=String(b.department||'bill').toLowerCase().replace(/[^a-z0-9]+/g,'-');return <article className={'invoice-bill-card department-'+dept} key={b.department+b.id}>
      <header><div><small>{b.department}</small><strong>{b.id}</strong></div><i className={statusClass(b.status)}>{b.status}</i></header>
      <div className="invoice-table-wrap"><table><thead><tr><th>Item</th><th>Qty</th><th>Amount</th><th>Discount</th><th>Net</th></tr></thead><tbody>
       {b.items.map((item:any,n:number)=><tr key={n}><td>{item[0]}</td><td>{item[1]}</td><td>{money(Math.round(item[2]*100))}</td><td>{item[3]||0}%</td><td><b>{money(b.status==='Cancelled'?0:Math.round(item[2]*100*(1-(item[3]||0)/100)))}</b></td></tr>)}
      </tbody></table></div>
      <p className="bill-subtotal"><span>Bill total</span><b>{money(b.totalCents)}</b></p>
-    </article>)}
+    </article>})}
    </section>
 
    <section className="invoice-bottom-grid">
@@ -67,8 +74,12 @@ export default async function BillPage({params}:{params:Promise<{id:string}>}){
     </aside>
    </section>
 
-   <section className="invoice-note"><b>All taxes and service charge are included in the total.</b><span>Guest price is unchanged.</span></section>
-   <footer><strong>Thank you for staying with us!</strong><span>Arrive as a Guest, Leave as a Friend.</span><small>Nirili Villa · Dhiffushi Island, Maldives</small></footer>
+   <section className="invoice-note"><div><b>ℹ Notes</b><span>All taxes and service charge are included in the total.</span><span>Guest price is unchanged.</span></div></section>
+   <footer>
+    <div className="invoice-contact-row"><span>✉ nirilivilla@gmail.com</span><span>🌐 www.nirilihotels.com</span><span>📍 Dhiffushi Island, Maldives</span></div>
+    <div className="invoice-footer-message"><strong>Arrive as a guest,<br/>leave as a friend. ♡</strong><span>Good People · Good Places · Great Memories</span></div>
+    <div className="invoice-footer-wave" aria-hidden="true"/>
+   </footer>
   </main>
  }catch{return <main><UiText>Could not load your bill. Please reload to retry.</UiText></main>}
 }
