@@ -31,7 +31,7 @@ export default function GuestBookingSite(){
  const rooms360=quote.room360||[];
  const current360=rooms360.find(room=>room.number===selected360)||rooms360[0];
  const current360Url=current360?.[photo360]||'';
- const photoUrl360=photoUseManagementHost&&/^\\/api\\/(menu-images|room-panorama)\\//.test(current360Url)?'https://nirili-villa.nirili-management.workers.dev'+current360Url:current360Url;
+ const photoUrl360=photoUseManagementHost&&/^\/api\/(menu-images|room-panorama)\//.test(current360Url)?'https://nirili-villa.nirili-management.workers.dev'+current360Url:current360Url;
  useEffect(()=>{setPhotoLoadError(false);setPhotoUseManagementHost(false);},[current360Url]);
  const switch360Room=(number:string)=>{setSelected360(number);setPhoto360('room360Photo');setAngle360(50);};
  useEffect(()=>{if(show360&&rooms360.length&&!rooms360.some(room=>room.number===selected360))setSelected360(rooms360[0].number);},[show360,rooms360,selected360]);
