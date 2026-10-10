@@ -90,3 +90,106 @@
  .invoice-bill-card,.invoice-payments,.invoice-summary,.invoice-guest-card{break-inside:avoid}
  @page{size:A4;margin:10mm}
 }
+
+/* Branded live invoice refresh */
+.invoice-hero{
+ position:relative;
+ overflow:hidden;
+ min-height:210px;
+ padding:34px 38px 30px;
+ background:
+  linear-gradient(180deg,rgba(255,255,255,.92),rgba(245,252,254,.96)),
+  linear-gradient(120deg,#f7fcfd 0%,#def7fb 58%,#cceef5 100%);
+}
+.invoice-island-art{position:absolute;inset:0;pointer-events:none;opacity:.95}
+.invoice-sun{position:absolute;left:42px;top:24px;width:64px;height:64px;border-radius:50%;background:linear-gradient(180deg,#ffc33d,#ff9b2e)}
+.invoice-palm{position:absolute;left:92px;top:28px;font-size:58px;filter:saturate(1.15)}
+.invoice-wave{position:absolute;left:-5%;right:-5%;height:36px;border-radius:50%;transform:rotate(-2deg)}
+.invoice-wave-one{bottom:18px;background:#24a9d1;opacity:.32}
+.invoice-wave-two{bottom:2px;background:#0c6fa0;opacity:.20;transform:rotate(1deg)}
+.invoice-brand{position:relative;z-index:2}
+.invoice-brand-mark{width:68px;height:68px;border-radius:20px;background:linear-gradient(180deg,#24a9d1,#08759e);display:grid;place-items:center;color:#fff;box-shadow:0 10px 30px rgba(11,103,136,.18);overflow:hidden}
+.invoice-brand-mark span{font-size:25px;line-height:1}
+.invoice-brand-mark b{font-size:31px;line-height:.7;margin-top:-14px}
+.invoice-brand h1{font-size:34px;letter-spacing:.035em}
+.invoice-brand p{font-size:17px;color:#365b6b}
+.invoice-brand small{font-size:15px;font-family:cursive;color:#086f95}
+.invoice-heading{position:relative;z-index:2;gap:6px}
+.invoice-heading em{font-family:cursive;font-size:21px;line-height:1.05;color:#0b7fa8;text-align:left;justify-self:start;margin:0 0 4px 0;font-style:normal;transform:rotate(-3deg)}
+.invoice-heading>b{font-size:36px}
+.invoice-heading>span{display:flex;gap:8px;justify-content:space-between;width:100%;font-size:13px}
+.invoice-heading>span strong{color:#123e55}
+.invoice-heading .invoice-status{margin-top:6px;min-width:118px;padding:8px 14px;font-size:14px;box-shadow:0 8px 18px rgba(20,120,70,.12)}
+
+.invoice-guest-card{
+ grid-template-columns:repeat(4,minmax(0,1fr));
+ margin-top:20px;
+ padding:20px;
+ background:linear-gradient(135deg,#f8fcfd,#edf8fb);
+ box-shadow:0 10px 28px rgba(18,70,90,.06);
+}
+.invoice-card-title{grid-column:1 / -1!important;display:flex!important;align-items:center;gap:10px;padding:0 0 10px!important;border-bottom:1px solid #dce9ed}
+.invoice-card-title>span{font-size:24px}
+.invoice-card-title>div{display:grid;gap:2px}
+.invoice-card-title>div>strong{font-size:18px}
+.invoice-guest-card>div:not(.invoice-card-title){padding:4px 10px;border-left:1px solid #dce9ed}
+.invoice-guest-card>div:nth-child(2),.invoice-guest-card>div:nth-child(6){border-left:0}
+
+.invoice-bill-card>header{background:linear-gradient(90deg,#e7f5fb,#f8fcfd)}
+.invoice-bill-card.department-excursions>header,.invoice-bill-card.department-excursion>header{background:linear-gradient(90deg,#dff7f4,#effcfb)}
+.invoice-bill-card.department-transfer>header,.invoice-bill-card.department-transport>header{background:linear-gradient(90deg,#fff0d9,#fff8ed)}
+.invoice-bill-card.department-restaurant>header{background:linear-gradient(90deg,#f4e9ff,#fbf7ff)}
+.invoice-bill-card.department-buggy>header{background:linear-gradient(90deg,#e9f2ff,#f7faff)}
+.invoice-bill-card.department-accommodation>header{background:linear-gradient(90deg,#dceffd,#eff7fc)}
+.invoice-bill-card>header strong{font-size:16px}
+.invoice-bill-card{box-shadow:0 7px 20px rgba(18,60,78,.04)}
+
+.invoice-bottom-grid{align-items:start}
+.invoice-payments,.invoice-summary{box-shadow:0 8px 24px rgba(21,63,80,.05)}
+.invoice-summary .summary-total{background:linear-gradient(90deg,#d8effb,#eaf7fd)}
+.invoice-summary .summary-paid{background:linear-gradient(90deg,#e3f7e9,#f2fbf5)}
+.invoice-summary .summary-balance.due{background:linear-gradient(90deg,#ffe5e5,#fff2f2)}
+
+.invoice-note{background:linear-gradient(90deg,#eef8fb,#f8fcfd);box-shadow:0 6px 18px rgba(19,64,82,.04)}
+.invoice-note>div{display:grid;gap:3px}
+.invoice-note b{font-size:16px;color:#0c4864}
+.invoice-note span{display:block}
+
+.print-bill footer{
+ position:relative;
+ overflow:hidden;
+ padding:24px 30px 70px;
+ background:linear-gradient(180deg,#fff,#eefafd);
+}
+.invoice-contact-row{display:flex;justify-content:center;gap:26px;flex-wrap:wrap;font-size:13px;color:#194d65}
+.invoice-footer-message{display:grid;gap:6px;justify-items:center;margin-top:24px;position:relative;z-index:2}
+.invoice-footer-message strong{font-family:cursive!important;font-size:27px!important;line-height:1.05;color:#0c81a8!important}
+.invoice-footer-message span{font-style:normal!important;font-size:13px;color:#466877!important}
+.invoice-footer-wave{position:absolute;left:-5%;right:-5%;bottom:-28px;height:76px;border-radius:50% 50% 0 0;background:linear-gradient(180deg,#1ba4cd,#0a6f9e);transform:rotate(-2deg);opacity:.95}
+
+@media(max-width:760px){
+ .invoice-hero{min-height:0;padding:24px 18px 22px}
+ .invoice-island-art{opacity:.5}
+ .invoice-heading em{display:none}
+ .invoice-guest-card{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .invoice-guest-card>div{border-left:0!important;border-top:1px solid #e3ecef;padding-top:10px}
+ .invoice-card-title{border-top:0!important}
+ .invoice-contact-row{gap:10px 18px}
+}
+@media(max-width:430px){
+ .invoice-guest-card{grid-template-columns:1fr}
+ .invoice-heading>span{display:grid;grid-template-columns:auto 1fr;gap:4px}
+ .invoice-heading>span strong{text-align:right}
+ .invoice-brand-mark{width:54px;height:54px}
+ .invoice-brand h1{font-size:23px}
+ .invoice-brand p{font-size:13px}
+ .invoice-contact-row{display:grid;justify-items:center}
+}
+@media print{
+ .invoice-island-art{display:block!important}
+ .invoice-hero{min-height:170px;padding:22px 24px}
+ .invoice-heading em{font-size:16px}
+ .invoice-guest-card{grid-template-columns:repeat(4,minmax(0,1fr));padding:14px 16px}
+ .invoice-contact-row{font-size:9pt}
+ .invoice-footer-wave{bottom:-36px;height:64px}
+}
