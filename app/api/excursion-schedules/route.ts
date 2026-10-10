@@ -3,7 +3,6 @@ import {loadStays,stayKey} from '../../../lib/stays';
 import {saveStayAccess} from '../../../lib/stay-login';
 import {excursionGuestMix,excursionPriceCents} from '../../../lib/excursion-children';
 import {loadExcursionMenu} from '../../../lib/excursion-menu';
-import {ensureStandardDailyExcursions} from '../../../lib/excursion-default-schedule';
 import {excursionResources} from '../../../lib/excursion-workflow';
 import {buildExcursionManifest} from '../../../lib/excursion-manifest';
 import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requiredExcursionGuides} from '../../../lib/excursion-guides';
@@ -151,7 +150,6 @@ export async function GET(r:Request){
  if(!validDate(date))return Response.json({error:'Valid schedule date required.'},{status:400});
  try{
   await clearExistingRequestCreatedSchedulesOnce();
-  await ensureStandardDailyExcursions(date);
   const rawAll=await schedulesForDate(date);
   // Cancelled trips remain stored for history/audit, but are removed from the live admin schedule screen.
   const raw=rawAll.filter((schedule:any)=>schedule.status!=='Cancelled');
