@@ -667,10 +667,10 @@ export async function readExcursionSchedulesPrimary(date:string){
   return rows.map((row:any)=>({...row.payload,revision:Number(row.revision)||0,__key:row.key}));
 }
 
-export async function deleteFutureExcursionSchedulesPrimary(afterDate:string){
+export async function deleteFutureExcursionSchedulesPrimary(fromDate:string){
   if(!supabaseBridgeConfigured())return 0;
   const rows=await restSelect('operational_records','select=key,payload&key=like.'+encodeURIComponent('excursion-schedule:*')+'&order=key.asc');
-  const future=(rows||[]).filter((row:any)=>String(row?.payload?.date||'')>afterDate&&String(row?.key||'').startsWith('excursion-schedule:'));
+  const future=(rows||[]).filter((row:any)=>String(row?.payload?.date||'')>=fromDate&&String(row?.key||'').startsWith('excursion-schedule:'));
   for(const row of future){
     const key=String(row.key||'');
     if(!key)continue;
