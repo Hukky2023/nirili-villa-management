@@ -135,14 +135,14 @@ async function clearExistingRequestCreatedSchedulesOnce(){
  ]);
 }
 
-const manualScheduleMarker='excursion-manual-schedules-only-v1';
+const manualScheduleMarker='excursion-manual-schedules-only-v2';
 async function clearFutureSchedulesForManualModeOnce(){
  const db=authDb();
  const marker=await db.prepare('SELECT key FROM operation_records WHERE key=?').bind(manualScheduleMarker).first<any>();
  if(marker)return;
  const today=islandToday();
  const rows=await db.prepare('SELECT key,payload FROM operation_records WHERE key LIKE ?').bind(prefix+'%').all<any>();
- const future=(rows.results||[]).map((row:any)=>{try{return {key:row.key,schedule:JSON.parse(row.payload||'{}')}}catch{return null}}).filter((row:any)=>row&&String(row.schedule?.date||'')>today);
+ const future=(rows.results||[]).map((row:any)=>{try{return {key:row.key,schedule:JSON.parse(row.payload||'{}')}}catch{return null}}).filter((row:any)=>row&&String(row.schedule?.date||'')>=today);
  const removedIds=new Set(future.map((row:any)=>String(row.schedule?.id||'')).filter(Boolean));
  if(removedIds.size){
   const loaded=await loadStays(),state=loaded.state;
@@ -150,7 +150,7 @@ async function clearFutureSchedulesForManualModeOnce(){
   for(const order of state.orders||[]){
    if(order?.kind!=='excursion'||order.status==='Cancelled')continue;
    const orderDate=String(order.date||order.schedule?.date||'');
-   if(orderDate<=today||!removedIds.has(String(order.scheduleId||'')))continue;
+   if(orderDate<today||!removedIds.has(String(order.scheduleId||'')))continue;
    order.status='Awaiting Scheduling';
    order.approvalStatus='Pending';
    order.unscheduledRequest=true;
@@ -158,20 +158,21 @@ async function clearFutureSchedulesForManualModeOnce(){
    order.adminScheduled=false;
    order.autoConfirmed=false;
    order.guestNotified=false;
-   order.rescheduleReason='Future excursion schedules cleared for manual scheduling';
+   order.rescheduleReason='Excursion schedule cleared for manual scheduling';
    delete order.scheduleId;delete order.schedule;delete order.time;delete order.endTime;delete order.vesselId;delete order.overflowVesselId;
    changed=true;
   }
   if(changed){
-   const saved=await saveStayAccess(state,loaded.revision,'system:manual-excursion-scheduling');
-   if(!saved)throw Error('Excursion bookings changed while switching to manual scheduling. Refresh and try again.');
+   const saved=await saveStayAccess(state,loaded.revision,'system:manual-excursion-scheduling-v2');
+   if(!saved)throw Error('Excursion bookings changed while clearing schedules. Refresh and try again.');
   }
  }
  const statements=future.map((row:any)=>db.prepare('DELETE FROM operation_records WHERE key=?').bind(row.key));
  statements.push(db.prepare("DELETE FROM operation_records WHERE key LIKE 'excursion-standard-day:%'"));
- statements.push(db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(manualScheduleMarker,JSON.stringify({at:new Date().toISOString(),today,removed:future.length,action:'Future excursion schedules removed; manual scheduling enabled.'}),'system:'+manualScheduleMarker));
  await db.batch(statements);
- try{await deleteFutureExcursionSchedulesPrimary(today);}catch{}
+ await deleteFutureExcursionSchedulesPrimary(today);
+ await db.prepare('INSERT OR REPLACE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)')
+  .bind(manualScheduleMarker,JSON.stringify({at:new Date().toISOString(),today,removed:future.length,action:'All excursion schedules from today onward removed; manual scheduling enabled.'}),'system:'+manualScheduleMarker).run();
 }
 async function schedulesForDate(date:string){
  try{
