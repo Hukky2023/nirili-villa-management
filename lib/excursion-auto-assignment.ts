@@ -1,5 +1,4 @@
 import {authDb} from './auth';
-import {ensureStandardDailyExcursions} from './excursion-default-schedule';
 import {excursionDeparturePassed} from './guest-catalog';
 import {excursionResources} from './excursion-workflow';
 import {chooseAutoAssignmentCandidate} from './excursion-operations';
@@ -12,7 +11,6 @@ async function schedulesForDate(date:string){
 
 export async function autoAssignExcursionOrder(state:any,order:any){
  if(!order||order.kind!=='excursion'||!order.date||order.privateBoatRequested===true||order.specialPackage===true||order.packageGroupId)return null;
- await ensureStandardDailyExcursions(order.date);
  const allSchedules=(await schedulesForDate(order.date)).filter((schedule:any)=>schedule.status==='Open'&&!excursionDeparturePassed(schedule.date,schedule.time));
  const chosen=chooseAutoAssignmentCandidate(order,allSchedules,state.orders||[]);
  if(!chosen)return null;
