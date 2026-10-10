@@ -6,10 +6,10 @@ import {loadExcursionMenu} from '../../../lib/excursion-menu';
 import {excursionResources} from '../../../lib/excursion-workflow';
 import {buildExcursionManifest} from '../../../lib/excursion-manifest';
 import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requiredExcursionGuides} from '../../../lib/excursion-guides';
-import {excursionDeparturePassed} from '../../../lib/guest-catalog';
+import {excursionDeparturePassed,islandToday} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
 import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,planSpecialPackageSchedules,PRIVATE_BOAT_SURCHARGE_CENTS,scheduleCanServeRequest,scheduleMatchRank,specialPackageCoverage,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
-import {mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,readOperationalRecordPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
+import {deleteFutureExcursionSchedulesPrimary,mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,readOperationalRecordPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 import {sendExternalExcursionBookedEmail,sendExternalExcursionDeclinedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
 import {sendGuestPushForExcursionTimeChange} from '../../../lib/web-push';
 import {addGuestNotification} from '../../../lib/guest-notifications';
@@ -134,6 +134,45 @@ async function clearExistingRequestCreatedSchedulesOnce(){
    .bind(requestScheduleCleanupMarker,JSON.stringify({at:new Date().toISOString(),action:'Removed booking-request-created schedules; kept regular schedule only.'}),'system:'+requestScheduleCleanupMarker)
  ]);
 }
+
+const manualScheduleMarker='excursion-manual-schedules-only-v1';
+async function clearFutureSchedulesForManualModeOnce(){
+ const db=authDb();
+ const marker=await db.prepare('SELECT key FROM operation_records WHERE key=?').bind(manualScheduleMarker).first<any>();
+ if(marker)return;
+ const today=islandToday();
+ const rows=await db.prepare('SELECT key,payload FROM operation_records WHERE key LIKE ?').bind(prefix+'%').all<any>();
+ const future=(rows.results||[]).map((row:any)=>{try{return {key:row.key,schedule:JSON.parse(row.payload||'{}')}}catch{return null}}).filter((row:any)=>row&&String(row.schedule?.date||'')>today);
+ const removedIds=new Set(future.map((row:any)=>String(row.schedule?.id||'')).filter(Boolean));
+ if(removedIds.size){
+  const loaded=await loadStays(),state=loaded.state;
+  let changed=false;
+  for(const order of state.orders||[]){
+   if(order?.kind!=='excursion'||order.status==='Cancelled')continue;
+   const orderDate=String(order.date||order.schedule?.date||'');
+   if(orderDate<=today||!removedIds.has(String(order.scheduleId||'')))continue;
+   order.status='Awaiting Scheduling';
+   order.approvalStatus='Pending';
+   order.unscheduledRequest=true;
+   order.seatRequest=false;
+   order.adminScheduled=false;
+   order.autoConfirmed=false;
+   order.guestNotified=false;
+   order.rescheduleReason='Future excursion schedules cleared for manual scheduling';
+   delete order.scheduleId;delete order.schedule;delete order.time;delete order.endTime;delete order.vesselId;delete order.overflowVesselId;
+   changed=true;
+  }
+  if(changed){
+   const saved=await saveStayAccess(state,loaded.revision,'system:manual-excursion-scheduling');
+   if(!saved)throw Error('Excursion bookings changed while switching to manual scheduling. Refresh and try again.');
+  }
+ }
+ const statements=future.map((row:any)=>db.prepare('DELETE FROM operation_records WHERE key=?').bind(row.key));
+ statements.push(db.prepare("DELETE FROM operation_records WHERE key LIKE 'excursion-standard-day:%'"));
+ statements.push(db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(manualScheduleMarker,JSON.stringify({at:new Date().toISOString(),today,removed:future.length,action:'Future excursion schedules removed; manual scheduling enabled.'}),'system:'+manualScheduleMarker));
+ await db.batch(statements);
+ try{await deleteFutureExcursionSchedulesPrimary(today);}catch{}
+}
 async function schedulesForDate(date:string){
  try{
   const primary=await readExcursionSchedulesPrimary(date);
@@ -150,6 +189,7 @@ export async function GET(r:Request){
  if(!validDate(date))return Response.json({error:'Valid schedule date required.'},{status:400});
  try{
   await clearExistingRequestCreatedSchedulesOnce();
+  await clearFutureSchedulesForManualModeOnce();
   const rawAll=await schedulesForDate(date);
   // Cancelled trips remain stored for history/audit, but are removed from the live admin schedule screen.
   const raw=rawAll.filter((schedule:any)=>schedule.status!=='Cancelled');
