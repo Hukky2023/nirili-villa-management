@@ -124,7 +124,7 @@ export async function createExcursionBooking(body:any,channel:ExcursionBookingCh
   const guestNames=cleanGuestNames(body.guestNames,mix.total,leadGuest);
   const menu=await loadExcursionMenu();
   const item=menu.find((entry:any)=>entry.id===menuItemId&&entry.kind==='excursion'&&entry.active!==false);
-  if(!item)throw Error('This excursion is no longer available.');
+  if(!item||(channel.source==='External guest website'&&item.publishedToWebsite===false))throw Error('This excursion is no longer available.');
   const footSizes=cleanFootSizes(body.footSizes,mix.total,item.id==='special-package'||isSnorkelingTrip(item.scheduleName||item.name));
   const privateBoatRequested=mix.total>=4&&body.privateBoatRequested===true;
   const buggyRequested=body.buggyRequested===true;
