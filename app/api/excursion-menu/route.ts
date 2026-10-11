@@ -31,7 +31,7 @@ async function clean(raw:any,id?:string){
  const longDetail=String(raw?.longDetail||'').trim().slice(0,8000);
  const youtubeUrl=cleanYouTubeUrl(raw?.youtubeUrl);
  const galleryUrls=cleanGallery(raw?.galleryUrls);
- return {...(combination?{componentIds:combination.componentIds,combinationDiscountCents:combination.discountCents}:raw?.category==='combined'&&Array.isArray(raw.componentIds)?{componentIds:raw.componentIds}:{}),id:recordId,kind:'excursion',name,scheduleName:String(raw?.scheduleName||name).trim().slice(0,180),cents,category,group:categoryGroup(category),pricingUnit,detail,longDetail,youtubeUrl,galleryUrls,active:raw?.active!==false,updatedAt:new Date().toISOString()};
+ return {...(combination?{componentIds:combination.componentIds,combinationDiscountCents:combination.discountCents}:raw?.category==='combined'&&Array.isArray(raw.componentIds)?{componentIds:raw.componentIds}:{}),id:recordId,kind:'excursion',name,scheduleName:String(raw?.scheduleName||name).trim().slice(0,180),cents,category,group:categoryGroup(category),pricingUnit,detail,longDetail,youtubeUrl,galleryUrls,active:raw?.active!==false,publishedToWebsite:raw?.publishedToWebsite===true,updatedAt:new Date().toISOString()};
 }
 function canEdit(user:any){return !!user&&user.role!=='guest'&&(hasPermission(user,'edit_excursions')||hasPermission(user,'excursions_manager'));}
 
@@ -47,7 +47,7 @@ export async function POST(r:Request){
  try{
   const body:any=await r.json();
   const id='custom-'+crypto.randomUUID().slice(0,12);
-  const item=await clean(body,id);
+  const item=await clean({...body,publishedToWebsite:false},id);
   const key=excursionMenuKey(id);let revision=0,primaryAvailable=true;
   try{revision=await saveOperationalRecordPrimary(key,item,0,user.userId);}catch{primaryAvailable=false;}
   if(primaryAvailable){if(!revision)throw Error('Could not add excursion.');try{await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(item),revision,user.userId).run();}catch{}return Response.json({item:{...item,revision}},{status:201});}
