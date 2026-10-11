@@ -1679,3 +1679,72 @@
  .excursion-gallery-upload{width:100%}
  .excursion-gallery-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* Responsive publication controls: override legacy full-width button rules only on excursion cards. */
+.excursion-menu-card .excursion-publish-actions{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  width:100%;
+  min-width:0;
+  gap:8px;
+  align-self:end;
+  grid-column:1 / -1;
+}
+.excursion-menu-card .excursion-publication-row{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:8px;
+  min-width:0;
+}
+.excursion-menu-card .excursion-published-state{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  padding:5px 9px;
+  background:#eaf8f1;
+  color:#147a56;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.25;
+}
+.excursion-menu-card .excursion-published-state.is-unpublished{background:#f1f4f6;color:#526573}
+.excursion-menu-card .excursion-publication-row .excursion-publish-btn{
+  width:auto;
+  max-width:100%;
+  min-width:100px;
+  min-height:38px;
+  padding:7px 11px;
+  font-size:12px;
+  white-space:normal;
+  overflow-wrap:break-word;
+  line-height:1.3;
+}
+.excursion-menu-card .excursion-card-button-row{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  width:100%;
+  min-width:0;
+}
+.excursion-menu-card .excursion-card-button-row > .excursion-secondary-btn{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  min-height:38px;
+  padding:7px 5px;
+  text-align:center;
+  font-size:12px;
+  line-height:1.25;
+  white-space:normal;
+  overflow-wrap:break-word;
+}
+@media(max-width:420px){
+  .excursion-menu-card .excursion-publication-row{align-items:stretch}
+  .excursion-menu-card .excursion-publication-row .excursion-publish-btn{flex:1 1 auto}
+}
