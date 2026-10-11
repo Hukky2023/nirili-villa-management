@@ -57,6 +57,7 @@ if(b.action==='close-booking-dates'||b.action==='reopen-booking-dates'){
  await autoPushBookingComAvailability();
  return Response.json(staffData(u,{...(await projectStayState(state,revision+1)),bookingClosure:closure}));
 }
+if(b.action==='move'&&u.role!=='admin')return Response.json({error:'Only Admin can move a booking to another room.'},{status:403});
 if(b.action==='create'){
  if(restaurantOnly(u))return Response.json({error:'Hotel booking access required.'},{status:403});
  const previous=state.stays.find((s:any)=>s.creationRequest===b.requestId&&s.createdBy===u.username);
