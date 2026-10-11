@@ -14,7 +14,7 @@ type Excursion={id:string;name:string;detail?:string;longDetail?:string;category
 
 export default async function HotelExcursionPage({params}:{params:Promise<{id:string}>}){
  const {id}=await params;
- const items:Excursion[]=await loadExcursionMenu().catch(()=>baseExcursionMenu());
+ const items:Excursion[]=(await loadExcursionMenu()).filter((entry:any)=>entry.publishedToWebsite!==false);
  const item=items.find(entry=>entry.id===id);
  if(!item)notFound();
  const video=youtubeEmbed(item.youtubeUrl||'');
