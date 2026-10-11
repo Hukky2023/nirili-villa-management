@@ -26,10 +26,21 @@ test('validates real dates, including leap days', () => {
   for (const value of [date, '2024-02-29']) assert.equal(isTimetableDate(value), true);
   for (const value of ['2026-02-29', '2026-04-31', '2026-13-01', '18-09-2026', '', '2026-09-18%']) assert.equal(isTimetableDate(value), false);
 });
-test('selects only this date, sorts times and retains zero-pax trips', () => {
+test('selects only this date and omits zero-pax trips', () => {
   const data = build([trip('late', {time: '16:00'}), trip('other', {date: '2026-09-19'}), trip('early')], [order('o', 'other', 9)]);
-  assert.deepEqual(data.trips.map(t => t.id), ['early', 'late']);
-  assert.deepEqual(data.totals, {trips: 2, bookings: 0, pax: 0});
+  assert.deepEqual(data.trips.map(t => t.id), []);
+  assert.deepEqual(data.totals, {trips: 0, bookings: 0, pax: 0});
+});
+test('shares only confirmed occupied trips and recalculates totals', () => {
+  const data = build(
+    [trip('a'), trip('empty'), trip('b', {time: '08:00'}), trip('cancelled', {status: 'Cancelled'})],
+    [order('a1', 'a', 2), order('b1', 'b', 8), order('c1', 'cancelled', 3)],
+  );
+  assert.deepEqual(data.trips.map(t => t.id), ['a', 'b']);
+  assert.deepEqual(data.totals, {trips: 2, bookings: 2, pax: 10});
+  const message = formatExcursionTimetable(data);
+  assert.doesNotMatch(message, /empty|cancelled|Confirmed pax: 0/);
+  assert.match(message, /Scheduled trips: 2/);
 });
 test('counts confirmed pax per trip, not repeated shared-boat totals', () => {
   const data = build([trip('a', {sharedGroup: 'morning'}), trip('b', {sharedGroup: 'morning'})], [order('a1', 'a', 2), order('b1', 'b', 3)]);
@@ -52,7 +63,7 @@ test('uses current main-vessel and crew assignments', () => {
   assert.equal(data.trips[0].vessel, 'Test Extra'); assert.deepEqual(data.trips[0].crew, ['Extra Crew']);
 });
 test('reports unassigned resources and keeps closed booking schedules', () => {
-  const data = build([trip('a', {vesselId: '', crewIds: [], status: 'Closed'})]);
+  const data = build([trip('a', {vesselId: '', crewIds: [], status: 'Closed'})], [order('a1', 'a', 1)]);
   const text = formatExcursionTimetable(data);
   assert.match(text, /Assigned vessel: Not assigned/); assert.match(text, /Assigned crew: Not assigned/); assert.match(text, /Booking status: Closed/);
 });
@@ -64,6 +75,7 @@ test('does not expose guest identities, contacts, payment details or notes', () 
 test('does not duplicate ambiguous legacy orders across matching trips', () => {
   const data = build([trip('a', {name: 'Same'}), trip('b', {name: 'Same'})], [order('legacy', '', 4, {name: 'Same', schedule: {date, time: '07:00'}})]);
   assert.equal(data.totals.pax, 0);
+  assert.equal(data.trips.length, 0);
 });
 test('matches unambiguous legacy orders and honours an explicit schedule ID', () => {
   const data = build([trip('a'), trip('b', {time: '08:00'})], [order('legacy', '', 2, {name: 'a', schedule: {date, time: '07:00'}}), order('linked', 'b', 3, {name: 'a', schedule: {date, time: '07:00'}})]);
@@ -78,5 +90,5 @@ test('is read-only and supports empty schedules', () => {
   const before = JSON.stringify({schedules, state, resources});
   buildExcursionTimetable(date, schedules, state, resources, generated);
   assert.equal(JSON.stringify({schedules, state, resources}), before);
-  assert.match(formatExcursionTimetable(build([])), /No scheduled trips for this date/);
+  assert.match(formatExcursionTimetable(build([])), /No trips with confirmed passengers for this date/);
 });
