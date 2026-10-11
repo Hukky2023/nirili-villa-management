@@ -24,7 +24,8 @@ export function baseExcursionMenu(){
   minGuests:1,
   category:excursionCategoryFromGroup(x.group,x.name),
   group:categoryGroup(excursionCategoryFromGroup(x.group,x.name)),
-  active:x.active!==false
+  active:x.active!==false,
+  publishedToWebsite:true
  }));
 }
 export async function loadExcursionMenu(includeInactive=false){
@@ -41,14 +42,14 @@ export async function loadExcursionMenu(includeInactive=false){
   if(!override)return item;
   overrides.delete(item.id);
   const category=(override.category||item.category) as ExcursionCategory;
-  const mergedItem={...item,...override,kind:'excursion',scheduleName:item.scheduleName||item.name,minGuests:1,category,group:categoryGroup(category),active:override.active!==false};
+  const mergedItem={...item,...override,kind:'excursion',scheduleName:item.scheduleName||item.name,minGuests:1,category,group:categoryGroup(category),active:override.active!==false,publishedToWebsite:override.publishedToWebsite!==false};
   // Replace the old seeded setup note while preserving admin-written descriptions.
   if(mergedItem.id==='clownfish'&&mergedItem.detail==='Snorkel among colorful clown fish and reef life. Price can be set by Admin from the Excursion menu.')mergedItem.detail=item.detail;
   return mergedItem;
  });
  for(const item of overrides.values()){
   const category=excursionCategoryFromGroup(item.category||item.group,item.name);
-  merged.push({...item,scheduleName:item.scheduleName||item.name,kind:'excursion',minGuests:1,category,group:categoryGroup(category),active:item.active!==false});
+  merged.push({...item,scheduleName:item.scheduleName||item.name,kind:'excursion',minGuests:1,category,group:categoryGroup(category),active:item.active!==false,publishedToWebsite:item.publishedToWebsite===true});
  }
  return merged.filter((x:any)=>includeInactive||x.active!==false).sort((a:any,b:any)=>{
   const order:any={single:0,combined:1,special:2};
