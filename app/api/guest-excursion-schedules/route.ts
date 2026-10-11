@@ -100,7 +100,7 @@ const specialPackageSegments=[
 
 async function schedulesForDate(date:string){
  const rows=await authDb().prepare('SELECT payload FROM operation_records WHERE key LIKE ?').bind(prefix+date+':%').all<any>();
- return (rows.results||[]).map((row:any)=>JSON.parse(row.payload)).sort((a:any,b:any)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
+ return (rows.results||[]).map((row:any)=>JSON.parse(row.payload)).filter((schedule:any)=>!['cancelled','canceled'].includes(String(schedule.status||'').trim().toLowerCase())).sort((a:any,b:any)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
 }
 
 export async function GET(r:Request){
