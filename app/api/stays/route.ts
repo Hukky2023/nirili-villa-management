@@ -76,6 +76,7 @@ if(b.action==='editbooking'||b.action==='deletebooking'){
  if(b.action==='editbooking'&&!canManageStay)return Response.json({error:'Reception or bill editing permission is required to edit bookings.'},{status:403});
  if(b.revision!==revision)return Response.json({error:'Booking changed. Reopen the booking and try again.'},{status:409});
  const booking=state.stays.find((x:any)=>x.id===b.id);if(!booking)return Response.json({error:'Booking not found.'},{status:404});
+ if(b.action==='editbooking'&&String(b.room||'')!==String(booking.room||'')&&u.role!=='admin')return Response.json({error:'Only Admin can change the assigned room.'},{status:403});
  let plan:any=null;let revoke:string[]=[];let details:any=null;let previousRoom='';
  if(b.action==='deletebooking'){
   if(b.confirmId!==booking.id)throw Error('Confirm the booking reference to delete it.');
