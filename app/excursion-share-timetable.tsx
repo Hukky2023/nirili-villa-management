@@ -87,7 +87,7 @@ export default function ExcursionShareTimetable({date, disabled = false}: {date:
         {error && <p className="excursion-share-error" role="alert">{error}</p>}
         {data && !loading && <>
           <div className="excursion-share-summary"><strong>{data.totals.trips} scheduled trips</strong><strong>{data.totals.pax} confirmed passenger places</strong></div>
-          {!data.trips.length ? <p>No scheduled trips for this date. Choose another date in Schedule.</p> : <div className="excursion-share-table-wrap"><table className="excursion-share-table"><thead><tr><th>Time</th><th>Excursion / trip</th><th>Confirmed pax</th><th>Assigned vessel</th><th>Assigned crew</th></tr></thead><tbody>
+          {!data.trips.length ? <p>No trips with confirmed passengers for this date. Trips with 0 pax are hidden from sharing.</p> : <div className="excursion-share-table-wrap"><table className="excursion-share-table"><thead><tr><th>Time</th><th>Excursion / trip</th><th>Confirmed pax</th><th>Assigned vessel</th><th>Assigned crew</th></tr></thead><tbody>
             {data.trips.map(trip => <tr key={trip.id}>
               <td data-label="Time"><strong>{trip.time}</strong>{trip.endTime&&<small>Ends {trip.endTime}</small>}</td>
               <td data-label="Excursion / trip"><strong>{trip.name}</strong>{trip.status !== 'Open' && <small>Booking status: {trip.status}</small>}{trip.sharedTrips > 1 && <small>Shared boat: {trip.sharedBoatPax} / {trip.capacity} pax across {trip.sharedTrips} trips (combined).</small>}</td>
