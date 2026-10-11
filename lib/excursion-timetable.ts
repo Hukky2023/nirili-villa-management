@@ -35,6 +35,10 @@ export function buildExcursionTimetable(
     // Cancelled trips must never appear in the timetable preview or shared timetable.
     if (String(manifest.trip.status || '').trim().toLowerCase().includes('cancel')) return [];
 
+    // Only trips with confirmed passengers belong in the shared timetable.
+    // Empty scheduled trips remain in the operational schedule for future bookings.
+    if (manifest.totals.pax <= 0) return [];
+
     bookings += manifest.totals.bookings;
     const extras = new Map<string, TimetableVessel>();
     for (const booking of manifest.bookings) {
@@ -85,7 +89,7 @@ export function formatExcursionTimetable(data: ExcursionTimetable): string {
     }
     lines.push('');
   }
-  if (!data.trips.length) lines.push('No scheduled trips for this date.', '');
+  if (!data.trips.length) lines.push('No trips with confirmed passengers for this date.', '');
   lines.push(`Scheduled trips: ${data.totals.trips}`, `Total confirmed passenger places: ${data.totals.pax}`,
     'Totals count passenger places across trips, not unique people. Extra-vessel pax are included; pending and cancelled bookings are excluded.',
     `Snapshot: ${timetableSnapshotLabel(data.generatedAt)} Maldives time. Assignments may change.`);
