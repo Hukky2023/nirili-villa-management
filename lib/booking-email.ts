@@ -107,6 +107,19 @@ export async function sendBookingReceivedEmail(booking:BookingMail):Promise<Mail
  return sendEmail({to:booking.email,subject:'Nirili Villa booking received · '+booking.reference,html,text:plain,idempotencyKey:'room-booking-received/'+booking.reference});
 }
 
+export async function sendBookingDeclinedEmail(booking:BookingMail):Promise<MailResult>{
+ const reason=String(booking.reason||'').trim();
+ const html=shell('We could not confirm your booking',`
+  <p style="font-size:16px;line-height:1.7;margin-top:0">Dear ${escapeHtml(booking.guest)},</p>
+  <p style="font-size:15px;line-height:1.7">Unfortunately, we could not confirm your Nirili Villa booking request.</p>
+  ${reason?`<p style="padding:14px 16px;border-radius:10px;background:#fff4f2;font-size:14px;line-height:1.7"><strong>Reason:</strong><br>${escapeHtml(reason)}</p>`:''}
+  <p style="font-size:14px;line-height:1.7">Requested stay: <strong>${escapeHtml(booking.checkIn)} → ${escapeHtml(booking.checkOut)}</strong><br>Guests: ${booking.pax}<br>Meal plan: ${escapeHtml(booking.meal)}</p>
+  <p style="font-size:14px;line-height:1.7">You are welcome to make a new booking request for different dates, or contact Nirili Villa if you would like help finding an available option.</p>
+ `);
+ const plain=`Nirili Villa - booking not confirmed\n\nDear ${booking.guest},\nUnfortunately, we could not confirm your booking request.\n${reason?'Reason: '+reason+'\n':''}Requested stay: ${booking.checkIn} to ${booking.checkOut}\nGuests: ${booking.pax}\nMeal plan: ${booking.meal}\n\nYou are welcome to request different dates or contact Nirili Villa for help.`;
+ return sendEmail({to:booking.email,subject:'Booking request update · '+booking.reference+' · Nirili Villa',html,text:plain,idempotencyKey:'room-booking-declined/'+booking.reference});
+}
+
 export async function sendBookingConfirmationEmail(booking:BookingMail):Promise<MailResult>{
  const confirmationUrl=booking.manageToken?bookingConfirmationUrl(booking.manageToken):'';
  const guestBooking={...booking,room:undefined};
