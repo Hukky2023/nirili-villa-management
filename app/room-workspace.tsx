@@ -3,7 +3,7 @@ import StayPackageDetails from './stay-package-details';
 import {startLiveRefresh} from '../lib/live-refresh';
 import {UiText,UiField,UiOption} from './ui-language';
 
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {BedDouble,X,ArrowLeft,MessageCircle,Download,Share2,FileText} from 'lucide-react';
 import './stay-actions.css';
 import './guest-directory.css';
@@ -29,9 +29,19 @@ function checkoutBuggyPickup(checkOut:string,departureTime:string):{date:string;
 export default function RoomWorkspace({Folio,canEdit,canEditBills=canEdit,bookingMode=false,isAdmin=false,guestMode=false}:{Folio:any;canEdit:boolean;canEditBills?:boolean;bookingMode?:boolean;isAdmin?:boolean;guestMode?:boolean}){
 const [guestQuery,setGuestQuery]=useState(''),[guestStatus,setGuestStatus]=useState('All');
 const [data,setData]=useState<any>(null),[selected,setSelected]=useState(''),[roomNumber,setRoomNumber]=useState(''),[action,setAction]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[amount,setAmount]=useState(''),[method,setMethod]=useState('Cash'),[reference,setReference]=useState(''),[target,setTarget]=useState(''),[date,setDate]=useState(''),[rate,setRate]=useState(''),[requestId,setRequestId]=useState(''),[note,setNote]=useState(''),[whatsapp,setWhatsapp]=useState(''),[pdfFile,setPdfFile]=useState<File|null>(null),[fileShareSupported,setFileShareSupported]=useState(false),[checkoutBuggy,setCheckoutBuggy]=useState<{departureTime:string}|null>(null);
-async function refresh(){try{const r=await fetch('/api/stays');const d=await r.json();if(!r.ok)throw Error(d.error);setData(d);setError('');return d;}catch(e){setError(e instanceof Error?e.message:'Could not load stays.');return null;}}
+const pendingRefresh=useRef<Promise<any>|null>(null);
+async function refresh(){
+ if(pendingRefresh.current)return pendingRefresh.current;
+ const request=(async()=>{try{
+  const r=await fetch('/api/stays',{cache:'no-store'});
+  if(!r.ok){let detail='';try{detail=(await r.json()).error||'';}catch{}throw Error(detail||'Could not load stays.');}
+  const d=await r.json();setData(d);setError('');return d;
+ }catch(e){setError(e instanceof Error?e.message:'Could not load stays.');return null;}})();
+ pendingRefresh.current=request;
+ try{return await request;}finally{if(pendingRefresh.current===request)pendingRefresh.current=null;}
+}
 useEffect(()=>{refresh().then(d=>{if(!d)return;const q=new URLSearchParams(window.location.search);const s=d.stays.find((x:any)=>x.room===q.get('room')&&x.status!=='Checked Out');if(s){setSelected(s.id);setRoomNumber(s.room);setNote(d.rooms.find((r:any)=>r.number===s.room)?.note||'')}})},[]);
-useEffect(()=>{const sync=()=>refresh();const stopLive=startLiveRefresh(sync);return()=>{stopLive();}},[]);
+useEffect(()=>{const sync=()=>refresh();const stopLive=startLiveRefresh(sync,30000);return()=>{stopLive();}},[]);
 const stay=data?.stays.find((s:any)=>s.id===selected),room=data?.rooms.find((r:any)=>r.number===(stay?.room||roomNumber));
 const checkoutPickup=stay&&checkoutBuggy?checkoutBuggyPickup(stay.checkOut,checkoutBuggy.departureTime):null;
 function open(s:any,r:any){setSelected(s?.id||'');setRoomNumber(r.number);setAction('');setCheckoutBuggy(null);setError('');setNotice('');setNote(r.note||'');}
