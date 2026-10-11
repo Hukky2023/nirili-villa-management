@@ -93,7 +93,7 @@ async function schedulesForDate(date:string){
 
 export async function excursionBookingOptions(){
  const menu=await loadExcursionMenu();
-  const items=menu.filter((item:any)=>item.kind==='excursion'&&item.active!==false).map((item:any)=>({
+  const items=menu.filter((item:any)=>item.kind==='excursion'&&item.active!==false&&item.publishedToWebsite!==false).map((item:any)=>({
    id:item.id,
    name:item.name,
    detail:item.detail||'',
