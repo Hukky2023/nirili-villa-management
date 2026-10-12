@@ -434,7 +434,21 @@ export async function PATCH(r:Request){
    const scheduleRevision=Number(row.revision)||0;
    if(!schedule||schedule.id!==id||schedule.date!==date)throw Error('Scheduled excursion record does not match this trip. Reload and try again.');
    if(schedule.status==='Cancelled')return Response.json({ok:true,alreadyCancelled:true,reason:schedule.cancellationReason||''});
-   const {state,revision}=await loadStays();
+   // A Supabase schedule must be paired with the Supabase hotel-state revision.
+   // D1 revisions can lag behind the primary DB and cause a permanent CAS conflict.
+   const localStays=await loadStays();
+   let state=localStays.state,revision=localStays.revision;
+   if(primaryRow){
+    let primaryStays:any;
+    try{primaryStays=await readOperationalRecordPrimary(stayKey);}catch{
+     return Response.json({error:'Could not read the latest booking records. Please try again.'},{status:503});
+    }
+    if(!primaryStays||!primaryStays.payload||!Array.isArray(primaryStays.payload.orders)){
+     return Response.json({error:'Latest booking records are unavailable. Cancellation was not saved.'},{status:503});
+    }
+    state=typeof primaryStays.payload==='string'?JSON.parse(primaryStays.payload):primaryStays.payload;
+    revision=Number(primaryStays.revision)||0;
+   }
    const now=new Date().toISOString();
    const affected=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Cancelled'&&matches(o,schedule));
    let rescheduledPackageSegments=0,cancelledBookings=0;
