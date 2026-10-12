@@ -431,7 +431,9 @@ export async function PATCH(r:Request){
    const row=primaryRow||d1Row;
    if(!row)throw Error('Scheduled excursion not found. Reload the schedule and try again.');
    const schedule=typeof row.payload==='string'?JSON.parse(row.payload):row.payload;
-   const scheduleRevision=Number(row.revision)||0;
+   // D1-only schedules do not yet exist in Supabase. The primary CAS must INSERT
+   // with expected revision 0, not compare against the unrelated D1 revision.
+   const scheduleRevision=primaryRow?(Number(primaryRow.revision)||0):0;
    if(!schedule||schedule.id!==id||schedule.date!==date)throw Error('Scheduled excursion record does not match this trip. Reload and try again.');
    if(schedule.status==='Cancelled')return Response.json({ok:true,alreadyCancelled:true,reason:schedule.cancellationReason||''});
    // A Supabase schedule must be paired with the Supabase hotel-state revision.
