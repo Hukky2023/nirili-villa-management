@@ -419,6 +419,9 @@ export async function PATCH(r:Request){
    if(!id||!validDate(date))throw Error('Choose a valid scheduled excursion.');
    if(!reason)throw Error('Enter a reason for cancelling this excursion.');
    const db=authDb(),key=prefix+date+':'+id;
+   // Concurrent booking and schedule writes can change revisions during cancellation.
+   // Re-read both records and recalculate affected bookings before each retry.
+   for(let attempt=0;attempt<3;attempt++){
    // The schedule list is Supabase-primary during the migration. A schedule can
    // therefore be visible in the UI even when its D1 mirror is missing or stale.
    // Resolve the exact record from the primary store first, then fall back to D1.
@@ -461,7 +464,7 @@ export async function PATCH(r:Request){
     const message=error instanceof Error?error.message:String(error||'');
     if(message.includes('CAS_CONFLICT'))primaryConflict=true;else primaryAvailable=false;
    }
-   if(primaryConflict)return Response.json({error:'The excursion changed elsewhere. Reload and try again.'},{status:409});
+   if(primaryConflict){if(attempt<2)continue;return Response.json({error:'The excursion is being updated. Please try cancellation again.'},{status:409});}
    if(primaryAvailable&&pair?.revisionA&&pair?.revisionB){
     try{
      await db.batch([
@@ -480,9 +483,10 @@ export async function PATCH(r:Request){
    if(revision===0)statements.push(db.prepare('INSERT OR IGNORE INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(stayKey,stayPayload,user.userId));
    else statements.push(db.prepare('UPDATE operation_records SET payload=?,revision=revision+1,updated_by=? WHERE key=? AND revision=?').bind(stayPayload,user.userId,stayKey,revision));
    const results=await db.batch(statements);
-   if(!results[0].meta.changes||!results[1].meta.changes)return Response.json({error:'The excursion changed elsewhere. Reload and try again.'},{status:409});
+   if(!results[0].meta.changes||!results[1].meta.changes){if(attempt<2)continue;return Response.json({error:'The excursion is being updated. Please try cancellation again.'},{status:409});}
    try{await mirrorExcursionScheduleRecord(key,{...cancelledSchedule,revision:Number(d1Row.revision)+1,updatedBy:user.userId});await mirrorHotelState(state);}catch{}
    return Response.json({ok:true,cancelledBookings,rescheduledPackageSegments,reason,status:'Cancelled'});
+   }
   }
 
   if(b.action==='confirm-romantic-dinner'){
