@@ -440,16 +440,19 @@ export async function PATCH(r:Request){
    // D1 revisions can lag behind the primary DB and cause a permanent CAS conflict.
    const localStays=await loadStays();
    let state=localStays.state,revision=localStays.revision;
-   if(primaryRow){
-    let primaryStays:any;
-    try{primaryStays=await readOperationalRecordPrimary(stayKey);}catch{
-     return Response.json({error:'Could not read the latest booking records. Please try again.'},{status:503});
-    }
-    if(!primaryStays||!primaryStays.payload||!Array.isArray(primaryStays.payload.orders)){
-     return Response.json({error:'Latest booking records are unavailable. Cancellation was not saved.'},{status:503});
-    }
-    state=typeof primaryStays.payload==='string'?JSON.parse(primaryStays.payload):primaryStays.payload;
+   // Always use the primary hotel-state revision when it exists, including for
+   // schedules that are still stored only in D1.
+   let primaryStays:any=null;
+   try{primaryStays=await readOperationalRecordPrimary(stayKey);}catch{
+    if(primaryRow)return Response.json({error:'Could not read the latest booking records. Please try again.'},{status:503});
+   }
+   if(primaryStays){
+    const primaryState=typeof primaryStays.payload==='string'?JSON.parse(primaryStays.payload):primaryStays.payload;
+    if(!primaryState||!Array.isArray(primaryState.orders))return Response.json({error:'Latest booking records are unavailable. Cancellation was not saved.'},{status:503});
+    state=primaryState;
     revision=Number(primaryStays.revision)||0;
+   }else if(primaryRow){
+    return Response.json({error:'Latest booking records are unavailable. Cancellation was not saved.'},{status:503});
    }
    const now=new Date().toISOString();
    const affected=(state.orders||[]).filter((o:any)=>o.kind==='excursion'&&o.status!=='Cancelled'&&o.approvalStatus!=='Cancelled'&&matches(o,schedule));
