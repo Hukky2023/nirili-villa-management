@@ -431,22 +431,30 @@ export async function PATCH(r:Request){
    const row=primaryRow||d1Row;
    if(!row)throw Error('Scheduled excursion not found. Reload the schedule and try again.');
    const schedule=typeof row.payload==='string'?JSON.parse(row.payload):row.payload;
-   const scheduleRevision=Number(row.revision)||0;
+   // A schedule present only in D1 has no primary revision yet. Create its
+   // cancelled record at revision 0 rather than reusing its D1 revision.
+   const scheduleRevision=primaryRow?(Number(primaryRow.revision)||0):0;
    if(!schedule||schedule.id!==id||schedule.date!==date)throw Error('Scheduled excursion record does not match this trip. Reload and try again.');
    if(schedule.status==='Cancelled')return Response.json({ok:true,alreadyCancelled:true,reason:schedule.cancellationReason||''});
    // A Supabase schedule must be paired with the Supabase hotel-state revision.
    // D1 revisions can lag behind the primary DB and cause a permanent CAS conflict.
    const localStays=await loadStays();
    let state=localStays.state,revision=localStays.revision;
-   if(primaryRow){
-    let primaryStays:any;
-    try{primaryStays=await readOperationalRecordPrimary(stayKey);}catch{
+   // Always read the authoritative hotel state even for D1-only schedules.
+   // The previous implementation paired a D1 hotel revision with Supabase,
+   // causing permanent CAS_CONFLICT_B whenever the two stores had drifted.
+   let primaryStays:any=null;
+   try{primaryStays=await readOperationalRecordPrimary(stayKey);}catch{
+    if(primaryRow){
      return Response.json({error:'Could not read the latest booking records. Please try again.'},{status:503});
     }
-    if(!primaryStays||!primaryStays.payload||!Array.isArray(primaryStays.payload.orders)){
+   }
+   if(primaryRow||primaryStays){
+    const primaryPayload=typeof primaryStays?.payload==='string'?JSON.parse(primaryStays.payload):primaryStays?.payload;
+    if(!primaryPayload||!Array.isArray(primaryPayload.orders)){
      return Response.json({error:'Latest booking records are unavailable. Cancellation was not saved.'},{status:503});
     }
-    state=typeof primaryStays.payload==='string'?JSON.parse(primaryStays.payload):primaryStays.payload;
+    state=primaryPayload;
     revision=Number(primaryStays.revision)||0;
    }
    const now=new Date().toISOString();
@@ -473,11 +481,11 @@ export async function PATCH(r:Request){
    const cancelledSchedule={...schedule,status:'Cancelled',cancellationReason:reason,cancelledAt:now,cancelledBy:user.username,updatedAt:now};
    // With no linked bookings, only the schedule changes. Do not require a
    // second CAS on hotel-stays: that unrelated revision may change frequently.
-   if(primaryRow&&affected.length===0){
+   if((primaryRow||primaryStays)&&affected.length===0){
     let nextRevision=0;
     try{nextRevision=await saveOperationalRecordPrimary(key,cancelledSchedule,scheduleRevision,user.userId);}catch(error){
      const message=error instanceof Error?error.message:String(error||'');
-     if(message.includes('CAS_CONFLICT')){if(attempt<2)continue;return Response.json({error:'Schedule was changed by another user. Refresh and retry.'},{status:409});}
+     if(message.includes('CAS_CONFLICT')){if(attempt<7)continue;return Response.json({error:'Schedule was changed by another user. Refresh and retry.'},{status:409});}
      return Response.json({error:'Cancellation could not be saved to the primary database.'},{status:503});
     }
     if(!nextRevision)return Response.json({error:'Cancellation could not be confirmed in the primary database.'},{status:503});
@@ -507,7 +515,7 @@ export async function PATCH(r:Request){
     return Response.json({ok:true,cancelledBookings,rescheduledPackageSegments,reason,status:'Cancelled'});
    }
    // Never write an older D1 snapshot when the authoritative Supabase write failed.
-   if(primaryRow)return Response.json({error:'Cancellation was not saved to Supabase. Check the save_operational_pair function and database logs; no bookings were changed.'},{status:503});
+   if(primaryRow||primaryStays)return Response.json({error:'Cancellation was not saved to Supabase. Check the save_operational_pair function and database logs; no bookings were changed.'},{status:503});
    if(!d1Row)return Response.json({error:'The excursion could not be saved to the primary database. Reload and try again.'},{status:503});
    const stayPayload=JSON.stringify(state);
    const statements:any[]=[
