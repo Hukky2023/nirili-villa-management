@@ -471,6 +471,20 @@ export async function PATCH(r:Request){
     }
    }
    const cancelledSchedule={...schedule,status:'Cancelled',cancellationReason:reason,cancelledAt:now,cancelledBy:user.username,updatedAt:now};
+   // With no linked bookings, only the schedule changes. Do not require a
+   // second CAS on hotel-stays: that unrelated revision may change frequently.
+   if(primaryRow&&affected.length===0){
+    let nextRevision=0;
+    try{nextRevision=await saveOperationalRecordPrimary(key,cancelledSchedule,scheduleRevision,user.userId);}catch(error){
+     const message=error instanceof Error?error.message:String(error||'');
+     if(message.includes('CAS_CONFLICT')){if(attempt<2)continue;return Response.json({error:'Schedule was changed by another user. Refresh and retry.'},{status:409});}
+     return Response.json({error:'Cancellation could not be saved to the primary database.'},{status:503});
+    }
+    if(!nextRevision)return Response.json({error:'Cancellation could not be confirmed in the primary database.'},{status:503});
+    try{await db.prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,updated_by=excluded.updated_by').bind(key,JSON.stringify(cancelledSchedule),nextRevision,user.userId).run();}catch{}
+    try{await mirrorExcursionScheduleRecord(key,{...cancelledSchedule,revision:nextRevision,updatedBy:user.userId});}catch{}
+    return Response.json({ok:true,cancelledBookings:0,rescheduledPackageSegments:0,reason,status:'Cancelled'});
+   }
    let pair:any=null,primaryAvailable=true,primaryConflict=false;
    try{
     pair=await saveOperationalPairPrimary(key,cancelledSchedule,scheduleRevision,stayKey,state,revision,user.userId);
