@@ -421,7 +421,7 @@ export async function PATCH(r:Request){
    const db=authDb(),key=prefix+date+':'+id;
    // Concurrent booking and schedule writes can change revisions during cancellation.
    // Re-read both records and recalculate affected bookings before each retry.
-   for(let attempt=0;attempt<3;attempt++){
+   for(let attempt=0;attempt<8;attempt++){
    // The schedule list is Supabase-primary during the migration. A schedule can
    // therefore be visible in the UI even when its D1 mirror is missing or stale.
    // Resolve the exact record from the primary store first, then fall back to D1.
@@ -492,7 +492,10 @@ export async function PATCH(r:Request){
     const message=error instanceof Error?error.message:String(error||'');
     if(message.includes('CAS_CONFLICT'))primaryConflict=true;else primaryAvailable=false;
    }
-   if(primaryConflict){if(attempt<2)continue;return Response.json({error:'The excursion is being updated. Please try cancellation again.'},{status:409});}
+   if(primaryConflict){
+    if(attempt<7){await new Promise(resolve=>setTimeout(resolve,50*(attempt+1)));continue;}
+    return Response.json({error:'Another update is repeatedly changing excursion bookings. Wait a moment, refresh, and try again; no cancellation was saved.'},{status:409});
+   }
    if(primaryAvailable&&pair?.revisionA&&pair?.revisionB){
     try{
      await db.batch([
@@ -503,6 +506,8 @@ export async function PATCH(r:Request){
     try{await Promise.all([mirrorExcursionScheduleRecord(key,{...cancelledSchedule,revision:pair.revisionA,updatedBy:user.userId}),mirrorHotelState(state)]);}catch{}
     return Response.json({ok:true,cancelledBookings,rescheduledPackageSegments,reason,status:'Cancelled'});
    }
+   // Never write an older D1 snapshot when the authoritative Supabase write failed.
+   if(primaryRow)return Response.json({error:'Cancellation was not saved to Supabase. Check the save_operational_pair function and database logs; no bookings were changed.'},{status:503});
    if(!d1Row)return Response.json({error:'The excursion could not be saved to the primary database. Reload and try again.'},{status:503});
    const stayPayload=JSON.stringify(state);
    const statements:any[]=[
