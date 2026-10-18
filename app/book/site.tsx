@@ -18,6 +18,9 @@ const tomorrow=(date:string,days=1)=>new Date(Date.parse(date+'T00:00:00Z')+days
 export default function GuestBookingSite(){
  const [today,setToday]=useState(''),[checkIn,setCheckIn]=useState(''),[checkOut,setCheckOut]=useState('');
  const [adults,setAdults]=useState(2),[children,setChildren]=useState(0),[meal,setMeal]=useState('Bed & Breakfast'),[packageId,setPackageId]=useState('');
+ const [roomGuests,setRoomGuests]=useState<{adults:number;children:number}[]>([{adults:2,children:0}]);
+ const roomCount=roomGuests.length;
+ const updateRoom=(index:number,field:'adults'|'children',value:number)=>setRoomGuests(current=>current.map((r,i)=>i===index?{...r,[field]:value,children:field==='adults'?Math.min(r.children,Math.max(0,3-value)):value}:r));
  const [guest,setGuest]=useState(''),[phone,setPhone]=useState(''),[email,setEmail]=useState(''),[notes,setNotes]=useState('');
  const [transportPlan,setTransportPlan]=useState<any>({
   arrival:{needTransfer:'later',from:'Velana International Airport',flightNumber:'',flightTime:'',ownTransport:'',dhiffushiArrivalTime:'',buggyRequired:true},
@@ -38,32 +41,32 @@ export default function GuestBookingSite(){
  const token=useRef('');
  useEffect(()=>{token.current=crypto.randomUUID();fetch('/api/public-booking',{cache:'no-store'}).then(r=>r.json()).then((d:Quote)=>{setToday(d.today||'');const start=d.today||new Date().toISOString().slice(0,10);setCheckIn(start);setCheckOut(tomorrow(start,3));setQuote(d)}).catch(()=>{})},[]);
 
- const pax=adults+children;
+ const pax=roomGuests.reduce((sum,r)=>sum+r.adults+r.children,0);
  const selectedPlan=quote.estimates?.find(x=>x.name===meal)||quote.plans?.find(x=>x.name===meal);
  const selectedPackage=quote.packages?.find(x=>x.id===packageId);
  const packageRatePerGuest=selectedPackage?(pax<=1?selectedPackage.singleCents:pax===2?selectedPackage.doubleCents:selectedPackage.tripleCents):0;
- const packageTotal=selectedPackage?packageRatePerGuest*pax:0;
+ const packageTotal=selectedPackage?roomGuests.reduce((sum,r)=>{const count=r.adults+r.children;return sum+(count===1?selectedPackage.singleCents:count===2?selectedPackage.doubleCents:selectedPackage.tripleCents)*count},0):0;
  const selectedTotal=selectedPackage?packageTotal:(quote.estimates?.find(x=>x.name===meal)?.totalCents||0);
 
- useEffect(()=>{if(children>Math.max(0,3-adults))setChildren(Math.max(0,3-adults))},[adults,children]);
+ useEffect(()=>{const first=roomGuests[0];setAdults(first.adults);setChildren(first.children);},[roomGuests]);
 
  async function checkAvailability(){
   if(!checkIn||!checkOut)return;
   setChecking(true);setError('');
   try{
-   const params=new URLSearchParams({checkIn,checkOut,adults:String(adults),children:String(children)});
+   const params=new URLSearchParams({checkIn,checkOut,adults:String(roomGuests[0].adults),children:String(roomGuests[0].children),rooms:JSON.stringify(roomGuests)});
    const r=await fetch('/api/public-booking?'+params.toString(),{cache:'no-store'});
    const d=await r.json();if(!r.ok)throw Error(d.error||'Could not check availability.');
    setQuote(d);
   }catch(e){setError((e as Error).message)}finally{setChecking(false)}
  }
- useEffect(()=>{if(checkIn&&checkOut){const timer=window.setTimeout(()=>void checkAvailability(),350);return()=>window.clearTimeout(timer)}},[checkIn,checkOut,adults,children]);
+ useEffect(()=>{if(checkIn&&checkOut){const timer=window.setTimeout(()=>void checkAvailability(),350);return()=>window.clearTimeout(timer)}},[checkIn,checkOut,roomGuests]);
 
  async function submit(e:React.FormEvent){
-  e.preventDefault();if(busy)return;setBusy(true);setError('');
+  e.preventDefault();if(busy)return;if(quote.availableRooms!==undefined&&roomCount>quote.availableRooms){setError('Not enough available rooms for your request. Please select fewer rooms or other dates.');return;}setBusy(true);setError('');
   try{
    const r=await fetch('/api/public-booking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    token:token.current,guest,phone,email,checkIn,checkOut,adults,children,meal,packageId,notes,transportPlan:{arrival:{...transportPlan.arrival,date:checkIn},departure:{...transportPlan.departure,date:checkOut}}
+    token:token.current,guest,phone,email,checkIn,checkOut,adults:roomGuests.reduce((n,r)=>n+r.adults,0),children:roomGuests.reduce((n,r)=>n+r.children,0),rooms:roomGuests,meal,packageId,notes,transportPlan:{arrival:{...transportPlan.arrival,date:checkIn},departure:{...transportPlan.departure,date:checkOut}}
    })});
    const d=await r.json();if(!r.ok)throw Error(d.error||'Could not complete your booking.');
    setSuccess(d);
@@ -80,7 +83,7 @@ export default function GuestBookingSite(){
    <div className="success-ref"><small>BOOKING REFERENCE</small><strong>{success.id}</strong></div>
    <div className="success-details">
     <span><CalendarDays/> {checkIn} → {checkOut}</span>
-    <span><Users/> {pax} {pax===1?'guest':'guests'}</span>
+    <span><Users/> {pax} {pax===1?'guest':'guests'} · {roomCount} {roomCount===1?'room':'rooms'}</span>
     <span><Sparkles/> {selectedPackage?selectedPackage.name:meal}</span>
    </div>
    <p className="success-note">{success.email?.sent?'We sent a booking received email to '+email+'. Final confirmation will follow after room allocation.':'Your booking is saved, but the confirmation email could not be sent yet. Please keep this booking reference and contact reception if you do not receive an email.'}</p>
@@ -172,19 +175,21 @@ export default function GuestBookingSite(){
     <div className="booking-points"><span><CheckCircle2/> No account needed</span><span><CheckCircle2/> Live room availability check</span><span><CheckCircle2/> Reception confirms your booking</span></div>
    </div>
    <form className="booking-form" onSubmit={submit}>
-    <div className="form-heading"><div><small>ROOM BOOKING</small><h3>Your trip details</h3></div>{quote.availableRooms!==undefined&&<span className={quote.availableRooms>0?'available':'unavailable'}>{quote.bookingClosed?'Bookings closed for selected dates':quote.availableRooms>0?quote.availableRooms+' rooms available':'No rooms available'}</span>}</div>
+    <div className="form-heading"><div><small>ROOM BOOKING</small><h3>Your trip details</h3></div>{quote.availableRooms!==undefined&&<span className={quote.availableRooms>=roomCount?'available':'unavailable'}>{quote.bookingClosed?'Bookings closed for selected dates':quote.availableRooms>=roomCount?quote.availableRooms+' rooms available':'Not enough rooms available'}</span>}</div>
     <div className="form-grid dates">
      <label><span>Check-in</span><input required type="date" min={today||undefined} value={checkIn} onChange={e=>{setCheckIn(e.target.value);if(e.target.value>=checkOut)setCheckOut(tomorrow(e.target.value,1))}}/></label>
      <label><span>Check-out</span><input required type="date" min={checkIn?tomorrow(checkIn,1):today||undefined} value={checkOut} onChange={e=>setCheckOut(e.target.value)}/></label>
     </div>
-    <div className="form-grid">
-     <label><span>Adults</span><select value={adults} onChange={e=>setAdults(Number(e.target.value))}>{[1,2,3].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
-     <label><span>Children</span><select value={children} onChange={e=>setChildren(Number(e.target.value))}>{Array.from({length:Math.max(1,4-adults)},(_,i)=><option key={i} value={i}>{i}</option>)}</select></label>
-    </div>
+    <label><span>Number of rooms</span><select value={roomCount} onChange={e=>{const count=Number(e.target.value);setRoomGuests(current=>Array.from({length:count},(_,i)=>current[i]||{adults:2,children:0}));}}>{Array.from({length:14},(_,i)=><option key={i+1} value={i+1}>{i+1} {i===0?'room':'rooms'}</option>)}</select></label>
+    {roomGuests.map((r,index)=><div key={index} className="form-grid">
+     <label><span>Room {index+1} · Adults</span><select value={r.adults} onChange={e=>updateRoom(index,'adults',Number(e.target.value))}>{[1,2,3].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+     <label><span>Room {index+1} · Children</span><select value={r.children} onChange={e=>updateRoom(index,'children',Number(e.target.value))}>{Array.from({length:4-r.adults},(_,i)=><option key={i} value={i}>{i}</option>)}</select></label>
+    </div>)}
+    <p>Reception will assign a separate room number to each requested room after reviewing your booking.</p>
     <label><span>Meal plan</span><select value={meal} onChange={e=>{setMeal(e.target.value);setPackageId('')}}>{['Bed & Breakfast','Half Board','Full Board'].map(x=><option key={x}>{x}</option>)}</select></label>
 
     <div className="quote-box">
-     <div><small>{checking?'CHECKING…':quote.bookingClosed?'BOOKINGS CLOSED':quote.availableRooms!==undefined?'LIVE AVAILABILITY':'ESTIMATED STAY'}</small><strong>{quote.nights||Math.max(0,(Date.parse(checkOut)-Date.parse(checkIn))/86400000)||0} nights · {pax} {pax===1?'guest':'guests'}</strong></div>
+     <div><small>{checking?'CHECKING…':quote.bookingClosed?'BOOKINGS CLOSED':quote.availableRooms!==undefined?'LIVE AVAILABILITY':'ESTIMATED STAY'}</small><strong>{quote.nights||Math.max(0,(Date.parse(checkOut)-Date.parse(checkIn))/86400000)||0} nights · {pax} {pax===1?'guest':'guests'} · {roomCount} {roomCount===1?'room':'rooms'}</strong></div>
      <div><small>{selectedPackage?'TOTAL PACKAGE PRICE':'ESTIMATED ACCOMMODATION'}</small><strong>{selectedTotal?money(selectedTotal):selectedPlan?money(selectedPlan.nightlyCents)+' / night':'—'}</strong>{selectedPackage&&<small>{selectedPackage.name}</small>}</div>
     </div>
 
