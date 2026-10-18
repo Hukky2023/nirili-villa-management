@@ -41,6 +41,8 @@ export async function GET(request:Request){
   const adults=Math.max(1,Math.min(3,Number(url.searchParams.get('adults')||1)));
   const children=Math.max(0,Math.min(2,Number(url.searchParams.get('children')||0)));
   const pax=adults+children;
+  let requestedRooms:{adults:number;children:number}[]=[{adults,children}];
+  try{const parsed=JSON.parse(url.searchParams.get('rooms')||'null');if(Array.isArray(parsed)&&parsed.length>=1&&parsed.length<=14&&parsed.every(r=>Number.isInteger(r.adults)&&r.adults>=1&&r.adults<=3&&Number.isInteger(r.children)&&r.children>=0&&r.adults+r.children<=3))requestedRooms=parsed;}catch{}
   const {state}=await hotelState();
   const excursionMenu=await loadExcursionMenu();
   const excursionNames=new Map(excursionMenu.map((item:any)=>[String(item.id),String(item.name||item.id)]));
@@ -75,10 +77,10 @@ export async function GET(request:Request){
   const base={room360,today,plans:plans.map(plan=>({name:plan,nightlyCents:nightly(plan,Math.min(3,pax),state.roomRates,checkIn||today,state.roomRatePeriods||[])})),packages,promotions};
   if(!checkIn||!checkOut)return Response.json(base,{headers});
   if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||pax<1||pax>3)return Response.json({...base,error:'Choose valid stay dates and up to 3 guests per room.'},{status:400,headers});
-  const rooms=availability(state,checkIn,checkOut,pax);
+  const rooms=availability(state,checkIn,checkOut,0);
   const bookingClosed=rooms.length===0&&!!bookingClosureForStay(state,checkIn,checkOut);
   const nights=nightsBetween(checkIn,checkOut);
-  return Response.json({...base,availableRooms:rooms.length,bookingClosed,nights,estimates:plans.map(plan=>{const nightlyCents=nightly(plan,pax,state.roomRates,checkIn,state.roomRatePeriods||[]);return {name:plan,totalCents:nightlyCents*nights,nightlyCents};})},{headers});
+  return Response.json({...base,availableRooms:rooms.length,bookingClosed,nights,estimates:plans.map(plan=>{const nightlyCents=nightly(plan,requestedRooms[0].adults+requestedRooms[0].children,state.roomRates,checkIn,state.roomRatePeriods||[]);const totalCents=requestedRooms.reduce((sum,room)=>sum+nightly(plan,room.adults+room.children,state.roomRates,checkIn,state.roomRatePeriods||[])*nights,0);return {name:plan,totalCents,nightlyCents};})},{headers});
  }catch{return Response.json({error:'Could not check room availability. Please try again.'},{status:503,headers});}
 }
 
@@ -104,7 +106,7 @@ export async function POST(request:Request){
   if(!await limit('public-booking-ip:'+ip,12,3600000)||!await limit('public-booking-phone:'+phone,5,3600000))throw Error('Too many booking requests. Please contact reception or try again later.');
   const {state}=await hotelState();
   const rooms=availability(state,checkIn,checkOut,0);
-  if(rooms.length<requestedRooms.length||requestedRooms.some((room:any)=>availability(state,checkIn,checkOut,room.adults+room.children).length<requestedRooms.length))return Response.json({error:'Not enough suitable rooms are available for the requested group. Change dates or contact reception.'},{status:409,headers});
+  if(rooms.length<requestedRooms.length)return Response.json({error:'Not enough suitable rooms are available for the requested group. Change dates or contact reception.'},{status:409,headers});
   // Ensure a distinct physical room can fit each requested occupancy (not just matching counts).
   const unassigned=[...rooms];
   for(const item of [...requestedRooms].sort((a:any,b:any)=>(b.adults+b.children)-(a.adults+a.children))){const idx=unassigned.findIndex((r:any)=>(Number(r.capacity)||3)>=item.adults+item.children);if(idx<0)return Response.json({error:'Not enough rooms can accommodate this group.'},{status:409,headers});unassigned.splice(idx,1);}
