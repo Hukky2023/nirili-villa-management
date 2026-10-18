@@ -46,7 +46,7 @@ export default function GuestBookingSite(){
  const selectedPackage=quote.packages?.find(x=>x.id===packageId);
  const packageRatePerGuest=selectedPackage?(pax<=1?selectedPackage.singleCents:pax===2?selectedPackage.doubleCents:selectedPackage.tripleCents):0;
  const packageTotal=selectedPackage?roomGuests.reduce((sum,r)=>{const count=r.adults+r.children;return sum+(count===1?selectedPackage.singleCents:count===2?selectedPackage.doubleCents:selectedPackage.tripleCents)*count},0):0;
- const selectedTotal=selectedPackage?packageTotal:roomGuests.reduce((sum,r)=>sum+((quote.estimates?.find(x=>x.name===meal)?.nightlyCents||0)*(quote.nights||0)),0);
+ const selectedTotal=selectedPackage?packageTotal:(quote.estimates?.find(x=>x.name===meal)?.totalCents||0);
 
  useEffect(()=>{const first=roomGuests[0];setAdults(first.adults);setChildren(first.children);},[roomGuests]);
 
@@ -54,7 +54,7 @@ export default function GuestBookingSite(){
   if(!checkIn||!checkOut)return;
   setChecking(true);setError('');
   try{
-   const params=new URLSearchParams({checkIn,checkOut,adults:String(roomGuests[0].adults),children:String(roomGuests[0].children)});
+   const params=new URLSearchParams({checkIn,checkOut,adults:String(roomGuests[0].adults),children:String(roomGuests[0].children),rooms:JSON.stringify(roomGuests)});
    const r=await fetch('/api/public-booking?'+params.toString(),{cache:'no-store'});
    const d=await r.json();if(!r.ok)throw Error(d.error||'Could not check availability.');
    setQuote(d);
@@ -63,7 +63,7 @@ export default function GuestBookingSite(){
  useEffect(()=>{if(checkIn&&checkOut){const timer=window.setTimeout(()=>void checkAvailability(),350);return()=>window.clearTimeout(timer)}},[checkIn,checkOut,roomGuests]);
 
  async function submit(e:React.FormEvent){
-  e.preventDefault();if(busy)return;setBusy(true);setError('');
+  e.preventDefault();if(busy)return;if(quote.availableRooms!==undefined&&roomCount>quote.availableRooms){setError('Not enough available rooms for your request. Please select fewer rooms or other dates.');return;}setBusy(true);setError('');
   try{
    const r=await fetch('/api/public-booking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     token:token.current,guest,phone,email,checkIn,checkOut,adults:roomGuests.reduce((n,r)=>n+r.adults,0),children:roomGuests.reduce((n,r)=>n+r.children,0),rooms:roomGuests,meal,packageId,notes,transportPlan:{arrival:{...transportPlan.arrival,date:checkIn},departure:{...transportPlan.departure,date:checkOut}}
@@ -175,12 +175,12 @@ export default function GuestBookingSite(){
     <div className="booking-points"><span><CheckCircle2/> No account needed</span><span><CheckCircle2/> Live room availability check</span><span><CheckCircle2/> Reception confirms your booking</span></div>
    </div>
    <form className="booking-form" onSubmit={submit}>
-    <div className="form-heading"><div><small>ROOM BOOKING</small><h3>Your trip details</h3></div>{quote.availableRooms!==undefined&&<span className={quote.availableRooms>0?'available':'unavailable'}>{quote.bookingClosed?'Bookings closed for selected dates':quote.availableRooms>0?quote.availableRooms+' rooms available':'No rooms available'}</span>}</div>
+    <div className="form-heading"><div><small>ROOM BOOKING</small><h3>Your trip details</h3></div>{quote.availableRooms!==undefined&&<span className={quote.availableRooms>=roomCount?'available':'unavailable'}>{quote.bookingClosed?'Bookings closed for selected dates':quote.availableRooms>=roomCount?quote.availableRooms+' rooms available':'Not enough rooms available'}</span>}</div>
     <div className="form-grid dates">
      <label><span>Check-in</span><input required type="date" min={today||undefined} value={checkIn} onChange={e=>{setCheckIn(e.target.value);if(e.target.value>=checkOut)setCheckOut(tomorrow(e.target.value,1))}}/></label>
      <label><span>Check-out</span><input required type="date" min={checkIn?tomorrow(checkIn,1):today||undefined} value={checkOut} onChange={e=>setCheckOut(e.target.value)}/></label>
     </div>
-    <label><span>Number of rooms</span><select value={roomCount} onChange={e=>{const count=Number(e.target.value);setRoomGuests(current=>Array.from({length:count},(_,i)=>current[i]||{adults:2,children:0}));}}>{Array.from({length:Math.max(1,Math.min(14,quote.availableRooms??14))},(_,i)=><option key={i+1} value={i+1}>{i+1} {i===0?'room':'rooms'}</option>)}</select></label>
+    <label><span>Number of rooms</span><select value={roomCount} onChange={e=>{const count=Number(e.target.value);setRoomGuests(current=>Array.from({length:count},(_,i)=>current[i]||{adults:2,children:0}));}}>{Array.from({length:14},(_,i)=><option key={i+1} value={i+1}>{i+1} {i===0?'room':'rooms'}</option>)}</select></label>
     {roomGuests.map((r,index)=><div key={index} className="form-grid">
      <label><span>Room {index+1} · Adults</span><select value={r.adults} onChange={e=>updateRoom(index,'adults',Number(e.target.value))}>{[1,2,3].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
      <label><span>Room {index+1} · Children</span><select value={r.children} onChange={e=>updateRoom(index,'children',Number(e.target.value))}>{Array.from({length:4-r.adults},(_,i)=><option key={i} value={i}>{i}</option>)}</select></label>
