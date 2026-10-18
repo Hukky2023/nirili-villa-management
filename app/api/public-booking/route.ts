@@ -90,28 +90,34 @@ export async function POST(request:Request){
   const checkIn=String(body.checkIn||''),checkOut=String(body.checkOut||''),meal=String(body.meal||'');
   const adults=Number(body.adults),children=Number(body.children),pax=adults+children;
   const packageId=safeText(body.packageId,100);
+  const requestedRooms=Array.isArray(body.rooms)?body.rooms:[{adults,children}];
+  const validRooms=requestedRooms.length>=1&&requestedRooms.length<=14&&requestedRooms.every((room:any)=>Number.isInteger(room.adults)&&room.adults>=1&&room.adults<=3&&Number.isInteger(room.children)&&room.children>=0&&room.children<=2&&room.adults+room.children<=3);
+  const totalAdults=requestedRooms.reduce((n:number,room:any)=>n+Number(room.adults||0),0),totalChildren=requestedRooms.reduce((n:number,room:any)=>n+Number(room.children||0),0);
   const notes=safeText(body.notes,1000),token=String(body.token||''),transportPlan=normalizeTransportPlan(body.transportPlan,checkIn,checkOut);
   const today=islandToday(),nights=nightsBetween(checkIn,checkOut);
   if(!guest||!phonePattern.test(phone)||!email||!emailPattern.test(email))throw Error('Enter your name, WhatsApp number with country code, and a valid email address.');
   if(!validDate(checkIn)||!validDate(checkOut)||checkIn<today||checkOut<=checkIn||!Number.isInteger(nights)||nights<1||nights>365)throw Error('Choose valid check-in and check-out dates.');
-  if(!Number.isInteger(adults)||adults<1||adults>3||!Number.isInteger(children)||children<0||children>2||pax>3)throw Error('A room can accommodate up to 3 guests.');
+  if(!validRooms||totalAdults!==adults||totalChildren!==children)throw Error('Choose 1–14 rooms, each with 1–3 guests and at least one adult.');
   if(!plans.includes(meal))throw Error('Choose a valid meal plan.');
   if(!/^[a-f0-9-]{20,80}$/i.test(token))throw Error('Refresh the booking page and try again.');
   const ip=request.headers.get('cf-connecting-ip')||'unknown';
   if(!await limit('public-booking-ip:'+ip,12,3600000)||!await limit('public-booking-phone:'+phone,5,3600000))throw Error('Too many booking requests. Please contact reception or try again later.');
   const {state}=await hotelState();
-  const rooms=availability(state,checkIn,checkOut,pax);
-  if(!rooms.length)return Response.json({error:'No rooms are currently available for these dates and guest count. Try different dates or contact reception.'},{status:409,headers});
+  const rooms=availability(state,checkIn,checkOut,0);
+  if(rooms.length<requestedRooms.length||requestedRooms.some((room:any)=>availability(state,checkIn,checkOut,room.adults+room.children).length<requestedRooms.length))return Response.json({error:'Not enough suitable rooms are available for the requested group. Change dates or contact reception.'},{status:409,headers});
+  // Ensure a distinct physical room can fit each requested occupancy (not just matching counts).
+  const unassigned=[...rooms];
+  for(const item of [...requestedRooms].sort((a:any,b:any)=>(b.adults+b.children)-(a.adults+a.children))){const idx=unassigned.findIndex((r:any)=>(Number(r.capacity)||3)>=item.adults+item.children);if(idx<0)return Response.json({error:'Not enough rooms can accommodate this group.'},{status:409,headers});unassigned.splice(idx,1);}
   const selectedPackage=packageId?(Array.isArray(state.propertyPackages)?state.propertyPackages:[]).find((item:any)=>String(item.id)===packageId&&item.active!==false):null;
   if(packageId&&!selectedPackage)throw Error('The selected package is no longer available. Refresh and choose again.');
   if(selectedPackage&&Number(selectedPackage.nights)!==nights)throw Error('The selected package requires '+selectedPackage.nights+' nights. Update your stay dates.');
   if(selectedPackage&&String(selectedPackage.mealPlan||'')!==meal)throw Error('The selected package uses '+selectedPackage.mealPlan+'. Refresh and choose the package again.');
-  const packageRatePerGuest=selectedPackage?(pax<=1?Number(selectedPackage.singleCents??selectedPackage.cents??0):pax===2?Number(selectedPackage.doubleCents??selectedPackage.cents??0):Number(selectedPackage.tripleCents??selectedPackage.cents??0)):0;
-  const packagePrice=selectedPackage?packageRatePerGuest*pax:0;
-  const estimate=selectedPackage?packagePrice:nightly(meal,pax,state.roomRates,checkIn,state.roomRatePeriods||[])*nights;
+  const packagePrice=selectedPackage?requestedRooms.reduce((sum:number,room:any)=>{const people=room.adults+room.children;const rate=Number((people===1?selectedPackage.singleCents:people===2?selectedPackage.doubleCents:selectedPackage.tripleCents)??selectedPackage.cents??0);return sum+rate*people;},0):0;
+  const packageRatePerGuest=selectedPackage?Math.round(packagePrice/pax):0;
+  const estimate=selectedPackage?packagePrice:requestedRooms.reduce((sum:number,room:any)=>sum+nightly(meal,room.adults+room.children,state.roomRates,checkIn,state.roomRatePeriods||[])*nights,0);
   const id='REQ-'+crypto.randomUUID().slice(0,8).toUpperCase(),manageToken=createBookingManageToken();
   const booking={
-   id,token,manageToken,guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,meal,notes,transportPlan,
+   id,token,manageToken,guest,whatsapp:phone,email,checkIn,checkOut,pax,adults,children,rooms:requestedRooms,roomCount:requestedRooms.length,meal,notes,transportPlan,
    ...(selectedPackage?packageSnapshot(selectedPackage,packagePrice,packageRatePerGuest,await loadExcursionMenu()):{}),
    status:'Pending',source:'Guest booking website',createdAt:new Date().toISOString(),estimate
   };
@@ -127,7 +133,7 @@ export async function POST(request:Request){
   }catch{}
   if(!result?.duplicate)try{await emitAdminNotification({
    id:'hotel:new:'+bookingRef,type:'hotel',title:'New hotel booking',
-   detail:guest+' · '+checkIn+' → '+checkOut+' · '+(selectedPackage?selectedPackage.name+' · ':'')+meal+' · '+pax+' guest'+(pax===1?'':'s'),
+   detail:guest+' · '+checkIn+' → '+checkOut+' · '+requestedRooms.length+' room(s) · '+(selectedPackage?selectedPackage.name+' · ':'')+meal+' · '+pax+' guest'+(pax===1?'':'s'),
    ref:bookingRef,url:'/home'
   });}catch{}
   return Response.json({ok:true,id:bookingRef,duplicate:!!result?.duplicate,estimateCents:estimate,nights,email:emailResult},{status:201,headers});
