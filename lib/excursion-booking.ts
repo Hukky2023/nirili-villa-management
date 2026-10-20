@@ -92,6 +92,27 @@ async function schedulesForDate(date:string){
  return (rows.results||[]).map((row:any)=>JSON.parse(row.payload)).sort((a:any,b:any)=>String(a.time).localeCompare(String(b.time))||String(a.name).localeCompare(String(b.name)));
 }
 
+// Public-safe partner schedule summary: never return orders, guest names or crew records.
+export async function partnerAvailableSchedules(){
+ const today=islandToday();
+ const {state}=await loadStays();
+ const menu=await loadExcursionMenu();
+ const published=menu.filter((item:any)=>item.kind==='excursion'&&item.active!==false&&item.publishedToWebsite===true);
+ const result:any[]=[];
+ for(let day=0;day<7;day++){
+  const date=shiftDate(today,day);
+  await ensureStandardDailyExcursions(date);
+  const schedules=(await schedulesForDate(date)).filter((s:any)=>s.status==='Open'&&!excursionDeparturePassed(s.date,s.time));
+  for(const schedule of schedules){
+   const {remaining}=candidateLoad(schedule,schedules,state.orders||[]);
+   if(remaining<1)continue;
+   const items=published.filter((item:any)=>scheduleCanServeRequest(item.scheduleName||item.name,schedule.name)).map((item:any)=>({id:item.id,name:item.name,cents:Math.max(0,Number(item.cents)||0),pricingUnit:item.pricingUnit==='couple'?'couple':'guest',needsFootSizes:item.id==='special-package'||isSnorkelingTrip(item.scheduleName||item.name)}));
+   if(items.length)result.push({id:String(schedule.id),name:String(schedule.name),date,time:String(schedule.time),endTime:String(schedule.endTime||''),remaining,items});
+  }
+ }
+ return result;
+}
+
 export async function excursionBookingOptions(){
  const menu=await loadExcursionMenu();
   const items=menu.filter((item:any)=>item.kind==='excursion'&&item.active!==false&&item.publishedToWebsite!==false).map((item:any)=>({
@@ -234,7 +255,10 @@ export async function createExcursionBooking(body:any,channel:ExcursionBookingCh
    .filter((schedule:any)=>scheduleCanServeRequest(item.scheduleName||item.name,schedule.name))
    .map((schedule:any)=>({schedule,...candidateLoad(schedule,allSchedules,state.orders),rank:scheduleMatchRank(item.scheduleName||item.name,schedule.name)}))
    .sort((a:any,b:any)=>(a.remaining>=mix.total?0:1)-(b.remaining>=mix.total?0:1)||String(a.schedule.time).localeCompare(String(b.schedule.time))||a.rank-b.rank||b.remaining-a.remaining);
-  const chosen=channel.autoConfirm?candidates.find((candidate:any)=>candidate.remaining>=mix.total):undefined;
+  const requestedScheduleId=channel.source==='Agent portal'?safeText(body.scheduleId,120):'';
+  if(requestedScheduleId&&!candidates.some((candidate:any)=>candidate.schedule.id===requestedScheduleId&&candidate.remaining>=mix.total))
+   throw Error('The selected trip is no longer available for this number of guests. Refresh Schedules.');
+  const chosen=channel.autoConfirm?(requestedScheduleId?candidates.find((candidate:any)=>candidate.schedule.id===requestedScheduleId&&candidate.remaining>=mix.total):candidates.find((candidate:any)=>candidate.remaining>=mix.total)):undefined;
 
   if(chosen){
    const schedule=chosen.schedule,resources=excursionResources(state);
