@@ -246,7 +246,7 @@ export async function GET(r:Request){
    const {pendingOrders,...rest}=s;
    return {...rest,requests,capacity,remainingSeats:Math.max(0,capacity-(g?.bookedPax??s.bookedPax)),isFull:(g?.bookedPax??s.bookedPax)>=capacity,guideRule:guideRuleFor(s,raw,orders,resources.crew)};
   });
-  const unscheduledRequests=orders.filter((o:any)=>o.kind==='excursion'&&o.date===date&&o.unscheduledRequest===true&&o.approvalStatus==='Pending'&&o.status!=='Cancelled').map((o:any)=>({
+  const unscheduledRequests=orders.filter((o:any)=>o.kind==='excursion'&&o.date===date&&o.status!=='Cancelled'&&(o.unscheduledRequest===true&&o.approvalStatus==='Pending'||o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled'&&o.status!=='Cancelled'&&!o.scheduleId&&!isRomanticBeachDinner(o))&&!raw.some((schedule:any)=>matches(o,schedule))).map((o:any)=>({
    id:o.id,name:o.name,guest:o.guest||'Guest',phone:o.phone||'',hotel:o.hotel||'',room:o.room||o.externalRoom||'',inHouse:!!o.stayId,quantity:Number(o.quantity)||0,adults:Number(o.adults??o.quantity)||0,children:Number(o.children)||0,infants:Number(o.infants)||0,date:o.date,
    quotedCents:Math.max(0,Number(o.quotedCents)||0),unitPriceCents:Math.max(0,Number(o.unitPriceCents)||0),pricingUnit:o.pricingUnit||'guest',
    buggyRequested:!!o.buggyRequested,privateBoatRequested:!!o.privateBoatRequested,privateBoatSurchargeCents:Number(o.privateBoatSurchargeCents)||0,preferredTime:o.preferredTime||'',preferredEndTime:o.preferredEndTime||'',serviceType:o.serviceType||'',serviceRequest:!!o.serviceRequest,notes:o.notes||'',source:o.source||'',createdAt:o.createdAt||''
@@ -556,8 +556,10 @@ export async function PATCH(r:Request){
    const crewIds=Array.isArray(b.crewIds)?b.crewIds:[],guideIdsInput=Array.isArray(b.guideIds)?b.guideIds:[];
    if(!requestId||!validTime(time)||!vesselId)throw Error('Choose a departure time and vessel.');
    const {state,revision}=await loadStays();
-   const order=(state.orders||[]).find((o:any)=>o.id===requestId&&o.kind==='excursion'&&o.unscheduledRequest===true&&o.approvalStatus==='Pending'&&o.status!=='Cancelled');
-   if(!order)throw Error('This scheduling request has already been handled.');
+   const order=(state.orders||[]).find((o:any)=>o.id===requestId&&o.kind==='excursion'&&o.status!=='Cancelled'&&(o.unscheduledRequest===true&&o.approvalStatus==='Pending'||o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled'&&o.status!=='Cancelled'&&!o.scheduleId&&!isRomanticBeachDinner(o)));
+   if(!order)throw Error('This booking is no longer awaiting a trip or has already been scheduled.');
+   if((await schedulesForDate(order.date)).some((schedule:any)=>matches(order,schedule)))throw Error('This booking already has an excursion trip. Refresh the schedule.');
+   const previouslyPending=order.approvalStatus==='Pending';
    const resortVisit=isPrivateResortVisit(order);
    if(resortVisit){
     if(!validTime(returnTime))throw Error('Choose a valid return pickup time for the resort visit.');
@@ -588,7 +590,7 @@ export async function PATCH(r:Request){
    const inserted=await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind(key,JSON.stringify(record),user.userId).run();
    if(!inserted.meta.changes)throw Error('Could not create the requested trip.');
    const crew=resources.crew.filter((c:any)=>body.crewIds.includes(c.id));
-   order.scheduleId=scheduleId;order.time=body.time;order.endTime=body.endTime;if(resortVisit){order.returnTime=returnTime;order.serviceType=RESORT_VISIT_SERVICE;}order.approvalStatus='Approved';order.status='Scheduled';order.cents=Math.max(0,Number(order.quotedCents)||0);
+   order.scheduleId=scheduleId;order.time=body.time;order.endTime=body.endTime;if(resortVisit){order.returnTime=returnTime;order.serviceType=RESORT_VISIT_SERVICE;}order.approvalStatus='Approved';order.status='Scheduled';if(previouslyPending)order.cents=Math.max(0,Number(order.quotedCents)||0);
    order.seatRequest=false;order.unscheduledRequest=false;order.autoConfirmed=false;order.adminScheduled=true;order.requestedOverCapacity=false;
    order.reviewedAt=now;order.reviewedBy=user.username;order.guestNotified=false;
    order.schedule={date:body.date,time:body.time,endTime:body.endTime,...(resortVisit?{returnTime}:{}),vesselId:body.vesselId,vessel:vessel.name,...(body.goproId?{goproId:body.goproId,gopro:resources.gopros.find((g:any)=>g.id===body.goproId)?.name||body.goproId}:{}),...(body.droneId?{droneId:body.droneId,drone:resources.drones.find((d:any)=>d.id===body.droneId)?.name||body.droneId}:{}),crewIds:body.crewIds,guideIds:guides,crew:crew.map((c:any)=>c.name),privateBoat:!!order.privateBoatRequested};
