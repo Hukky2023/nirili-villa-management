@@ -74,7 +74,7 @@ export function AgentExcursions(){
 
 function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agent:Agent;items:Item[];today:string;surcharge:number;onBooked:()=>void;onViewBookings:()=>void}){
  const [itemIds,setItemIds]=useState<string[]>([]),[date,setDate]=useState(today),[guests,setGuests]=useState<Guest[]>([newGuest()]);
- const [pickup,setPickup]=useState(agent.pickup),[room,setRoom]=useState(''),[phone,setPhone]=useState(''),[guestDiscount,setGuestDiscount]=useState('0'),[notes,setNotes]=useState('');
+ const [pickup,setPickup]=useState(agent.pickup),[email,setEmail]=useState(''),[room,setRoom]=useState(''),[phone,setPhone]=useState(''),[guestDiscount,setGuestDiscount]=useState('0'),[notes,setNotes]=useState('');
  const [privateBoat,setPrivateBoat]=useState(false),[buggy,setBuggy]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState<any>(null);
  const token=useRef('');
@@ -104,7 +104,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
     const body={token:index===0?token.current:token.current.slice(0,25)+'-'+String(index).padStart(3,'0'),
      menuItemId:chosen.id,date,guest:guests[0]?.name||'',guestNames:guests.map(g=>g.name),
      guestCategories:guests.map(g=>g.age),footSizes:chosen.needsFootSizes?guests.map(g=>Number(g.feet)):[],
-     phone,hotel:pickup,externalRoom:room,guestDiscountPercent,notes,
+     phone,email,hotel:pickup,externalRoom:room,guestDiscountPercent,notes,
      privateBoatRequested:privateBoat&&canPrivate,buggyRequested:buggy};
     const r=await fetch('/api/agent-portal/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d:any=await r.json().catch(()=>({}));
@@ -117,7 +117,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
    document.getElementById('book')?.scrollIntoView({behavior:'smooth'});
   }catch(err){setError((err as Error).message);void onBooked();}finally{setBusy(false);}
  }
- function again(){setDone(null);token.current=crypto.randomUUID();setItemIds([]);setGuests([newGuest()]);setRoom('');setPhone('');setGuestDiscount('0');setNotes('');setPrivateBoat(false);setBuggy(false);}
+ function again(){setDone(null);token.current=crypto.randomUUID();setItemIds([]);setGuests([newGuest()]);setRoom('');setPhone('');setEmail('');setGuestDiscount('0');setNotes('');setPrivateBoat(false);setBuggy(false);}
 
  if(done){
   const confirmed=done.status==='Confirmed',message=voucher({ref:done.id,excursion:done.excursion,date:done.date,time:done.time,pickup:done.pickup,guests:done.guests},agent);
@@ -167,6 +167,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
       <button type="button" aria-label={'Remove guest '+(i+1)} disabled={guests.length<=1} onClick={()=>setGuests(list=>list.filter((_,n)=>n!==i))}><Trash2/></button>
      </div>)}
     </div>
+    <label style={{display:'block',marginTop:14}}><span>Lead guest email (required)</span><input style={{display:'block',width:'100%',marginTop:8}} required type="email" maxLength={254} autoComplete="email" placeholder="guest@example.com" value={email} onChange={e=>setEmail(e.target.value)}/></label>
     {guests.length<20&&<button type="button" className="nh-agent-add" onClick={()=>setGuests(list=>[...list,newGuest()])}><Plus/>Add guest</button>}
     {needsFootSizes&&<p className="nh-hint">EU foot sizes let the crew prepare snorkeling fins before departure.</p>}
    </div>
