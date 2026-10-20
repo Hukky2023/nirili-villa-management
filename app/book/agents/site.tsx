@@ -100,13 +100,12 @@ function PartnerSchedules({onBook}:{onBook:(choice:{id:string;date:string;itemId
 }
 
 function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings,scheduleChoice}:{agent:Agent;items:Item[];today:string;surcharge:number;onBooked:()=>void;onViewBookings:()=>void;scheduleChoice:{id:string;date:string;itemId:string}|null}){
- const [itemIds,setItemIds]=useState<string[]>(scheduleChoice?[scheduleChoice.itemId]:[]),[date,setDate]=useState(scheduleChoice?.date||today),[guests,setGuests]=useState<Guest[]>([newGuest()]);
+ const [itemIds,setItemIds]=useState<string[]>(scheduleChoice?[scheduleChoice.itemId]:[]),[dates,setDates]=useState<Record<string,string>>(scheduleChoice?{[scheduleChoice.itemId]:scheduleChoice.date}:{}),[guests,setGuests]=useState<Guest[]>([newGuest()]);
  const [pickup,setPickup]=useState(agent.pickup),[email,setEmail]=useState(''),[room,setRoom]=useState(''),[phone,setPhone]=useState(''),[guestDiscount,setGuestDiscount]=useState('0'),[notes,setNotes]=useState('');
  const [privateBoat,setPrivateBoat]=useState(false),[buggy,setBuggy]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState<any>(null);
  const token=useRef('');
  useEffect(()=>{token.current=crypto.randomUUID();},[]);
- useEffect(()=>{if(!date&&today)setDate(today);},[today,date]);
  const selected=items.filter(i=>itemIds.includes(i.id));
  const needsFootSizes=selected.some(i=>i.needsFootSizes);
  const item=selected[0];
@@ -123,13 +122,14 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings,schedu
   e.preventDefault();if(busy)return;setBusy(true);setError('');
   try{
    if(!selected.length)throw Error('Select at least one published excursion.');
+   if(selected.some(i=>!dates[i.id]||dates[i.id]<today))throw Error('Choose a valid date for every selected excursion.');
    const references:string[]=[];
    const statuses:string[]=[];
    for(const [index,chosen] of selected.entries()){
     // Each trip is independently scheduled and retains its own cancellation and payment record.
     // A stable token per selection prevents duplicate orders when the request is retried.
     const body={token:index===0?token.current:token.current.slice(0,25)+'-'+String(index).padStart(3,'0'),
-     menuItemId:chosen.id,date,...(scheduleChoice&&chosen.id===scheduleChoice.itemId&&date===scheduleChoice.date?{scheduleId:scheduleChoice.id}:{}),guest:guests[0]?.name||'',guestNames:guests.map(g=>g.name),
+     menuItemId:chosen.id,date:dates[chosen.id],...(scheduleChoice&&chosen.id===scheduleChoice.itemId&&dates[chosen.id]===scheduleChoice.date?{scheduleId:scheduleChoice.id}:{}),guest:guests[0]?.name||'',guestNames:guests.map(g=>g.name),
      guestCategories:guests.map(g=>g.age),footSizes:chosen.needsFootSizes?guests.map(g=>Number(g.feet)):[],
      phone,email,hotel:pickup,externalRoom:room,guestDiscountPercent,notes,
      privateBoatRequested:privateBoat&&canPrivate,buggyRequested:buggy};
@@ -139,12 +139,12 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings,schedu
     references.push(d.booking.id);
     statuses.push(d.booking.status);
    }
-   setDone({id:references.join(', '),refs:references,status:statuses.every(s=>s==='Confirmed')?'Confirmed':'Pending',excursion:selected.map(i=>i.name).join(' + '),date,guests:guests.length,pickup,phone});
+   setDone({id:references.join(', '),refs:references,status:statuses.every(s=>s==='Confirmed')?'Confirmed':'Pending',excursion:selected.map(i=>i.name).join(' + '),date:selected.length===1?dates[selected[0].id]:'',tripDates:selected.map(i=>({name:i.name,date:dates[i.id]})),guests:guests.length,pickup,phone});
    onBooked();
    document.getElementById('book')?.scrollIntoView({behavior:'smooth'});
   }catch(err){setError((err as Error).message);void onBooked();}finally{setBusy(false);}
  }
- function again(){setDone(null);token.current=crypto.randomUUID();setItemIds([]);setGuests([newGuest()]);setRoom('');setPhone('');setEmail('');setGuestDiscount('0');setNotes('');setPrivateBoat(false);setBuggy(false);}
+ function again(){setDone(null);token.current=crypto.randomUUID();setItemIds([]);setDates({});setGuests([newGuest()]);setRoom('');setPhone('');setEmail('');setGuestDiscount('0');setNotes('');setPrivateBoat(false);setBuggy(false);}
 
  if(done){
   const confirmed=done.status==='Confirmed',message=voucher({ref:done.id,excursion:done.excursion,date:done.date,time:done.time,pickup:done.pickup,guests:done.guests},agent);
@@ -152,7 +152,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings,schedu
    <CheckCircle2/>
    <p className="nh-kicker">{confirmed?'Booking confirmed':'Booking received'}</p>
    <h2>{confirmed?<>Your guests are <em>on board.</em></>:<>We&rsquo;re <em>on it.</em></>}</h2>
-   <p>{confirmed?`${done.excursion} on ${niceDate(done.date)}, departing ${done.time} (Maldives time).`:`Our team will place ${done.excursion} on ${niceDate(done.date)} on a trip and confirm here. You can follow it under My bookings.`}</p>
+   <p>{confirmed?'Your selected excursions are confirmed.':'Your excursion requests were received. Check My bookings for scheduling updates.'}</p><ul>{(done.tripDates||[]).map((trip:{name:string;date:string},index:number)=><li key={index}>{trip.name} — {niceDate(trip.date)}</li>)}</ul>
    <strong>{done.id}</strong>
    <div className="nh-hero-actions">
     <a className="nh-btn nh-btn-outline" href={done.phone?waLink(done.phone,message):'https://wa.me/?text='+encodeURIComponent(message)} target="_blank" rel="noopener noreferrer"><MessageCircle size={16}/> Send to guest</a>
@@ -178,8 +178,8 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings,schedu
     </details>)}
     {!items.length&&<p className="nh-hint">No published excursions are available.</p>}
     <p className="nh-hint">{selected.length} excursion{selected.length===1?'':'s'} selected. Each trip is scheduled separately for the same guests.</p>
+    {selected.length>0&&<div className="nh-agent-trip-dates"><h3>Choose a date for each excursion</h3>{selected.map(i=><label key={i.id} className="nh-agent-trip-date"><span>{i.name}</span><input required type="date" min={today||undefined} value={dates[i.id]||''} onChange={e=>setDates(current=>({...current,[i.id]:e.target.value}))}/></label>)}</div>}
     <div className="nh-fields">
-     <label><span><CalendarDays/>Date</span><input required type="date" min={today||undefined} value={date} onChange={e=>setDate(e.target.value)}/></label>
      <label><span><MapPin/>Pickup point</span><input required maxLength={150} value={pickup} onChange={e=>setPickup(e.target.value)}/></label>
     </div>
    </div>
@@ -217,7 +217,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings,schedu
    <p className="nh-kicker">Booking summary</p>
    <dl>
     <div><dt>Excursion</dt><dd>{selected.length?selected.map(i=>i.name).join(', '):'Choose excursions'}</dd></div>
-    <div><dt>Date</dt><dd>{niceDate(date)||'Choose a day'}</dd></div>
+    {selected.map(i=><div key={i.id}><dt>{i.name} date</dt><dd>{niceDate(dates[i.id])||'Choose a day'}</dd></div>)}
     <div><dt>Guests</dt><dd>{guests.length}</dd></div>
     {selected.length>0&&<><div className="nh-agent-public"><dt>Public price</dt><dd>{money(publicTotal)}</dd></div><div><dt>Guest discount</dt><dd>{guestDiscountPercent}%</dd></div><div><dt>Guest price</dt><dd>{money(guestPrice)}</dd></div></>}
    </dl>
