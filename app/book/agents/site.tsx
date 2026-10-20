@@ -88,14 +88,14 @@ function PartnerSchedules({onBook}:{onBook:(choice:{id:string;date:string;itemId
   }catch(e){setError((e as Error).message);}finally{setLoading(false);}
  },[]);
  useEffect(()=>{void refresh();},[refresh]);
- return <section className="nh-transfer" aria-label="Available excursion schedules">
-  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><h3>Available excursion schedules</h3><button type="button" className="nh-btn nh-btn-outline" onClick={()=>void refresh()}>Refresh seats</button></div>
-  <p className="nh-hint">Upcoming seven days · Maldives time. Only trips with available seats are shown. Other guests’ details are private.</p>
+ return <section className="nh-transfer nh-partner-schedules" aria-label="Available excursion schedules">
+  <div className="nh-schedules-header"><h3>Available excursion schedules</h3><button type="button" className="nh-btn nh-btn-outline nh-schedules-refresh" onClick={()=>void refresh()}>Refresh seats</button></div>
+  <p className="nh-hint nh-schedules-hint">Upcoming seven days · Maldives time. Only trips with available seats are shown. Other guests’ details are private.</p>
   {error&&<p className="nh-error" role="alert">{error}</p>}
-  {loading?<p>Checking available seats…</p>:error?null:!schedules.length?<p>No available excursions at the moment. Please check again later.</p>:schedules.map(s=><article key={s.id} className="nh-step" style={{marginBottom:14}}>
-   <h3>{s.name}</h3><p>{niceDate(s.date)} · {s.time}{s.endTime?'–'+s.endTime:''} · <strong>{s.remaining} seat{s.remaining===1?'':'s'} available</strong></p>
-   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{s.items.map(i=><button key={i.id} type="button" className="nh-btn nh-btn-primary" onClick={()=>onBook({id:s.id,date:s.date,itemId:i.id})}>Book {i.name}</button>)}</div>
-  </article>)}
+  {loading?<p>Checking available seats…</p>:error?null:!schedules.length?<p>No available excursions at the moment. Please check again later.</p>:<div className="nh-schedules-list">{schedules.map(s=><article key={s.id} className="nh-step nh-schedule-card">
+   <h3>{s.name}</h3><p className="nh-schedule-meta"><span>{niceDate(s.date)} · {s.time}{s.endTime?'–'+s.endTime:''}</span><strong>{s.remaining} seat{s.remaining===1?'':'s'} available</strong></p>
+   <div className="nh-schedule-actions">{s.items.map(i=><button key={i.id} type="button" className="nh-btn nh-btn-primary" onClick={()=>onBook({id:s.id,date:s.date,itemId:i.id})}>Book {i.name}</button>)}</div>
+  </article>)}</div>}
  </section>;
 }
 
