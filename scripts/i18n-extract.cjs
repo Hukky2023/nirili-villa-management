@@ -40,11 +40,11 @@ function extract(){
    else if((ts.isStringLiteral(n)||ts.isNoSubstitutionTemplateLiteral(n))&&!(n.parent&&ts.isJsxAttribute(n.parent))){
     const p=n.parent,text=n.text;
     const callee=p&&(ts.isCallExpression(p)||ts.isNewExpression(p))?p.expression.getText():'';
-    if(p&&ts.isPropertyAssignment(p)&&p.initializer===n){if(!NOT_TEXT_KEYS.has(p.name.getText())&&looksLikeCopy(text))add(text,f);}
+    if(p&&ts.isPropertyAssignment(p)&&p.initializer===n){if(!NOT_TEXT_KEYS.has(p.name.getText())&&looksLikeCopy(text)&&!/^\d+px(?:\s+\d+px)*(?:\s+solid\s+#[a-f\d]+)?$/i.test(text))add(text,f);}
     else if(/^(Error|setError|setMessage|setNotice|setStatus|alert|confirm|window\.confirm|window\.alert|localizedConfirm|localizedAlert)$/.test(callee))add(text,f);
     else if(p&&ts.isReturnStatement(p)&&looksLikeCopy(text))add(text,f);
     else if(p&&ts.isArrayLiteralExpression(p)&&/\s/.test(text)&&/^[A-Z]/.test(text))add(text,f);
-    else if(inJsx(n)&&looksLikeCopy(text)&&!((()=>{for(let a=n.parent;a;a=a.parent){if(ts.isJsxExpression(a))return !!(a.parent&&ts.isJsxAttribute(a.parent)&&a.parent.name.getText()==='style');if(ts.isFunctionLike(a))break;}return false;})()))add(text,f);
+    else if(inJsx(n)&&looksLikeCopy(text)&&!/^\d+px(?:\s+\d+px)*(?:\s+solid\s+#[a-f\d]+)?$/i.test(text)&&!((()=>{for(let a=n.parent;a;a=a.parent){if(ts.isJsxExpression(a))return !!(a.parent&&ts.isJsxAttribute(a.parent)&&a.parent.name.getText()==='style');if(ts.isFunctionLike(a))break;}return false;})()))add(text,f);
     else if(p&&ts.isConditionalExpression(p)&&looksLikeCopy(text))add(text,f);
     else if(p&&ts.isBinaryExpression(p)&&p.operatorToken.kind===ts.SyntaxKind.BarBarToken&&looksLikeCopy(text))add(text,f);
    }
