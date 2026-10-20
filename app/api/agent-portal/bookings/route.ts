@@ -3,7 +3,7 @@ import {islandToday} from '../../../../lib/guest-catalog';
 import {loadStays} from '../../../../lib/stays';
 import {saveStayAccess} from '../../../../lib/stay-login';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
-import {createExcursionBooking,excursionBookingOptions} from '../../../../lib/excursion-booking';
+import {createExcursionBooking,excursionBookingOptions,partnerAvailableSchedules} from '../../../../lib/excursion-booking';
 import {AGENT_SOURCE,agentBookingSummaries,agentFromRequest,cancelAgentBooking,netPriceCents,publicAgent,text,type Agent} from '../../../../lib/excursion-agents';
 
 // Partner guest houses book, follow and cancel their guests' excursions here.
@@ -15,6 +15,7 @@ export async function GET(r:Request){
  try{
   const agent=await agentFromRequest(r);
   if(!agent)return signedOut();
+  if(new URL(r.url).searchParams.get('view')==='schedules')return Response.json({schedules:await partnerAvailableSchedules()},{headers});
   const [options,{state}]=await Promise.all([excursionBookingOptions(),loadStays()]);
   const items=options.items.map((item:any)=>({...item,netCents:netPriceCents(item.cents,agent.discountPercent)}));
   return Response.json({...options,items,agent:publicAgent(agent),bookings:agentBookingSummaries(state,agent.id)},{headers});
