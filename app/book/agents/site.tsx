@@ -86,8 +86,8 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
  const groups=useMemo(()=>[...new Set(items.map(i=>i.group||'Excursions'))],[items]);
  const canPrivate=guests.length>=4;
  const extra=privateBoat&&canPrivate?surcharge:0;
- const publicTotal=selected.reduce((sum,i)=>sum+priceFor(i.cents,i.pricingUnit,guests),0)+extra;
- const netTotal=selected.length?Math.round(publicTotal*(100-agent.discountPercent)/100):0;
+ const publicTotal=selected.reduce((sum,i)=>sum+priceFor(i.cents,i.pricingUnit,guests)+extra,0);
+ const netTotal=selected.reduce((sum,i)=>sum+Math.round((priceFor(i.cents,i.pricingUnit,guests)+extra)*(100-agent.discountPercent)/100),0);
  const setGuest=(i:number,patch:Partial<Guest>)=>setGuests(list=>list.map((g,n)=>n===i?{...g,...patch}:g));
 
  async function submit(e:React.FormEvent){
@@ -95,6 +95,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
   try{
    if(!selected.length)throw Error('Select at least one published excursion.');
    const references:string[]=[];
+   const statuses:string[]=[];
    for(const [index,chosen] of selected.entries()){
     // Each trip is independently scheduled and retains its own cancellation and payment record.
     // A stable token per selection prevents duplicate orders when the request is retried.
@@ -107,11 +108,12 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
     const d:any=await r.json().catch(()=>({}));
     if(!r.ok)throw Error((references.length?references.length+' excursion(s) saved ('+references.join(', ')+'). ':'')+(d.error||'Could not book '+chosen.name+'.'));
     references.push(d.booking.id);
+    statuses.push(d.booking.status);
    }
-   setDone({id:references.join(', '),refs:references,status:'Pending',excursion:selected.map(i=>i.name).join(' + '),date,guests:guests.length,pickup,phone});
+   setDone({id:references.join(', '),refs:references,status:statuses.every(s=>s==='Confirmed')?'Confirmed':'Pending',excursion:selected.map(i=>i.name).join(' + '),date,guests:guests.length,pickup,phone});
    onBooked();
    document.getElementById('book')?.scrollIntoView({behavior:'smooth'});
-  }catch(err){setError((err as Error).message);}finally{setBusy(false);}
+  }catch(err){setError((err as Error).message);void onBooked();}finally{setBusy(false);}
  }
  function again(){setDone(null);token.current=crypto.randomUUID();setItemIds([]);setGuests([newGuest(),newGuest()]);setRoom('');setPhone('');setReference('');setNotes('');setPrivateBoat(false);setBuggy(false);}
 
