@@ -74,7 +74,7 @@ export function AgentExcursions(){
 
 function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agent:Agent;items:Item[];today:string;surcharge:number;onBooked:()=>void;onViewBookings:()=>void}){
  const [itemIds,setItemIds]=useState<string[]>([]),[date,setDate]=useState(today),[guests,setGuests]=useState<Guest[]>([newGuest()]);
- const [pickup,setPickup]=useState(agent.pickup),[room,setRoom]=useState(''),[phone,setPhone]=useState(''),[reference,setReference]=useState(''),[notes,setNotes]=useState('');
+ const [pickup,setPickup]=useState(agent.pickup),[room,setRoom]=useState(''),[phone,setPhone]=useState(''),[guestDiscount,setGuestDiscount]=useState('0'),[notes,setNotes]=useState('');
  const [privateBoat,setPrivateBoat]=useState(false),[buggy,setBuggy]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState<any>(null);
  const token=useRef('');
@@ -88,6 +88,8 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
  const extra=privateBoat&&canPrivate?surcharge:0;
  const publicTotal=selected.reduce((sum,i)=>sum+priceFor(i.cents,i.pricingUnit,guests)+extra,0);
  const netTotal=selected.reduce((sum,i)=>sum+Math.round((priceFor(i.cents,i.pricingUnit,guests)+extra)*(100-agent.discountPercent)/100),0);
+ const guestDiscountPercent=Math.min(100,Math.max(0,Number(guestDiscount)||0));
+ const guestPrice=Math.round(publicTotal*(100-guestDiscountPercent)/100);
  const setGuest=(i:number,patch:Partial<Guest>)=>setGuests(list=>list.map((g,n)=>n===i?{...g,...patch}:g));
 
  async function submit(e:React.FormEvent){
@@ -102,7 +104,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
     const body={token:index===0?token.current:token.current.slice(0,25)+'-'+String(index).padStart(3,'0'),
      menuItemId:chosen.id,date,guest:guests[0]?.name||'',guestNames:guests.map(g=>g.name),
      guestCategories:guests.map(g=>g.age),footSizes:chosen.needsFootSizes?guests.map(g=>Number(g.feet)):[],
-     phone,hotel:pickup,externalRoom:room,agentReference:reference,notes,
+     phone,hotel:pickup,externalRoom:room,guestDiscountPercent,notes,
      privateBoatRequested:privateBoat&&canPrivate,buggyRequested:buggy};
     const r=await fetch('/api/agent-portal/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d:any=await r.json().catch(()=>({}));
@@ -115,7 +117,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
    document.getElementById('book')?.scrollIntoView({behavior:'smooth'});
   }catch(err){setError((err as Error).message);void onBooked();}finally{setBusy(false);}
  }
- function again(){setDone(null);token.current=crypto.randomUUID();setItemIds([]);setGuests([newGuest()]);setRoom('');setPhone('');setReference('');setNotes('');setPrivateBoat(false);setBuggy(false);}
+ function again(){setDone(null);token.current=crypto.randomUUID();setItemIds([]);setGuests([newGuest()]);setRoom('');setPhone('');setGuestDiscount('0');setNotes('');setPrivateBoat(false);setBuggy(false);}
 
  if(done){
   const confirmed=done.status==='Confirmed',message=voucher({ref:done.id,excursion:done.excursion,date:done.date,time:done.time,pickup:done.pickup,guests:done.guests},agent);
@@ -173,7 +175,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
     <div className="nh-fields nh-fields-3">
      <label><span>Guest room (optional)</span><input maxLength={50} value={room} onChange={e=>setRoom(e.target.value)}/></label>
      <label><span>Guest WhatsApp (optional)</span><input maxLength={30} inputMode="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+44 7XXX XXXXXX"/></label>
-     <label><span>Your reference (optional)</span><input maxLength={60} value={reference} onChange={e=>setReference(e.target.value)} placeholder="Your booking no."/></label>
+     <label><span>Guest discount (%)</span><input type="number" min="0" max="100" step="0.01" inputMode="decimal" value={guestDiscount} onChange={e=>setGuestDiscount(e.target.value)}/></label>
     </div>
     {canPrivate&&<label className="nh-agent-check"><input type="checkbox" checked={privateBoat} onChange={e=>setPrivateBoat(e.target.checked)}/><span>Private boat for this group<small>Adds {money(surcharge)} before your discount. Our team confirms the time.</small></span></label>}
     <label className="nh-agent-check"><input type="checkbox" checked={buggy} onChange={e=>setBuggy(e.target.checked)}/><span>Buggy pickup from the guest house<small>We collect the group from the pickup point.</small></span></label>
@@ -189,7 +191,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
     <div><dt>Excursion</dt><dd>{selected.length?selected.map(i=>i.name).join(', '):'Choose excursions'}</dd></div>
     <div><dt>Date</dt><dd>{niceDate(date)||'Choose a day'}</dd></div>
     <div><dt>Guests</dt><dd>{guests.length}</dd></div>
-    {selected.length>0&&agent.discountPercent>0&&<div className="nh-agent-public"><dt>Public price</dt><dd>{money(publicTotal)}</dd></div>}
+    {selected.length>0&&<><div className="nh-agent-public"><dt>Public price</dt><dd>{money(publicTotal)}</dd></div><div><dt>Guest discount</dt><dd>{guestDiscountPercent}%</dd></div><div><dt>Guest price</dt><dd>{money(guestPrice)}</dd></div></>}
    </dl>
    <div className="nh-fare-total"><span>You pay Nirili{agent.discountPercent?` (${agent.discountPercent}% partner rate)`:''}</span><strong>{selected.length?money(netTotal):'—'}</strong></div>
    <small>Children under 3 travel free; ages 3–11 pay half. Your guest pays you and you settle with Nirili Tours each month.</small>
