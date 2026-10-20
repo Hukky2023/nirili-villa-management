@@ -20,3 +20,46 @@
 
 
 .dining-pos-connect{margin:0 auto 18px;max-width:1180px;padding:18px;border:1px solid #cfe5dc;border-radius:18px;background:#f4fbf8;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}.dining-pos-connect.connected{background:#eefaf4;border-color:#b7dfc9}.dining-pos-connect small{font-size:10px;letter-spacing:.12em;font-weight:900;color:#0a8366}.dining-pos-connect h2{margin:5px 0;font-size:24px}.dining-pos-connect p{margin:0;color:#5c7770;line-height:1.5}.dining-pos-start{display:grid;grid-template-columns:180px 160px auto;gap:10px;align-items:end}.dining-pos-start label{margin:0}.dining-pos-start input,.dining-pos-start select{min-height:44px}.dining-pos-start .dining-send{min-height:44px;margin:0}.dining-pos-status{min-width:190px;padding:12px 14px;border-radius:13px;background:#fff;display:grid;grid-template-columns:auto 1fr;gap:2px 7px;align-items:center;border:1px solid #cfe6d9}.dining-pos-status>span{grid-row:1 / span 2;color:#18a06e;font-size:18px}.dining-pos-status>b{font-size:13px;color:#176a52}.dining-pos-status>small{font-size:11px;color:#6c8079;letter-spacing:0}@media(max-width:760px){.dining-pos-connect{grid-template-columns:1fr;padding:16px}.dining-pos-start{grid-template-columns:1fr}.dining-pos-status{min-width:0;width:100%}}
+
+
+/* Waiter POS redesign: compact four-product rows on every screen size.
+   Scoped to the embedded waiter page; public guest menu stays unchanged. */
+.guest-dining.dining-embedded{background:#f5fafb;border-color:#e1edf0;color:#123044;border-radius:18px}
+.dining-embedded .dining-hero{background:linear-gradient(115deg,#effbfc,#e5f3f0);padding:24px clamp(12px,2.5vw,30px)}
+.dining-embedded .dining-hero h1{font-weight:800;letter-spacing:-.035em;color:#102e42}
+.dining-embedded .dining-hero>p{color:#536e80;line-height:1.5}
+.dining-embedded .dining-hero label{width:calc(33.333% - 20px);min-width:150px;vertical-align:top;font-weight:650;color:#385770}
+.dining-embedded .dining-hero label select,.dining-embedded .dining-hero label input{width:100%;min-height:46px;box-sizing:border-box}
+.dining-embedded .dining-content{grid-template-columns:minmax(0,1fr) minmax(235px,27%);gap:14px;padding:16px}
+.dining-embedded .dining-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,26%);gap:10px}
+.dining-embedded .dining-filters input{width:100%;box-sizing:border-box}
+.dining-embedded .dining-filters select{width:100%;max-width:none}
+.dining-embedded .dining-products{grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.dining-embedded .dining-products article{padding:8px;border-radius:12px;border-color:#e5edef;box-shadow:0 3px 13px #1230440b}
+.dining-embedded .dining-products .menu-product-photo{aspect-ratio:4/3;border-radius:8px;margin-bottom:7px}
+.dining-embedded .dining-products small{font-size:10px}
+.dining-embedded .dining-products h3{font-size:13px;line-height:1.25;min-height:2.5em;margin:5px 0;color:#17354d}
+.dining-embedded .dining-products p{font-size:11px;line-height:1.35}
+.dining-embedded .dining-products footer{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:7px}
+.dining-embedded .dining-products footer b{color:#04677f;font-size:12px}
+.dining-embedded .dining-products footer button{min-height:34px;padding:6px 9px;font-size:12px;background:#e9f6f8;color:#006b84;border-color:#e9f6f8}
+.dining-embedded .dining-content aside{border-radius:15px;box-shadow:0 5px 20px #1230440b;padding:18px}
+.dining-embedded .dining-content aside h2{font-weight:800;color:#102e42}
+.dining-embedded .dining-send{background:#007f95!important;border-color:#007f95!important}
+@media(max-width:760px){
+ .dining-embedded .dining-content{grid-template-columns:1fr;padding:10px}
+ .dining-embedded .dining-content aside{position:static}
+ .dining-embedded .dining-hero label{width:100%;min-width:0;margin-right:0}
+ .dining-embedded .dining-filters{grid-template-columns:minmax(0,1fr) minmax(90px,32%)}
+ .dining-embedded .dining-filters input{flex-basis:auto}
+ .dining-embedded .dining-filters select{max-width:none}
+ .dining-embedded .dining-products{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+ .dining-embedded .dining-products article{padding:5px;border-radius:9px}
+ .dining-embedded .dining-products .menu-product-photo{border-radius:5px;margin-bottom:4px}
+ .dining-embedded .dining-products small{font-size:8px}
+ .dining-embedded .dining-products h3{font-size:10px;line-height:1.25;margin:4px 0;min-height:2.5em;overflow-wrap:anywhere}
+ .dining-embedded .dining-products p{font-size:9px}
+ .dining-embedded .dining-products footer{gap:4px;padding-top:4px}
+ .dining-embedded .dining-products footer b{font-size:10px}
+ .dining-embedded .dining-products footer button{width:100%;padding:5px 2px;min-height:30px;font-size:10px}
+}
