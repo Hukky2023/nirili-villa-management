@@ -31,7 +31,8 @@ export async function POST(r:Request){
   source:AGENT_SOURCE,createdBy:by(agent),savedBy:'agent:'+agent.id,
   autoConfirm:agent.autoConfirm,guestContactRequired:false,guestEmail:false,guestManageLink:false,
   defaultPickup:agent.pickup,netPrice:cents=>netPriceCents(cents,agent.discountPercent),
-  extra:{agentId:agent.id,agentName:agent.name,agentReference:text(body.agentReference,60),agentPayer:'Agent',agentDiscountPercent:agent.discountPercent},
+  extra:{agentId:agent.id,agentName:agent.name,agentReference:text(body.agentReference,60),agentPayer:'Agent',agentDiscountPercent:agent.discountPercent,
+   guestDiscountPercent:Math.min(100,Math.max(0,Number(body.guestDiscountPercent)||0))},
   notifyTitle:'New agent excursion booking',notifyPrefix:agent.name+' · ',
   allow:()=>limit('agent-booking:'+agent.id,60,3600000),
  });
