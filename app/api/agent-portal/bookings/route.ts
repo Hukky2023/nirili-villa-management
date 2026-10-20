@@ -29,7 +29,8 @@ export async function POST(r:Request){
  if(!agent)return signedOut();
  const result=await createExcursionBooking(body,{
   source:AGENT_SOURCE,createdBy:by(agent),savedBy:'agent:'+agent.id,
-  autoConfirm:agent.autoConfirm,guestContactRequired:false,guestEmail:false,guestManageLink:false,
+  autoConfirm:agent.autoConfirm,guestContactRequired:false,guestEmail:true,guestManageLink:false,
+  guestMailPrice:publicCents=>Math.round(publicCents*(100-Math.min(100,Math.max(0,Number(body.guestDiscountPercent)||0)))/100),
   defaultPickup:agent.pickup,netPrice:cents=>netPriceCents(cents,agent.discountPercent),
   extra:{agentId:agent.id,agentName:agent.name,agentReference:text(body.agentReference,60),agentPayer:'Agent',agentDiscountPercent:agent.discountPercent,
    guestDiscountPercent:Math.min(100,Math.max(0,Number(body.guestDiscountPercent)||0))},
