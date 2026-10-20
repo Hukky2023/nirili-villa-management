@@ -138,13 +138,15 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
    <div className="nh-step">
     <h3>Excursion</h3>
     <p className="nh-hint">Select one or more excursions published on the Nirili website.</p>
-    {groups.map(group=><fieldset key={group} style={{border:'1px solid #d7deda',borderRadius:14,padding:14,marginBottom:12}}>
-     <legend style={{fontWeight:700,padding:'0 8px'}}>{group}</legend>
+    {groups.map(group=><details key={group} className="nh-agent-excursion-group" style={{border:'1px solid #d7deda',borderRadius:14,padding:'12px 14px',marginBottom:12}}>
+     <summary style={{fontWeight:700,cursor:'pointer',padding:'6px 2px',listStyle:'revert'}}>{group} ({items.filter(i=>(i.group||'Excursions')===group&&itemIds.includes(i.id)).length} selected)</summary>
+     <div style={{paddingTop:12}}>
      {items.filter(i=>(i.group||'Excursions')===group).map(i=><label key={i.id} className="nh-agent-check" style={{display:'flex',gap:10,margin:'8px 0'}}>
       <input type="checkbox" checked={itemIds.includes(i.id)} onChange={e=>setItemIds(current=>e.target.checked?[...current,i.id]:current.filter(id=>id!==i.id))}/>
       <span>{i.name}<small style={{display:'block'}}>{money(i.netCents)} per {i.pricingUnit==='couple'?'couple':'adult'}{i.detail?' · '+i.detail:''}</small></span>
      </label>)}
-    </fieldset>)}
+     </div>
+    </details>)}
     {!items.length&&<p className="nh-hint">No published excursions are available.</p>}
     <p className="nh-hint">{selected.length} excursion{selected.length===1?'':'s'} selected. Each trip is scheduled separately for the same guests.</p>
     <div className="nh-fields">
