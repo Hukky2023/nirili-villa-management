@@ -26,6 +26,7 @@ export type ExcursionBookingChannel={
  guestManageLink:boolean;       // give the guest a self-service manage link
  defaultPickup?:string;
  netPrice?:(publicCents:number)=>number;
+ guestMailPrice?:(publicCents:number)=>number; // guest-facing price, never the partner's wholesale rate
  extra?:Record<string,any>;     // channel fields stored on every order
  notifyTitle:string;
  notifyPrefix:string;
@@ -116,6 +117,7 @@ export async function createExcursionBooking(body:any,channel:ExcursionBookingCh
   const groupName=safeText(body.groupName,100),notes=safeText(body.notes,1000);
   if(!/^[a-f0-9-]{20,80}$/i.test(token))throw Error('Refresh the excursion page and try again.');
   if(!menuItemId||!validDate(date)||date<islandToday())throw Error('Choose an excursion and a valid date.');
+  if(channel.guestEmail&&!emailPattern.test(email))throw Error('Enter a valid lead guest email address for booking confirmation.');
   if(channel.guestContactRequired){
    if(!leadGuest||!phonePattern.test(phone)||!emailPattern.test(email)||!hotel)throw Error('Enter the lead guest name, email, WhatsApp number with country code, and hotel or pickup location.');
   }else if(!leadGuest||!hotel||(phone&&!phonePattern.test(phone))||(email&&!emailPattern.test(email)))throw Error('Enter the lead guest name and pickup location. Guest WhatsApp (with country code) and email are optional but must be valid if entered.');
@@ -157,7 +159,7 @@ export async function createExcursionBooking(body:any,channel:ExcursionBookingCh
    quotedCents,baseQuotedCents,unitPriceCents,privateBoatRequested,privateBoatSurchargeCents,notes,date,
    publicQuotedCents,createdAt,createdBy:channel.createdBy,...channel.extra,source:channel.source
   };
-  const sendMail=async(mail:ExcursionMail)=>channel.guestEmail&&email?sendExternalExcursionBookedEmail(mail):{sent:false,error:'Not sent'};
+  const sendMail=async(mail:ExcursionMail)=>channel.guestEmail&&email?sendExternalExcursionBookedEmail(channel.guestMailPrice?{...mail,quotedCents:channel.guestMailPrice(publicQuotedCents)}:mail):{sent:false,error:'Not sent'};
   const notifyNew=async(reference:string,status:string,time='')=>{
    try{await emitAdminNotification({
     id:'excursion:new:'+reference,type:'excursion',title:channel.notifyTitle,
