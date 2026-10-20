@@ -7,6 +7,7 @@ import {Rides,Transfers,useTravel} from './travel';
 type Agent={id:string;name:string;contactName:string;pickup:string;discountPercent:number;autoConfirm:boolean};
 type Item={id:string;name:string;detail:string;cents:number;netCents:number;pricingUnit:'guest'|'couple';group:string;needsFootSizes:boolean};
 type Guest={name:string;age:'adult'|'child'|'infant';feet:string};
+type AvailableSchedule={id:string;name:string;date:string;time:string;endTime:string;remaining:number;items:{id:string;name:string;cents:number;pricingUnit:string;needsFootSizes:boolean}[]};
 type Booking={
  ref:string;excursion:string;date:string;time:string;endTime:string;status:'Confirmed'|'Pending'|'Cancelled'|'Declined';
  cancelRequested:boolean;leadGuest:string;guestNames:string[];guests:number;adults:number;children:number;infants:number;
@@ -40,9 +41,10 @@ const waLink=(phone:string,message:string)=>'https://wa.me/'+phone.replace(/\D/g
 // excursions.
 export function AgentExcursions(){
  const [agent,setAgent]=useState<Agent|null|undefined>(undefined);
- const [tab,setTab]=useState<'book'|'bookings'>('book');
+ const [tab,setTab]=useState<'book'|'bookings'|'schedules'>('book');
  const [items,setItems]=useState<Item[]>([]),[today,setToday]=useState(''),[surcharge,setSurcharge]=useState(0),[bookings,setBookings]=useState<Booking[]>([]);
  const [loadError,setLoadError]=useState('');
+ const [scheduleChoice,setScheduleChoice]=useState<{id:string;date:string;itemId:string}|null>(null);
 
  const load=useCallback(async()=>{
   try{
@@ -64,16 +66,38 @@ export function AgentExcursions(){
   <div className="nh-agent-tabs" role="group" aria-label="Excursions">
    <button type="button" aria-pressed={tab==='book'} onClick={()=>setTab('book')}><Plus size={16}/>New booking</button>
    <button type="button" aria-pressed={tab==='bookings'} onClick={()=>{setTab('bookings');void load();}}><ClipboardList size={16}/>My bookings{open>0&&<b>{open}</b>}</button>
+   <button type="button" aria-pressed={tab==='schedules'} onClick={()=>setTab('schedules')}><CalendarDays size={16}/>Schedules</button>
   </div>
   {loadError&&<p className="nh-error" role="alert">{loadError}</p>}
   {tab==='book'
-   ?<BookingForm agent={agent} items={items} today={today} surcharge={surcharge} onBooked={()=>void load()} onViewBookings={()=>setTab('bookings')}/>
+   ?<BookingForm key={scheduleChoice?.id||'new'} scheduleChoice={scheduleChoice} agent={agent} items={items} today={today} surcharge={surcharge} onBooked={()=>void load()} onViewBookings={()=>setTab('bookings')}/>
+   :tab==='schedules'?<PartnerSchedules onBook={choice=>{setScheduleChoice(choice);setTab('book');}}/>
    :<Bookings agent={agent} bookings={bookings} today={today} onChanged={list=>setBookings(list)}/>}
  </div>;
 }
 
-function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agent:Agent;items:Item[];today:string;surcharge:number;onBooked:()=>void;onViewBookings:()=>void}){
- const [itemIds,setItemIds]=useState<string[]>([]),[date,setDate]=useState(today),[guests,setGuests]=useState<Guest[]>([newGuest()]);
+function PartnerSchedules({onBook}:{onBook:(choice:{id:string;date:string;itemId:string})=>void}){
+ const [schedules,setSchedules]=useState<AvailableSchedule[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
+ const refresh=useCallback(async()=>{setLoading(true);setError('');
+  try{const response=await fetch('/api/agent-portal/schedules',{cache:'no-store'}),data=await response.json();
+   if(!response.ok)throw Error(data.error||'Could not load schedules.');
+   setSchedules(data.schedules||[]);
+  }catch(e){setError((e as Error).message);}finally{setLoading(false);}
+ },[]);
+ useEffect(()=>{void refresh();},[refresh]);
+ return <section className="nh-transfer" aria-label="Available excursion schedules">
+  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><h3>Available excursion schedules</h3><button type="button" className="nh-btn nh-btn-outline" onClick={()=>void refresh()}>Refresh seats</button></div>
+  <p className="nh-hint">Upcoming seven days · Maldives time. Only trips with available seats are shown. Other guests’ details are private.</p>
+  {error&&<p className="nh-error" role="alert">{error}</p>}
+  {loading?<p>Checking available seats…</p>:!schedules.length?<p>No available excursions at the moment. Please check again later.</p>:schedules.map(s=><article key={s.id} className="nh-step" style={{marginBottom:14}}>
+   <h3>{s.name}</h3><p>{niceDate(s.date)} · {s.time}{s.endTime?'–'+s.endTime:''} · <strong>{s.remaining} seat{s.remaining===1?'':'s'} available</strong></p>
+   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{s.items.map(i=><button key={i.id} type="button" className="nh-btn nh-btn-primary" onClick={()=>onBook({id:s.id,date:s.date,itemId:i.id})}>Book {i.name}</button>)}</div>
+  </article>)}
+ </section>;
+}
+
+function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings,scheduleChoice}:{agent:Agent;items:Item[];today:string;surcharge:number;onBooked:()=>void;onViewBookings:()=>void;scheduleChoice:{id:string;date:string;itemId:string}|null}){
+ const [itemIds,setItemIds]=useState<string[]>(scheduleChoice?[scheduleChoice.itemId]:[]),[date,setDate]=useState(scheduleChoice?.date||today),[guests,setGuests]=useState<Guest[]>([newGuest()]);
  const [pickup,setPickup]=useState(agent.pickup),[email,setEmail]=useState(''),[room,setRoom]=useState(''),[phone,setPhone]=useState(''),[guestDiscount,setGuestDiscount]=useState('0'),[notes,setNotes]=useState('');
  const [privateBoat,setPrivateBoat]=useState(false),[buggy,setBuggy]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState<any>(null);
@@ -102,7 +126,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
     // Each trip is independently scheduled and retains its own cancellation and payment record.
     // A stable token per selection prevents duplicate orders when the request is retried.
     const body={token:index===0?token.current:token.current.slice(0,25)+'-'+String(index).padStart(3,'0'),
-     menuItemId:chosen.id,date,guest:guests[0]?.name||'',guestNames:guests.map(g=>g.name),
+     menuItemId:chosen.id,date,...(scheduleChoice&&chosen.id===scheduleChoice.itemId&&date===scheduleChoice.date?{scheduleId:scheduleChoice.id}:{}),guest:guests[0]?.name||'',guestNames:guests.map(g=>g.name),
      guestCategories:guests.map(g=>g.age),footSizes:chosen.needsFootSizes?guests.map(g=>Number(g.feet)):[],
      phone,email,hotel:pickup,externalRoom:room,guestDiscountPercent,notes,
      privateBoatRequested:privateBoat&&canPrivate,buggyRequested:buggy};
