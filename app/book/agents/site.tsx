@@ -79,9 +79,12 @@ export function AgentExcursions(){
 function PartnerSchedules({onBook}:{onBook:(choice:{id:string;date:string;itemId:string})=>void}){
  const [schedules,setSchedules]=useState<AvailableSchedule[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const refresh=useCallback(async()=>{setLoading(true);setError('');
-  try{const response=await fetch('/api/agent-portal/schedules',{cache:'no-store'}),data=await response.json();
+  try{const response=await fetch('/api/agent-portal/bookings?view=schedules',{cache:'no-store'});
+   const type=response.headers.get('content-type')||'';
+   if(!type.includes('application/json'))throw Error('Schedules service is temporarily unavailable. Please refresh or try again later.');
+   const data=await response.json();
    if(!response.ok)throw Error(data.error||'Could not load schedules.');
-   setSchedules(data.schedules||[]);
+   setSchedules(Array.isArray(data.schedules)?data.schedules:[]);
   }catch(e){setError((e as Error).message);}finally{setLoading(false);}
  },[]);
  useEffect(()=>{void refresh();},[refresh]);
@@ -89,7 +92,7 @@ function PartnerSchedules({onBook}:{onBook:(choice:{id:string;date:string;itemId
   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><h3>Available excursion schedules</h3><button type="button" className="nh-btn nh-btn-outline" onClick={()=>void refresh()}>Refresh seats</button></div>
   <p className="nh-hint">Upcoming seven days · Maldives time. Only trips with available seats are shown. Other guests’ details are private.</p>
   {error&&<p className="nh-error" role="alert">{error}</p>}
-  {loading?<p>Checking available seats…</p>:!schedules.length?<p>No available excursions at the moment. Please check again later.</p>:schedules.map(s=><article key={s.id} className="nh-step" style={{marginBottom:14}}>
+  {loading?<p>Checking available seats…</p>:error?null:!schedules.length?<p>No available excursions at the moment. Please check again later.</p>:schedules.map(s=><article key={s.id} className="nh-step" style={{marginBottom:14}}>
    <h3>{s.name}</h3><p>{niceDate(s.date)} · {s.time}{s.endTime?'–'+s.endTime:''} · <strong>{s.remaining} seat{s.remaining===1?'':'s'} available</strong></p>
    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{s.items.map(i=><button key={i.id} type="button" className="nh-btn nh-btn-primary" onClick={()=>onBook({id:s.id,date:s.date,itemId:i.id})}>Book {i.name}</button>)}</div>
   </article>)}
