@@ -73,7 +73,7 @@ export function AgentExcursions(){
 }
 
 function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agent:Agent;items:Item[];today:string;surcharge:number;onBooked:()=>void;onViewBookings:()=>void}){
- const [itemIds,setItemIds]=useState<string[]>([]),[date,setDate]=useState(today),[guests,setGuests]=useState<Guest[]>([newGuest(),newGuest()]);
+ const [itemIds,setItemIds]=useState<string[]>([]),[date,setDate]=useState(today),[guests,setGuests]=useState<Guest[]>([newGuest()]);
  const [pickup,setPickup]=useState(agent.pickup),[room,setRoom]=useState(''),[phone,setPhone]=useState(''),[reference,setReference]=useState(''),[notes,setNotes]=useState('');
  const [privateBoat,setPrivateBoat]=useState(false),[buggy,setBuggy]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState<any>(null);
@@ -115,7 +115,7 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
    document.getElementById('book')?.scrollIntoView({behavior:'smooth'});
   }catch(err){setError((err as Error).message);void onBooked();}finally{setBusy(false);}
  }
- function again(){setDone(null);token.current=crypto.randomUUID();setItemIds([]);setGuests([newGuest(),newGuest()]);setRoom('');setPhone('');setReference('');setNotes('');setPrivateBoat(false);setBuggy(false);}
+ function again(){setDone(null);token.current=crypto.randomUUID();setItemIds([]);setGuests([newGuest()]);setRoom('');setPhone('');setReference('');setNotes('');setPrivateBoat(false);setBuggy(false);}
 
  if(done){
   const confirmed=done.status==='Confirmed',message=voucher({ref:done.id,excursion:done.excursion,date:done.date,time:done.time,pickup:done.pickup,guests:done.guests},agent);
