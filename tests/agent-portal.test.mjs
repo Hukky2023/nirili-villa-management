@@ -42,7 +42,7 @@ function fakeD1(){
 
 const TODAY='2026-10-01',TRIP='2026-10-03',ORIGIN='https://partners.nirilihotels.test';
 const MENU=[
- {id:'sandbank',kind:'excursion',name:'Sandbank Trip',cents:2500,pricingUnit:'guest',active:true},
+ {id:'sandbank',kind:'excursion',name:'Sandbank Trip',cents:2500,pricingUnit:'guest',active:true,publishedToWebsite:true},
 ];
 function setup({staff={role:'admin',userId:'U1',displayName:'Admin',username:'admin',permissions:[]}}={}){
  const d1=fakeD1(),notices=[],emails=[],who={staff};
