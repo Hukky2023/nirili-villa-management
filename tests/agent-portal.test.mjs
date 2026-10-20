@@ -88,7 +88,7 @@ function setup({staff={role:'admin',userId:'U1',displayName:'Admin',username:'ad
   const r=await session.POST(req('/api/partner-portal/session','POST',{username,password}));
   return {status:r.status,cookie:(r.headers.get('set-cookie')||'').split(';')[0]};
  };
- const book=(cookie,extra={})=>portal.POST(req('/api/agent-portal/bookings','POST',{token:crypto.randomUUID(),menuItemId:'sandbank',date:TRIP,guestNames:['Anna Lee','Ben Lee'],guestCategories:['adult','adult'],agentReference:'IB-204',...extra},cookie));
+ const book=(cookie,extra={})=>portal.POST(req('/api/agent-portal/bookings','POST',{token:crypto.randomUUID(),menuItemId:'sandbank',date:TRIP,guestNames:['Anna Lee','Ben Lee'],guestCategories:['adult','adult'],email:'anna@example.com',agentReference:'IB-204',...extra},cookie));
  return {lib,portal,session,admin,pub,req,hotel,addTrip,createAgent,signIn,book,notices,emails,who,d1};
 }
 
@@ -129,7 +129,7 @@ test('agents sign in with their own login; wrong passwords and signed-out reques
  assert.equal((await s.book('')).status,401);
 });
 
-test('an agent booking lands on a trip with free seats at the partner rate, with no guest email or manage link',async()=>{
+test('an agent booking lands on a trip with free seats at the partner rate, with guest confirmation email but no self-service manage link',async()=>{
  const s=setup();await s.createAgent();s.addTrip(TRIP);
  const {cookie}=await s.signIn();
  const r=await s.book(cookie);
@@ -147,7 +147,7 @@ test('an agent booking lands on a trip with free seats at the partner rate, with
  assert.equal(order.cents,4500);
  assert.equal(order.hotel,'Island Breeze GH');
  assert.equal(order.manageToken,'');
- assert.equal(s.emails.length,0);
+ assert.equal(s.emails.length,1);
  assert.equal(s.notices[0].title,'New agent excursion booking');
  assert.match(s.notices[0].detail,/^Island Breeze · Anna Lee/);
  const mine=await (await s.portal.GET(s.req('/api/agent-portal/bookings','GET',null,cookie))).json();
@@ -255,11 +255,12 @@ test('the monthly statement totals what each partner owes and has paid for confi
  assert.equal(other.partners[0].excursionStatement.owedCents,0);
 });
 
-test('agent bookings validate input; guest contact is optional but must be valid',async()=>{
+test('agent bookings require valid guest email, while WhatsApp is optional but must be valid',async()=>{
  const s=setup();await s.createAgent();
  const {cookie}=await s.signIn();
  assert.equal((await s.book(cookie,{date:'2026-09-30'})).status,400);
  assert.equal((await s.book(cookie,{menuItemId:'submarine'})).status,400);
+ assert.equal((await s.book(cookie,{email:''})).status,400);
  assert.equal((await s.book(cookie,{phone:'7771234'})).status,400);
  assert.equal((await s.book(cookie,{guestNames:['Anna',''],guestCategories:['adult','adult']})).status,400);
  assert.equal((await s.book(cookie,{phone:'+447700900123'})).status,201);
