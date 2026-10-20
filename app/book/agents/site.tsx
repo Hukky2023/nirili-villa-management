@@ -73,34 +73,47 @@ export function AgentExcursions(){
 }
 
 function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agent:Agent;items:Item[];today:string;surcharge:number;onBooked:()=>void;onViewBookings:()=>void}){
- const [itemId,setItemId]=useState(''),[date,setDate]=useState(today),[guests,setGuests]=useState<Guest[]>([newGuest(),newGuest()]);
+ const [itemIds,setItemIds]=useState<string[]>([]),[date,setDate]=useState(today),[guests,setGuests]=useState<Guest[]>([newGuest(),newGuest()]);
  const [pickup,setPickup]=useState(agent.pickup),[room,setRoom]=useState(''),[phone,setPhone]=useState(''),[reference,setReference]=useState(''),[notes,setNotes]=useState('');
  const [privateBoat,setPrivateBoat]=useState(false),[buggy,setBuggy]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState<any>(null);
  const token=useRef('');
  useEffect(()=>{token.current=crypto.randomUUID();},[]);
  useEffect(()=>{if(!date&&today)setDate(today);},[today,date]);
- const item=items.find(i=>i.id===itemId);
+ const selected=items.filter(i=>itemIds.includes(i.id));
+ const needsFootSizes=selected.some(i=>i.needsFootSizes);
+ const item=selected[0];
  const groups=useMemo(()=>[...new Set(items.map(i=>i.group||'Excursions'))],[items]);
  const canPrivate=guests.length>=4;
  const extra=privateBoat&&canPrivate?surcharge:0;
- const publicTotal=item?priceFor(item.cents,item.pricingUnit,guests)+extra:0;
- const netTotal=item?Math.round(publicTotal*(100-agent.discountPercent)/100):0;
+ const publicTotal=selected.reduce((sum,i)=>sum+priceFor(i.cents,i.pricingUnit,guests),0)+extra;
+ const netTotal=selected.length?Math.round(publicTotal*(100-agent.discountPercent)/100):0;
  const setGuest=(i:number,patch:Partial<Guest>)=>setGuests(list=>list.map((g,n)=>n===i?{...g,...patch}:g));
 
  async function submit(e:React.FormEvent){
   e.preventDefault();if(busy)return;setBusy(true);setError('');
   try{
-   const body={token:token.current,menuItemId:itemId,date,guest:guests[0]?.name||'',guestNames:guests.map(g=>g.name),guestCategories:guests.map(g=>g.age),
-    footSizes:item?.needsFootSizes?guests.map(g=>Number(g.feet)):[],phone,hotel:pickup,externalRoom:room,agentReference:reference,notes,
-    privateBoatRequested:privateBoat&&canPrivate,buggyRequested:buggy};
-   const r=await fetch('/api/agent-portal/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-   const d:any=await r.json();if(!r.ok)throw Error(d.error||'Could not send the booking.');
-   setDone({...d.booking,excursion:item?.name||'',guests:guests.length,pickup,phone});onBooked();
+   if(!selected.length)throw Error('Select at least one published excursion.');
+   const references:string[]=[];
+   for(const [index,chosen] of selected.entries()){
+    // Each trip is independently scheduled and retains its own cancellation and payment record.
+    // A stable token per selection prevents duplicate orders when the request is retried.
+    const body={token:index===0?token.current:token.current.slice(0,25)+'-'+String(index).padStart(3,'0'),
+     menuItemId:chosen.id,date,guest:guests[0]?.name||'',guestNames:guests.map(g=>g.name),
+     guestCategories:guests.map(g=>g.age),footSizes:chosen.needsFootSizes?guests.map(g=>Number(g.feet)):[],
+     phone,hotel:pickup,externalRoom:room,agentReference:reference,notes,
+     privateBoatRequested:privateBoat&&canPrivate,buggyRequested:buggy};
+    const r=await fetch('/api/agent-portal/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d:any=await r.json().catch(()=>({}));
+    if(!r.ok)throw Error((references.length?references.length+' excursion(s) saved ('+references.join(', ')+'). ':'')+(d.error||'Could not book '+chosen.name+'.'));
+    references.push(d.booking.id);
+   }
+   setDone({id:references.join(', '),refs:references,status:'Pending',excursion:selected.map(i=>i.name).join(' + '),date,guests:guests.length,pickup,phone});
+   onBooked();
    document.getElementById('book')?.scrollIntoView({behavior:'smooth'});
   }catch(err){setError((err as Error).message);}finally{setBusy(false);}
  }
- function again(){setDone(null);token.current=crypto.randomUUID();setGuests([newGuest(),newGuest()]);setRoom('');setPhone('');setReference('');setNotes('');setPrivateBoat(false);setBuggy(false);}
+ function again(){setDone(null);token.current=crypto.randomUUID();setItemIds([]);setGuests([newGuest(),newGuest()]);setRoom('');setPhone('');setReference('');setNotes('');setPrivateBoat(false);setBuggy(false);}
 
  if(done){
   const confirmed=done.status==='Confirmed',message=voucher({ref:done.id,excursion:done.excursion,date:done.date,time:done.time,pickup:done.pickup,guests:done.guests},agent);
@@ -122,11 +135,16 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
   <form className="nh-transfer-form" onSubmit={submit}>
    <div className="nh-step">
     <h3>Excursion</h3>
-    <label><span><Ship/>Excursion</span><select required value={itemId} onChange={e=>setItemId(e.target.value)}>
-     <option value="">Choose an excursion</option>
-     {groups.map(group=><optgroup key={group} label={group}>{items.filter(i=>(i.group||'Excursions')===group).map(i=><option key={i.id} value={i.id}>{i.name} · {i.netCents?money(i.netCents)+' per '+(i.pricingUnit==='couple'?'couple':'adult'):'price on request'}</option>)}</optgroup>)}
-    </select></label>
-    {item?.detail&&<p className="nh-hint">{item.detail}</p>}
+    <p className="nh-hint">Select one or more excursions published on the Nirili website.</p>
+    {groups.map(group=><fieldset key={group} style={{border:'1px solid #d7deda',borderRadius:14,padding:14,marginBottom:12}}>
+     <legend style={{fontWeight:700,padding:'0 8px'}}>{group}</legend>
+     {items.filter(i=>(i.group||'Excursions')===group).map(i=><label key={i.id} className="nh-agent-check" style={{display:'flex',gap:10,margin:'8px 0'}}>
+      <input type="checkbox" checked={itemIds.includes(i.id)} onChange={e=>setItemIds(current=>e.target.checked?[...current,i.id]:current.filter(id=>id!==i.id))}/>
+      <span>{i.name}<small style={{display:'block'}}>{money(i.netCents)} per {i.pricingUnit==='couple'?'couple':'adult'}{i.detail?' · '+i.detail:''}</small></span>
+     </label>)}
+    </fieldset>)}
+    {!items.length&&<p className="nh-hint">No published excursions are available.</p>}
+    <p className="nh-hint">{selected.length} excursion{selected.length===1?'':'s'} selected. Each trip is scheduled separately for the same guests.</p>
     <div className="nh-fields">
      <label><span><CalendarDays/>Date</span><input required type="date" min={today||undefined} value={date} onChange={e=>setDate(e.target.value)}/></label>
      <label><span><MapPin/>Pickup point</span><input required maxLength={150} value={pickup} onChange={e=>setPickup(e.target.value)}/></label>
@@ -135,16 +153,16 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
    <div className="nh-step">
     <h3>Guests</h3>
     <div className="nh-agent-guests">
-     {guests.map((g,i)=><div className={'nh-agent-guest'+(item?.needsFootSizes?'':' no-feet')} key={i}>
+     {guests.map((g,i)=><div className={'nh-agent-guest'+(needsFootSizes?'':' no-feet')} key={i}>
       <span>{i+1}</span>
       <input required maxLength={100} aria-label={'Guest '+(i+1)+' full name'} placeholder={i===0?'Lead guest full name':'Full name'} value={g.name} onChange={e=>setGuest(i,{name:e.target.value})}/>
       <select aria-label={'Guest '+(i+1)+' age'} value={g.age} onChange={e=>setGuest(i,{age:e.target.value as Guest['age']})}><option value="adult">Adult (12+)</option><option value="child">Child (3–11)</option><option value="infant">Under 3</option></select>
-      {item?.needsFootSizes&&<input className="nh-agent-feet" required type="number" min={15} max={50} inputMode="numeric" aria-label={'Guest '+(i+1)+' EU foot size'} placeholder="EU foot" value={g.feet} onChange={e=>setGuest(i,{feet:e.target.value})}/>}
+      {needsFootSizes&&<input className="nh-agent-feet" required type="number" min={15} max={50} inputMode="numeric" aria-label={'Guest '+(i+1)+' EU foot size'} placeholder="EU foot" value={g.feet} onChange={e=>setGuest(i,{feet:e.target.value})}/>}
       <button type="button" aria-label={'Remove guest '+(i+1)} disabled={guests.length<=1} onClick={()=>setGuests(list=>list.filter((_,n)=>n!==i))}><Trash2/></button>
      </div>)}
     </div>
     {guests.length<20&&<button type="button" className="nh-agent-add" onClick={()=>setGuests(list=>[...list,newGuest()])}><Plus/>Add guest</button>}
-    {item?.needsFootSizes&&<p className="nh-hint">EU foot sizes let the crew prepare snorkeling fins before departure.</p>}
+    {needsFootSizes&&<p className="nh-hint">EU foot sizes let the crew prepare snorkeling fins before departure.</p>}
    </div>
    <div className="nh-step">
     <h3>Booking details</h3>
@@ -158,18 +176,18 @@ function BookingForm({agent,items,today,surcharge,onBooked,onViewBookings}:{agen
     <label><span>Notes (optional)</span><textarea rows={3} maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Swimming ability, special requests, anything the crew should know"/></label>
    </div>
    {error&&<p className="nh-error" role="alert">{error}</p>}
-   <p className="nh-fare-inline"><span>You pay Nirili</span><strong>{item?money(netTotal):'—'}</strong></p>
-   <button className="nh-btn nh-btn-primary nh-transfer-submit" disabled={busy||!items.length}>{busy?'Sending…':agent.autoConfirm?'Book excursion':'Send booking request'} <ArrowRight/></button>
+   <p className="nh-fare-inline"><span>You pay Nirili</span><strong>{selected.length?money(netTotal):'—'}</strong></p>
+   <button className="nh-btn nh-btn-primary nh-transfer-submit" disabled={busy||!selected.length}>{busy?'Sending…':agent.autoConfirm?'Book excursions':'Send booking requests'} <ArrowRight/></button>
   </form>
   <aside className="nh-fare">
    <p className="nh-kicker">Booking summary</p>
    <dl>
-    <div><dt>Excursion</dt><dd>{item?.name||'Choose one'}</dd></div>
+    <div><dt>Excursion</dt><dd>{selected.length?selected.map(i=>i.name).join(', '):'Choose excursions'}</dd></div>
     <div><dt>Date</dt><dd>{niceDate(date)||'Choose a day'}</dd></div>
     <div><dt>Guests</dt><dd>{guests.length}</dd></div>
-    {item&&agent.discountPercent>0&&<div className="nh-agent-public"><dt>Public price</dt><dd>{money(publicTotal)}</dd></div>}
+    {selected.length>0&&agent.discountPercent>0&&<div className="nh-agent-public"><dt>Public price</dt><dd>{money(publicTotal)}</dd></div>}
    </dl>
-   <div className="nh-fare-total"><span>You pay Nirili{agent.discountPercent?` (${agent.discountPercent}% partner rate)`:''}</span><strong>{item?money(netTotal):'—'}</strong></div>
+   <div className="nh-fare-total"><span>You pay Nirili{agent.discountPercent?` (${agent.discountPercent}% partner rate)`:''}</span><strong>{selected.length?money(netTotal):'—'}</strong></div>
    <small>Children under 3 travel free; ages 3–11 pay half. Your guest pays you and you settle with Nirili Tours each month.</small>
   </aside>
  </div>;
