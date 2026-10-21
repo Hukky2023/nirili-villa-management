@@ -133,9 +133,9 @@ export async function PATCH(request: Request) {
       if(!hasPermission(user,'excursions_manager')&&!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion management access is required.'},{status:403,headers});
       const bookingId=String(input.id||'');
       const reason=String(input.reason||'').trim().slice(0,500);
-      if(!bookingId||!reason||!Number.isSafeInteger(input.revision)||input.revision<0)return Response.json({error:'Choose a booking, enter a cancellation reason and refresh if necessary.'},{status:400,headers});
+      if(!bookingId||!reason)return Response.json({error:'Choose a booking and enter a cancellation reason.'},{status:400,headers});
       const {state,revision}=await loadStays();
-      if(input.revision!==revision)return Response.json({error:'Excursion bookings changed. Refresh and try again.'},{status:409,headers});
+      if(input.revision!==undefined&&input.revision!==revision)return Response.json({error:'Excursion bookings changed. Refresh and try again.'},{status:409,headers});
       const order=(state.orders||[]).find((item:any)=>item.id===bookingId&&item.kind==='excursion');
       if(!order)return Response.json({error:'Excursion booking not found.'},{status:404,headers});
       if(['Departed','Completed'].includes(String(order.status||'')))return Response.json({error:'Departed or completed trips cannot be cancelled.'},{status:409,headers});
