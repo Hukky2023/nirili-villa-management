@@ -129,6 +129,26 @@ export async function PATCH(request: Request) {
     try { input = await request.json(); } catch {
       return Response.json({error: 'Invalid excursion request.'}, {status: 400, headers});
     }
+    if(input?.action==='cancel-booking'){
+      if(!hasPermission(user,'excursions_manager')&&!hasPermission(user,'edit_excursions'))return Response.json({error:'Excursion management access is required.'},{status:403,headers});
+      const bookingId=String(input.id||'');
+      const reason=String(input.reason||'').trim().slice(0,500);
+      if(!bookingId||!reason||!Number.isSafeInteger(input.revision)||input.revision<0)return Response.json({error:'Choose a booking, enter a cancellation reason and refresh if necessary.'},{status:400,headers});
+      const {state,revision}=await loadStays();
+      if(input.revision!==revision)return Response.json({error:'Excursion bookings changed. Refresh and try again.'},{status:409,headers});
+      const order=(state.orders||[]).find((item:any)=>item.id===bookingId&&item.kind==='excursion');
+      if(!order)return Response.json({error:'Excursion booking not found.'},{status:404,headers});
+      if(['Departed','Completed'].includes(String(order.status||'')))return Response.json({error:'Departed or completed trips cannot be cancelled.'},{status:409,headers});
+      if(order.status==='Cancelled'||order.approvalStatus==='Cancelled')return Response.json({ok:true,alreadyCancelled:true},{headers});
+      const now=new Date().toISOString();
+      order.status='Cancelled';order.approvalStatus='Cancelled';order.unscheduledRequest=false;order.seatRequest=false;
+      order.cancelledAt=now;order.cancelledBy=user.username;order.cancellationReason=reason;
+      // Retain the bill, paid amounts, and schedule reference for audit. Active
+      // scheduling and guest-manifest queries exclude cancelled orders.
+      const saved=await saveStayAccess(state,revision,user.userId);
+      if(!saved)return Response.json({error:'Bookings changed during cancellation. Refresh and try again.'},{status:409,headers});
+      return Response.json({ok:true,cancelledId:bookingId,revision:revision+1},{headers});
+    }
     if(input?.action==='delete-booking'){
       if(user.role!=='admin')return Response.json({error:'Only Admin can delete excursion bookings and their linked bills.'},{status:403,headers});
       const bookingId=String(input.id||'');
