@@ -180,10 +180,7 @@ export default function ExcursionScheduler({data,mutate}:{data?:any;mutate?:(bod
   try{
    let response:Response;
    if(confirmed){
-    const latest=await fetch('/api/excursion-bookings',{cache:'no-store'});
-    const current:any=await latest.json();
-    if(!latest.ok)throw Error(current.error||'Could not load latest booking revision.');
-    response=await fetch('/api/excursion-bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cancel-booking',id:req.id,revision:current.revision,reason:reason?.trim()})});
+    response=await fetch('/api/excursion-bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cancel-booking',id:req.id,reason:reason?.trim()})});
    }else{
     response=await fetch('/api/excursion-schedules',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reject-unscheduled-request',requestId:req.id})});
    }
