@@ -1,0 +1,19 @@
+{
+  "id": "/management",
+  "name": "Nirili Villa Management",
+  "short_name": "Nirili Management",
+  "description": "Nirili Villa hotel, restaurant and excursion management",
+  "start_url": "/home",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#07334a",
+  "icons": [
+    {
+      "src": "/favicon-new.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
