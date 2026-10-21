@@ -246,7 +246,17 @@ export async function GET(r:Request){
    const {pendingOrders,...rest}=s;
    return {...rest,requests,capacity,remainingSeats:Math.max(0,capacity-(g?.bookedPax??s.bookedPax)),isFull:(g?.bookedPax??s.bookedPax)>=capacity,guideRule:guideRuleFor(s,raw,orders,resources.crew)};
   });
-  const unscheduledRequests=orders.filter((o:any)=>o.kind==='excursion'&&o.date===date&&o.status!=='Cancelled'&&(o.unscheduledRequest===true&&o.approvalStatus==='Pending'||o.approvalStatus!=='Pending'&&o.approvalStatus!=='Declined'&&o.approvalStatus!=='Cancelled'&&o.status!=='Cancelled'&&!o.scheduleId&&!isRomanticBeachDinner(o))&&!raw.some((schedule:any)=>matches(o,schedule))).map((o:any)=>({
+  const unscheduledRequests=orders.filter((o:any)=>
+   o.kind==='excursion'&&o.date===date&&
+   !['Cancelled','Departed','Completed'].includes(o.status)&&
+   !['Declined','Cancelled'].includes(o.approvalStatus)&&
+   !isRomanticBeachDinner(o)&&
+   // A booking is unscheduled whenever there is no *live* matching trip.
+   // Do not trust a stale scheduleId left by a removed/cancelled schedule,
+   // or require unscheduledRequest=true: multi-excursion bookings can already
+   // be confirmed while individual legs still need manual scheduling.
+   !raw.some((schedule:any)=>matches(o,schedule))
+  ).map((o:any)=>({
    id:o.id,name:o.name,guest:o.guest||'Guest',phone:o.phone||'',hotel:o.hotel||'',room:o.room||o.externalRoom||'',inHouse:!!o.stayId,quantity:Number(o.quantity)||0,adults:Number(o.adults??o.quantity)||0,children:Number(o.children)||0,infants:Number(o.infants)||0,date:o.date,
    quotedCents:Math.max(0,Number(o.quotedCents)||0),unitPriceCents:Math.max(0,Number(o.unitPriceCents)||0),pricingUnit:o.pricingUnit||'guest',
    buggyRequested:!!o.buggyRequested,privateBoatRequested:!!o.privateBoatRequested,privateBoatSurchargeCents:Number(o.privateBoatSurchargeCents)||0,preferredTime:o.preferredTime||o.time||o.schedule?.time||'',preferredEndTime:o.preferredEndTime||o.endTime||o.schedule?.endTime||'',alreadyConfirmed:o.approvalStatus!=='Pending',serviceType:o.serviceType||'',serviceRequest:!!o.serviceRequest,notes:o.notes||'',source:o.source||'',createdAt:o.createdAt||''
