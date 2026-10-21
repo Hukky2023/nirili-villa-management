@@ -36,6 +36,25 @@ export default function ExcursionBookings() {
   const [moveRevision,setMoveRevision]=useState(0),[moveBusy,setMoveBusy]=useState(false),[moveLoading,setMoveLoading]=useState(false),[moveError,setMoveError]=useState(''),[moveNote,setMoveNote]=useState('');
   const [whatsAppBusy,setWhatsAppBusy]=useState(''),[whatsAppOpened,setWhatsAppOpened]=useState('');
   const request = useRef<AbortController | null>(null);
+  const [cancelBusy,setCancelBusy]=useState('');
+  async function cancelBooking(booking:BillingBooking){
+    if(cancelBusy)return;
+    const reason=window.prompt('Reason for cancelling '+booking.excursion+' ('+booking.id+')?');
+    if(reason===null)return;
+    if(!reason.trim()){window.alert('Enter a cancellation reason.');return;}
+    if(!window.confirm('Cancel this excursion booking across the system? This will remove its guests from the active trip, but keep billing/payment history.'))return;
+    setCancelBusy(booking.id);setError('');
+    try{
+      const response=await fetch('/api/excursion-bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cancel-booking',id:booking.id,revision,reason:reason.trim()})});
+      const result=await response.json();
+      if(!response.ok)throw Error(result.error||'Could not cancel excursion booking.');
+      await load();
+      window.dispatchEvent(new Event('services-updated'));
+      window.dispatchEvent(new Event('nirili:auto-refresh'));
+    }catch(error){setError(error instanceof Error?error.message:'Could not cancel booking.');}
+    finally{setCancelBusy('');}
+  }
+
 
   const load = useCallback(async (background = false) => {
     // Do not let background refresh interrupt an in-flight request.
@@ -209,6 +228,7 @@ export default function ExcursionBookings() {
           <div><dt>Guests / total</dt><dd>{b.guests} {b.guests === 1 ? 'guest' : 'guests'}<small>{b.adults} adult{b.adults===1?'':'s'} · {b.children} child{b.children===1?'':'ren'} · {b.infants} under 3</small><small>{money(b.totalCents)} USD</small></dd></div>
         </dl>
         <ExcursionBillingActions booking={b} canAdjust={canAdjustBilling} revision={revision} onUpdated={() => load()}/>
+        {canReassign&&<div style={{display:'flex',justifyContent:'flex-end',margin:'8px 0 16px'}}><button type="button" className="excursion-secondary-btn" disabled={!!cancelBusy} onClick={()=>void cancelBooking(b)}>{cancelBusy===b.id?'Cancelling…':'Cancel booking'}</button></div>}
         {b.guestType==='Walk-in'&&b.phone&&<div className="excursion-whatsapp-bar">
           <div><strong>{b.guestNotified?'Guest informed via WhatsApp':'Walk-in guest needs WhatsApp notification'}</strong><small>{b.guestNotifiedAt?'Recorded '+createdLabel(b.guestNotifiedAt)+(b.guestNotifiedBy?' by '+b.guestNotifiedBy:''):'Send the current booking date, time and pickup details.'}</small></div>
           <div>
