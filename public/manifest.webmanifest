@@ -3,7 +3,7 @@
   "short_name": "Nirili Villa",
   "description": "Guest services for Nirili Villa, Dhiffushi.",
   "start_url": "/stay",
-  "scope": "/",
+  "scope": "/stay",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#086d9b",
@@ -14,5 +14,6 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
-  ]
+  ],
+  "id": "/stay"
 }
