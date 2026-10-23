@@ -9,6 +9,13 @@ import type {ExcursionPricing} from '../lib/excursion-billing';
 import {walkInExcursionWhatsAppUrl} from '../lib/walkin-excursion-whatsapp';
 type BillingBooking = ConfirmedExcursionBooking & {pricing?: ExcursionPricing; billingHistory?: any[]; canMove?: boolean};
 
+// Bookings opens on the next Maldives calendar day, regardless of device timezone.
+function tomorrowInMaldives(){
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Indian/Maldives',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const part=(key:string)=>parts.find(item=>item.type===key)?.value||'';
+  const today=part('year')+'-'+part('month')+'-'+part('day');
+  return new Date(Date.parse(today+'T00:00:00Z')+86400000).toISOString().slice(0,10);
+}
 const pageSize = 25;
 const money = (cents: number) => '$' + (cents / 100).toFixed(2);
 const dateLabel = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.split('-').reverse().join('-') : 'Not recorded';
@@ -28,7 +35,7 @@ export default function ExcursionBookings() {
   const [bookings, setBookings] = useState<BillingBooking[]>([]);
   const [loading, setLoading] = useState(true), [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(''), [query, setQuery] = useState('');
-  const [date, setDate] = useState(''), [payment, setPayment] = useState('');
+  const [date, setDate] = useState(() => tomorrowInMaldives()), [payment, setPayment] = useState('');
   const [page, setPage] = useState(1);
   const [canAdjustBilling, setCanAdjustBilling] = useState(false), [canReassign,setCanReassign]=useState(false), [revision, setRevision] = useState(0);
   const [manageRequests,setManageRequests]=useState<any[]>([]),[manageBusy,setManageBusy]=useState(''),[manageMessage,setManageMessage]=useState('');
@@ -208,7 +215,7 @@ export default function ExcursionBookings() {
     {manageRequests.length>0&&<section className="excursion-manage-requests"><div className="excursion-manage-requests-head"><div><small>GUEST SELF-SERVICE</small><h4>Change & cancellation requests</h4><p>Confirmed external excursion bookings stay unchanged until you approve a guest request.</p></div><strong>{manageRequests.length}</strong></div>{manageMessage&&<p className="excursion-manage-message" role="status">{manageMessage}</p>}<div className="excursion-manage-request-list">{manageRequests.map(item=><article key={item.id}><div><small>{item.id} · {item.bookingId}</small><h5>{item.type==='cancel'?'Cancellation request':'Change request'} · {item.guest}</h5><p><strong>Current:</strong> {item.excursion} · {dateLabel(item.date)}{item.time?' · '+item.time:''} · {item.quantity} guests</p>{item.type==='change'&&item.proposed&&<p><strong>Requested:</strong> {item.proposed.name} · {dateLabel(item.proposed.date)} · {item.proposed.quantity} guests · {item.proposed.hotel}</p>}<small>{item.email}{item.phone?' · '+item.phone:''}</small></div><div className="excursion-manage-request-actions"><button type="button" className="excursion-secondary-btn" disabled={manageBusy===item.id} onClick={()=>decideManageRequest(item,false)}>Reject</button><button type="button" className="excursion-primary-btn" disabled={manageBusy===item.id} onClick={()=>decideManageRequest(item,true)}>{manageBusy===item.id?'Saving…':item.type==='cancel'?'Approve cancellation':'Approve changes'}</button></div></article>)}</div></section>}
     <div className="excursion-booking-filters">
       <label>Search bookings<input type="search" value={query} placeholder="Guest, room, booking reference or excursion" onChange={e => {setQuery(e.target.value); setPage(1);}}/></label>
-      <label>Trip date<DateFieldDMY value={date} onChange={value => {setDate(value); setPage(1);}} ariaLabel="Trip date"/></label>
+      <label>Trip date<DateFieldDMY value={date} onChange={value => {setDate(value); setPage(1);}} ariaLabel="Trip date"/></label><button type="button" className="excursion-secondary-btn" onClick={()=>{setDate(tomorrowInMaldives());setPage(1);}}>Tomorrow</button><button type="button" className="excursion-secondary-btn" onClick={()=>{setDate('');setPage(1);}}>All dates</button>
       <label>Payment<select value={payment} onChange={e => {setPayment(e.target.value); setPage(1);}}><option value="">All payments</option><option value="Paid">Paid</option><option value="Unpaid">Unpaid</option><option value="Complimentary">Complimentary / Free</option></select></label>
       <button type="button" className="excursion-secondary-btn" disabled={!hasFilters} onClick={clearFilters}>Clear filters</button>
     </div>
