@@ -6,6 +6,7 @@ import {addHistory,assertBookable,bookableState,createTransfer,ports,publicBoats
 import {loadTransport,saveTransport,updateTransport} from '../../../lib/transport-store';
 import {publicCharterRates,requestCharter,searchCharters} from '../../../lib/transport-charter';
 import {emitAdminNotification} from '../../../lib/admin-notifications';
+import {authDb} from '../../../lib/auth';
 
 // Public speedboat booking (transfers.nirilihotels.com). Departures come from independent
 // speedboat operators; the guest pays the operator. Reads and writes go through the shared
@@ -43,6 +44,22 @@ export async function POST(r:Request){
  try{
   const id=await identity();if(!id.token)throw Error('Refresh before booking.');
   const owner='walk-transfer:'+await digest(id.token),b:Record<string,any>=await r.json();
+  // An availability enquiry is NOT a charter booking. Capture it even when no operator has a current offer.
+  if(b.action==='charter-enquiry'){
+   if(!await limit(owner,5,3600000)||!await limit('walk-charter-enquiry-ip:'+(r.headers.get('cf-connecting-ip')||'unknown'),20,3600000))throw Error('Too many enquiries. Please contact Nirili Airport Transfers.');
+   const from=String(b.from||'').trim().slice(0,60),to=String(b.to||'').trim().slice(0,60);
+   const date=String(b.date||''),time=String(b.time||''),pax=Number(b.pax);
+   const name=String(b.name||'').trim().slice(0,120);
+   const phone=String(b.phone||'').replace(/[\\s()-]/g,'').slice(0,30);
+   const notes=String(b.notes||'').trim().slice(0,600);
+   const dateValue=Date.parse(date+'T'+time+':00+05:00');
+   if(!from||!to||from.toLowerCase()===to.toLowerCase()||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||!/^\\d{2}:\\d{2}$/.test(time)||!Number.isFinite(dateValue)||dateValue<Date.now()||dateValue>Date.now()+366*86400000||!Number.isInteger(pax)||pax<1||pax>160||!name||!/^\\+?\\d{7,15}$/.test(phone))throw Error('Enter a valid future date, route, passenger count, name and WhatsApp number.');
+   const reference='PH-'+crypto.randomUUID().slice(0,8).toUpperCase();
+   const enquiry={id:reference,status:'Awaiting Availability',source:'Nirili Connect',owner,from,to,date,time,pax,name,phone,notes,traveller:['Local','Expat','Tourist'].includes(String(b.traveller))?b.traveller:'Tourist',created:new Date().toISOString()};
+   await authDb().prepare('INSERT INTO operation_records(key,payload,revision,updated_by) VALUES(?,?,1,?)').bind('private-hire-enquiry:'+reference,JSON.stringify(enquiry),'nirili-connect').run();
+   try{await emitAdminNotification({id:'transport:private-hire-enquiry:'+reference,type:'transport',title:'New private hire availability request',detail:name+' · '+phone+' · '+pax+' passengers · '+from+' → '+to+' · '+date+' '+time+' · '+reference+(notes?' · '+notes:''),ref:reference,url:'/home'});}catch{}
+   return Response.json({enquiry:{id:reference,status:'Awaiting Availability'},message:'Availability request sent to Nirili Management. No boat or price is confirmed.'},{headers});
+  }
   // Private charters: search is read-only; a request waits for the operator to confirm.
   if(b.action==='charter-search'){const {state}=await loadTransport();return Response.json({offers:searchCharters(bookableState(state,await live()),b)},{headers});}
   if(b.action==='charter'){
