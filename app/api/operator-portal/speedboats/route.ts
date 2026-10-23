@@ -92,6 +92,43 @@ export async function POST(r:Request){
      notice={id:'transport:charter:'+c.id+':'+c.status,type:'transport',title:c.status==='Declined'?'Charter request declined':'Charter cancelled by operator',detail:operator.name+' · '+c.id+' · '+c.name+' '+c.phone+' · '+c.date+' '+c.time+' '+c.from+' → '+c.to+' · '+c.reason,ref:c.id,url:'/home'};
      return c;
     }
+    case 'retire-sailing':{
+     const id=String(body.scheduleId||''),sailing=state.sailings.find(s=>s.id===id&&s.operatorId===operator.id);
+     if(!sailing)throw Error('Departure not found.');
+     const affected=state.bookings.flatMap(b=>b.journeys.map((j,index)=>({b,j,index}))).filter(({b,j})=>b.status!=='Cancelled'&&j.scheduleId===id&&j.operatorStatus!=='Declined'&&j.date>=transportToday()&&!j.departedAt);
+     if(affected.some(({j})=>(j.boardedPax||0)>0))throw Error('This departure has boarded passengers and cannot be cancelled.');
+     sailing.active=false;
+     for(const {b,j} of affected){
+      Object.assign(j,{operatorStatus:'Declined',declinedAt:new Date().toISOString(),declineReason:'Departure cancelled by operator — reassignment required',cancelledByOperator:true});
+      b.history=[...(b.history||[]),{at:new Date().toISOString(),by:'operator:'+operator.id,action:'Departure cancelled; reassignment required',detail:j.date+' '+j.depart+' '+j.from+' to '+j.to}];
+     }
+     notice={id:'transport:retire:'+id+':'+Date.now(),type:'transport',title:'Speedboat schedule cancelled — passengers need reassignment',detail:operator.name+' cancelled '+sailing.depart+' '+sailing.from+' → '+sailing.to+'; '+affected.length+' ticket(s) require reassignment',ref:id,url:'/home'};
+     return sailing;
+    }
+    case 'reassign-ticket':{
+     const bookingId=String(body.bookingId||''),index=Number(body.index),targetId=String(body.targetScheduleId||''),date=String(body.date||'');
+     if(!dateOk(date))throw Error('Choose a valid replacement date.');
+     const booking=state.bookings.find(b=>b.id===bookingId);
+     const journey=booking?.journeys[index];
+     if(!booking||!journey||journey.operatorId!==operator.id||booking.status==='Cancelled')throw Error('Ticket not found.');
+     if(journey.operatorStatus!=='Declined'||!journey.cancelledByOperator)throw Error('Only operator-cancelled tickets can be reassigned using this action.');
+     if(journey.boardedPax||journey.departedAt)throw Error('Cannot reassign a boarded or departed ticket.');
+     const target=state.sailings.find(s=>s.id===targetId&&s.operatorId===operator.id&&s.active);
+     if(!target||target.id===journey.scheduleId)throw Error('Choose another active departure operated by you.');
+     if(target.from!==journey.from||target.to!==journey.to)throw Error('Replacement must use the same origin and destination.');
+     if(target.days?.length&&!target.days.includes(new Date(date+'T00:00:00Z').getUTCDay()))throw Error('Replacement trip does not operate on that day.');
+     if(Date.parse(date+'T'+target.depart+':00+05:00')<=Date.now())throw Error('Choose a future departure.');
+     const boat=tripBoat(state,target,date),allowed=boat?.layout?.cells?.filter(n=>n>0)||Array.from({length:target.capacity},(_,i)=>i+1);
+     const occupiedSeats=new Set(occupied(state,target.id,date));
+     const available=allowed.filter(n=>!occupiedSeats.has(n)).sort((a,b)=>a-b);
+     if(available.length<journey.seats.length)throw Error('Not enough available seats on replacement departure.');
+     const newSeats=available.slice(0,journey.seats.length);
+     const oldTrip=journey.date+' '+journey.depart+' '+journey.from+' → '+journey.to;
+     Object.assign(journey,{scheduleId:target.id,date,seats:newSeats,boat:target.boat,from:target.from,to:target.to,depart:target.depart,arrive:target.arrive,operatorStatus:'Accepted',boatId:boat?.id||target.boatId||'',boatName:boat?.name||target.boat||'',acceptedAt:new Date().toISOString(),acceptedBy:operator.name,declinedAt:undefined,declineReason:undefined,cancelledByOperator:false,boardedPax:0,boardedAt:undefined,noShow:false});
+     booking.history=[...(booking.history||[]),{at:new Date().toISOString(),by:'operator:'+operator.id,action:'Reassigned speedboat ticket',detail:oldTrip+' → '+date+' '+target.depart+' / seats '+newSeats.join(', ')}];
+     notice={id:'transport:reassign:'+booking.id+':'+Date.now(),type:'transport',title:'Speedboat ticket reassigned',detail:operator.name+' reassigned '+booking.name+' · '+booking.id+' to '+date+' '+target.depart+' · seats '+newSeats.join(', '),ref:booking.id,url:'/home'};
+     return booking;
+    }
     case 'trip-crew':return setTripCrew(state,ref,String(body.scheduleId||''),String(body.date||''),body.crewIds,activeCrew,body.regular===true);
     case 'trip-boat':return setTripBoat(state,ref,String(body.scheduleId||''),String(body.date||''),String(body.boatId||''),by);
     case 'decline':
