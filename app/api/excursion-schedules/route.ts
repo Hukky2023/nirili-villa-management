@@ -8,7 +8,7 @@ import {buildExcursionManifest} from '../../../lib/excursion-manifest';
 import {assertGuideRule,assignedGuideCount,cleanGuideSelection,guideRuleFor,requiredExcursionGuides} from '../../../lib/excursion-guides';
 import {excursionDeparturePassed,islandToday} from '../../../lib/guest-catalog';
 import {isPrivateResortVisit,isRomanticBeachDinner,ROMANTIC_BEACH_DINNER_SERVICE,RESORT_VISIT_SERVICE} from '../../../lib/excursion-services';
-import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,planSpecialPackageSchedules,PRIVATE_BOAT_SURCHARGE_CENTS,scheduleCanServeRequest,scheduleMatchRank,specialPackageCoverage,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
+import {clockMinutes,droneConflict,fridayExcursionBlackout,fridayExcursionBlackoutMessage,goproConflict,inferTripEndTime,isDroneRequiredTrip,isSnorkelingTrip,planSpecialPackageSchedules,PRIVATE_BOAT_SURCHARGE_CENTS,scheduleCanServeRequest,excursionScheduleLoadForOrder,scheduleMatchRank,specialPackageCoverage,suggestedTripWindow,timeRangesOverlap,vesselConflict} from '../../../lib/excursion-operations';
 import {deleteFutureExcursionSchedulesPrimary,mirrorExcursionScheduleRecord,mirrorHotelState,readExcursionSchedulesPrimary,readOperationalRecordPrimary,saveOperationalRecordPrimary,saveOperationalPairPrimary} from '../../../lib/supabase-bridge';
 import {sendExternalExcursionBookedEmail,sendExternalExcursionDeclinedEmail,sendExternalExcursionUpdatedEmail} from '../../../lib/excursion-email';
 import {sendGuestPushForExcursionTimeChange} from '../../../lib/web-push';
@@ -424,6 +424,34 @@ export async function PATCH(r:Request){
  if(!user||user.role==='guest'||!sameOrigin(r)||!hasPermission(user,'edit_excursions')&&!hasPermission(user,'excursions_manager'))return Response.json({error:'Excursion editing permission is required.'},{status:403});
  try{
   const b=await r.json();
+  if(b.action==='assign-existing-trip'){
+   const requestId=String(b.requestId||'').slice(0,100),scheduleId=String(b.scheduleId||'').slice(0,100);
+   if(!requestId||!scheduleId)return Response.json({error:'Choose an excursion and a scheduled trip.'},{status:400});
+   const {state,revision}=await loadStays();
+   const order=(state.orders||[]).find((o:any)=>o.id===requestId&&o.kind==='excursion');
+   if(!order||['Cancelled','Departed','Completed'].includes(String(order.status||''))||['Cancelled','Declined'].includes(String(order.approvalStatus||'')))return Response.json({error:'This excursion request is no longer available.'},{status:409});
+   if(order.privateBoatRequested||isRomanticBeachDinner(order))return Response.json({error:'Private boat or dinner requests require their own trip.'},{status:400});
+   const all=(await schedulesForDate(order.date)).filter((s:any)=>s.status!=='Cancelled');
+   const schedule=all.find((s:any)=>String(s.id)===scheduleId);
+   if(!schedule||schedule.status!=='Open'||excursionDeparturePassed(schedule.date,schedule.time))return Response.json({error:'This scheduled trip is not open or its departure has passed.'},{status:409});
+   if(!scheduleCanServeRequest(order.scheduleName||order.name,schedule.name))return Response.json({error:'This trip does not cover the requested excursion.'},{status:400});
+   const quantity=Math.max(1,Number(order.quantity)||1);
+   const load=excursionScheduleLoadForOrder(schedule,all,state.orders||[],order.id);
+   if(load.remaining<quantity)return Response.json({error:'Not enough seats. Only '+load.remaining+' available.'},{status:409});
+   const resources=excursionResources(state);
+   const guides=assignedGuideCount(schedule.guideIds||[],schedule.crewIds||[],resources.crew);
+   if(guides<requiredExcursionGuides(load.confirmedPax+quantity))return Response.json({error:'Assign more guides to this trip before adding these guests.'},{status:409});
+   const vessel=resources.vessels.find((v:any)=>v.id===schedule.vesselId);
+   const now=new Date().toISOString();
+   order.scheduleId=schedule.id;order.time=schedule.time;order.endTime=schedule.endTime||'';order.returnTime=schedule.returnTime||'';
+   order.schedule={date:schedule.date,time:schedule.time,endTime:schedule.endTime||'',vesselId:schedule.vesselId,vessel:vessel?.name||'',crewIds:schedule.crewIds||[],guideIds:schedule.guideIds||[],crew:resources.crew.filter((member:any)=>(schedule.crewIds||[]).includes(member.id)).map((member:any)=>member.name)};
+   order.status='Scheduled';order.approvalStatus='Approved';order.unscheduledRequest=false;order.seatRequest=false;order.requestedOverCapacity=false;order.adminScheduled=true;order.matchedScheduleName=schedule.name;
+   if(!Number(order.cents)&&order.approvalStatus==='Approved')order.cents=Math.max(0,Number(order.quotedCents)||0);
+   order.reviewedAt=now;order.reviewedBy=user.username;order.guestNotified=false;
+   const saved=await saveStayAccess(state,revision,user.userId);
+   if(!saved)return Response.json({error:'Another booking update occurred. Refresh and try again.'},{status:409});
+   return Response.json({ok:true,requestId,scheduleId,remainingSeats:load.remaining-quantity});
+  }
   if(b.action==='cancel-schedule'){
    const id=String(b.id||'').slice(0,100),date=String(b.date||''),reason=String(b.reason||'').trim().slice(0,500);
    if(!id||!validDate(date))throw Error('Choose a valid scheduled excursion.');
