@@ -19,7 +19,7 @@ export default function TransportConnections(){
     ].map(([name,value,Icon]:any)=><div key={name}><Icon size={20}/><strong>{value}</strong><small>{name}</small></div>)}</div>
     <div className="nt-connect-apps">{data.apps.map(a=><article key={a.id}><div><h3>{a.name}</h3><p>{a.role}</p></div><a href={a.url} target="_blank" rel="noopener noreferrer">Open app <ExternalLink size={16}/></a></article>)}</div>
     <p className="nt-connect-note">Live source: {data.ledger}. Changes made in either connected app are reflected here after refresh. This screen does not confirm individual app uptime or successful ticket delivery.</p>
-    <p className="nt-connect-note">Last checked: {new Date(data.checkedAt).toLocaleString()}</p>
+    <p className="nt-connect-note">Last checked: {new Intl.DateTimeFormat('en-GB',{timeZone:'Indian/Maldives',dateStyle:'medium',timeStyle:'short'}).format(new Date(data.checkedAt))}</p>
   </>}
   {!data&&!error&&<p>Checking the shared transport system…</p>}
  </section>;
