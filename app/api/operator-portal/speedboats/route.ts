@@ -1,4 +1,4 @@
-import {sameOrigin} from '../../../../lib/auth';
+import {sameOrigin,authDb} from '../../../../lib/auth';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
 import {occupied,transportToday,tripBoat,type Journey,type TransferBooking} from '../../../../lib/transport';
 import {loadTransport,updateTransport} from '../../../../lib/transport-store';
@@ -24,6 +24,14 @@ function ticketView(booking:TransferBooking,journey:Journey,index:number){
 }
 
 async function view(operator:Operator,date:string,month:string){
+ // A shared availability enquiry is visible to every authenticated active boat operator.
+ let availabilityRequests:any[]=[];
+ if(operator.active&&offers(operator,'boat')){
+  try{const records=await authDb().prepare("SELECT payload FROM operation_records WHERE key LIKE 'private-hire-enquiry:%' ORDER BY rowid DESC LIMIT 100").all();
+   availabilityRequests=(records.results||[]).flatMap((r:any)=>{try{const e=JSON.parse(String(r.payload||''));return e.status==='Awaiting Availability'&&e.date>=transportToday()?[{id:e.id,from:e.from,to:e.to,date:e.date,time:e.time,pax:e.pax,traveller:e.traveller,notes:e.notes||'',created:e.created,contactVia:'Nirili Management'}]:[]}catch{return []}});
+  }catch{}
+ }
+
  const [{state,revision},crewRows]=await Promise.all([loadTransport(),operatorCrew(operator.id)]),today=transportToday();
  const crew=crewRows.map(r=>publicCrew(r.crew));
  const day=operatorDay(state,operator.id,date).map(d=>({...d,taken:occupied(state,d.scheduleId,date),tickets:d.tickets.map(t=>ticketView(t.booking,t.journey,t.index))}));
@@ -35,7 +43,7 @@ async function view(operator:Operator,date:string,month:string){
   if(!trips.has(key))trips.set(key,{crewIds:sailing?tripCrew(sailing,t.journey.date):[],scheduleId:t.journey.scheduleId,date:t.journey.date,depart:sailing?.depart||t.journey.depart,arrive:sailing?.arrive||t.journey.arrive,from:sailing?.from||t.journey.from,to:sailing?.to||t.journey.to,stops:sailing?.stops||null,boatId:boat?.id||'',boatName:boat?.name||t.journey.boatName||'',swapped:!!sailing?.boatOverrides?.[t.journey.date],sold:0,tickets:[]});
   const trip=trips.get(key);trip.sold+=t.journey.seats.length;trip.tickets.push(ticketView(t.booking,t.journey,t.index));
  }
- return {revision,today,date,month,operator:publicOperator(operator),boats:operatorBoats(state,operator.id),sailings:operatorSailings(state,operator.id),crew,day,
+ return {revision,today,date,month,operator:publicOperator(operator),availabilityRequests,boats:operatorBoats(state,operator.id),sailings:operatorSailings(state,operator.id),crew,day,
   charterRates:operatorCharterRates(state,operator.id),
   charters:operatorCharters(state,operator.id).filter(c=>c.date>=addDays(today,-7)).map(({token,owner,history,...c})=>({...c,phone:['Requested','Confirmed','Completed'].includes(c.status)?c.phone:''})),bookings:[...trips.values()],statement:operatorStatement(state,operator,month,today)};
 }
