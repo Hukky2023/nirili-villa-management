@@ -1,6 +1,7 @@
 "use client";
 // tour-operator-menu-deploy
 import './booking.css';
+import './management-navigation.css';
 import PropertyCatalog from './property-catalog';
 import Dashboard,{DashboardReport} from './live-dashboard';
 import SessionButton from './session-button';
