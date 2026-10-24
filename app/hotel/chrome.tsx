@@ -15,7 +15,7 @@ export const EXCURSION_GUIDE=SITES.tours+'/';
 export const excursionDetailUrl=(id:string)=>SITES.tours+'/book/excursions/details/'+encodeURIComponent(id);
 export const WHATSAPP='https://wa.me/9609413977?text=Hello%20Nirili%2C%20I%27d%20like%20help%20planning%20my%20trip%20to%20Dhiffushi.';
 
-export const img=(id:string,w=1400)=>`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=82`;
+export const img=(id:string,w=1400)=>`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=65`;
 
 // Stock photos shown until an excursion has its own uploaded photos. The keyword that appears
 // earliest in the name wins, so combined trips pick up the photo of their first activity.
