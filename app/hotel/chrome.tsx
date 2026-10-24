@@ -69,9 +69,7 @@ const NAV=[
 export function Fonts(){
  return <>
   <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-  <link rel="stylesheet" precedence="default" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Manrope:wght@400;500;600;700&display=swap"/>
+  {/* Use system fonts on the public pages to avoid a render-blocking Google Fonts CSS request. */}
  </>;
 }
 
