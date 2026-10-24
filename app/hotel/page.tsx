@@ -10,7 +10,7 @@ export const metadata:Metadata={
  description:'Discover Nirili Hotel in Dhiffushi, Maldives. Book your stay direct, arrange transfers, enjoy island dining and explore turtles, reefs, sandbanks, sharks, dolphins and more with Nirili Tours.',
  metadataBase:new URL('https://nirilihotels.com'),
  alternates:{canonical:'https://nirilihotels.com/'},
- openGraph:{url:'https://nirilihotels.com/',siteName:'Nirili Hotels',type:'website'},
+ openGraph:{url:'https://nirilihotels.com/',type:'website'},
 };
 
 export default function HotelHomePage(){
