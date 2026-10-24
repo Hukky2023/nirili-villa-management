@@ -323,3 +323,12 @@ body:has(main.nh) .nv-session-floating{display:none}
   contain-intrinsic-size:auto 750px;
  }
 }
+
+/* Lighthouse accessibility: strengthen small-text contrast without changing layout. */
+.nh{--muted:#4c6264;--ink-soft:#344d50}
+.nh .nh-kicker{color:#075652}
+.nh .nh-hero .nh-kicker,.nh .nh-kicker-light{color:#ffffff}
+.nh .nh-brand-text small,.nh .nh-quick small{opacity:1}
+.nh .nh-quick{background:rgba(4,34,39,.64)}
+.nh .nh-quick a{color:#fff}
+@media (max-width:700px){.nh .nh-quick{backdrop-filter:none;-webkit-backdrop-filter:none}}
