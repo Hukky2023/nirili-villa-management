@@ -78,7 +78,7 @@ function api(orders, schedules = [selected], allowed = true) {
     '../../../lib/excursion-default-schedule': {ensureStandardDailyExcursions: async () => {}},
     '../../../lib/excursion-guides': {guideRuleFor: () => ({confirmedPax: 0, requiredGuides: 0, assignedGuides: 1})},
     '../../../lib/guest-catalog': {},
-    '../../../lib/excursion-services': {},
+    '../../../lib/excursion-services': {isRomanticBeachDinner: order => String(order?.menuItemId || order?.itemId || order?.id || '').toLowerCase() === 'romantic-beach-dinner' || String(order?.name || '').toLowerCase() === 'romantic beach dinner'},
     '../../../lib/excursion-operations': {},
   });
   const scheduleRoute = load('app/api/excursion-schedules/route.ts');
