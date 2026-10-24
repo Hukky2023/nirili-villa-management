@@ -262,7 +262,7 @@ export async function GET(r:Request){
    buggyRequested:!!o.buggyRequested,privateBoatRequested:!!o.privateBoatRequested,privateBoatSurchargeCents:Number(o.privateBoatSurchargeCents)||0,preferredTime:o.preferredTime||o.time||o.schedule?.time||'',preferredEndTime:o.preferredEndTime||o.endTime||o.schedule?.endTime||'',alreadyConfirmed:o.approvalStatus!=='Pending',serviceType:o.serviceType||'',serviceRequest:!!o.serviceRequest,notes:o.notes||'',source:o.source||'',createdAt:o.createdAt||''
   }));
   return Response.json({date,schedules:enriched,sharedBoatGroups:groups,unscheduledRequests,canEdit:hasPermission(user,'edit_excursions')||hasPermission(user,'excursions_manager')},{headers:{'Cache-Control':'no-store'}});
- }catch{return Response.json({error:'Could not load excursion schedules.'},{status:503});}
+ }catch(error){console.error('Excursion schedule GET failed:',error);return Response.json({error:'Could not load excursion schedules.'},{status:503});}
 }
 
 export async function POST(r:Request){
