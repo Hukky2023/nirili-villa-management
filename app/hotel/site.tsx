@@ -33,10 +33,10 @@ export default async function HotelHome(){
  const excursions=await featuredExcursions();
  return <main className="nh" id="top">
   <Fonts/>
-  <link rel="preload" as="image" href={IMAGES.hero}/>
   <SiteHeader/>
 
-  <section className="nh-hero" style={{backgroundImage:`url("${IMAGES.hero}")`}}>
+  <section className="nh-hero">
+   <img className="nh-hero-photo" src={IMAGES.hero} alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="async" width={1200} height={800}/>
    <div className="nh-hero-inner">
     <p className="nh-kicker nh-kicker-light"><MapPin/> Dhiffushi, Kaafu Atoll</p>
     <h1>Barefoot days on a<br/><em>Maldivian island.</em></h1>
