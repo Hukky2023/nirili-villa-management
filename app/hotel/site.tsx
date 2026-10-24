@@ -36,7 +36,7 @@ export default async function HotelHome(){
   <SiteHeader/>
 
   <section className="nh-hero">
-   <img className="nh-hero-photo" src={IMAGES.hero} alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="async" width={1200} height={800}/>
+   <img className="nh-hero-photo" src={IMAGES.hero} srcSet={`${img('1507525428034-b723cf961d3e',640)} 640w, ${img('1507525428034-b723cf961d3e',960)} 960w, ${IMAGES.hero} 1200w`} sizes="100vw" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="async" width={1200} height={800}/>
    <div className="nh-hero-inner">
     <p className="nh-kicker nh-kicker-light"><MapPin/> Dhiffushi, Kaafu Atoll</p>
     <h1>Barefoot days on a<br/><em>Maldivian island.</em></h1>
