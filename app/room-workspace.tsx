@@ -1,4 +1,5 @@
 'use client';
+import './room.css';
 import StayPackageDetails from './stay-package-details';
 import {startLiveRefresh} from '../lib/live-refresh';
 import {UiText,UiField,UiOption} from './ui-language';
