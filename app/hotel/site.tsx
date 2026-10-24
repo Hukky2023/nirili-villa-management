@@ -1,3 +1,4 @@
+import {Suspense} from 'react';
 import WebsiteChat from '../website-chat';
 import {loadExcursionMenu,baseExcursionMenu} from '../../lib/excursion-menu';
 import {EXCURSIONS,Fonts,excursionDetailUrl,excursionTag,RESTAURANT,RIDE,STAY,WATER_SPORTS,SiteFooter,SiteHeader,TRANSFERS,WHATSAPP,excursionPhoto,img} from './chrome';
@@ -29,8 +30,22 @@ async function featuredExcursions(){
  }));
 }
 
-export default async function HotelHome(){
+
+async function FeaturedExcursionGrid(){
  const excursions=await featuredExcursions();
+  return <div className="nh-exp-grid">
+    {excursions.map((x,i)=><a className={'nh-exp'+(i===0?' is-wide':i===excursions.length-1&&excursions.length%3===1?' is-wide is-last':'')} key={x.id} href={excursionDetailUrl(x.id)}>
+     {x.photo?<img src={x.photo} alt={x.name} loading="lazy" decoding="async"/>:<span className="nh-exp-empty"><Waves/></span>}
+     <span className="nh-exp-body">
+      <small>{x.tag}</small>
+      <strong>{x.name}</strong>
+      <span>{x.detail}</span>
+     </span>
+    </a>)}
+   </div>;
+}
+
+export default function HotelHome(){
  return <main className="nh" id="top">
   <Fonts/>
   <SiteHeader/>
@@ -94,16 +109,9 @@ export default async function HotelHome(){
     </div>
     <p>Turtles, nurse sharks, manta rays and sandbanks all in the waters around Dhiffushi. Our crew knows the best spots and the best time to go.</p>
    </div>
-   <div className="nh-exp-grid">
-    {excursions.map((x,i)=><a className={'nh-exp'+(i===0?' is-wide':i===excursions.length-1&&excursions.length%3===1?' is-wide is-last':'')} key={x.id} href={excursionDetailUrl(x.id)}>
-     {x.photo?<img src={x.photo} alt={x.name} loading="lazy" decoding="async"/>:<span className="nh-exp-empty"><Waves/></span>}
-     <span className="nh-exp-body">
-      <small>{x.tag}</small>
-      <strong>{x.name}</strong>
-      <span>{x.detail}</span>
-     </span>
-    </a>)}
-   </div>
+   <Suspense fallback={<div className="nh-exp-grid" aria-label="Excursion highlights loading" style={{minHeight:420}}/>}>
+    <FeaturedExcursionGrid/>
+   </Suspense>
    <div className="nh-center">
     <a className="nh-btn nh-btn-primary" href={EXCURSIONS}>See all excursions &amp; book <ArrowRight/></a>
    </div>
