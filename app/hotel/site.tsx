@@ -109,7 +109,7 @@ export default function HotelHome(){
     </div>
     <p>Turtles, nurse sharks, manta rays and sandbanks all in the waters around Dhiffushi. Our crew knows the best spots and the best time to go.</p>
    </div>
-   <Suspense fallback={<div className="nh-exp-grid" aria-label="Excursion highlights loading" style={{minHeight:420}}/>}>
+   <Suspense fallback={<div className="nh-exp-grid" aria-label="Excursions" style={{minHeight:420}}/>}>
     <FeaturedExcursionGrid/>
    </Suspense>
    <div className="nh-center">
