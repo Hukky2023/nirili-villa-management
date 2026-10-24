@@ -3,6 +3,9 @@ import {ALIAS_HOSTS,HOSTS,SITES} from './lib/public-sites';
 
 const tabPattern=/^[a-f0-9]{32}$/;
 const PUBLIC='public, max-age=0, must-revalidate';
+// Only the anonymous hotel homepage is eligible for short shared CDN caching.
+// Keep guest bookings, payment, login, and management responses uncached.
+const HOTEL_HOME_CACHE='public, max-age=0, s-maxage=30, stale-while-revalidate=60';
 const PRIVATE='private, no-store, max-age=0';
 
 function cache(response:NextResponse,value:string){
@@ -151,13 +154,14 @@ function hotelSiteResponse(url:URL,method='GET'){
  if(['GET','HEAD'].includes(method)&&/^\/api\/menu-images\/[a-f0-9-]{36}$/.test(url.pathname))return NextResponse.next();
  if(url.pathname==='/'){
   url.pathname='/hotel';
-  return cache(NextResponse.rewrite(url),PUBLIC);
+  return cache(NextResponse.rewrite(url),HOTEL_HOME_CACHE);
  }
  // Excursions live on the tours site; keep old guide links working.
  if(under(url.pathname,'/hotel/excursions')){
   const id=url.pathname.slice('/hotel/excursions/'.length);
   return NextResponse.redirect(SITES.tours+(id?'/book/excursions/details/'+id:'/'),308);
  }
+ if(url.pathname==='/hotel'&&['GET','HEAD'].includes(method))return cache(NextResponse.next(),HOTEL_HOME_CACHE);
  if(under(url.pathname,'/hotel'))return cache(NextResponse.next(),PUBLIC);
 
  const shortcut=SHORTCUTS[url.pathname.toLowerCase().replace(/\/+$/,'')];
