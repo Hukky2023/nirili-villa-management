@@ -4,9 +4,9 @@ import {EXCURSIONS,Fonts,excursionDetailUrl,excursionTag,RESTAURANT,RIDE,STAY,WA
 import {ArrowRight,ArrowUpRight,BedDouble,Bike,Coffee,Compass,MapPin,MessageCircle,Plane,Sailboat,Sun,UtensilsCrossed,Waves} from 'lucide-react';
 
 const IMAGES={
- hero:img('1507525428034-b723cf961d3e',1200),
+ hero:img('1507525428034-b723cf961d3e',1200).replace('q=65','q=55'),
  stay:'/api/public-room-photo',
- evening:img('1643856555919-9787de563a5d',650),
+ evening:img('1643856555919-9787de563a5d',480),
  dining:img('1768322264423-4b0adf0cf31b',900),
  transfer:img('1530809355496-bac53698afe3',800),
  ride:img('1632299598724-45be3f29ff61',800),
@@ -36,7 +36,7 @@ export default async function HotelHome(){
   <SiteHeader/>
 
   <section className="nh-hero">
-   <img className="nh-hero-photo" src={IMAGES.hero} srcSet={`${img('1507525428034-b723cf961d3e',640)} 640w, ${img('1507525428034-b723cf961d3e',960)} 960w, ${IMAGES.hero} 1200w`} sizes="100vw" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="async" width={1200} height={800}/>
+   <img className="nh-hero-photo" src={IMAGES.hero} srcSet={`${img('1507525428034-b723cf961d3e',640).replace('q=65','q=55')} 640w, ${img('1507525428034-b723cf961d3e',960).replace('q=65','q=55')} 960w, ${IMAGES.hero} 1200w`} sizes="100vw" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="async" width={1200} height={800}/>
    <div className="nh-hero-inner">
     <p className="nh-kicker nh-kicker-light"><MapPin/> Dhiffushi, Kaafu Atoll</p>
     <h1>Barefoot days on a<br/><em>Maldivian island.</em></h1>
@@ -70,7 +70,7 @@ export default async function HotelHome(){
   <section className="nh-feature" id="stay">
    <div className="nh-feature-media">
     <img src={IMAGES.stay} alt="Bright hotel room with a view" loading="lazy" decoding="async"/>
-    <img className="nh-feature-inset" src={IMAGES.evening} alt="Sunset over the beach" loading="lazy" decoding="async"/>
+    <img className="nh-feature-inset" src={IMAGES.evening} srcSet={`${img('1643856555919-9787de563a5d',320)} 320w, ${IMAGES.evening} 480w`} sizes="(max-width: 700px) 45vw, 420px" alt="Sunset over the beach" loading="lazy" decoding="async"/>
    </div>
    <div className="nh-feature-copy">
     <p className="nh-kicker">Nirili Stay</p>
