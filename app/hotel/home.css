@@ -313,3 +313,12 @@ body:has(main.nh) .nv-session-floating{display:none}
 .nh .nh-360-help{color:#fff;text-align:center;padding:11px 15px;font-size:13px;background:#0b2830}
 .nh .nh-360-photo-error{padding:55px 18px;color:#fff;text-align:center;min-height:220px}
 @media(max-width:700px){.nh .nh-360-stage .nh-panorama-wrap{height:min(49vh,440px)}}
+
+/* Keep far-below-the-fold marketing sections out of initial layout/paint work.
+   Intrinsic sizing reserves scroll space until a section approaches the viewport. */
+@supports (content-visibility:auto){
+ .nh > :is(.nh-intro,.nh-feature,.nh-experiences,.nh-dining,.nh-travel,.nh-cta){
+  content-visibility:auto;
+  contain-intrinsic-size:auto 750px;
+ }
+}
