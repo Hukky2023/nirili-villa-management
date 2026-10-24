@@ -4,13 +4,13 @@ import {EXCURSIONS,Fonts,excursionDetailUrl,excursionTag,RESTAURANT,RIDE,STAY,WA
 import {ArrowRight,ArrowUpRight,BedDouble,Bike,Coffee,Compass,MapPin,MessageCircle,Plane,Sailboat,Sun,UtensilsCrossed,Waves} from 'lucide-react';
 
 const IMAGES={
- hero:img('1507525428034-b723cf961d3e',2400),
+ hero:img('1507525428034-b723cf961d3e',1600),
  stay:'https://static.cupid.travel/hotels/ex_277154f6_z.jpg',
  evening:img('1643856555919-9787de563a5d',900),
  dining:img('1768322264423-4b0adf0cf31b',1400),
  transfer:img('1530809355496-bac53698afe3',1200),
  ride:img('1632299598724-45be3f29ff61',1200),
- sunset:img('1650024678534-a93a8328ad46',2000),
+ sunset:img('1650024678534-a93a8328ad46',1400),
 };
 
 const FEATURED=['turtle','shark','manta','coral','sandbank','dolphin','romantic-sandbank-dinner'];
@@ -33,6 +33,7 @@ export default async function HotelHome(){
  const excursions=await featuredExcursions();
  return <main className="nh" id="top">
   <Fonts/>
+  <link rel="preload" as="image" href={IMAGES.hero}/>
   <SiteHeader/>
 
   <section className="nh-hero" style={{backgroundImage:`url("${IMAGES.hero}")`}}>
@@ -68,8 +69,8 @@ export default async function HotelHome(){
 
   <section className="nh-feature" id="stay">
    <div className="nh-feature-media">
-    <img src={IMAGES.stay} alt="Bright hotel room with a view" loading="lazy"/>
-    <img className="nh-feature-inset" src={IMAGES.evening} alt="Sunset over the beach" loading="lazy"/>
+    <img src={IMAGES.stay} alt="Bright hotel room with a view" loading="lazy" decoding="async"/>
+    <img className="nh-feature-inset" src={IMAGES.evening} alt="Sunset over the beach" loading="lazy" decoding="async"/>
    </div>
    <div className="nh-feature-copy">
     <p className="nh-kicker">Nirili Stay</p>
@@ -95,7 +96,7 @@ export default async function HotelHome(){
    </div>
    <div className="nh-exp-grid">
     {excursions.map((x,i)=><a className={'nh-exp'+(i===0?' is-wide':i===excursions.length-1&&excursions.length%3===1?' is-wide is-last':'')} key={x.id} href={excursionDetailUrl(x.id)}>
-     {x.photo?<img src={x.photo} alt={x.name} loading="lazy"/>:<span className="nh-exp-empty"><Waves/></span>}
+     {x.photo?<img src={x.photo} alt={x.name} loading="lazy" decoding="async"/>:<span className="nh-exp-empty"><Waves/></span>}
      <span className="nh-exp-body">
       <small>{x.tag}</small>
       <strong>{x.name}</strong>
@@ -116,7 +117,7 @@ export default async function HotelHome(){
     <div className="nh-dining-tags"><span>Jet ski</span><span>Parasailing</span><span>Kayak &amp; SUP</span></div>
     <a className="nh-btn nh-btn-light" href={WATER_SPORTS}>Book water sports <ArrowRight/></a>
    </div>
-   <div className="nh-dining-media"><img src={img('1505738313577-5357ff512f16',1400)} alt="Parasail above a turquoise lagoon" loading="lazy"/></div>
+   <div className="nh-dining-media"><img src={img('1505738313577-5357ff512f16',1400)} alt="Parasail above a turquoise lagoon" loading="lazy" decoding="async"/></div>
   </section>
 
   <section className="nh-dining" id="dining">
