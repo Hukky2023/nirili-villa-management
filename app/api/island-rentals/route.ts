@@ -4,7 +4,7 @@ import {operatorFromRequest,offers} from '../../../lib/travel-operators';
 
 export const runtime='edge';
 const headers={'Cache-Control':'no-store'};
-type Unit={id:string;operatorId:string;operatorName:string;name:string;kind:'cycle'|'bicycle';qty:number;rateMvr:number;rates?:Record<string,number>;active:boolean;description:string};
+type Unit={id:string;operatorId:string;operatorName:string;name:string;kind:'cycle'|'bicycle'|'buggy';qty:number;rateMvr:number;rates?:Record<string,number>;active:boolean;description:string};
 type Rental={id:string;unitId:string;operatorId:string;name:string;contact:string;start:string;end:string;qty:number;amountMvr:number;status:'Requested'|'Confirmed'|'Cancelled'|'Completed';created:string};
 type RentalLedger={units:Unit[];bookings:Rental[]};
 const read=(s:any):RentalLedger=>{const v=s.islandRentals||{};return {units:Array.isArray(v.units)?v.units:[],bookings:Array.isArray(v.bookings)?v.bookings:[]}};
@@ -53,7 +53,7 @@ export async function POST(r:Request){
   const keys=['1h','2h','5h','12h','1d','2d','3d'];const raw=x.rates&&typeof x.rates==='object'?x.rates:null;
   const rates=Object.fromEntries(keys.map(k=>[k,raw?.[k]===undefined?(k==='1d'?rateMvr:0):Number(raw[k])]));
   if(Object.values(rates).some(v=>!Number.isInteger(v as number)||(v as number)<0||(v as number)>100000))return json({error:'Enter valid rental rates in MVR for all durations.'},400);
-  if(!name||!['cycle','bicycle'].includes(kind)||!Number.isInteger(qty)||qty<0||qty>500||!Number.isInteger(rateMvr)||rateMvr<0||rateMvr>100000)return json({error:'Enter a name, type, quantity and daily rate in MVR.'},400);
+  if(!name||!['cycle','bicycle','buggy'].includes(kind)||!Number.isInteger(qty)||qty<0||qty>500||!Number.isInteger(rateMvr)||rateMvr<0||rateMvr>100000)return json({error:'Enter a name, type, quantity and daily rate in MVR.'},400);
   try{const {result}=await updateTransport('operator:rental:'+operator.id,(s:any)=>{
    const v=read(s),old=v.units.find(x=>x.id===id&&x.operatorId===operator.id);
    if(id&&!old)throw Error('Rental item not found.');
