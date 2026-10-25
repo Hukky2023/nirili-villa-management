@@ -5,20 +5,26 @@ import {operatorFromRequest,offers} from '../../../lib/travel-operators';
 export const runtime='edge';
 const headers={'Cache-Control':'no-store'};
 type Unit={id:string;operatorId:string;operatorName:string;name:string;kind:'cycle'|'bicycle'|'buggy';qty:number;rateMvr:number;rates?:Record<string,number>;active:boolean;description:string};
-type Rental={id:string;unitId:string;operatorId:string;name:string;contact:string;start:string;end:string;qty:number;amountMvr:number;status:'Requested'|'Confirmed'|'Cancelled'|'Completed';created:string};
+type Rental={id:string;unitId:string;operatorId:string;name:string;contact:string;start:string;end:string;qty:number;amountMvr:number;status:'Requested'|'Confirmed'|'Cancelled'|'Completed';created:string;startAt?:string;endAt?:string;durationKey?:string};
 type RentalLedger={units:Unit[];bookings:Rental[]};
 const read=(s:any):RentalLedger=>{const v=s.islandRentals||{};return {units:Array.isArray(v.units)?v.units:[],bookings:Array.isArray(v.bookings)?v.bookings:[]}};
 const dateOk=(s:any)=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s+'T00:00:00Z'));
 const text=(v:any,n=120)=>String(v??'').trim().slice(0,n);
-const available=(unit:Unit,rentals:Rental[],start:string,end:string)=>Math.max(0,unit.qty-rentals.filter(r=>r.unitId===unit.id&&['Requested','Confirmed'].includes(r.status)&&r.start<=end&&r.end>=start).reduce((n,r)=>n+r.qty,0));
+const interval=(day:string,time:string)=>new Date(day+'T'+time+':00+05:00').getTime();
+const validTime=(x:any)=>typeof x==='string'&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(x);
+const available=(unit:Unit,rentals:Rental[],start:string,end:string,startTime?:string,endTime?:string)=>{
+ const begin=validTime(startTime)?interval(start,startTime!):Date.parse(start+'T00:00:00Z');
+ const finish=validTime(endTime)?interval(end,endTime!):Date.parse(end+'T23:59:59Z');
+ return Math.max(0,unit.qty-rentals.filter(r=>r.unitId===unit.id&&['Requested','Confirmed'].includes(r.status)&&((r.startAt&&r.endAt)?Date.parse(r.startAt)<finish&&Date.parse(r.endAt)>begin:r.start<=end&&r.end>=start)).reduce((n,r)=>n+r.qty,0));
+};
 const json=(data:any,status=200)=>Response.json(data,{status,headers});
 const sameRequest=(r:Request)=>{const origin=r.headers.get('origin');return !origin||origin===new URL(r.url).origin};
 export async function GET(r:Request){
  try{
   const {state}=await loadTransport(),ledger=read(state),u=new URL(r.url);
-  const start=u.searchParams.get('start')||'',end=u.searchParams.get('end')||start;
+  const start=u.searchParams.get('start')||'',end=u.searchParams.get('end')||start,startTime=u.searchParams.get('startTime')||'',endTime=u.searchParams.get('endTime')||'';
   if(start&&(!dateOk(start)||!dateOk(end)||end<start||Date.parse(end)-Date.parse(start)>31*86400000))return json({error:'Invalid rental dates.'},400);
-  const units=ledger.units.filter(x=>x.active).map(x=>({id:x.id,name:x.name,kind:x.kind,operatorName:x.operatorName,rateMvr:x.rateMvr,rates:x.rates||{'1d':x.rateMvr},description:x.description,available:start?available(x,ledger.bookings,start,end):x.qty}));
+  const units=ledger.units.filter(x=>x.active).map(x=>({id:x.id,name:x.name,kind:x.kind,operatorName:x.operatorName,rateMvr:x.rateMvr,rates:x.rates||{'1d':x.rateMvr},description:x.description,available:start?available(x,ledger.bookings,start,end,startTime,endTime):x.qty}));
   return json({units,connected:true});
  }catch{return json({error:'Rental inventory unavailable.'},503)}
 }
@@ -28,14 +34,25 @@ export async function POST(r:Request){
  if(!b||typeof b!=='object')return json({error:'Invalid request'},400);
  if(b.action==='book'){
   const unitId=text(b.unitId,90),start=text(b.start,10),end=text(b.end,10),qty=Number(b.qty),name=text(b.name,100),contact=text(b.contact,150);
+  const durationKey=text(b.durationKey,10),startTime=text(b.startTime,5),endTime=text(b.endTime,5);
+  const hourDurations:Record<string,number>={'1h':1,'2h':2,'5h':5,'12h':12};const dayDurations:Record<string,number>={'1d':1,'2d':2,'3d':3};
+  const isHour=Object.prototype.hasOwnProperty.call(hourDurations,durationKey);
+  const isKnown=durationKey===''||isHour||Object.prototype.hasOwnProperty.call(dayDurations,durationKey);
+  if(!isKnown||durationKey&&(!validTime(startTime)||!validTime(endTime)))return json({error:'Select a valid rental duration and pickup time.'},400);
+  if(durationKey){
+   const hours=isHour?hourDurations[durationKey]:dayDurations[durationKey]*24;
+   if(interval(end,endTime)-interval(start,startTime)!==hours*3600000)return json({error:'Rental end must match the selected duration.'},400);
+  }
   if(!dateOk(start)||!dateOk(end)||end<start||Date.parse(end)-Date.parse(start)>31*86400000||start<new Date().toISOString().slice(0,10)||!Number.isInteger(qty)||qty<1||qty>10||name.length<2||contact.length<5)return json({error:'Check the rental dates, quantity, name and contact.'},400);
   try{
    const {result}=await updateTransport('public:island-rental',(s:any)=>{
     const v=read(s),unit=v.units.find(x=>x.id===unitId&&x.active);
     if(!unit)throw Error('This rental is unavailable.');
-    if(available(unit,v.bookings,start,end)<qty)throw Error('Not enough vehicles available for these dates.');
+    if(available(unit,v.bookings,start,end,startTime,endTime)<qty)throw Error('Not enough vehicles available for these dates.');
     const days=Math.round((Date.parse(end)-Date.parse(start))/86400000)+1;
-    const booking:Rental={id:'RENT-'+crypto.randomUUID().slice(0,8).toUpperCase(),unitId,operatorId:unit.operatorId,name,contact,start,end,qty,amountMvr:days*unit.rateMvr*qty,status:'Requested',created:new Date().toISOString()};
+    const price=durationKey?Number(unit.rates?.[durationKey]||0):days*unit.rateMvr;
+    if(durationKey&&(!Number.isInteger(price)||price<=0))throw Error('This rental duration is not offered by the operator.');
+    const booking:Rental={id:'RENT-'+crypto.randomUUID().slice(0,8).toUpperCase(),unitId,operatorId:unit.operatorId,name,contact,start,end,qty,amountMvr:price*qty,status:'Requested',created:new Date().toISOString(),...(durationKey?{durationKey,startAt:new Date(interval(start,startTime)).toISOString(),endAt:new Date(interval(end,endTime)).toISOString()}: {})};
     v.bookings.push(booking);s.islandRentals=v;
     return {reference:booking.id,status:booking.status,totalMvr:booking.amountMvr};
    });
