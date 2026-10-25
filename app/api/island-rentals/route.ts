@@ -4,7 +4,7 @@ import {operatorFromRequest,offers} from '../../../lib/travel-operators';
 
 export const runtime='edge';
 const headers={'Cache-Control':'no-store'};
-type Unit={id:string;operatorId:string;operatorName:string;name:string;kind:'cycle'|'bicycle';qty:number;rateMvr:number;active:boolean;description:string};
+type Unit={id:string;operatorId:string;operatorName:string;name:string;kind:'cycle'|'bicycle';qty:number;rateMvr:number;rates?:Record<string,number>;active:boolean;description:string};
 type Rental={id:string;unitId:string;operatorId:string;name:string;contact:string;start:string;end:string;qty:number;amountMvr:number;status:'Requested'|'Confirmed'|'Cancelled'|'Completed';created:string};
 type RentalLedger={units:Unit[];bookings:Rental[]};
 const read=(s:any):RentalLedger=>{const v=s.islandRentals||{};return {units:Array.isArray(v.units)?v.units:[],bookings:Array.isArray(v.bookings)?v.bookings:[]}};
@@ -18,7 +18,7 @@ export async function GET(r:Request){
   const {state}=await loadTransport(),ledger=read(state),u=new URL(r.url);
   const start=u.searchParams.get('start')||'',end=u.searchParams.get('end')||start;
   if(start&&(!dateOk(start)||!dateOk(end)||end<start||Date.parse(end)-Date.parse(start)>31*86400000))return json({error:'Invalid rental dates.'},400);
-  const units=ledger.units.filter(x=>x.active).map(x=>({id:x.id,name:x.name,kind:x.kind,operatorName:x.operatorName,rateMvr:x.rateMvr,description:x.description,available:start?available(x,ledger.bookings,start,end):x.qty}));
+  const units=ledger.units.filter(x=>x.active).map(x=>({id:x.id,name:x.name,kind:x.kind,operatorName:x.operatorName,rateMvr:x.rateMvr,rates:x.rates||{'1d':x.rateMvr},description:x.description,available:start?available(x,ledger.bookings,start,end):x.qty}));
   return json({units,connected:true});
  }catch{return json({error:'Rental inventory unavailable.'},503)}
 }
@@ -50,11 +50,14 @@ export async function POST(r:Request){
  }
  if(b.action==='save-unit'){
   const x=b.unit||{},id=text(x.id,90),name=text(x.name,80),kind=x.kind,qty=Number(x.qty),rateMvr=Number(x.rateMvr);
+  const keys=['1h','2h','5h','12h','1d','2d','3d'];const raw=x.rates&&typeof x.rates==='object'?x.rates:null;
+  const rates=Object.fromEntries(keys.map(k=>[k,raw?.[k]===undefined?(k==='1d'?rateMvr:0):Number(raw[k])]));
+  if(Object.values(rates).some(v=>!Number.isInteger(v as number)||(v as number)<0||(v as number)>100000))return json({error:'Enter valid rental rates in MVR for all durations.'},400);
   if(!name||!['cycle','bicycle'].includes(kind)||!Number.isInteger(qty)||qty<0||qty>500||!Number.isInteger(rateMvr)||rateMvr<0||rateMvr>100000)return json({error:'Enter a name, type, quantity and daily rate in MVR.'},400);
   try{const {result}=await updateTransport('operator:rental:'+operator.id,(s:any)=>{
    const v=read(s),old=v.units.find(x=>x.id===id&&x.operatorId===operator.id);
    if(id&&!old)throw Error('Rental item not found.');
-   const updated:Unit={id:old?.id||'UNIT-'+crypto.randomUUID().slice(0,8).toUpperCase(),operatorId:operator.id,operatorName:operator.name,name,kind,qty,rateMvr,active:x.active!==false,description:text(x.description,350)};
+   const updated:Unit={id:old?.id||'UNIT-'+crypto.randomUUID().slice(0,8).toUpperCase(),operatorId:operator.id,operatorName:operator.name,name,kind,qty,rateMvr,rates,active:x.active!==false,description:text(x.description,350)};
    if(old){const max=v.bookings.filter(r=>r.unitId===old.id&&['Requested','Confirmed'].includes(r.status)).reduce((n,r)=>Math.max(n,r.qty),0);if(qty<max)throw Error('This item has active reservations.');v.units=v.units.map(u=>u.id===old.id?updated:u)}else v.units.push(updated);
    s.islandRentals=v;return {item:updated};
   });return json(result)}catch(e){return json({error:e instanceof Error?e.message:'Unable to save item.'},409)}
