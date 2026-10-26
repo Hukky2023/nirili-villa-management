@@ -1,7 +1,8 @@
 import {env} from 'cloudflare:workers';
 import {sameOrigin} from '../../../lib/auth';
 import {loadTransport,updateTransport} from '../../../lib/transport-store';
-import {operatorFromRequest,offers} from '../../../lib/travel-operators';
+import {operatorFromRequest} from '../../../lib/travel-operators';
+import {can} from '../../../lib/partners';
 
 // Private licence storage: R2 when available, encrypted D1 fallback for Workers without an R2 binding.
 const hexToBytes=(s:string)=>Uint8Array.from(s.match(/../g)||[],v=>parseInt(v,16));
@@ -124,7 +125,8 @@ export async function POST(r:Request){
   }catch(e){await deleteLicence(licenceKey).catch(()=>{});return json({error:e instanceof Error?e.message:'Could not create rental request.'},409)}
  }
  const operator=await operatorFromRequest(r);
- if(!operator||!offers(operator,'boat'))return json({error:'Sign in with an approved operator account.'},401);
+ if(!operator)return json({error:'Please sign in again.'},401);
+ if(!can(operator,'rentals'))return json({error:'Your partner account needs the Run cycle, bicycle and buggy rentals permission. Ask Nirili Management to enable it.'},403);
  if(b.action==='licence-file'){
   const id=text(b.id,90),{state}=await loadTransport(),booking=read(state).bookings.find(x=>x.id===id&&x.operatorId===operator.id);
   if(!booking?.licenceKey)return json({error:'Licence file not found.'},404);
