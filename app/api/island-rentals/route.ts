@@ -1,3 +1,4 @@
+import {env} from 'cloudflare:workers';
 import {sameOrigin} from '../../../lib/auth';
 import {loadTransport,updateTransport} from '../../../lib/transport-store';
 import {operatorFromRequest,offers} from '../../../lib/travel-operators';
@@ -5,7 +6,7 @@ import {operatorFromRequest,offers} from '../../../lib/travel-operators';
 export const runtime='edge';
 const headers={'Cache-Control':'no-store'};
 type Unit={id:string;operatorId:string;operatorName:string;name:string;kind:'cycle'|'bicycle'|'buggy';qty:number;rateMvr:number;rates?:Record<string,number>;active:boolean;description:string};
-type Rental={id:string;unitId:string;operatorId:string;name:string;contact:string;start:string;end:string;qty:number;amountMvr:number;status:'Requested'|'Confirmed'|'Cancelled'|'Completed';created:string;startAt?:string;endAt?:string;durationKey?:string};
+type Rental={licenceKey?:string;licenceName?:string;licenceMime?:string;id:string;unitId:string;operatorId:string;name:string;contact:string;start:string;end:string;qty:number;amountMvr:number;status:'Requested'|'Confirmed'|'Cancelled'|'Completed';created:string;startAt?:string;endAt?:string;durationKey?:string};
 type RentalLedger={units:Unit[];bookings:Rental[]};
 const read=(s:any):RentalLedger=>{const v=s.islandRentals||{};return {units:Array.isArray(v.units)?v.units:[],bookings:Array.isArray(v.bookings)?v.bookings:[]}};
 const dateOk=(s:any)=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s+'T00:00:00Z'));
@@ -29,10 +30,33 @@ export async function GET(r:Request){
  }catch{return json({error:'Rental inventory unavailable.'},503)}
 }
 export async function POST(r:Request){
- if(!sameOrigin(r)||Number(r.headers.get('content-length')||0)>12000)return json({error:'Invalid request.'},403);
- let b:any;try{b=await r.json()}catch{return json({error:'Invalid payload'},400)}
+ if(!sameOrigin(r)||Number(r.headers.get('content-length')||0)>4500000)return json({error:'Invalid or oversized request.'},403);
+ const multipart=(r.headers.get('content-type')||'').toLowerCase().includes('multipart/form-data');
+ let licence:File|null=null;
+ let b:any;
+ try{
+  if(multipart){
+   const form=await r.formData(),raw=form.get('booking');
+   if(typeof raw!=='string'||raw.length>12000)return json({error:'Invalid booking information.'},400);
+   b=JSON.parse(raw);
+   const upload=form.get('licence');
+   if(upload instanceof File)licence=upload;
+  }else b=await r.json();
+ }catch{return json({error:'Invalid payload'},400)}
  if(!b||typeof b!=='object')return json({error:'Invalid request'},400);
  if(b.action==='book'){
+  if(!licence)return json({error:'Upload a driving licence file for this rental request.'},400);
+  if(licence.size<1||licence.size>3*1024*1024)return json({error:'Licence file must be under 3 MB.'},400);
+  const acceptable=['image/jpeg','image/png','image/webp','application/pdf'];
+  if(!acceptable.includes(licence.type))return json({error:'Use a JPG, PNG, WebP or PDF licence file.'},400);
+  const bytes=new Uint8Array(await licence.arrayBuffer()),prefix=Array.from(bytes.slice(0,12));
+  const jpeg=prefix[0]===255&&prefix[1]===216&&prefix[2]===255;
+  const png=prefix.slice(0,8).join(',')==='137,80,78,71,13,10,26,10';
+  const pdf=prefix.slice(0,5).join(',')==='37,80,68,70,45';
+  const webp=String.fromCharCode(...prefix.slice(0,4))==='RIFF'&&String.fromCharCode(...prefix.slice(8,12))==='WEBP';
+  if(!(licence.type==='image/jpeg'&&jpeg||licence.type==='image/png'&&png||licence.type==='application/pdf'&&pdf||licence.type==='image/webp'&&webp))return json({error:'The licence file does not match its format.'},400);
+  const bucket=env.BUCKET;
+  if(!bucket)return json({error:'Private licence storage is not configured. Please contact Nirili Management.'},503);
   const unitId=text(b.unitId,90),start=text(b.start,10),end=text(b.end,10),qty=Number(b.qty),name=text(b.name,100),contact=text(b.contact,150);
   const durationKey=text(b.durationKey,10),startTime=text(b.startTime,5),endTime=text(b.endTime,5);
   const hourDurations:Record<string,number>={'1h':1,'2h':2,'5h':5,'12h':12};const dayDurations:Record<string,number>={'1d':1,'2d':2,'3d':3};
@@ -44,6 +68,9 @@ export async function POST(r:Request){
    if(interval(end,endTime)-interval(start,startTime)!==hours*3600000)return json({error:'Rental end must match the selected duration.'},400);
   }
   if(!dateOk(start)||!dateOk(end)||end<start||Date.parse(end)-Date.parse(start)>31*86400000||start<new Date().toISOString().slice(0,10)||!Number.isInteger(qty)||qty<1||qty>10||name.length<2||contact.length<5)return json({error:'Check the rental dates, quantity, name and contact.'},400);
+  const licenceKey='private/rental-licences/'+crypto.randomUUID();
+  try{await bucket.put(licenceKey,bytes,{httpMetadata:{contentType:licence.type},customMetadata:{uploadedAt:new Date().toISOString()} });}
+  catch{return json({error:'Could not securely store the licence file.'},503)}
   try{
    const {result}=await updateTransport('public:island-rental',(s:any)=>{
     const v=read(s),unit=v.units.find(x=>x.id===unitId&&x.active);
@@ -52,18 +79,25 @@ export async function POST(r:Request){
     const days=Math.round((Date.parse(end)-Date.parse(start))/86400000)+1;
     const price=durationKey?Number(unit.rates?.[durationKey]||0):days*unit.rateMvr;
     if(durationKey&&(!Number.isInteger(price)||price<=0))throw Error('This rental duration is not offered by the operator.');
-    const booking:Rental={id:'RENT-'+crypto.randomUUID().slice(0,8).toUpperCase(),unitId,operatorId:unit.operatorId,name,contact,start,end,qty,amountMvr:price*qty,status:'Requested',created:new Date().toISOString(),...(durationKey?{durationKey,startAt:new Date(interval(start,startTime)).toISOString(),endAt:new Date(interval(end,endTime)).toISOString()}: {})};
+    const booking:Rental={id:'RENT-'+crypto.randomUUID().slice(0,8).toUpperCase(),unitId,operatorId:unit.operatorId,name,contact,start,end,qty,amountMvr:price*qty,status:'Requested',created:new Date().toISOString(),licenceKey,licenceName:text(licence.name,130),licenceMime:licence.type,...(durationKey?{durationKey,startAt:new Date(interval(start,startTime)).toISOString(),endAt:new Date(interval(end,endTime)).toISOString()}: {})};
     v.bookings.push(booking);s.islandRentals=v;
     return {reference:booking.id,status:booking.status,totalMvr:booking.amountMvr};
    });
    return json(result,201);
-  }catch(e){return json({error:e instanceof Error?e.message:'Could not create rental request.'},409)}
+  }catch(e){await bucket.delete(licenceKey).catch(()=>{});return json({error:e instanceof Error?e.message:'Could not create rental request.'},409)}
  }
  const operator=await operatorFromRequest(r);
  if(!operator||!offers(operator,'boat'))return json({error:'Sign in with an approved operator account.'},401);
+ if(b.action==='licence-file'){
+  const id=text(b.id,90),{state}=await loadTransport(),booking=read(state).bookings.find(x=>x.id===id&&x.operatorId===operator.id);
+  if(!booking?.licenceKey)return json({error:'Licence file not found.'},404);
+  const file=await env.BUCKET?.get(booking.licenceKey);
+  if(!file)return json({error:'Licence file not available.'},404);
+  return new Response(file.body,{headers:{'Content-Type':booking.licenceMime||'application/octet-stream','Content-Disposition':'attachment; filename="rental-licence"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"}});
+ }
  if(b.action==='list'){
   const {state}=await loadTransport(),v=read(state);
-  return json({units:v.units.filter(x=>x.operatorId===operator.id),bookings:v.bookings.filter(x=>x.operatorId===operator.id)});
+  return json({units:v.units.filter(x=>x.operatorId===operator.id),bookings:v.bookings.filter(x=>x.operatorId===operator.id).map(({licenceKey,...x})=>({...x,hasLicence:!!licenceKey}))});
  }
  if(b.action==='save-unit'){
   const x=b.unit||{},id=text(x.id,90),name=text(x.name,80),kind=x.kind,qty=Number(x.qty),rateMvr=Number(x.rateMvr);
