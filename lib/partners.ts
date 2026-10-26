@@ -12,11 +12,11 @@ export const PARTNER_USERNAME_PREFIX='partner-username:';
 export const PARTNER_SESSION_PREFIX='partner-session:';
 export const PARTNER_COOKIE='nirili_partner_session';
 
-export const PERMISSIONS=['excursions','transfers','rides','rooms','boats','buggies'] as const;
+export const PERMISSIONS=['excursions','transfers','rides','rooms','boats','buggies','rentals'] as const;
 export type Permission=typeof PERMISSIONS[number];
 export const PERMISSION_LABELS:Record<Permission,string>={
  excursions:'Book excursions for guests',transfers:'Book speedboat seats for guests',rides:'Book buggy rides for guests',
- rooms:'Book rooms and packages',boats:'Run speedboat trips',buggies:'Run buggy rides',
+ rooms:'Book rooms and packages',boats:'Run speedboat trips',buggies:'Run buggy rides',rentals:'Run cycle, bicycle and buggy rentals',
 };
 export const MAX_PERCENT=50;
 
@@ -57,7 +57,7 @@ export function cleanPartnerDetails(input:any){
  if(email&&!EMAIL.test(email))throw Error('Enter a valid email address.');
  if(!permissions.length)throw Error('Tick at least one thing this partner can do.');
  // Operators must be reachable: guests and Nirili contact them about every trip.
- if((permissions.includes('boats')||permissions.includes('buggies'))&&!PHONE.test(phone))throw Error('Enter the WhatsApp number for a partner who runs trips.');
+ if((permissions.includes('boats')||permissions.includes('buggies')||permissions.includes('rentals'))&&!PHONE.test(phone))throw Error('Enter the WhatsApp number for a partner who runs trips.');
  return {name,contactName,phone,email,pickup:text(input?.pickup,150)||name,permissions,
   excursionDiscountPercent:percent(input?.excursionDiscountPercent,'Excursion discount'),
   roomDiscountPercent:percent(input?.roomDiscountPercent,'Room discount',100),
