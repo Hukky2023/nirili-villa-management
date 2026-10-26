@@ -3,6 +3,44 @@ import {sameOrigin} from '../../../lib/auth';
 import {loadTransport,updateTransport} from '../../../lib/transport-store';
 import {operatorFromRequest,offers} from '../../../lib/travel-operators';
 
+// Private licence storage: R2 when available, encrypted D1 fallback for Workers without an R2 binding.
+const hexToBytes=(s:string)=>Uint8Array.from(s.match(/../g)||[],v=>parseInt(v,16));
+async function licenceEncryptionKey(){
+ const secret=String((env as unknown as Record<string,any>).NIRILI_CREDENTIAL_KEY||'');
+ if(!/^[a-f0-9]{64}$/.test(secret))throw Error('Private document encryption key is not configured.');
+ return crypto.subtle.importKey('raw',hexToBytes(secret),'AES-GCM',false,['encrypt','decrypt']);
+}
+async function storeLicence(key:string,bytes:Uint8Array,mime:string){
+ if(env.BUCKET){await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:mime}});return}
+ if(!env.DB)throw Error('Private licence storage is not configured.');
+ const encryptionKey=await licenceEncryptionKey(),iv=crypto.getRandomValues(new Uint8Array(12));
+ const cipher=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode(key)},encryptionKey,bytes));
+ const db=env.DB;
+ await db.prepare('CREATE TABLE IF NOT EXISTS rental_licence_chunks (file_key TEXT NOT NULL, chunk_index INTEGER NOT NULL, iv TEXT, content BLOB NOT NULL, PRIMARY KEY(file_key,chunk_index))').run();
+ const size=96000,statements=[];
+ for(let at=0,i=0;at<cipher.length;at+=size,i++){
+  const chunk=cipher.slice(at,at+size);
+  statements.push(db.prepare('INSERT INTO rental_licence_chunks(file_key,chunk_index,iv,content) VALUES(?,?,?,?)').bind(key,i,i===0?Array.from(iv).map(x=>x.toString(16).padStart(2,'0')).join(''):null,chunk.buffer));
+ }
+ try{await db.batch(statements)}catch(e){await db.prepare('DELETE FROM rental_licence_chunks WHERE file_key=?').bind(key).run().catch(()=>{});throw e}
+}
+async function deleteLicence(key:string){
+ if(env.BUCKET){await env.BUCKET.delete(key);return}
+ if(env.DB)await env.DB.prepare('DELETE FROM rental_licence_chunks WHERE file_key=?').bind(key).run();
+}
+async function readLicence(key:string){
+ if(env.BUCKET){const file=await env.BUCKET.get(key);return file?new Uint8Array(await file.arrayBuffer()):null}
+ if(!env.DB)return null;
+ const db=env.DB;
+ const rows=await db.prepare('SELECT chunk_index,iv,content FROM rental_licence_chunks WHERE file_key=? ORDER BY chunk_index').bind(key).all<any>();
+ if(!rows.results?.length)return null;
+ const pieces=rows.results.map((r:any)=>new Uint8Array(r.content as ArrayBuffer));
+ const cipher=new Uint8Array(pieces.reduce((n:number,c:Uint8Array)=>n+c.length,0));let pos=0;for(const piece of pieces){cipher.set(piece,pos);pos+=piece.length}
+ const iv=hexToBytes(rows.results[0].iv);
+ const keyCrypto=await licenceEncryptionKey();
+ return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode(key)},keyCrypto,cipher));
+}
+
 export const runtime='edge';
 const headers={'Cache-Control':'no-store'};
 type Unit={id:string;operatorId:string;operatorName:string;name:string;kind:'cycle'|'bicycle'|'buggy';qty:number;rateMvr:number;rates?:Record<string,number>;active:boolean;description:string};
@@ -55,8 +93,7 @@ export async function POST(r:Request){
   const pdf=prefix.slice(0,5).join(',')==='37,80,68,70,45';
   const webp=String.fromCharCode(...prefix.slice(0,4))==='RIFF'&&String.fromCharCode(...prefix.slice(8,12))==='WEBP';
   if(!(licence.type==='image/jpeg'&&jpeg||licence.type==='image/png'&&png||licence.type==='application/pdf'&&pdf||licence.type==='image/webp'&&webp))return json({error:'The licence file does not match its format.'},400);
-  const bucket=env.BUCKET;
-  if(!bucket)return json({error:'Private licence storage is not configured. Please contact Nirili Management.'},503);
+  if(!env.BUCKET&&!env.DB)return json({error:'Private licence storage is not configured. Please contact Nirili Management.'},503);
   const unitId=text(b.unitId,90),start=text(b.start,10),end=text(b.end,10),qty=Number(b.qty),name=text(b.name,100),contact=text(b.contact,150);
   const durationKey=text(b.durationKey,10),startTime=text(b.startTime,5),endTime=text(b.endTime,5);
   const hourDurations:Record<string,number>={'1h':1,'2h':2,'5h':5,'12h':12};const dayDurations:Record<string,number>={'1d':1,'2d':2,'3d':3};
@@ -69,7 +106,7 @@ export async function POST(r:Request){
   }
   if(!dateOk(start)||!dateOk(end)||end<start||Date.parse(end)-Date.parse(start)>31*86400000||start<new Date().toISOString().slice(0,10)||!Number.isInteger(qty)||qty<1||qty>10||name.length<2||contact.length<5)return json({error:'Check the rental dates, quantity, name and contact.'},400);
   const licenceKey='private/rental-licences/'+crypto.randomUUID();
-  try{await bucket.put(licenceKey,bytes,{httpMetadata:{contentType:licence.type},customMetadata:{uploadedAt:new Date().toISOString()} });}
+  try{await storeLicence(licenceKey,bytes,licence.type)}
   catch{return json({error:'Could not securely store the licence file.'},503)}
   try{
    const {result}=await updateTransport('public:island-rental',(s:any)=>{
@@ -84,16 +121,16 @@ export async function POST(r:Request){
     return {reference:booking.id,status:booking.status,totalMvr:booking.amountMvr};
    });
    return json(result,201);
-  }catch(e){await bucket.delete(licenceKey).catch(()=>{});return json({error:e instanceof Error?e.message:'Could not create rental request.'},409)}
+  }catch(e){await deleteLicence(licenceKey).catch(()=>{});return json({error:e instanceof Error?e.message:'Could not create rental request.'},409)}
  }
  const operator=await operatorFromRequest(r);
  if(!operator||!offers(operator,'boat'))return json({error:'Sign in with an approved operator account.'},401);
  if(b.action==='licence-file'){
   const id=text(b.id,90),{state}=await loadTransport(),booking=read(state).bookings.find(x=>x.id===id&&x.operatorId===operator.id);
   if(!booking?.licenceKey)return json({error:'Licence file not found.'},404);
-  const file=await env.BUCKET?.get(booking.licenceKey);
+  const file=await readLicence(booking.licenceKey);
   if(!file)return json({error:'Licence file not available.'},404);
-  return new Response(file.body,{headers:{'Content-Type':booking.licenceMime||'application/octet-stream','Content-Disposition':'attachment; filename="rental-licence"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"}});
+  return new Response(file,{headers:{'Content-Type':booking.licenceMime||'application/octet-stream','Content-Disposition':'attachment; filename="rental-licence"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"}});
  }
  if(b.action==='list'){
   const {state}=await loadTransport(),v=read(state);
