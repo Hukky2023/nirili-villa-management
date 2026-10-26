@@ -35,7 +35,11 @@ const monthOf=(value:any)=>/^\d{4}-\d{2}$/.test(String(value||''))?String(value)
 export async function GET(r:Request){
  try{
   const operator=await buggyOperator(r);
-  if(!operator)return denied();
+  if(!operator){
+   const signedIn=await operatorFromRequest(r);
+   if(signedIn)return Response.json({error:'Your operator account does not have Buggy operations permission. Ask Nirili Management admin to enable Buggies for this account.'},{status:403,headers});
+   return denied();
+  }
   return Response.json(await view(operator,monthOf(new URL(r.url).searchParams.get('month'))),{headers});
  }catch{return Response.json({error:'Could not load your rides. Please retry.'},{status:503,headers});}
 }
@@ -44,7 +48,11 @@ export async function POST(r:Request){
  if(!sameOrigin(r))return Response.json({error:'Invalid request.'},{status:403,headers});
  try{
   let operator=await buggyOperator(r);
-  if(!operator)return denied();
+  if(!operator){
+   const signedIn=await operatorFromRequest(r);
+   if(signedIn)return Response.json({error:'Your operator account does not have Buggy operations permission. Ask Nirili Management admin to enable Buggies for this account.'},{status:403,headers});
+   return denied();
+  }
   const body:Record<string,any>=await r.json(),month=monthOf(body.viewMonth);
   if(body.action==='online'){
    operator=await setBuggyOnline(operator.id,body.online===true);
