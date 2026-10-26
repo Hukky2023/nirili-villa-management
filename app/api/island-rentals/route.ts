@@ -50,7 +50,7 @@ const read=(s:any):RentalLedger=>{const v=s.islandRentals||{};return {units:Arra
 const dateOk=(s:any)=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s+'T00:00:00Z'));
 const text=(v:any,n=120)=>String(v??'').trim().slice(0,n);
 const interval=(day:string,time:string)=>new Date(day+'T'+time+':00+05:00').getTime();
-const validTime=(x:any)=>typeof x==='string'&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(x);
+const validTime=(x:any)=>typeof x==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(x);
 const available=(unit:Unit,rentals:Rental[],start:string,end:string,startTime?:string,endTime?:string)=>{
  const begin=validTime(startTime)?interval(start,startTime!):Date.parse(start+'T00:00:00Z');
  const finish=validTime(endTime)?interval(end,endTime!):Date.parse(end+'T23:59:59Z');
