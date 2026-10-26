@@ -278,7 +278,7 @@ test('admin creates operators; operators sign in to their own portal only',async
  assert.match(cookie,/^nirili_partner_session=[a-f0-9]{64}$/);
  assert.equal((await s.boats.GET(s.req('/api/operator-portal/speedboats','GET',null,cookie))).status,200);
  // A speedboat-only operator has no buggy portal; staff cannot use the operator API.
- assert.equal((await s.buggy.GET(s.req('/api/operator-portal/buggy','GET',null,cookie))).status,401);
+ assert.equal((await s.buggy.GET(s.req('/api/operator-portal/buggy','GET',null,cookie))).status,403);
  assert.equal((await s.boats.GET(s.req('/api/operator-portal/speedboats','GET'))).status,401);
  s.who.staff={role:'staff',userId:'S1',permissions:['guesthouse_reception']};
  assert.equal((await s.admin.GET(s.req('/api/partners','GET'))).status,403);
