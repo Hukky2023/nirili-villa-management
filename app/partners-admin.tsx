@@ -10,7 +10,7 @@ import "./excursion-agents-admin.css";
 // business and ticks what it may do; the partner signs in at partners.nirilihotels.com. One
 // monthly statement covers what each partner booked through Nirili and the trips it ran.
 type Tab="Partners"|"Monthly statement"|"Add partner";
-type Permission="excursions"|"transfers"|"rides"|"rooms"|"boats"|"buggies";
+type Permission="excursions"|"transfers"|"rides"|"rooms"|"boats"|"buggies"|"rentals";
 const PERMISSIONS:{id:Permission;label:string;hint:string}[]=[
  {id:"excursions",label:"Book excursions for guests",hint:"Guest houses: excursions at their partner rate"},
  {id:"transfers",label:"Book speedboat seats for guests",hint:"Guests pay the speedboat operator"},
@@ -18,6 +18,7 @@ const PERMISSIONS:{id:Permission;label:string;hint:string}[]=[
  {id:"rooms",label:"Book rooms and packages",hint:"Travel agencies: rooms, meal plans, excursions and airport transfer"},
  {id:"boats",label:"Run speedboat trips",hint:"Boats, seat maps, routes, crew, boarding and charters"},
  {id:"buggies",label:"Run buggy rides",hint:"Buggies and ride requests"},
+ {id:"rentals",label:"Run cycle, bicycle and buggy rentals",hint:"Manage rental vehicles, duration pricing, availability and customer requests in NTadmin"},
 ];
 const usd=(c:number)=>"$"+(Math.max(0,Number(c)||0)/100).toFixed(2);
 const mvr=(c:number)=>"MVR "+(Math.max(0,Number(c)||0)/100).toFixed(2);
@@ -130,7 +131,7 @@ function Statement({partners,month,setMonth}:{partners:any[];month:string;setMon
 function PartnerFields({value,onChange}:{value:any;onChange:(v:any)=>void}){
  const set=(patch:any)=>onChange({...value,...patch});
  const toggle=(id:Permission,on:boolean)=>set({permissions:on?[...new Set([...value.permissions,id])]:value.permissions.filter((x:string)=>x!==id)});
- const sells=has(value,"excursions")||has(value,"rooms"),runs=has(value,"boats")||has(value,"buggies");
+ const sells=has(value,"excursions")||has(value,"rooms"),runs=has(value,"boats")||has(value,"buggies")||has(value,"rentals");
  return <>
   <div className="ws-grid"><label><span>Business name</span><input required maxLength={120} value={value.name} onChange={e=>set({name:e.target.value})}/></label><label><span>Contact person</span><input maxLength={120} value={value.contactName} onChange={e=>set({contactName:e.target.value})}/></label></div>
   <div className="ws-grid"><label><span>WhatsApp (with country code{runs?", required":""})</span><input required={runs} maxLength={30} value={value.phone} onChange={e=>set({phone:e.target.value})} placeholder="+960 7XX XXXX"/></label><label><span>Email</span><input type="email" maxLength={254} value={value.email} onChange={e=>set({email:e.target.value})}/></label></div>
