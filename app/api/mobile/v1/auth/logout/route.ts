@@ -1,6 +1,6 @@
 import {env} from 'cloudflare:workers';
-import {authDb,digest} from '../../../../../lib/auth';
-import {supabaseBridgeConfigured} from '../../../../../lib/supabase-bridge';
+import {authDb,digest} from '../../../../../../lib/auth';
+import {supabaseBridgeConfigured} from '../../../../../../lib/supabase-bridge';
 export async function POST(request:Request){
   if((env as unknown as Record<string,string>).NIRILI_MOBILE_AUTH_ENABLED!=='true'||supabaseBridgeConfigured())return Response.json({error:'Not available'},{status:503});
   const authorization=request.headers.get('authorization')||'';
