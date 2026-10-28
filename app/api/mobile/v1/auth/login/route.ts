@@ -17,8 +17,8 @@ export async function POST(request:Request){
     const row=await authDb().prepare("SELECT * FROM accounts WHERE (username=? OR email=?) AND active=1").bind(username,username).first<any>();
     const verified=await verifyPassword(password,row?.salt||'00000000000000000000000000000000',row?.password_hash||'0'.repeat(64));
     if(!row||!verified||row.role==='guest'||!await roomLoginActive(row.id))return Response.json({error:'Invalid credentials'},{status:401,headers:{'Cache-Control':'no-store'}});
-    const token=randomToken(),hash=await digest(token),expiresAt=Date.now()+15*60*1000;
-    await authDb().prepare("INSERT INTO mobile_access_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(hash,row.id,expiresAt).run();
-    return Response.json({access_token:token,token_type:'Bearer',expires_in:900,user:publicUser(row)},{headers:{'Cache-Control':'no-store'}});
+    const token=randomToken(),refresh=randomToken(),hash=await digest(token),expiresAt=Date.now()+15*60*1000;
+    await authDb().batch([authDb().prepare("INSERT INTO mobile_access_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(hash,row.id,expiresAt),authDb().prepare("INSERT INTO mobile_refresh_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(await digest(refresh),row.id,Date.now()+30*24*60*60*1000)]);
+    return Response.json({access_token:token,refresh_token:refresh,token_type:'Bearer',expires_in:900,user:publicUser(row)},{headers:{'Cache-Control':'no-store'}});
   }catch{return Response.json({error:'Mobile login unavailable'},{status:503,headers:{'Cache-Control':'no-store'}});}
 }
