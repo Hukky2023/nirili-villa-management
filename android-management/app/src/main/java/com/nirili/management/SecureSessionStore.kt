@@ -29,12 +29,14 @@ internal class SecureSessionStore(context: Context) {
             .putString("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             .putString("cipher", Base64.encodeToString(bytes, Base64.NO_WRAP)).apply()
     }
-    fun load(): String? = try {
+    fun load(): String? {
+      return try {
         val iv = preferences.getString("iv", null) ?: return null
         val encrypted = preferences.getString("cipher", null) ?: return null
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, Base64.decode(iv, Base64.NO_WRAP)))
         String(cipher.doFinal(Base64.decode(encrypted, Base64.NO_WRAP)), Charsets.UTF_8)
     } catch (_: Exception) { clear(); null }
+    }
     fun clear() { preferences.edit().clear().apply() }
 }
