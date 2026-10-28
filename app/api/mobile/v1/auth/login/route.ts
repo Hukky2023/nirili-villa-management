@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:workers';
-import {authDb, bootstrap, digest, limit, publicUser, randomToken, roomLoginActive, verifyPassword} from '../../../../../../lib/auth';
+import {authDb, digest, limit, publicUser, randomToken, roomLoginActive, verifyPassword} from '../../../../../../lib/auth';
 import {supabaseBridgeConfigured} from '../../../../../../lib/supabase-bridge';
 
 const disabled=()=>Response.json({error:'Mobile authentication is not enabled.'},{status:503,headers:{'Cache-Control':'no-store'}});
@@ -13,7 +13,6 @@ export async function POST(request:Request){
     if(!username||username.length>254||!password||password.length>128)return Response.json({error:'Invalid credentials'},{status:400});
     const ip=request.headers.get('cf-connecting-ip')||'unknown';
     if(!await limit('mobile-ip:'+ip,30,900000)||!await limit('mobile-user:'+username,10,900000))return Response.json({error:'Too many attempts'},{status:429});
-    await bootstrap();
     const row=await authDb().prepare("SELECT * FROM accounts WHERE (username=? OR email=?) AND active=1").bind(username,username).first<any>();
     const verified=await verifyPassword(password,row?.salt||'00000000000000000000000000000000',row?.password_hash||'0'.repeat(64));
     if(!row||!verified||row.role==='guest'||!await roomLoginActive(row.id))return Response.json({error:'Invalid credentials'},{status:401,headers:{'Cache-Control':'no-store'}});
