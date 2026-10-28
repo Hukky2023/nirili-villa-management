@@ -1,6 +1,6 @@
 import {env} from 'cloudflare:workers';
-import {authDb, bootstrap, digest, limit, publicUser, randomToken, roomLoginActive, verifyPassword} from '../../../../../lib/auth';
-import {supabaseBridgeConfigured} from '../../../../../lib/supabase-bridge';
+import {authDb, bootstrap, digest, limit, publicUser, randomToken, roomLoginActive, verifyPassword} from '../../../../../../lib/auth';
+import {supabaseBridgeConfigured} from '../../../../../../lib/supabase-bridge';
 
 const disabled=()=>Response.json({error:'Mobile authentication is not enabled.'},{status:503,headers:{'Cache-Control':'no-store'}});
 export async function POST(request:Request){
