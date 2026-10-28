@@ -78,6 +78,32 @@ class MainActivity : ComponentActivity() {
         }.start()
     }
 
+    private fun fetchDashboard(token: String, finished: (JSONObject?, String) -> Unit) {
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL("$API_BASE/api/mobile/v1/dashboard").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 10000
+                    readTimeout = 10000
+                    setRequestProperty("Authorization", "Bearer $token")
+                }
+                val status = connection.responseCode
+                val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+                val payload = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
+                val json = JSONObject(payload)
+                runOnUiThread {
+                    if (status in 200..299) finished(json, "")
+                    else finished(null, json.optString("error", "Dashboard failed ($status)"))
+                }
+            } catch (_: Exception) {
+                runOnUiThread { finished(null, "Cannot load dashboard. Check your connection.") }
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -90,6 +116,9 @@ class MainActivity : ComponentActivity() {
                 var error by remember { mutableStateOf("") }
                 var preview by remember { mutableStateOf(false) }
                 var selected by remember { mutableStateOf("Dashboard") }
+                var dashboard by remember { mutableStateOf<JSONObject?>(null) }
+                var dashboardError by remember { mutableStateOf("") }
+                var dashboardLoading by remember { mutableStateOf(false) }
 
                 Scaffold(topBar = {
                     Surface(shadowElevation = 2.dp) {
@@ -122,6 +151,14 @@ class MainActivity : ComponentActivity() {
                                         token = result
                                         displayName = name
                                         error = message
+                                        if (result != null) {
+                                            dashboardLoading = true
+                                            fetchDashboard(result) { data, failure ->
+                                                dashboardLoading = false
+                                                dashboard = data
+                                                dashboardError = failure
+                                            }
+                                        }
                                     }
                                 },
                                 enabled = !busy && username.isNotBlank() && password.isNotBlank(),
@@ -142,7 +179,37 @@ class MainActivity : ComponentActivity() {
                                 }) { Text(if (preview) "Exit preview" else "Sign out") }
                             }
                             Spacer(Modifier.height(8.dp))
-                            Text("Live management modules are not yet connected. No booking or payment actions are available.")
+                            Text(if (preview) "Preview only — no live hotel data." else "Dashboard is read-only. Booking and payment actions are not yet available.")
+                            if (!preview && selected == "Dashboard") {
+                                Spacer(Modifier.height(12.dp))
+                                Button(onClick = {
+                                    val current = token
+                                    if (current != null) {
+                                        dashboardLoading = true
+                                        fetchDashboard(current) { data, failure ->
+                                            dashboardLoading = false
+                                            dashboard = data
+                                            dashboardError = failure
+                                        }
+                                    }
+                                }, enabled = !dashboardLoading) { Text(if (dashboardLoading) "Refreshing..." else "Refresh dashboard") }
+                                if (dashboardError.isNotBlank()) Text(dashboardError, color = MaterialTheme.colorScheme.error)
+                                dashboard?.let { data ->
+                                    Text(data.optString("greeting", "Dashboard"))
+                                    Text("Date: " + data.optString("date"))
+                                    val occupancy = data.optJSONObject("occupancy")
+                                    val stats = data.optJSONObject("stats")
+                                    if (occupancy != null) {
+                                        Text("Rooms occupied: " + occupancy.optInt("occupied") + " / " + occupancy.optInt("total"))
+                                        Text("Available: " + occupancy.optInt("available"))
+                                    }
+                                    if (stats != null) {
+                                        Text("Check-ins: " + stats.optInt("checkIns"))
+                                        Text("Check-outs: " + stats.optInt("checkOuts"))
+                                        Text("Pending bookings: " + stats.optInt("pendingBookings"))
+                                    }
+                                }
+                            }
                             Spacer(Modifier.height(16.dp))
                             Text(selected, style = MaterialTheme.typography.headlineSmall)
                             modules.forEach { module ->
