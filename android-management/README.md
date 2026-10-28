@@ -24,3 +24,9 @@ The existing Cloudflare Workers/D1 management backend remains authoritative. Do 
 
 ## Status
 Initial native development branch created; not a production-ready Android app and no APK has been built.
+
+## Development update — dashboard
+- Added a gated `GET /api/mobile/v1/dashboard` endpoint. It reuses the management website's `buildDashboard`, `dashboardAccess`, and D1/primary snapshot fallback. It rejects unauthenticated or unauthorized requests.
+- Android can request and refresh read-only occupancy, check-ins, check-outs and pending-booking counts after staff sign-in.
+- Existing mobile access tokens expire after 15 minutes. A refresh-token table migration has been staged, but refresh issuance/rotation is **not implemented**; the application still requires signing in again when the access token expires or the process restarts.
+- No live deployment, migration, Android build, or real-account integration testing has been performed. Do not enable `NIRILI_MOBILE_AUTH_ENABLED` in production until these gates and the supported Supabase bridge mode are resolved.
