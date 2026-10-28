@@ -30,3 +30,8 @@ Initial native development branch created; not a production-ready Android app an
 - Android can request and refresh read-only occupancy, check-ins, check-outs and pending-booking counts after staff sign-in.
 - Existing mobile access tokens expire after 15 minutes. A refresh-token table migration has been staged, but refresh issuance/rotation is **not implemented**; the application still requires signing in again when the access token expires or the process restarts.
 - No live deployment, migration, Android build, or real-account integration testing has been performed. Do not enable `NIRILI_MOBILE_AUTH_ENABLED` in production until these gates and the supported Supabase bridge mode are resolved.
+
+## Development update — automatic token renewal
+- Android dashboard retries once on HTTP 401 after synchronized refresh-token rotation.
+- The replacement access token is held in memory; refresh tokens remain Android-Keystore encrypted.
+- Still to verify: device build, staging D1 migrations, Supabase bridge compatibility, token revocation on password reset, logout race behavior, and renewal during all future API calls. Do not enable in production yet.
