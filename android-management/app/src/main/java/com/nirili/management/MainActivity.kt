@@ -276,6 +276,7 @@ class MainActivity : ComponentActivity() {
                                             dashboardLoading = false
                                             dashboard = data
                                             dashboardError = failure
+                                            if (updated != null) token = updated
                                         }
                                     }
                                 }, enabled = !dashboardLoading) { Text(if (dashboardLoading) "Refreshing..." else "Refresh dashboard") }
