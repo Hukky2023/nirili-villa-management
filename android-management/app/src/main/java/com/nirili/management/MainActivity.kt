@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
                     val user = json.optJSONObject("user")
                     val token = json.optString("access_token")
                     if (token.isNotBlank() && user != null) {
+                        json.optString("refresh_token").takeIf { it.length == 64 }?.let { SecureSessionStore(this).save(it) }
                         runOnUiThread { finished(token, user.optString("displayName", username), "") }
                     } else {
                         runOnUiThread { finished(null, "", "Unexpected login response") }
@@ -60,7 +61,38 @@ class MainActivity : ComponentActivity() {
         }.start()
     }
 
+    private fun restoreSession(finished: (String?, String) -> Unit) {
+        val saved = SecureSessionStore(this).load() ?: return
+        Thread {
+            try {
+                val connection = (URL("$API_BASE/api/mobile/v1/auth/refresh").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 10000
+                    readTimeout = 10000
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
+                }
+                connection.outputStream.use { it.write(JSONObject().put("refresh_token", saved).toString().toByteArray()) }
+                val status = connection.responseCode
+                val response = (if (status in 200..299) connection.inputStream else connection.errorStream)
+                    ?.bufferedReader()?.use { it.readText() } ?: "{}"
+                connection.disconnect()
+                if (status in 200..299) {
+                    val json = JSONObject(response)
+                    val access = json.optString("access_token")
+                    val refresh = json.optString("refresh_token")
+                    if (access.length == 64 && refresh.length == 64) {
+                        SecureSessionStore(this).save(refresh)
+                        runOnUiThread { finished(access, json.optJSONObject("user")?.optString("displayName") ?: "") }
+                    }
+                } else if (status == 401) SecureSessionStore(this).clear()
+            } catch (_: Exception) { }
+        }.start()
+    }
+
     private fun logout(token: String, finished: () -> Unit) {
+        val refresh = SecureSessionStore(this).load()
+        SecureSessionStore(this).clear()
         Thread {
             var connection: HttpURLConnection? = null
             try {
@@ -69,7 +101,10 @@ class MainActivity : ComponentActivity() {
                     connectTimeout = 10000
                     readTimeout = 10000
                     setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("Content-Type", "application/json")
+                    doOutput = true
                 }
+                connection.outputStream.use { it.write(JSONObject().put("refresh_token", refresh ?: "").toString().toByteArray()) }
                 connection.responseCode
             } catch (_: Exception) { } finally {
                 connection?.disconnect()
@@ -119,6 +154,12 @@ class MainActivity : ComponentActivity() {
                 var dashboard by remember { mutableStateOf<JSONObject?>(null) }
                 var dashboardError by remember { mutableStateOf("") }
                 var dashboardLoading by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    restoreSession { restored, name ->
+                        token = restored; displayName = name
+                        if (restored != null) fetchDashboard(restored) { data, failure -> dashboard = data; dashboardError = failure }
+                    }
+                }
 
                 Scaffold(topBar = {
                     Surface(shadowElevation = 2.dp) {
