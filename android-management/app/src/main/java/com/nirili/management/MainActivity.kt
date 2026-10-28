@@ -113,28 +113,72 @@ class MainActivity : ComponentActivity() {
         }.start()
     }
 
-    private fun fetchDashboard(token: String, finished: (JSONObject?, String) -> Unit) {
+    private val refreshLock = Any()
+
+    private fun renewAccessToken(): String? = synchronized(refreshLock) {
+        val saved = SecureSessionStore(this).load() ?: return@synchronized null
+        var connection: HttpURLConnection? = null
+        try {
+            connection = (URL("$API_BASE/api/mobile/v1/auth/refresh").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"; connectTimeout = 10000; readTimeout = 10000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+            }
+            connection.outputStream.use {
+                it.write(JSONObject().put("refresh_token", saved).toString().toByteArray(Charsets.UTF_8))
+            }
+            val status = connection.responseCode
+            if (status == 401) {
+                SecureSessionStore(this).clear()
+                return@synchronized null
+            }
+            if (status !in 200..299) return@synchronized null
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            val body = JSONObject(response)
+            val access = body.optString("access_token")
+            val refresh = body.optString("refresh_token")
+            if (access.length != 64 || refresh.length != 64) return@synchronized null
+            SecureSessionStore(this).save(refresh)
+            access
+        } catch (_: Exception) { null }
+        finally { connection?.disconnect() }
+    }
+
+    private fun fetchDashboard(token: String, finished: (JSONObject?, String, String?) -> Unit) {
         Thread {
-            var connection: HttpURLConnection? = null
-            try {
-                connection = (URL("$API_BASE/api/mobile/v1/dashboard").openConnection() as HttpURLConnection).apply {
-                    requestMethod = "GET"
-                    connectTimeout = 10000
-                    readTimeout = 10000
-                    setRequestProperty("Authorization", "Bearer $token")
+            fun request(access: String): Pair<Int, String> {
+                val connection = (URL("$API_BASE/api/mobile/v1/dashboard").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"; connectTimeout = 10000; readTimeout = 10000
+                    setRequestProperty("Authorization", "Bearer $access")
                 }
-                val status = connection.responseCode
-                val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-                val payload = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
-                val json = JSONObject(payload)
+                return try {
+                    val status = connection.responseCode
+                    val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+                    Pair(status, stream?.bufferedReader()?.use { it.readText() } ?: "{}")
+                } finally { connection.disconnect() }
+            }
+            try {
+                var active = token
+                var (status, response) = request(active)
+                if (status == 401) {
+                    val renewed = renewAccessToken()
+                    if (renewed != null) {
+                        active = renewed
+                        val retried = request(active)
+                        status = retried.first
+                        response = retried.second
+                    } else {
+                        runOnUiThread { finished(null, "Session expired. Please sign in again.", null) }
+                        return@Thread
+                    }
+                }
+                val json = JSONObject(response)
                 runOnUiThread {
-                    if (status in 200..299) finished(json, "")
-                    else finished(null, json.optString("error", "Dashboard failed ($status)"))
+                    if (status in 200..299) finished(json, "", active)
+                    else finished(null, json.optString("error", "Dashboard failed ($status)"), null)
                 }
             } catch (_: Exception) {
-                runOnUiThread { finished(null, "Cannot load dashboard. Check your connection.") }
-            } finally {
-                connection?.disconnect()
+                runOnUiThread { finished(null, "Cannot load dashboard. Check your connection.", null) }
             }
         }.start()
     }
@@ -157,7 +201,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     restoreSession { restored, name ->
                         token = restored; displayName = name
-                        if (restored != null) fetchDashboard(restored) { data, failure -> dashboard = data; dashboardError = failure }
+                        if (restored != null) fetchDashboard(restored) { data, failure, updated -> dashboard = data; dashboardError = failure; if (updated != null) token = updated }
                     }
                 }
 
@@ -194,10 +238,11 @@ class MainActivity : ComponentActivity() {
                                         error = message
                                         if (result != null) {
                                             dashboardLoading = true
-                                            fetchDashboard(result) { data, failure ->
+                                            fetchDashboard(result) { data, failure, updated ->
                                                 dashboardLoading = false
                                                 dashboard = data
                                                 dashboardError = failure
+                                                if (updated != null) token = updated
                                             }
                                         }
                                     }
@@ -227,7 +272,7 @@ class MainActivity : ComponentActivity() {
                                     val current = token
                                     if (current != null) {
                                         dashboardLoading = true
-                                        fetchDashboard(current) { data, failure ->
+                                        fetchDashboard(current) { data, failure, updated ->
                                             dashboardLoading = false
                                             dashboard = data
                                             dashboardError = failure
