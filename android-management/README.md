@@ -35,3 +35,4 @@ Initial native development branch created; not a production-ready Android app an
 - Android dashboard retries once on HTTP 401 after synchronized refresh-token rotation.
 - The replacement access token is held in memory; refresh tokens remain Android-Keystore encrypted.
 - Still to verify: device build, staging D1 migrations, Supabase bridge compatibility, token revocation on password reset, logout race behavior, and renewal during all future API calls. Do not enable in production yet.
+Staging deployment verification is in progress.
