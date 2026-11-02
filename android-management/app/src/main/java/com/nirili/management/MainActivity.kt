@@ -15,7 +15,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-private const val API_BASE = "https://nirili-villa-mobile-staging.nirili-management.workers.dev""
+private const val API_BASE = "https://nirili-villa-mobile-staging.nirili-management.workers.dev"
 private val modules = listOf(
     "Dashboard", "Room Bookings", "Guest Management", "Excursion Schedules",
     "Restaurant POS", "Airport Transfers", "Bills & Payments", "Reports", "Notifications"
