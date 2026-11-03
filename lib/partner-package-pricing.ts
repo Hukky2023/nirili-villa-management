@@ -44,7 +44,7 @@ export function partnerPackagePrice(input: QuoteInput) {
  const roomCents = familyCharge(adultRoom, fullRoom, commission.roomDiscountPercent);
  const excursionCents = familyCharge(adultTrips, fullTrips, commission.excursionDiscountPercent);
  const legs = input.transfer === 'return' ? 2 : input.transfer === 'arrival' ? 1 : 0;
- const publicTransferCents = airportTransferCents * (adults + ages.length) * legs;
+ const publicTransferCents = airportTransferCents * chargeableGuests * legs;
  const transferCents = discountedCents(publicTransferCents, commission.transferDiscountPercent);
  return {
   publicRoomCents: familyCharge(adultRoom, fullRoom, 0), roomCents, roomDiscountPercent: commission.roomDiscountPercent,

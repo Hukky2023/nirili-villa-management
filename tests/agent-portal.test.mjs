@@ -329,9 +329,9 @@ test('the clean-up removes the old separate test logins and keeps the new partne
  assert.equal((await s.signIn()).status,200);
 });
 
-test('partner package applies child ages to the net room and excursion prices on create and edit',async()=>{
+test('partner package applies child ages to room, excursion and transfer prices on create and edit',async()=>{
  const s=setup();
- await s.createAgent({permissions:['rooms'],roomDiscountPercent:20,excursionDiscountPercent:10});
+ await s.createAgent({permissions:['rooms'],roomDiscountPercent:20,excursionDiscountPercent:10,transferDiscountPercent:10});
  const {cookie}=await s.signIn();
  s.hotel.state.rooms=[{number:'101',type:'Double Room',capacity:3}];
  s.hotel.state.roomRates={'Bed & Breakfast':[7500,9000,11700]};
@@ -350,8 +350,9 @@ test('partner package applies child ages to the net room and excursion prices on
  assert.equal(created.status,201,JSON.stringify(d));
  assert.equal(d.pricing.roomCents,46200);
  assert.equal(d.pricing.excursionCents,3375);
- assert.equal(d.pricing.transferCents,18000);
- assert.equal(d.totalCents,67575);
+ assert.equal(d.pricing.publicTransferCents,12000);
+ assert.equal(d.pricing.transferCents,10800);
+ assert.equal(d.totalCents,46200+3375+10800);
  const booking=s.hotel.state.requests[0];
  assert.deepEqual(booking.guests.slice(1).map(g=>g.age),[2,12]);
  assert.equal(booking.packageQuotedCents,d.totalCents);
@@ -362,7 +363,7 @@ test('partner package applies child ages to the net room and excursion prices on
  assert.equal((await post(manage,{...edited,guests:[guests[0],guests[1],{...guests[2],age:''}]})).status,400);
  const response=await post(manage,edited),updated=await response.json();
  assert.equal(response.status,200,JSON.stringify(updated));
- assert.equal(updated.totalCents,42000+2250+18000);
+ assert.equal(updated.totalCents,42000+2250+5400);
  assert.equal(s.hotel.state.stays[0].base,updated.totalCents);
  assert.deepEqual(s.hotel.state.stays[0].guests.slice(1).map(g=>g.age),[1,2]);
  assert.equal(s.hotel.state.requests[0].estimate,updated.totalCents);
@@ -384,4 +385,17 @@ test('partner child pricing includes age three, preserves adult tariffs and hand
   assert.equal(quote.excursionCents,13500);
  }
  assert.equal(partnerPackagePrice({...input,adults:3}).totalCents,8800+18000);
+});
+
+test('partner transfers charge each leg at the adult rate from the third birthday',()=>{
+ const {partnerPackagePrice}=load('lib/partner-package-pricing.ts');
+ const input={adults:1,childAges:[],nights:1,meal:'Bed & Breakfast',excursions:[],
+  commission:{roomDiscountPercent:0,excursionDiscountPercent:0,transferDiscountPercent:10}};
+ for(const [ages,paying] of [[[],1],[[0,2],1],[[2,3],2],[[3,12],3]]){
+  for(const [transfer,legs] of [['none',0],['arrival',1],['return',2]]){
+   const quote=partnerPackagePrice({...input,childAges:ages,transfer});
+   assert.equal(quote.publicTransferCents,3000*paying*legs);
+   assert.equal(quote.transferCents,2700*paying*legs);
+  }
+ }
 });
