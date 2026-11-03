@@ -69,6 +69,8 @@ jobs:
         run: node --test tests/time-format-24h.test.mjs
       - name: Booking closed-date regression tests
         run: node --test tests/booking-closures.test.mjs
+      - name: Booking review and decline regression tests
+        run: node --test tests/booking-review.test.mjs tests/booking-manage.test.mjs
       - name: Admin catalog and public excursion website regression tests
         run: node --test tests/property-catalog.test.mjs
       - name: Public subdomain navigation regression tests
