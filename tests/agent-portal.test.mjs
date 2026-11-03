@@ -60,7 +60,7 @@ function setup({staff={role:'admin',userId:'U1',displayName:'Admin',username:'ad
  const stubs={
   auth,
   'supabase-bridge':{supabaseBridgeConfigured:()=>false,readOperationalRecordPrimary:async()=>null,readOperationalRecordsPrimary:async()=>[],saveOperationalRecordPrimary:async()=>0},
-  'guest-catalog':{islandToday:()=>TODAY,validDate:d=>/^\d{4}-\d{2}-\d{2}$/.test(d),excursionDeparturePassed:()=>false},
+  'guest-catalog':{plans:['Bed & Breakfast'],islandToday:()=>TODAY,validDate:d=>/^\d{4}-\d{2}-\d{2}$/.test(d),excursionDeparturePassed:()=>false},
   stays:{loadStays:async()=>({state:structuredClone(hotel.state),revision:hotel.revision})},
   'stay-login':{saveStayAccess:async(state,revision)=>{if(revision!==hotel.revision)return false;hotel.state=structuredClone(state);hotel.revision++;return true;}},
   'excursion-default-schedule':{ensureStandardDailyExcursions:async()=>{}},
@@ -89,7 +89,8 @@ function setup({staff={role:'admin',userId:'U1',displayName:'Admin',username:'ad
   return {status:r.status,cookie:(r.headers.get('set-cookie')||'').split(';')[0]};
  };
  const book=(cookie,extra={})=>portal.POST(req('/api/agent-portal/bookings','POST',{token:crypto.randomUUID(),menuItemId:'sandbank',date:TRIP,guestNames:['Anna Lee','Ben Lee'],guestCategories:['adult','adult'],email:'anna@example.com',agentReference:'IB-204',...extra},cookie));
- return {lib,portal,session,admin,pub,req,hotel,addTrip,createAgent,signIn,book,notices,emails,who,d1};
+ const roomRoute=name=>load('app/api/tour-operator-portal/'+name+'/route.ts',stubs,cache);
+ return {lib,portal,session,admin,pub,roomRoute,req,hotel,addTrip,createAgent,signIn,book,notices,emails,who,d1};
 }
 
 test('admin creates a partner; usernames are unique and passwords never leave the server',async()=>{
@@ -326,4 +327,61 @@ test('the clean-up removes the old separate test logins and keeps the new partne
  assert.deepEqual([...s.d1.rows.keys()].filter(k=>/^(excursion-agent|travel-operator|tour-operator|travel-crew)/.test(k)),['travel-crew:CREW-NEW']);
  assert.ok(s.d1.rows.has('partner:'+partner.id));
  assert.equal((await s.signIn()).status,200);
+});
+
+test('partner package applies child ages to the net room and excursion prices on create and edit',async()=>{
+ const s=setup();
+ await s.createAgent({permissions:['rooms'],roomDiscountPercent:20,excursionDiscountPercent:10});
+ const {cookie}=await s.signIn();
+ s.hotel.state.rooms=[{number:'101',type:'Double Room',capacity:3}];
+ s.hotel.state.roomRates={'Bed & Breakfast':[7500,9000,11700]};
+ const catalog=s.roomRoute('catalog'),manage=s.roomRoute('manage');
+ const guests=[{name:'Adult',passport:'A1'},{name:'Younger',passport:'C1',age:'2'},{name:'Older',passport:'C2',age:'12'}];
+ const body={action:'book-package',checkIn:TRIP,checkOut:'2026-10-10',meal:'Bed & Breakfast',roomType:'Double Room',
+  adults:1,children:2,guests,phone:'+9607771234',email:'guest@example.test',excursionIds:['sandbank'],transfer:'return'};
+ const post=(route,body)=>route.POST(s.req('/api/tour-operator-portal','POST',body,cookie));
+ const availability=await post(catalog,{...body,action:'check-availability'});
+ assert.equal((await availability.json()).totalAvailable,1);
+ for(const invalid of ['',null,true,13,-1,2.5]){
+  const r=await post(catalog,{...body,guests:[guests[0],{...guests[1],age:invalid},guests[2]]});
+  assert.equal(r.status,400);
+ }
+ const created=await post(catalog,{...body,totalCents:1}),d=await created.json();
+ assert.equal(created.status,201,JSON.stringify(d));
+ assert.equal(d.pricing.roomCents,46200);
+ assert.equal(d.pricing.excursionCents,3375);
+ assert.equal(d.pricing.transferCents,18000);
+ assert.equal(d.totalCents,67575);
+ const booking=s.hotel.state.requests[0];
+ assert.deepEqual(booking.guests.slice(1).map(g=>g.age),[2,12]);
+ assert.equal(booking.packageQuotedCents,d.totalCents);
+ assert.equal(booking.pax,3);
+ booking.stayId='confirmed-stay';
+ s.hotel.state.stays.push({id:booking.stayId,room:'101',status:'Confirmed',checkIn:body.checkIn,checkOut:body.checkOut});
+ const edited={...body,action:'modify',id:d.id,guests:[guests[0],{...guests[1],age:1},{...guests[2],age:2}]};
+ assert.equal((await post(manage,{...edited,guests:[guests[0],guests[1],{...guests[2],age:''}]})).status,400);
+ const response=await post(manage,edited),updated=await response.json();
+ assert.equal(response.status,200,JSON.stringify(updated));
+ assert.equal(updated.totalCents,42000+2250+18000);
+ assert.equal(s.hotel.state.stays[0].base,updated.totalCents);
+ assert.deepEqual(s.hotel.state.stays[0].guests.slice(1).map(g=>g.age),[1,2]);
+ assert.equal(s.hotel.state.requests[0].estimate,updated.totalCents);
+});
+
+test('partner child pricing includes age three, preserves adult tariffs and handles couple excursions',()=>{
+ const {partnerPackagePrice, childAge}=load('lib/partner-package-pricing.ts');
+ const input={adults:2,childAges:[],nights:1,meal:'Bed & Breakfast',rates:{'Bed & Breakfast':[5000,9000,11000]},
+  excursions:[{cents:10000,pricingUnit:'couple'}],transfer:'none',
+  commission:{roomDiscountPercent:20,excursionDiscountPercent:10,transferDiscountPercent:0}};
+ assert.equal(childAge('0'),0);
+ assert.equal(childAge(''),null);
+ assert.equal(childAge('3'),3);
+ assert.equal(partnerPackagePrice(input).totalCents,7200+9000);
+ assert.equal(partnerPackagePrice({...input,childAges:[2]}).totalCents,7200+9000);
+ for(const age of [3,12]){
+  const quote=partnerPackagePrice({...input,childAges:[age]});
+  assert.equal(quote.roomCents,8000);
+  assert.equal(quote.excursionCents,13500);
+ }
+ assert.equal(partnerPackagePrice({...input,adults:3}).totalCents,8800+18000);
 });

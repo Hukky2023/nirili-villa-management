@@ -1,16 +1,16 @@
 import {sameOrigin,limit} from '../../../../lib/auth';
-import {islandToday,nightly,plans,validDate} from '../../../../lib/guest-catalog';
+import {islandToday,plans,validDate} from '../../../../lib/guest-catalog';
 import {loadStays} from '../../../../lib/stays';
 import {saveStayAccess} from '../../../../lib/stay-login';
 import {loadExcursionMenu} from '../../../../lib/excursion-menu';
 import {assertBookingDatesOpen,bookingClosureForStay} from '../../../../lib/booking-closures';
 import {emitAdminNotification} from '../../../../lib/admin-notifications';
-import {discountedCents,tourOperatorFromRequest} from '../../../../lib/tour-operators';
+import {tourOperatorFromRequest} from '../../../../lib/tour-operators';
 import {deleteBooking} from '../../../../lib/booking-admin';
 import {cancelLinkedTransportBookings} from '../../../../lib/linked-transport-bookings';
+import {childAge, partnerPackagePrice} from '../../../../lib/partner-package-pricing';
 
 const headers={'Cache-Control':'private, no-store'};
-const AIRPORT_TRANSFER_CENTS=3000;
 const phonePattern=/^\+[1-9]\d{7,14}$/;
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const cleanPhone=(v:any)=>String(v||'').replace(/[\s()-]/g,'');
@@ -20,9 +20,9 @@ const cleanGuests=(value:any,adults:number,children:number)=>{
  if(rows.length!==pax)throw Error('Enter every guest name and passport number.');
  return rows.map((g:any,i:number)=>{
   const name=text(g?.name,100),passport=text(g?.passport,30).toUpperCase(),kind=i<adults?'adult':'child';
-  const age=kind==='child'?Number(g?.age):null;
+  const age=childAge(g?.age);
   if(!name||!passport)throw Error('Enter the full name and passport number for every guest.');
-  if(kind==='child'&&(!Number.isInteger(age)||age<0||age>17))throw Error('Enter a valid age for every child.');
+  if(kind==='child'&&age===null)throw Error('Select the age in completed years for every child (under 1 through 12).');
   return {name,passport,kind,...(kind==='child'?{age}: {})};
  });
 };
@@ -74,20 +74,21 @@ async function quote(state:any,operator:any,b:any){
  if(!Number.isInteger(adults)||adults<1||adults>3||!Number.isInteger(children)||children<0||children>2||pax<1||pax>3)throw Error('A room can accommodate up to 3 guests.');
  if(!plans.includes(meal))throw Error('Choose a valid meal plan.');
  if(!roomType)throw Error('Choose a room type.');
- const selectedIds=Array.isArray(b.excursionIds)?Array.from(new Set(b.excursionIds.map((x:any)=>String(x)).filter(Boolean))).slice(0,30):[];
+ const selectedIds=Array.isArray(b.excursionIds)?Array.from(new Set<string>(b.excursionIds.map((x:any)=>String(x)).filter(Boolean))).slice(0,30):[];
  const transfer=String(b.transfer||'none');if(!['none','arrival','return'].includes(transfer))throw Error('Choose a valid airport transfer option.');
  assertBookingDatesOpen(state,checkIn,checkOut);
  const menu=await loadExcursionMenu(),byId=new Map(menu.filter((x:any)=>x.active!==false).map((x:any)=>[String(x.id),x]));
  if(selectedIds.some(id=>!byId.has(id)))throw Error('One or more selected excursions are no longer available. Refresh and try again.');
- const publicRoom=nightly(meal,pax,state.roomRates)*stayNights,roomNet=discountedCents(publicRoom,operator.roomDiscountPercent);
  const selectedExcursions=selectedIds.map(id=>byId.get(id));
- const publicExcursions=selectedExcursions.reduce((sum:number,item:any)=>sum+(Number(item.cents)||0)*(item.pricingUnit==='couple'?Math.ceil(pax/2):pax),0);
- const excursionNet=discountedCents(publicExcursions,operator.excursionDiscountPercent);
- const transferLegs=transfer==='none'?0:transfer==='arrival'?1:2,publicTransfer=AIRPORT_TRANSFER_CENTS*pax*transferLegs,transferNet=discountedCents(publicTransfer,operator.transferDiscountPercent);
- const total=roomNet+excursionNet+transferNet,packageName=text(b.packageName,120)||('Custom '+stayNights+'N '+meal+' package');
+ const pricing=partnerPackagePrice({
+  adults, childAges:guests.slice(adults).map(g=>Number(g.age)), nights:stayNights, meal, rates:state.roomRates,
+  excursions:selectedExcursions, transfer, commission:operator
+ });
+ const total=pricing.totalCents;
+ const packageName=text(b.packageName,120)||('Custom '+stayNights+'N '+meal+' package');
  return {guest,guests,phone,email,checkIn,checkOut,meal,roomType,adults,children,pax,stayNights,transfer,total,packageName,
   packageFields:{packageName,packageQuotedCents:total,packageRatePerGuestCents:Math.round(total/pax),packageNights:stayNights,packageMealPlan:meal,packageIncludeTransfer:transfer!=='none',packageTransferLabel:transfer==='return'?'Return airport transfer':transfer==='arrival'?'Arrival airport transfer':'',packageSelectedExcursionIds:selectedIds,packageExcursions:selectedExcursions.flatMap((x:any)=>{const included=specialIncluded(x);return included.length?included:[{id:String(x.id),name:String(x.name||x.id)}];})},
-  pricing:{publicRoomCents:publicRoom,roomCents:roomNet,roomDiscountPercent:operator.roomDiscountPercent,publicExcursionCents:publicExcursions,excursionCents:excursionNet,excursionDiscountPercent:operator.excursionDiscountPercent,publicTransferCents:publicTransfer,transferCents:transferNet,transferDiscountPercent:operator.transferDiscountPercent,totalCents:total}
+  pricing
  };
 }
 
@@ -106,7 +107,7 @@ export async function POST(r:Request){
   const operator=await tourOperatorFromRequest(r);
   if(!operator)return Response.json({error:'Sign in required.'},{status:401,headers});
   if(!await limit('tour-operator-manage:'+operator.id,60,3600000))return Response.json({error:'Too many requests. Please try again later.'},{status:429,headers});
-  const b=await r.json(),action=String(b.action||'');
+  const b=await r.json() as Record<string,any>,action=String(b.action||'');
   if(!['modify','cancel'].includes(action))throw Error('Unknown action.');
   const {state,revision}=await loadStays();state.requests??=[];state.stays??=[];state.rooms??=[];
   const q=state.requests.find((x:any)=>x.id===String(b.id||'')&&x.tourOperatorId===operator.id);

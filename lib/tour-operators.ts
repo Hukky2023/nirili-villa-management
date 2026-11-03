@@ -5,9 +5,8 @@ import {partnerWith,publicPartner,type Partner} from './partners';
 // the agency pays Nirili the public price less its room, excursion and airport transfer discounts.
 export type TourOperator=Partner;
 
-export function discountedCents(cents:number,percent:number){
- return Math.max(0,Math.round(Math.max(0,Number(cents)||0)*(100-Math.max(0,Math.min(100,Number(percent)||0)))/100));
-}
+export {discountedCents} from './partner-package-pricing';
+
 // What the package screens show about the signed-in partner (never the password hash).
 export const publicTourOperator=(partner:Partner)=>publicPartner(partner);
 // The signed-in partner, only if they may book rooms and packages.
