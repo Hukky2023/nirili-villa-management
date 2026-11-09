@@ -21,9 +21,10 @@ export async function GET(){
     totals:{boats:boats.length,operators:activeOperators,schedules:sailings.length,upcomingJourneys:upcoming.length,reservedSeats:occupied},
     apps:[
      {id:'nirili-connect',name:'Nirili Connect',role:'Guest booking, live seat selection and individual tickets',url:'https://nirili-ride.floot.app'},
-     {id:'ntadmin',name:'NTadmin',role:'Speedboat fleet, recurring schedules, crew and passenger manifests',url:'https://nirili-transfer-agent.floot.app'}
+     {id:'ntadmin',name:'NTadmin',role:'Speedboat fleet, recurring schedules, crew and passenger manifests',url:'https://nirili-transfer-agent.floot.app'},
+     {id:'nirili-management-mobile',name:'Nirili Villa Management App',role:'Staff mobile dashboard, bookings, excursions, restaurant and bills · Integration pending',url:'',availability:'development'}
     ],
-    note:'Both connected apps use the management transport ledger. This reports shared data, not independent runtime uptime.'
+    note:'Nirili Connect and NTadmin use the shared management transport ledger. The Nirili Management mobile app is a separate project awaiting publication and secure API integration. This reports shared data, not independent app uptime.'
   },{headers:{'Cache-Control':'private, no-store'}});
  }catch{return Response.json({error:'Shared transport ledger unavailable'},{status:503,headers:{'Cache-Control':'no-store'}})}
 }
