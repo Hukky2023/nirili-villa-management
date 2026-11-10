@@ -1,0 +1,21 @@
+name: Mobile session schema check (isolated)
+on:
+  pull_request:
+    paths:
+      - 'drizzle/0099_mobile_access_sessions.sql'
+      - 'drizzle/0100_mobile_refresh_sessions.sql'
+      - 'scripts/check-mobile-session-schema.py'
+      - '.github/workflows/mobile-api-schema-check.yml'
+  workflow_dispatch:
+jobs:
+  disposable-sqlite-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate SQL without external database
+        run: python3 scripts/check-mobile-session-schema.py
